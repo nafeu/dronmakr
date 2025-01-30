@@ -1,0 +1,63 @@
+# Python specific
+*.pyc
+__pycache__/
+*.so
+.Python
+build/
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# IDE Specific
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+
+# Local development
+.env
+.local/.gitignore
+venv/
+
+# Logs and databases
+*.log
+*.sqlite
+
+# Editor directories and files
+.idea
+.vscode
+*.sublime-workspace
+*.sublime-project
+
+# Environment files
+.env
+.local
+config.py
+
+# IDE generated files
+*.idea
+.DS_Store
+Thumbs.db
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Coverage and testing
+coverage.xml
+htmlcov/
+.coveralls.yml
+
+# Editor file
+.idea
+.vscode
+
+# Local development
+.env
