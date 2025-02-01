@@ -60,16 +60,19 @@ def format_plugin_name(plugin_path):
 def generate_midi():
     """Generate a simple MIDI sequence"""
     audio_length_s = calculate_audio_length(PREVIEW_TEMPO_BPM, PREVIEW_TIME_SIGNATURE, PREVIEW_NUM_BARS)
-    chord_notes = [64, 67, 71, 74]
+    scale_notes = [60, 62, 64, 65, 67, 69, 71, 72]  # C D E F G A B C (MIDI notes)
     midi_messages = []
-    for index, note in enumerate(chord_notes):
-        note_length_s = audio_length_s / len(chord_notes)
+    for index, note in enumerate(scale_notes):
+        note_length_s = audio_length_s / len(scale_notes)
         midi_messages.append(
             Message("note_on", note=note, time=(index * note_length_s))
         )
         midi_messages.append(
             Message("note_off", note=note, time=((index + 1) * note_length_s))
         )
+
+    empty_bar_length = calculate_audio_length(PREVIEW_TEMPO_BPM, PREVIEW_TIME_SIGNATURE, 1)
+    audio_length_s += empty_bar_length
 
     return midi_messages, audio_length_s
 
@@ -171,7 +174,7 @@ def main():
             existing_preset_data = f.read()
             plugin.preset_data = existing_preset_data
 
-    def render_audio():
+    def preview_preset():
         """Renders the MIDI sequence through the VST instrument and writes an audio file"""
         midi_messages, audio_length_s = generate_midi()
         num_channels = 2
@@ -190,7 +193,12 @@ def main():
         with AudioFile(PREVIEW_TEMP_PATH, "w", PREVIEW_SAMPLE_RATE, num_channels) as f:
             f.write(post_fx_signal)
 
+        print(f"{PROMPT} previewing for {audio_length_s} seconds...")
+
         subprocess.call(["afplay", PREVIEW_TEMP_PATH])
+
+        if os.path.exists(PREVIEW_TEMP_PATH):
+            os.remove(PREVIEW_TEMP_PATH)
 
     def listen_for_key():
         """Waits for Spacebar input from the user to trigger audio rendering immediately"""
@@ -209,8 +217,7 @@ def main():
                     key = sys.stdin.read(1)
 
                     if key == " ":
-                        print(f"{PROMPT} previewing...")
-                        render_audio()
+                        preview_preset()
                     elif key == "\n":
                         print(f"{PROMPT} closing editor...")
                         close_window_event.set()
@@ -251,13 +258,15 @@ def main():
     else:
         presets_data = []
 
-    presets_data.append({"plugin": selected_plugin, "preset_path": preset_path})
+    presets_data.append({
+        "name": preset_name,
+        "plugin": selected_plugin,
+        "preset_path": preset_path,
+        "type": "instrument" if plugin.is_instrument else "effect"
+    })
 
     with open(preset_index_file, "w") as f:
         json.dump(presets_data, f, indent=4)
-
-    if os.path.exists(PREVIEW_TEMP_PATH):
-        os.remove(PREVIEW_TEMP_PATH)
 
 if __name__ == "__main__":
     try:
