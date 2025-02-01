@@ -65,3 +65,5 @@ htmlcov/
 # Dronmakr
 presets/
 temp_*
+*.asd
+export.wav

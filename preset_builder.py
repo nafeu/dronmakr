@@ -83,6 +83,7 @@ def main():
     load_dotenv()
 
     selected_plugin = ""
+    selected_plugin_name = ""
 
     if len(sys.argv) > 1:
         selected_plugin = sys.argv[1]
@@ -175,30 +176,63 @@ def main():
             plugin.preset_data = existing_preset_data
 
     def preview_preset():
-        """Renders the MIDI sequence through the VST instrument and writes an audio file"""
-        midi_messages, audio_length_s = generate_midi()
+        """Renders the preset through the VST and writes an audio file."""
         num_channels = 2
 
-        pre_fx_signal = plugin(
-            midi_messages,
-            duration=audio_length_s,
-            sample_rate=PREVIEW_SAMPLE_RATE,
-            num_channels=num_channels,
-            reset=False,
-        )
+        if plugin.is_instrument:
+            # For VST Instruments: Generate MIDI
+            midi_messages, audio_length_s = generate_midi()
+            print(f"{PROMPT} Using MIDI input for instrument plugin...")
 
-        fx_chain = Pedalboard([])
+            # Process MIDI through the VST instrument
+            pre_fx_signal = plugin(
+                midi_messages,
+                duration=audio_length_s,
+                sample_rate=PREVIEW_SAMPLE_RATE,
+                num_channels=num_channels,
+                buffer_size=8192,  # Default buffer size
+                reset=False,  # Avoid resetting the plugin state
+            )
+
+        elif plugin.is_effect:
+            # For VST Effects: Use pre-recorded audio
+            print(f"{PROMPT} Using audio file for effect plugin...")
+
+            # Load the audio file into a NumPy array
+            with AudioFile("cmaj-piano.wav", "r") as f:
+                audio_length_s = f.frames / f.samplerate
+                pre_fx_signal = f.read(f.frames)  # Read entire file
+
+            # Process audio through the VST effect
+            pre_fx_signal = plugin(
+                pre_fx_signal,  # Audio input
+                sample_rate=PREVIEW_SAMPLE_RATE,
+                buffer_size=8192,  # Default buffer size
+                reset=False,  # Avoid resetting the plugin state
+            )
+
+        else:
+            print(f"{PROMPT} unknown plugin type.")
+            return
+
+        # Apply additional effects if needed
+        fx_chain = Pedalboard([])  # Add effects here if needed
         post_fx_signal = fx_chain(pre_fx_signal, PREVIEW_SAMPLE_RATE)
 
+        # Write the output audio file
         with AudioFile(PREVIEW_TEMP_PATH, "w", PREVIEW_SAMPLE_RATE, num_channels) as f:
             f.write(post_fx_signal)
 
         print(f"{PROMPT} previewing for {audio_length_s} seconds...")
 
+        # Play the rendered audio
         subprocess.call(["afplay", PREVIEW_TEMP_PATH])
 
+        # Delete the temporary preview file
         if os.path.exists(PREVIEW_TEMP_PATH):
             os.remove(PREVIEW_TEMP_PATH)
+            print(f"{PROMPT} deleted temporary file: {PREVIEW_TEMP_PATH}")
+
 
     def listen_for_key():
         """Waits for Spacebar input from the user to trigger audio rendering immediately"""
@@ -259,8 +293,10 @@ def main():
         presets_data = []
 
     presets_data.append({
+        "id": preset_uid,
         "name": preset_name,
-        "plugin": selected_plugin,
+        "plugin_path": selected_plugin,
+        "plugin_name": selected_plugin_name,
         "preset_path": preset_path,
         "type": "instrument" if plugin.is_instrument else "effect"
     })
