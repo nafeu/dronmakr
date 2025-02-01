@@ -64,3 +64,4 @@ htmlcov/
 
 # Dronmakr
 presets/
+temp_*

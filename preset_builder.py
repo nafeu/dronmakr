@@ -1,23 +1,55 @@
-import os
-import sys
 import glob
-import pedalboard
-import uuid
 import json
+import select
+import os
+import pedalboard
+import subprocess
+import sys
+import uuid
+import termios
+import tty
 from dotenv import load_dotenv
+from mido import Message
+from pedalboard import Pedalboard
+from pedalboard.io import AudioFile
+from threading import Event, Thread
 
-# Set sample rate and buffer size
-SAMPLE_RATE = 44100
-BUFFER_SIZE = 512  # Size of each processing chunk
+RED = "\033[31m"
+RESET = "\033[0m"
+
+PROMPT = f"{RED}┌ dronmakr ■ preset builder {RED}┐{RESET}"
+
+PRESET_DIR = "presets"
+PREVIEW_NUM_BARS = 1
+PREVIEW_SAMPLE_RATE = 44100
+PREVIEW_TEMP_PATH = "temp_preset_preview.wav"
+PREVIEW_TEMPO_BPM = 120
+PREVIEW_TIME_SIGNATURE = "4/4"
+
+listener_running = True
+close_window_event = Event()
+
+def calculate_audio_length(tempo_bpm, time_signature, num_bars):
+    beats_per_bar, beat_duration_s = calculate_beat_info(tempo_bpm, time_signature)
+    total_beats = beats_per_bar * num_bars
+    total_duration_s = total_beats * beat_duration_s
+    return total_duration_s
+
+
+def calculate_beat_info(tempo_bpm, time_signature):
+    beats_per_bar, beat_type = map(int, time_signature.split("/"))
+    beat_duration_s = 60 / tempo_bpm
+    return beats_per_bar, beat_duration_s
+
 
 def list_vst_plugins(vst_dirs):
     vst_plugins = []
     for vst_dir in vst_dirs:
         vst_dir = vst_dir.strip()
         if os.path.exists(vst_dir):
-            vst_plugins.extend(glob.glob(os.path.join(vst_dir, "*.vst3")))  # macOS VST3
-            vst_plugins.extend(glob.glob(os.path.join(vst_dir, "*.dll")))   # Windows VST2
-            vst_plugins.extend(glob.glob(os.path.join(vst_dir, "*.so")))    # Linux VST2
+            vst_plugins.extend(glob.glob(os.path.join(vst_dir, "*.vst3")))
+            vst_plugins.extend(glob.glob(os.path.join(vst_dir, "*.dll")))
+            vst_plugins.extend(glob.glob(os.path.join(vst_dir, "*.so")))
     return vst_plugins
 
 
@@ -25,131 +57,214 @@ def format_plugin_name(plugin_path):
     return os.path.basename(plugin_path).replace(".vst3", "")
 
 
+def generate_midi():
+    """Generate a simple MIDI sequence"""
+    audio_length_s = calculate_audio_length(PREVIEW_TEMPO_BPM, PREVIEW_TIME_SIGNATURE, PREVIEW_NUM_BARS)
+    chord_notes = [64, 67, 71, 74]
+    midi_messages = []
+    for index, note in enumerate(chord_notes):
+        note_length_s = audio_length_s / len(chord_notes)
+        midi_messages.append(
+            Message("note_on", note=note, time=(index * note_length_s))
+        )
+        midi_messages.append(
+            Message("note_off", note=note, time=((index + 1) * note_length_s))
+        )
+
+    return midi_messages, audio_length_s
+
+
 def main():
-    # Ensure the `presets/` folder exists
-    PRESET_DIR = "presets"
     os.makedirs(PRESET_DIR, exist_ok=True)
 
-    # Load environment variables from .env file
     load_dotenv()
 
     selected_plugin = ""
 
     if len(sys.argv) > 1:
         selected_plugin = sys.argv[1]
-        print(f"Loading: {selected_plugin}")
+        print(f"{PROMPT} loading {selected_plugin}...")
     else:
-        # Read VST paths from .env file
+
         vst_paths = os.getenv("VST_PATHS", "").split(",")
 
-        # Validate VST paths
         if not vst_paths or vst_paths == [""]:
-            print("Error: No VST paths found in the .env file. Make sure to set VST_PATHS.")
+            print(
+                f"{PROMPT} error: No VST paths found in the .env file. Make sure to set VST_PATHS."
+            )
             exit(1)
 
-        # Get the list of available VST plugins
         available_plugins = list_vst_plugins(vst_paths)
 
         if not available_plugins:
-            print("No VST plugins found in the specified paths.")
+            print(f"{PROMPT} error: No VST plugins found in the specified paths.")
             exit(1)
 
-        plugin_map = { format_plugin_name(path): path for path in available_plugins }
+        plugin_map = {format_plugin_name(path): path for path in available_plugins}
 
-        # Display available plugins
-        print("Available VST Plugins:")
-        for i, plugin in enumerate(plugin_map.keys()):
-            print(f"{i + 1}. {plugin}")
+        print(f"{PROMPT} available plugins:\n")
+        columns = 3
+        for i, plugin in enumerate(plugin_map.keys(), start=1):
+            print(f"{i}. {plugin}".ljust(35), end="")
 
-        # Ask user to select a plugin
+            if i % columns == 0:
+                print()
+
+        sys.stdout.flush()
+        print("\n")
+
         while True:
             try:
-                selection = int(input("\nEnter the number of the VST you want to open: ")) - 1
+                selection = (
+                    int(input(f"{PROMPT} enter the number of the VST you want to open: ")) - 1
+                )
                 if 0 <= selection < len(plugin_map.keys()):
                     selected_plugin = plugin_map[list(plugin_map.keys())[selection]]
                     break
                 else:
-                    print("Invalid selection. Please try again.")
+                    print(f"{PROMPT} invalid selection, try again.")
             except ValueError:
-                print("Please enter a valid number.")
+                print(f"{PROMPT} please enter a valid number.")
 
     try:
         plugin = pedalboard.load_plugin(selected_plugin)
     except ValueError as e:
         error_message = str(e)
         if "contains" in error_message and "To open a specific plugin" in error_message:
-            # Extract available plugin names
-            plugin_names = [line.strip().strip('"') for line in error_message.split("\n") if line.startswith('\t"')]
 
-            # Ask user to select a specific plugin within the file
-            print("\nThis VST3 file contains multiple plugins:")
+            plugin_names = [
+                line.strip().strip('"')
+                for line in error_message.split("\n")
+                if line.startswith('\t"')
+            ]
+
+            print(f"{PROMPT} this VST3 file contains multiple plugins:")
             for i, name in enumerate(plugin_names):
                 print(f"{i + 1}. {name}")
 
             while True:
                 try:
-                    sub_selection = int(input("\nEnter the number of the plugin you want to load: ")) - 1
+                    sub_selection = (
+                        int(
+                            input(f"{PROMPT} enter the number of the plugin you want to load: ")
+                        )
+                        - 1
+                    )
                     if 0 <= sub_selection < len(plugin_names):
                         selected_plugin_name = plugin_names[sub_selection]
-                        plugin = pedalboard.load_plugin(selected_plugin, plugin_name=selected_plugin_name)
+                        plugin = pedalboard.load_plugin(
+                            selected_plugin, plugin_name=selected_plugin_name
+                        )
                         break
                     else:
-                        print("Invalid selection. Please try again.")
+                        print(f"{PROMPT} invalid selection, please try again.")
                 except ValueError:
-                    print("Please enter a valid number.")
+                    print(f"{PROMPT} please enter a valid number.")
         else:
-            raise  # Re-raise unexpected errors
+            raise
 
     preset_file = "preset.vstpreset"
 
-    # Check if a preset already exists
     if os.path.exists(preset_file):
-        print("\nLoading existing preset...")
+        print(f"{PROMPT} loading existing preset...")
         with open(preset_file, "rb") as f:
             existing_preset_data = f.read()
-            plugin.preset_data = existing_preset_data  # Load preset into plugin
+            plugin.preset_data = existing_preset_data
 
-    # Open the VST GUI and let the user tweak parameters
-    print("\nOpening VST... Adjust parameters and close the window when done.")
-    plugin.show_editor()
+    def render_audio():
+        """Renders the MIDI sequence through the VST instrument and writes an audio file"""
+        midi_messages, audio_length_s = generate_midi()
+        num_channels = 2
 
-    # Prompt the user for a preset name
-    preset_name = input("\nEnter a name for this preset: ").strip()
+        pre_fx_signal = plugin(
+            midi_messages,
+            duration=audio_length_s,
+            sample_rate=PREVIEW_SAMPLE_RATE,
+            num_channels=num_channels,
+            reset=False,
+        )
 
-    # Generate a unique ID
-    preset_uid = str(uuid.uuid4())[:8]  # Shorter UID for cleaner filenames
+        fx_chain = Pedalboard([])
+        post_fx_signal = fx_chain(pre_fx_signal, PREVIEW_SAMPLE_RATE)
 
-    # Construct the preset filename
+        with AudioFile(PREVIEW_TEMP_PATH, "w", PREVIEW_SAMPLE_RATE, num_channels) as f:
+            f.write(post_fx_signal)
+
+        subprocess.call(["afplay", PREVIEW_TEMP_PATH])
+
+    def listen_for_key():
+        """Waits for Spacebar input from the user to trigger audio rendering immediately"""
+        global listener_running
+        print(
+            f"{PROMPT} [SPACEBAR] preview sound, [ENTER] continue.\n"
+        )
+
+        fd = sys.stdin.fileno()
+        old_settings = termios.tcgetattr(fd)
+        try:
+            tty.setcbreak(fd)
+
+            while listener_running:
+                if select.select([sys.stdin], [], [], 0.1)[0]:
+                    key = sys.stdin.read(1)
+
+                    if key == " ":
+                        print(f"{PROMPT} previewing...")
+                        render_audio()
+                    elif key == "\n":
+                        print(f"{PROMPT} closing editor...")
+                        close_window_event.set()
+                        break
+
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+    key_listener_thread = Thread(target=listen_for_key, daemon=True)
+    key_listener_thread.start()
+
+    print(f"{PROMPT} opening VST...")
+    plugin.show_editor(close_window_event)
+
+    listener_running = False
+    key_listener_thread.join()
+
+    preset_name = input(f"{PROMPT} enter a name for this preset: ").strip()
+
+    preset_uid = str(uuid.uuid4())[:8]
+
     preset_filename = f"{preset_name}_{preset_uid}.vstpreset"
     preset_path = os.path.join(PRESET_DIR, preset_filename)
 
-    # Save the VST preset data to the generated file
     with open(preset_path, "wb") as f:
         f.write(plugin.preset_data)
 
-    print(f"\nPreset saved to {preset_path}")
+    print(f"{PROMPT} preset saved to {preset_path}")
 
-    # Path to `presets.json`
     preset_index_file = os.path.join(PRESET_DIR, "presets.json")
 
-    # Load existing presets.json (if it exists)
     if os.path.exists(preset_index_file):
         with open(preset_index_file, "r") as f:
             try:
                 presets_data = json.load(f)
             except json.JSONDecodeError:
-                presets_data = []  # If JSON is corrupted, reset it
+                presets_data = []
     else:
         presets_data = []
 
-    # Add the new preset entry
     presets_data.append({"plugin": selected_plugin, "preset_path": preset_path})
 
-    # Save updated presets.json
     with open(preset_index_file, "w") as f:
         json.dump(presets_data, f, indent=4)
 
-    print("\nUpdated presets.json successfully!")
+    if os.path.exists(PREVIEW_TEMP_PATH):
+        os.remove(PREVIEW_TEMP_PATH)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()  # Your main script logic
+    except KeyboardInterrupt:
+        print(f"\n{PROMPT} exiting...")  # Graceful exit on CTRL+C
+        sys.exit(0)
+    except EOFError:
+        print(f"\n{PROMPT} exiting...")  # Graceful exit on CTRL+D
+        sys.exit(0)
