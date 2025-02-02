@@ -65,21 +65,28 @@ def main():
 
     # Check if it's an effect
     effect_chain = []
+    preset_name = ""
+    preset_uid = ""
+    preset_path = ""
     if plugin.is_effect:
         effect_chain.append((selected_plugin, selected_plugin_name, plugin))
 
         (
-            preset_name,
-            preset_uid,
+            chain_preset_name,
+            chain_preset_uid,
             selected_plugin,
             selected_plugin_name,
-            preset_path,
+            chain_preset_path,
             effect_chain,
         ) = edit_preset_with_ui(plugin, effect_chain, selected_plugin, selected_plugin_name)
+
+        effect_chain[-1] = (*effect_chain[-1], (chain_preset_name, chain_preset_uid, chain_preset_path))
 
         while True:
             add_more = input(f"{PROMPT} Add another effect? (y/n): ").strip().lower()
             if add_more != "y":
+                preset_name = input(f"{PROMPT} enter a name for this chain preset: ").strip()
+                preset_uid = str(uuid.uuid4())[:8]
                 break
 
             # Select another effect
@@ -92,13 +99,15 @@ def main():
                 )
 
                 (
-                    preset_name,
-                    preset_uid,
+                    chain_preset_name,
+                    chain_preset_uid,
                     selected_plugin,
                     selected_plugin_name,
-                    preset_path,
+                    chain_preset_path,
                     effect_chain,
                 ) = edit_preset_with_ui(plugin, effect_chain, selected_plugin, selected_plugin_name)
+
+                effect_chain[-1] = (*effect_chain[-1], (chain_preset_name, chain_preset_uid, chain_preset_path))
             else:
                 print(f"{PROMPT} That is not an effect! Try again.")
     else:
@@ -288,11 +297,13 @@ def save_preset(name, uid, plugin_path, plugin_name, preset_path, effect_chain):
             "type": "effect_chain",
             "effects": [
                 {
+                    "id": fx[3][1],
+                    "name": fx[3][0],
                     "plugin_path": fx[0],
                     "plugin_name": fx[1],
-                    "preset_path": os.path.join(PRESET_DIR, f"{name}_{uid}.vstpreset"),
+                    "preset_path": fx[3][2],
                 }
-                for fx in effect_chain
+                for fx in effect_chain # (chain_preset_name, chain_preset_id, chain_preset_path)
             ],
         }
     else:
