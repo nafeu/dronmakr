@@ -7,11 +7,13 @@ from pedalboard import Pedalboard
 from pedalboard.io import AudioFile
 import mido
 from mido import MidiFile, Message
+from paulstretch import paulstretch
 
 # File paths
 PRESET_JSON_PATH = "presets/presets.json"
 MIDI_FILE_PATH = "output.mid"
 EXPORT_AUDIO_PATH = "export.wav"
+EXPORT_AUDIO_STRETCHED_PATH = "export-stretched.wav"
 
 # Sample rate for processing
 SAMPLE_RATE = 44100
@@ -33,8 +35,8 @@ if not instruments or not effects:
 instrument_preset = random.choice(instruments)
 effect_preset = random.choice(effects)
 
-print(f"🎹 Selected Instrument: {instrument_preset['name']}")
-print(f"🎛 Selected Effect: {effect_preset['name']}")
+print(f"Selected Instrument: {instrument_preset['name']}")
+print(f"Selected Effect: {effect_preset['name']}")
 
 # Load the instrument plugin with `plugin_name` if available
 if instrument_preset["plugin_name"]:
@@ -82,7 +84,7 @@ def midi_to_messages(midi_file_path):
 
 # Load MIDI file and get messages
 midi_messages, audio_length_s = midi_to_messages(MIDI_FILE_PATH)
-print(f"🎼 Loaded MIDI file: {MIDI_FILE_PATH} (Length: {audio_length_s:.2f} sec)")
+print(f"Loaded MIDI file: {MIDI_FILE_PATH} (Length: {audio_length_s:.2f} sec)")
 
 # Process MIDI through the instrument plugin
 pre_fx_signal = instrument_plugin(
@@ -94,6 +96,8 @@ pre_fx_signal = instrument_plugin(
     reset=False,
 )
 
+print(f"Rendering audio...")
+
 # Apply the selected effect plugin
 fx_chain = Pedalboard(loaded_effects)
 post_fx_signal = fx_chain(pre_fx_signal, SAMPLE_RATE)
@@ -102,4 +106,8 @@ post_fx_signal = fx_chain(pre_fx_signal, SAMPLE_RATE)
 with AudioFile(EXPORT_AUDIO_PATH, "w", SAMPLE_RATE, 2) as f:
     f.write(post_fx_signal)
 
-print(f"✅ Exported audio to {EXPORT_AUDIO_PATH}")
+print(f"Rendering stretched audio...")
+
+paulstretch(EXPORT_AUDIO_PATH, EXPORT_AUDIO_STRETCHED_PATH, stretch=8, window_size=0.25)
+
+print(f"Exported audio to {EXPORT_AUDIO_PATH}")

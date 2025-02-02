@@ -66,4 +66,5 @@ htmlcov/
 presets/
 temp_*
 *.asd
-export.wav
+export*.wav
+export*.mp3
