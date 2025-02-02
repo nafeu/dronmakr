@@ -29,6 +29,98 @@ PREVIEW_TIME_SIGNATURE = "4/4"
 listener_running = True
 close_window_event = Event()
 
+
+def main():
+    os.makedirs(PRESET_DIR, exist_ok=True)
+
+    load_dotenv()
+
+    vst_paths = os.getenv("VST_PATHS", "").split(",")
+    if not vst_paths or vst_paths == [""]:
+        print(f"{PROMPT} error: No VST paths found in the .env file.")
+        exit(1)
+
+    available_plugins = list_vst_plugins(vst_paths)
+    if not available_plugins:
+        print(f"{PROMPT} error: No VST plugins found.")
+        exit(1)
+
+    plugin_map = {format_plugin_name(path): path for path in available_plugins}
+    print(f"{PROMPT} available plugins:\n")
+
+    # Display plugins in columns
+    columns = 3
+    for i, plugin in enumerate(plugin_map.keys(), start=1):
+        print(f"{i}. {plugin}".ljust(35), end="")
+        if i % columns == 0:
+            print()
+
+    sys.stdout.flush()
+    print("\n")
+
+    # Select the first plugin
+    selected_plugin = select_plugin(plugin_map)
+
+    plugin, selected_plugin_name = load_plugin(selected_plugin)
+
+    # Check if it's an effect
+    effect_chain = []
+    if plugin.is_effect:
+        effect_chain.append((selected_plugin, selected_plugin_name, plugin))
+
+        (
+            preset_name,
+            preset_uid,
+            selected_plugin,
+            selected_plugin_name,
+            preset_path,
+            effect_chain,
+        ) = edit_preset_with_ui(plugin, effect_chain, selected_plugin, selected_plugin_name)
+
+        while True:
+            add_more = input(f"{PROMPT} Add another effect? (y/n): ").strip().lower()
+            if add_more != "y":
+                break
+
+            # Select another effect
+            selected_plugin = select_plugin(plugin_map)
+            plugin, selected_plugin_name = load_plugin(selected_plugin)
+
+            if plugin.is_effect:
+                effect_chain.append(
+                    (selected_plugin, selected_plugin_name, plugin)
+                )
+
+                (
+                    preset_name,
+                    preset_uid,
+                    selected_plugin,
+                    selected_plugin_name,
+                    preset_path,
+                    effect_chain,
+                ) = edit_preset_with_ui(plugin, effect_chain, selected_plugin, selected_plugin_name)
+            else:
+                print(f"{PROMPT} That is not an effect! Try again.")
+    else:
+        (
+            preset_name,
+            preset_uid,
+            selected_plugin,
+            selected_plugin_name,
+            preset_path,
+            effect_chain,
+        ) = edit_preset_with_ui(plugin, effect_chain, selected_plugin, selected_plugin_name)
+
+    save_preset(
+        preset_name,
+        preset_uid,
+        selected_plugin,
+        selected_plugin_name,
+        preset_path,
+        effect_chain,
+    )
+
+
 def calculate_audio_length(tempo_bpm, time_signature, num_bars):
     beats_per_bar, beat_duration_s = calculate_beat_info(tempo_bpm, time_signature)
     total_beats = beats_per_bar * num_bars
@@ -71,71 +163,37 @@ def generate_midi():
             Message("note_off", note=note, time=((index + 1) * note_length_s))
         )
 
-    empty_bar_length = calculate_audio_length(PREVIEW_TEMPO_BPM, PREVIEW_TIME_SIGNATURE, 1)
+    empty_bar_length = calculate_audio_length(
+        PREVIEW_TEMPO_BPM, PREVIEW_TIME_SIGNATURE, 1
+    )
     audio_length_s += empty_bar_length
 
     return midi_messages, audio_length_s
 
 
-def main():
-    os.makedirs(PRESET_DIR, exist_ok=True)
+def select_plugin(plugin_map):
+    """Handles user input for selecting a plugin"""
+    while True:
+        try:
+            selection = int(input(f"{PROMPT} select a VST: ")) - 1
+            if 0 <= selection < len(plugin_map.keys()):
+                plugin_path = plugin_map[list(plugin_map.keys())[selection]]
+                return plugin_path
+            else:
+                print(f"{PROMPT} Invalid selection.")
+        except ValueError:
+            print(f"{PROMPT} Enter a number.")
 
-    load_dotenv()
 
-    selected_plugin = ""
-    selected_plugin_name = ""
-
-    if len(sys.argv) > 1:
-        selected_plugin = sys.argv[1]
-        print(f"{PROMPT} loading {selected_plugin}...")
-    else:
-
-        vst_paths = os.getenv("VST_PATHS", "").split(",")
-
-        if not vst_paths or vst_paths == [""]:
-            print(
-                f"{PROMPT} error: No VST paths found in the .env file. Make sure to set VST_PATHS."
-            )
-            exit(1)
-
-        available_plugins = list_vst_plugins(vst_paths)
-
-        if not available_plugins:
-            print(f"{PROMPT} error: No VST plugins found in the specified paths.")
-            exit(1)
-
-        plugin_map = {format_plugin_name(path): path for path in available_plugins}
-
-        print(f"{PROMPT} available plugins:\n")
-        columns = 3
-        for i, plugin in enumerate(plugin_map.keys(), start=1):
-            print(f"{i}. {plugin}".ljust(35), end="")
-
-            if i % columns == 0:
-                print()
-
-        sys.stdout.flush()
-        print("\n")
-
-        while True:
-            try:
-                selection = (
-                    int(input(f"{PROMPT} enter the number of the VST you want to open: ")) - 1
-                )
-                if 0 <= selection < len(plugin_map.keys()):
-                    selected_plugin = plugin_map[list(plugin_map.keys())[selection]]
-                    break
-                else:
-                    print(f"{PROMPT} invalid selection, try again.")
-            except ValueError:
-                print(f"{PROMPT} please enter a valid number.")
-
+def load_plugin(plugin_path):
+    """Loads a VST plugin, handling multiple embedded plugins if necessary."""
     try:
-        plugin = pedalboard.load_plugin(selected_plugin)
+        return pedalboard.load_plugin(plugin_path), ""
     except ValueError as e:
         error_message = str(e)
         if "contains" in error_message and "To open a specific plugin" in error_message:
 
+            # Extract available sub-plugins from the error message
             plugin_names = [
                 line.strip().strip('"')
                 for line in error_message.split("\n")
@@ -146,141 +204,72 @@ def main():
             for i, name in enumerate(plugin_names):
                 print(f"{i + 1}. {name}")
 
+            # Prompt user to select a sub-plugin
             while True:
                 try:
                     sub_selection = (
                         int(
-                            input(f"{PROMPT} enter the number of the plugin you want to load: ")
+                            input(
+                                f"{PROMPT} enter the number of the plugin you want to load: "
+                            )
                         )
                         - 1
                     )
                     if 0 <= sub_selection < len(plugin_names):
                         selected_plugin_name = plugin_names[sub_selection]
-                        plugin = pedalboard.load_plugin(
-                            selected_plugin, plugin_name=selected_plugin_name
+                        return (
+                            pedalboard.load_plugin(
+                                plugin_path, plugin_name=selected_plugin_name
+                            ),
+                            selected_plugin_name,
                         )
-                        break
                     else:
                         print(f"{PROMPT} invalid selection, please try again.")
                 except ValueError:
                     print(f"{PROMPT} please enter a valid number.")
+
         else:
             raise
 
-    preset_file = "preset.vstpreset"
 
-    if os.path.exists(preset_file):
-        print(f"{PROMPT} loading existing preset...")
-        with open(preset_file, "rb") as f:
-            existing_preset_data = f.read()
-            plugin.preset_data = existing_preset_data
+def preview_preset(plugin, effect_chain):
+    """Processes the preset through an instrument or effect chain"""
+    num_channels = 2
 
-    def preview_preset():
-        """Renders the preset through the VST and writes an audio file."""
-        num_channels = 2
-
-        if plugin.is_instrument:
-            # For VST Instruments: Generate MIDI
-            midi_messages, audio_length_s = generate_midi()
-            print(f"{PROMPT} Using MIDI input for instrument plugin...")
-
-            # Process MIDI through the VST instrument
-            pre_fx_signal = plugin(
-                midi_messages,
-                duration=audio_length_s,
-                sample_rate=PREVIEW_SAMPLE_RATE,
-                num_channels=num_channels,
-                buffer_size=8192,  # Default buffer size
-                reset=False,  # Avoid resetting the plugin state
-            )
-
-        elif plugin.is_effect:
-            # For VST Effects: Use pre-recorded audio
-            print(f"{PROMPT} Using audio file for effect plugin...")
-
-            # Load the audio file into a NumPy array
-            with AudioFile("cmaj-piano.wav", "r") as f:
-                audio_length_s = f.frames / f.samplerate
-                pre_fx_signal = f.read(f.frames)  # Read entire file
-
-            # Process audio through the VST effect
-            pre_fx_signal = plugin(
-                pre_fx_signal,  # Audio input
-                sample_rate=PREVIEW_SAMPLE_RATE,
-                buffer_size=8192,  # Default buffer size
-                reset=False,  # Avoid resetting the plugin state
-            )
-
-        else:
-            print(f"{PROMPT} unknown plugin type.")
-            return
-
-        # Apply additional effects if needed
-        fx_chain = Pedalboard([])  # Add effects here if needed
-        post_fx_signal = fx_chain(pre_fx_signal, PREVIEW_SAMPLE_RATE)
-
-        # Write the output audio file
-        with AudioFile(PREVIEW_TEMP_PATH, "w", PREVIEW_SAMPLE_RATE, num_channels) as f:
-            f.write(post_fx_signal)
-
-        print(f"{PROMPT} previewing for {audio_length_s} seconds...")
-
-        # Play the rendered audio
-        subprocess.call(["afplay", PREVIEW_TEMP_PATH])
-
-        # Delete the temporary preview file
-        if os.path.exists(PREVIEW_TEMP_PATH):
-            os.remove(PREVIEW_TEMP_PATH)
-            print(f"{PROMPT} deleted temporary file: {PREVIEW_TEMP_PATH}")
-
-
-    def listen_for_key():
-        """Waits for Spacebar input from the user to trigger audio rendering immediately"""
-        global listener_running
-        print(
-            f"{PROMPT} [SPACEBAR] preview sound, [ENTER] continue.\n"
+    if plugin.is_instrument:
+        midi_messages, audio_length_s = generate_midi()
+        pre_fx_signal = plugin(
+            midi_messages,
+            duration=audio_length_s,
+            sample_rate=PREVIEW_SAMPLE_RATE,
+            num_channels=num_channels,
+            buffer_size=8192,
+            reset=False,
         )
 
-        fd = sys.stdin.fileno()
-        old_settings = termios.tcgetattr(fd)
-        try:
-            tty.setcbreak(fd)
+    elif plugin.is_effect:
+        with AudioFile("cmaj-piano.wav", "r") as f:
+            audio_length_s = f.frames / f.samplerate
+            pre_fx_signal = f.read(f.frames)
 
-            while listener_running:
-                if select.select([sys.stdin], [], [], 0.1)[0]:
-                    key = sys.stdin.read(1)
+        # Apply all effects in the chain
+        fx_chain = Pedalboard([fx[2] for fx in effect_chain])
+        pre_fx_signal = fx_chain(pre_fx_signal, PREVIEW_SAMPLE_RATE)
 
-                    if key == " ":
-                        preview_preset()
-                    elif key == "\n":
-                        print(f"{PROMPT} closing editor...")
-                        close_window_event.set()
-                        break
+    else:
+        print(f"{PROMPT} Unknown plugin type.")
+        return
 
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+    # Write output
+    with AudioFile(PREVIEW_TEMP_PATH, "w", PREVIEW_SAMPLE_RATE, num_channels) as f:
+        f.write(pre_fx_signal)
 
-    key_listener_thread = Thread(target=listen_for_key, daemon=True)
-    key_listener_thread.start()
+    subprocess.call(["afplay", PREVIEW_TEMP_PATH])
+    os.remove(PREVIEW_TEMP_PATH)
 
-    print(f"{PROMPT} opening VST...")
-    plugin.show_editor(close_window_event)
 
-    listener_running = False
-    key_listener_thread.join()
-
-    preset_name = input(f"{PROMPT} enter a name for this preset: ").strip()
-
-    preset_uid = str(uuid.uuid4())[:8]
-
-    preset_filename = f"{preset_name}_{preset_uid}.vstpreset"
-    preset_path = os.path.join(PRESET_DIR, preset_filename)
-
-    with open(preset_path, "wb") as f:
-        f.write(plugin.preset_data)
-
-    print(f"{PROMPT} preset saved to {preset_path}")
-
+def save_preset(name, uid, plugin_path, plugin_name, preset_path, effect_chain):
+    """Saves the preset to `presets.json`"""
     preset_index_file = os.path.join(PRESET_DIR, "presets.json")
 
     if os.path.exists(preset_index_file):
@@ -292,24 +281,102 @@ def main():
     else:
         presets_data = []
 
-    presets_data.append({
-        "id": preset_uid,
-        "name": preset_name,
-        "plugin_path": selected_plugin,
-        "plugin_name": selected_plugin_name,
-        "preset_path": preset_path,
-        "type": "instrument" if plugin.is_instrument else "effect"
-    })
+    if effect_chain:
+        preset_data = {
+            "id": uid,
+            "name": name,
+            "type": "effect_chain",
+            "effects": [
+                {
+                    "plugin_path": fx[0],
+                    "plugin_name": fx[1],
+                    "preset_path": os.path.join(PRESET_DIR, f"{name}_{uid}.vstpreset"),
+                }
+                for fx in effect_chain
+            ],
+        }
+    else:
+        preset_data = {
+            "id": uid,
+            "name": name,
+            "plugin_path": plugin_path,
+            "plugin_name": plugin_name,
+            "preset_path": preset_path,
+            "type": "instrument",
+        }
+
+    presets_data.append(preset_data)
 
     with open(preset_index_file, "w") as f:
         json.dump(presets_data, f, indent=4)
 
+
+def listen_for_key(plugin, effect_chain):
+    """Waits for Spacebar input from the user to trigger audio rendering immediately"""
+    global listener_running
+    print(f"{PROMPT} [SPACEBAR] preview sound, [ENTER] continue.\n")
+
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    try:
+        tty.setcbreak(fd)
+
+        while listener_running:
+            if select.select([sys.stdin], [], [], 0.1)[0]:
+                key = sys.stdin.read(1)
+
+                if key == " ":
+                    preview_preset(plugin, effect_chain)  # Preview the sound
+                elif key == "\n":
+                    print(f"{PROMPT} closing editor...")
+                    close_window_event.set()
+                    break
+
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+
+
+def edit_preset_with_ui(plugin, effect_chain, selected_plugin, selected_plugin_name):
+    """Handles opening the VST editor and listening for spacebar preview"""
+    global listener_running
+
+    close_window_event.clear()  # Ensure the event is reset before opening
+    listener_running = True
+
+    key_listener_thread = Thread(
+        target=listen_for_key, args=(plugin, effect_chain), daemon=True
+    )
+    key_listener_thread.start()
+
+    print(f"{PROMPT} opening VST...")
+    plugin.show_editor(close_window_event)  # Open editor & wait
+
+    listener_running = False
+    key_listener_thread.join()
+
+    preset_name = input(f"{PROMPT} enter a name for this preset: ").strip()
+    preset_uid = str(uuid.uuid4())[:8]
+
+    preset_path = os.path.join(PRESET_DIR, f"{preset_name}_{preset_uid}.vstpreset")
+    with open(preset_path, "wb") as f:
+        f.write(plugin.preset_data)
+
+    # TODO: [nafeu] fix bug where individual preset paths and names aren't preserved in FX chain export
+    print(f"{PROMPT} preset saved to {preset_path}")
+
+    return (
+        preset_name,
+        preset_uid,
+        selected_plugin,
+        selected_plugin_name,
+        preset_path,
+        effect_chain,
+    )
+
+
 if __name__ == "__main__":
     try:
-        main()  # Your main script logic
-    except KeyboardInterrupt:
-        print(f"\n{PROMPT} exiting...")  # Graceful exit on CTRL+C
-        sys.exit(0)
-    except EOFError:
-        print(f"\n{PROMPT} exiting...")  # Graceful exit on CTRL+D
+        main()
+    except (KeyboardInterrupt, EOFError):
+        print(f"\n{PROMPT} exiting...")
         sys.exit(0)

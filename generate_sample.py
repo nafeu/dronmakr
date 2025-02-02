@@ -16,13 +16,15 @@ EXPORT_AUDIO_PATH = "export.wav"
 # Sample rate for processing
 SAMPLE_RATE = 44100
 
+loaded_effects = []
+
 # Load presets from JSON
 with open(PRESET_JSON_PATH, "r") as f:
     presets = json.load(f)
 
 # Separate instruments and effects
 instruments = [p for p in presets if p["type"] == "instrument"]
-effects = [p for p in presets if p["type"] == "effect"]
+effects = [p for p in presets if p["type"] == "effect_chain"]
 
 if not instruments or not effects:
     raise ValueError("No valid instruments or effects found in presets.json")
@@ -48,17 +50,20 @@ with open(instrument_preset["preset_path"], "rb") as f:
     instrument_plugin.preset_data = f.read()
 
 # Load the effect plugin with `plugin_name` if available
-if effect_preset["plugin_name"]:
-    effect_plugin = pedalboard.VST3Plugin(
-        effect_preset["plugin_path"],
-        plugin_name=effect_preset["plugin_name"]
-    )
-else:
-    effect_plugin = pedalboard.VST3Plugin(effect_preset["plugin_path"])
+for effect in effect_preset["effects"]:
+    if effect["plugin_name"]:
+        effect_plugin = pedalboard.VST3Plugin(
+            effect["plugin_path"],
+            plugin_name=effect["plugin_name"]
+        )
+    else:
+        effect_plugin = pedalboard.VST3Plugin(effect["plugin_path"])
 
-# Load the effect's preset data
-with open(effect_preset["preset_path"], "rb") as f:
-    effect_plugin.preset_data = f.read()
+    # Load the effect's preset data
+    with open(effect["preset_path"], "rb") as f:
+        effect_plugin.preset_data = f.read()
+
+    loaded_effects.append(effect_plugin)
 
 # Convert MIDI file to MIDI messages
 def midi_to_messages(midi_file_path):
@@ -90,7 +95,7 @@ pre_fx_signal = instrument_plugin(
 )
 
 # Apply the selected effect plugin
-fx_chain = Pedalboard([effect_plugin])
+fx_chain = Pedalboard(loaded_effects)
 post_fx_signal = fx_chain(pre_fx_signal, SAMPLE_RATE)
 
 # Export processed audio
