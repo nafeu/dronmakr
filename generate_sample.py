@@ -8,6 +8,7 @@ from pedalboard import Pedalboard
 from pedalboard.io import AudioFile
 import mido
 from mido import MidiFile, Message
+from utils import with_generate_sample_prompt as with_prompt
 
 # Convert MIDI file to MIDI messages
 def midi_to_messages(midi_file_path):
@@ -47,41 +48,46 @@ def generate_sample(input_path="input.mid", output_path="generated_sample.wav", 
     instrument_preset = random.choice(instruments)
     effect_preset = random.choice(effects)
 
-    print(f"Selected Instrument: {instrument_preset['name']}")
-    print(f"Selected Effect: {effect_preset['name']}")
+    print(with_prompt(f"using \'{instrument_preset['name']}\' with fx chain \'{effect_preset['name']}\'"))
 
     # Load the instrument plugin with `plugin_name` if available
     if instrument_preset["plugin_name"]:
+        print(with_prompt(f"loading instrument \'{instrument_preset['plugin_path']}\' as \'{instrument_preset['plugin_name']}\'"))
         instrument_plugin = pedalboard.VST3Plugin(
             instrument_preset["plugin_path"],
             plugin_name=instrument_preset["plugin_name"]
         )
     else:
+        print(with_prompt(f"loading instrument \'{instrument_preset['plugin_path']}\'"))
         instrument_plugin = pedalboard.VST3Plugin(instrument_preset["plugin_path"])
 
     # Load the instrument's preset data
     with open(instrument_preset["preset_path"], "rb") as f:
+        print(with_prompt(f"loading preset \'{instrument_preset['preset_path']}\'"))
         instrument_plugin.preset_data = f.read()
 
     # Load the effect plugin with `plugin_name` if available
     for effect in effect_preset["effects"]:
         if effect["plugin_name"]:
+            print(with_prompt(f"loading effect \'{effect['plugin_path']}\' as \'{effect['plugin_name']}\'"))
             effect_plugin = pedalboard.VST3Plugin(
                 effect["plugin_path"],
                 plugin_name=effect["plugin_name"]
             )
         else:
+            print(with_prompt(f"loading effect \'{effect['plugin_path']}\'"))
             effect_plugin = pedalboard.VST3Plugin(effect["plugin_path"])
 
         # Load the effect's preset data
         with open(effect["preset_path"], "rb") as f:
+            print(with_prompt(f"loading preset \'{effect['preset_path']}\'"))
             effect_plugin.preset_data = f.read()
 
         loaded_effects.append(effect_plugin)
 
     # Load MIDI file and get messages
     midi_messages, audio_length_s = midi_to_messages(input_path)
-    print(f"Loaded MIDI file: {input_path} (Length: {audio_length_s:.2f} sec)")
+    print(with_prompt(f"using MIDI from \'{input_path}\' (length: {audio_length_s:.2f}s)"))
 
     # Process MIDI through the instrument plugin
     pre_fx_signal = instrument_plugin(
@@ -93,7 +99,7 @@ def generate_sample(input_path="input.mid", output_path="generated_sample.wav", 
         reset=False,
     )
 
-    print(f"Rendering audio...")
+    print(with_prompt("rendering audio..."))
 
     # Apply the selected effect plugin
     fx_chain = Pedalboard(loaded_effects)
@@ -103,7 +109,7 @@ def generate_sample(input_path="input.mid", output_path="generated_sample.wav", 
     with AudioFile(output_path, "w", SAMPLE_RATE, 2) as f:
         f.write(post_fx_signal)
 
-    print(f"Exported audio to {output_path}")
+    print(with_prompt(f"exported to \'{output_path}\'"))
 
 def main():
     args = sys.argv[1:]

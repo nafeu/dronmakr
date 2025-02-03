@@ -13,11 +13,7 @@ from mido import Message
 from pedalboard import Pedalboard
 from pedalboard.io import AudioFile
 from threading import Event, Thread
-
-RED = "\033[31m"
-RESET = "\033[0m"
-
-PROMPT = f"{RED}┌ dronmakr ■ build preset {RED}┐{RESET}"
+from utils import with_build_preset_prompt as with_prompt
 
 TEMP_FOLDER = "temp"
 PRESET_FOLDER = "presets"
@@ -40,16 +36,16 @@ def main():
 
     vst_paths = os.getenv("VST_PATHS", "").split(",")
     if not vst_paths or vst_paths == [""]:
-        print(f"{PROMPT} error: No VST paths found in the .env file.")
+        print(with_prompt("error: No VST paths found in the .env file."))
         exit(1)
 
     available_plugins = list_vst_plugins(vst_paths)
     if not available_plugins:
-        print(f"{PROMPT} error: No VST plugins found.")
+        print(with_prompt("error: No VST plugins found."))
         exit(1)
 
     plugin_map = {format_plugin_name(path): path for path in available_plugins}
-    print(f"{PROMPT} available plugins:\n")
+    print(with_prompt("available plugins:\n"))
 
     # Display plugins in columns
     columns = 3
@@ -86,9 +82,9 @@ def main():
         effect_chain[-1] = (*effect_chain[-1], (chain_preset_name, chain_preset_uid, chain_preset_path))
 
         while True:
-            add_more = input(f"{PROMPT} Add another effect? (y/n): ").strip().lower()
+            add_more = input(with_prompt("Add another effect? (y/n): ")).strip().lower()
             if add_more != "y":
-                preset_name = input(f"{PROMPT} enter a name for this chain preset: ").strip()
+                preset_name = input(with_prompt("enter a name for this chain preset: ")).strip()
                 preset_uid = str(uuid.uuid4())[:8]
                 break
 
@@ -112,7 +108,7 @@ def main():
 
                 effect_chain[-1] = (*effect_chain[-1], (chain_preset_name, chain_preset_uid, chain_preset_path))
             else:
-                print(f"{PROMPT} That is not an effect! Try again.")
+                print(with_prompt("That is not an effect! Try again."))
     else:
         (
             preset_name,
@@ -190,14 +186,14 @@ def select_plugin(plugin_map):
     """Handles user input for selecting a plugin"""
     while True:
         try:
-            selection = int(input(f"{PROMPT} select a VST: ")) - 1
+            selection = int(input(with_prompt("select a VST: "))) - 1
             if 0 <= selection < len(plugin_map.keys()):
                 plugin_path = plugin_map[list(plugin_map.keys())[selection]]
                 return plugin_path
             else:
-                print(f"{PROMPT} Invalid selection.")
+                print(with_prompt("Invalid selection."))
         except ValueError:
-            print(f"{PROMPT} Enter a number.")
+            print(with_prompt("Enter a number."))
 
 
 def load_plugin(plugin_path):
@@ -215,7 +211,7 @@ def load_plugin(plugin_path):
                 if line.startswith('\t"')
             ]
 
-            print(f"{PROMPT} this VST3 file contains multiple plugins:")
+            print(with_prompt("this VST3 file contains multiple plugins:"))
             for i, name in enumerate(plugin_names):
                 print(f"{i + 1}. {name}")
 
@@ -225,7 +221,7 @@ def load_plugin(plugin_path):
                     sub_selection = (
                         int(
                             input(
-                                f"{PROMPT} enter the number of the plugin you want to load: "
+                                with_prompt("enter the number of the plugin you want to load: ")
                             )
                         )
                         - 1
@@ -239,9 +235,9 @@ def load_plugin(plugin_path):
                             selected_plugin_name,
                         )
                     else:
-                        print(f"{PROMPT} invalid selection, please try again.")
+                        print(with_prompt("invalid selection, please try again."))
                 except ValueError:
-                    print(f"{PROMPT} please enter a valid number.")
+                    print(with_prompt("please enter a valid number."))
 
         else:
             raise
@@ -272,7 +268,7 @@ def preview_preset(plugin, effect_chain):
         pre_fx_signal = fx_chain(pre_fx_signal, PREVIEW_SAMPLE_RATE)
 
     else:
-        print(f"{PROMPT} Unknown plugin type.")
+        print(with_prompt("Unknown plugin type."))
         return
 
     # Write output
@@ -331,7 +327,7 @@ def save_preset(name, uid, plugin_path, plugin_name, preset_path, effect_chain):
 def listen_for_key(plugin, effect_chain):
     """Waits for Spacebar input from the user to trigger audio rendering immediately"""
     global listener_running
-    print(f"{PROMPT} [SPACEBAR] preview sound, [ENTER] continue.\n")
+    print(with_prompt("[SPACEBAR] preview sound, [ENTER] continue.\n"))
 
     fd = sys.stdin.fileno()
     old_settings = termios.tcgetattr(fd)
@@ -345,7 +341,7 @@ def listen_for_key(plugin, effect_chain):
                 if key == " ":
                     preview_preset(plugin, effect_chain)  # Preview the sound
                 elif key == "\n":
-                    print(f"{PROMPT} closing editor...")
+                    print(with_prompt("closing editor..."))
                     close_window_event.set()
                     break
 
@@ -365,20 +361,20 @@ def edit_preset_with_ui(plugin, effect_chain, selected_plugin, selected_plugin_n
     )
     key_listener_thread.start()
 
-    print(f"{PROMPT} opening VST...")
+    print(with_prompt("opening VST..."))
     plugin.show_editor(close_window_event)  # Open editor & wait
 
     listener_running = False
     key_listener_thread.join()
 
-    preset_name = input(f"{PROMPT} enter a name for this preset: ").strip()
+    preset_name = input(with_prompt("enter a name for this preset: ")).strip()
     preset_uid = str(uuid.uuid4())[:8]
 
     preset_path = os.path.join(PRESET_FOLDER, f"{preset_name}_{preset_uid}.vstpreset")
     with open(preset_path, "wb") as f:
         f.write(plugin.preset_data)
 
-    print(f"{PROMPT} preset saved to {preset_path}")
+    print(with_prompt(f"preset saved to {preset_path}"))
 
     return (
         preset_name,
@@ -394,5 +390,5 @@ if __name__ == "__main__":
     try:
         main()
     except (KeyboardInterrupt, EOFError):
-        print(f"\n{PROMPT} exiting...")
+        print(with_prompt("exiting..."))
         sys.exit(0)

@@ -19,6 +19,7 @@ import sys
 import numpy as np
 import soundfile as sf
 from datetime import datetime
+from utils import with_stretch_sample_prompt as with_prompt
 
 
 def optimize_windowsize(n):
@@ -69,7 +70,8 @@ def paulstretch(
     stretch=8.0,  # Default stretch amount
     window_size=0.25,  # Default window size (seconds)
     start_frame=0,
-    end_frame=None
+    end_frame=None,
+    show_logs=True
 ):
     """
     Applies Paul's Extreme Sound Stretch (Paulstretch) algorithm to an input WAV file.
@@ -91,7 +93,8 @@ def paulstretch(
 
     nchannels = smp.shape[0] if smp.ndim > 1 else 1
 
-    print(f"Processing {input_path} with stretch={stretch}, window_size={window_size}s")
+    if show_logs:
+        print(f"Processing {input_path} with stretch={stretch}, window_size={window_size}s")
 
     # Open output file
     outfile = sf.SoundFile(output_path, 'w', samplerate, nchannels)
@@ -165,26 +168,19 @@ def paulstretch(
 
         start_pos += displace_pos
         if start_pos >= nsamples:
-            print("100% Complete")
+            if show_logs:
+                print("100% Complete")
             break
 
-        sys.stdout.write(f"{int(100.0 * start_pos / nsamples)}% \r")
-        sys.stdout.flush()
+        if show_logs:
+            sys.stdout.write(f"{int(100.0 * start_pos / nsamples)}% \r")
+            sys.stdout.flush()
 
     outfile.close()
-    print(f"Stretched in: {datetime.now() - start_time}")
-    print(f"Exported to: {output_path}")
+    if show_logs:
+        print(f"Stretched in: {datetime.now() - start_time}")
+        print(f"Exported to: {output_path}")
 
-if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print("Error: input_path and output_path are required.")
-    else:
-        input_path = sys.argv[1]
-        output_path = sys.argv[2]
-        stretch = float(sys.argv[3]) if len(sys.argv) > 3 else 8.0
-        window_size = float(sys.argv[4]) if len(sys.argv) > 4 else 0.25
-
-        paulstretch(input_path, output_path, stretch=stretch, window_size=window_size)
 
 def main():
     args = sys.argv[1:]
@@ -198,7 +194,11 @@ def main():
     stretch = float(args[2]) if len(args) > 2 else 8.0
     window_size = float(args[3]) if len(args) > 3 else 0.25
 
-    paulstretch(input_path, output_path, stretch=stretch, window_size=window_size)
+    print(with_prompt(f"applying paulstretch (stretch={stretch}, window_size={window_size})"))
+
+    paulstretch(input_path, output_path, stretch=stretch, window_size=window_size, show_logs=False)
+
+    print(with_prompt(f"exported to '{output_path}'"))
 
 if __name__ == "__main__":
     main()

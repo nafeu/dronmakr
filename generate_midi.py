@@ -4,12 +4,13 @@ import random
 import sys
 import json
 import pretty_midi
+from utils import with_generate_midi_prompt as with_prompt
 
 MIDI_FOLDER = "midi"
 CHORDS_LIST = "resources/chords.json"
 
 def generate_midi(
-    style="arpeggiated", # Style of playback
+    style="chaotic_arpeggio", # Style of playback
     output_name="output",
     note_density=2, # Notes per beat (higher = more active)
     duration_variance=0.5, # Variance in note lengths (0 = fixed, 1 = max randomness)
@@ -18,8 +19,8 @@ def generate_midi(
     humanization=0.02, # Time shift variance in seconds (default: 20ms)
 ):
     """Generates a MIDI file based on the selected style with exact num_bars length."""
-    if style not in ["arpeggiated", "chord", "split_chord", "quantized_arpeggio"]:
-        print(f"Error: Unsupported style '{style}'")
+    if style not in ["chaotic_arpeggio", "chord", "split_chord", "quantized_arpeggio"]:
+        print(with_prompt(f"error: unsupported style '{style}'"))
         sys.exit()
 
     # Load chords from JSON file
@@ -27,13 +28,17 @@ def generate_midi(
         chords = json.load(f)
 
     if not chords:
-        print("Error: No chords found in chords.json")
+        print(with_prompt(f"error: no chords found in '{CHORDS_LIST}'"))
         return
 
     # Randomly select a chord
     random_chord_choice = random.choice(chords)
     chord = random_chord_choice["notes"]
-    track_name = f"{random_chord_choice['root']}-{random_chord_choice['name']}-{output_name}-{style}"
+    root = random_chord_choice['root']
+    chord_name = random_chord_choice['name']
+    track_name = f"{root}-{chord_name}-{output_name}-{style}"
+
+    print(with_prompt(f"writing '{root} {chord_name}' as '{style}' into MIDI"))
 
     # Create a PrettyMIDI object
     midi = pretty_midi.PrettyMIDI()
@@ -102,7 +107,7 @@ def generate_midi(
                 time += note_duration
 
     else:
-        # **Arpeggiated (Default):** No humanization applied here (already random)
+        # **chaotic_arpeggio (Default):** No humanization applied here (already random)
         while time < total_duration:
             note = random.choice(midi_notes)
             min_duration = seconds_per_beat / note_density
@@ -135,6 +140,8 @@ def generate_midi(
     uid = str(uuid.uuid4())[:8]
     output_path = f"{MIDI_FOLDER}/{track_name}-{uid}.mid"
     midi.write(output_path)
+
+    print(with_prompt(f"exported to {output_path}"))
 
     return output_path
 
