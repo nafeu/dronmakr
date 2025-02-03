@@ -12,7 +12,7 @@
 # Example usage:
 # `pip install cffi numpy pysoundfile`
 #
-# from paulstretch import paulstretch
+# from stretch_sample import paulstretch
 # paulstretch("input.wav", "output.wav", stretch=8.0, window_size=0.25)
 
 import sys
@@ -64,8 +64,8 @@ def load_wav(filename, start_frame=0, end_frame=None):
 
 
 def paulstretch(
-    input_filename,
-    output_filename,
+    input_path,
+    output_path,
     stretch=8.0,  # Default stretch amount
     window_size=0.25,  # Default window size (seconds)
     start_frame=0,
@@ -75,8 +75,8 @@ def paulstretch(
     Applies Paul's Extreme Sound Stretch (Paulstretch) algorithm to an input WAV file.
 
     Parameters:
-    - input_filename: Path to the input WAV file
-    - output_filename: Path to the output stretched WAV file
+    - input_path: Path to the input WAV file
+    - output_path: Path to the output stretched WAV file
     - stretch: Stretch factor (1.0 = no stretch)
     - window_size: Window size in seconds
     - start_frame: Start frame for input (default: 0)
@@ -84,17 +84,17 @@ def paulstretch(
     """
 
     # Load WAV file
-    samplerate, smp = load_wav(input_filename, start_frame, end_frame)
+    samplerate, smp = load_wav(input_path, start_frame, end_frame)
     if samplerate is None:
         print("Failed to load input file.")
         return
 
     nchannels = smp.shape[0] if smp.ndim > 1 else 1
 
-    print(f"Processing {input_filename} with stretch={stretch}, window_size={window_size}s")
+    print(f"Processing {input_path} with stretch={stretch}, window_size={window_size}s")
 
     # Open output file
-    outfile = sf.SoundFile(output_filename, 'w', samplerate, nchannels)
+    outfile = sf.SoundFile(output_path, 'w', samplerate, nchannels)
 
     # Ensure window size is optimized and even
     windowsize = int(window_size * samplerate)
@@ -173,7 +173,32 @@ def paulstretch(
 
     outfile.close()
     print(f"Stretched in: {datetime.now() - start_time}")
-    print(f"Exported to: {output_filename}")
+    print(f"Exported to: {output_path}")
 
 if __name__ == "__main__":
-    paulstretch("export.wav", "export-stretched.wav", stretch=8, window_size=0.25)
+    if len(sys.argv) < 3:
+        print("Error: input_path and output_path are required.")
+    else:
+        input_path = sys.argv[1]
+        output_path = sys.argv[2]
+        stretch = float(sys.argv[3]) if len(sys.argv) > 3 else 8.0
+        window_size = float(sys.argv[4]) if len(sys.argv) > 4 else 0.25
+
+        paulstretch(input_path, output_path, stretch=stretch, window_size=window_size)
+
+def main():
+    args = sys.argv[1:]
+
+    if not args or len(args) < 2:
+        print("Error: input_path and output_path are required.")
+        return
+
+    input_path = args[0]
+    output_path = args[1]
+    stretch = float(args[2]) if len(args) > 2 else 8.0
+    window_size = float(args[3]) if len(args) > 3 else 0.25
+
+    paulstretch(input_path, output_path, stretch=stretch, window_size=window_size)
+
+if __name__ == "__main__":
+    main()

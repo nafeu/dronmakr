@@ -68,3 +68,7 @@ temp_*
 *.asd
 export*.wav
 export*.mp3
+*.mid
+midi/
+exports/
+temp/

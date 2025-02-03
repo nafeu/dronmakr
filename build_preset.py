@@ -17,12 +17,14 @@ from threading import Event, Thread
 RED = "\033[31m"
 RESET = "\033[0m"
 
-PROMPT = f"{RED}┌ dronmakr ■ preset builder {RED}┐{RESET}"
+PROMPT = f"{RED}┌ dronmakr ■ build preset {RED}┐{RESET}"
 
-PRESET_DIR = "presets"
+TEMP_FOLDER = "temp"
+PRESET_FOLDER = "presets"
 PREVIEW_NUM_BARS = 1
+PREVIEW_SAMPLE = "resources/CDEFGABC.wav"
 PREVIEW_SAMPLE_RATE = 44100
-PREVIEW_TEMP_PATH = "temp_preset_preview.wav"
+PREVIEW_TEMP_PATH = "temp/preset_preview.wav"
 PREVIEW_TEMPO_BPM = 120
 PREVIEW_TIME_SIGNATURE = "4/4"
 
@@ -31,7 +33,8 @@ close_window_event = Event()
 
 
 def main():
-    os.makedirs(PRESET_DIR, exist_ok=True)
+    os.makedirs(PRESET_FOLDER, exist_ok=True)
+    os.makedirs(TEMP_FOLDER, exist_ok=True)
 
     load_dotenv()
 
@@ -128,6 +131,9 @@ def main():
         preset_path,
         effect_chain,
     )
+
+    if not os.listdir(TEMP_FOLDER):
+        os.rmdir(TEMP_FOLDER)
 
 
 def calculate_audio_length(tempo_bpm, time_signature, num_bars):
@@ -257,7 +263,7 @@ def preview_preset(plugin, effect_chain):
         )
 
     elif plugin.is_effect:
-        with AudioFile("cmaj-piano.wav", "r") as f:
+        with AudioFile(PREVIEW_SAMPLE, "r") as f:
             audio_length_s = f.frames / f.samplerate
             pre_fx_signal = f.read(f.frames)
 
@@ -279,7 +285,7 @@ def preview_preset(plugin, effect_chain):
 
 def save_preset(name, uid, plugin_path, plugin_name, preset_path, effect_chain):
     """Saves the preset to `presets.json`"""
-    preset_index_file = os.path.join(PRESET_DIR, "presets.json")
+    preset_index_file = os.path.join(PRESET_FOLDER, "presets.json")
 
     if os.path.exists(preset_index_file):
         with open(preset_index_file, "r") as f:
@@ -368,11 +374,10 @@ def edit_preset_with_ui(plugin, effect_chain, selected_plugin, selected_plugin_n
     preset_name = input(f"{PROMPT} enter a name for this preset: ").strip()
     preset_uid = str(uuid.uuid4())[:8]
 
-    preset_path = os.path.join(PRESET_DIR, f"{preset_name}_{preset_uid}.vstpreset")
+    preset_path = os.path.join(PRESET_FOLDER, f"{preset_name}_{preset_uid}.vstpreset")
     with open(preset_path, "wb") as f:
         f.write(plugin.preset_data)
 
-    # TODO: [nafeu] fix bug where individual preset paths and names aren't preserved in FX chain export
     print(f"{PROMPT} preset saved to {preset_path}")
 
     return (
