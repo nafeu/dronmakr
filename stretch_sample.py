@@ -182,6 +182,18 @@ def paulstretch(
         print(f"Exported to: {output_path}")
 
 
+def stretch_sample(
+    input_path,
+    output_path,
+    stretch=8.0,  # Default stretch amount
+    window_size=0.25,  # Default window size (seconds)
+    start_frame=0,
+    end_frame=None
+):
+    print(with_prompt(f"applying paulstretch (stretch={stretch}, window_size={window_size})"))
+    paulstretch(input_path, output_path, stretch=stretch, window_size=window_size, start_frame=start_frame, end_frame=end_frame, show_logs=False)
+    print(with_prompt(f"exported to '{output_path}'"))
+
 def main():
     args = sys.argv[1:]
 
@@ -194,11 +206,7 @@ def main():
     stretch = float(args[2]) if len(args) > 2 else 8.0
     window_size = float(args[3]) if len(args) > 3 else 0.25
 
-    print(with_prompt(f"applying paulstretch (stretch={stretch}, window_size={window_size})"))
-
-    paulstretch(input_path, output_path, stretch=stretch, window_size=window_size, show_logs=False)
-
-    print(with_prompt(f"exported to '{output_path}'"))
+    paulstretch(input_path, output_path, stretch=stretch, window_size=window_size)
 
 if __name__ == "__main__":
     main()

@@ -111,6 +111,8 @@ def generate_sample(input_path="input.mid", output_path="generated_sample.wav", 
 
     print(with_prompt(f"exported to \'{output_path}\'"))
 
+    return output_path
+
 def main():
     args = sys.argv[1:]
 
