@@ -7,7 +7,53 @@ import pretty_midi
 from utils import with_generate_midi_prompt as with_prompt
 
 MIDI_FOLDER = "midi"
-CHORDS_LIST = "resources/chords.json"
+CHORD_SCALE_LIST = "resources/chord-scale-data.json"
+
+def filter_chords(chords, filters):
+    """Filters a chord collection based on optional criteria.
+
+    - `tags`: List of tags (OR logic, case-insensitive)
+    - `notes`: List of notes (OR logic, case-insensitive)
+    - `name`: Partial case-insensitive match
+    - `root`: Exact case-insensitive match
+    - `type`: Exact case-insensitive match ("scale" or "chord")
+    """
+
+    def matches_criteria(chord):
+        """Checks if a chord matches all provided filters."""
+
+        chord_name = chord["name"].lower()
+        chord_root = chord["root"].lower()
+        chord_type = chord["type"].lower()
+        chord_tags = [tag.lower() for tag in chord["tags"]]
+        chord_notes = [note.lower() for note in chord["notes"]]
+
+        if "tags" in filters and filters["tags"]:
+            filter_tags = [tag.lower() for tag in filters["tags"]]
+            if not any(tag in chord_tags for tag in filter_tags):
+                return False  # Must match at least one tag
+
+        if "notes" in filters and filters["notes"]:
+            filter_notes = [note.lower() for note in filters["notes"]]
+            if not any(note in chord_notes for note in filter_notes):
+                return False  # Must match at least one note
+
+        if "name" in filters and filters["name"]:
+            if filters["name"].lower() not in chord_name:
+                return False  # Partial match required
+
+        if "root" in filters and filters["root"]:
+            if filters["root"].lower() != chord_root:
+                return False  # Must match exactly
+
+        if "type" in filters and filters["type"]:
+            if filters["type"].lower() != chord_type:
+                return False  # Must match "scale" or "chord"
+
+        return True
+
+    # Apply filtering (return all entries if filters are empty)
+    return [chord for chord in chords if matches_criteria(chord)]
 
 def generate_midi(
     style="chaotic_arpeggio", # Style of playback
@@ -17,6 +63,7 @@ def generate_midi(
     velocity_range=(80, 120), # MIDI note velocity range
     num_bars=16, # Default to 16 bars
     humanization=0.02, # Time shift variance in seconds (default: 20ms)
+    filters={}
 ):
     """Generates a MIDI file based on the selected style with exact num_bars length."""
     if style not in ["chaotic_arpeggio", "chord", "split_chord", "quantized_arpeggio"]:
@@ -24,12 +71,15 @@ def generate_midi(
         sys.exit()
 
     # Load chords from JSON file
-    with open(CHORDS_LIST, "r") as f:
+    with open(CHORD_SCALE_LIST, "r") as f:
         chords = json.load(f)
 
     if not chords:
-        print(with_prompt(f"error: no chords found in '{CHORDS_LIST}'"))
+        print(with_prompt(f"error: no chords or scales found in '{CHORD_SCALE_LIST}'"))
         return
+
+    if filters:
+        chords = filter_chords(chords, filters)
 
     # Randomly select a chord
     random_chord_choice = random.choice(chords)

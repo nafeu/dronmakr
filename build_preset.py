@@ -72,6 +72,7 @@ def main():
 
         (
             chain_preset_name,
+            chain_preset_desc,
             chain_preset_uid,
             selected_plugin,
             selected_plugin_name,
@@ -79,12 +80,13 @@ def main():
             effect_chain,
         ) = edit_preset_with_ui(plugin, effect_chain, selected_plugin, selected_plugin_name)
 
-        effect_chain[-1] = (*effect_chain[-1], (chain_preset_name, chain_preset_uid, chain_preset_path))
+        effect_chain[-1] = (*effect_chain[-1], (chain_preset_name, chain_preset_uid, chain_preset_path, chain_preset_desc))
 
         while True:
             add_more = input(with_prompt("Add another effect? (y/n): ")).strip().lower()
             if add_more != "y":
                 preset_name = input(with_prompt("enter a name for this chain preset: ")).strip()
+                preset_desc = input(with_prompt("enter a description for this chain preset: ")).strip()
                 preset_uid = str(uuid.uuid4())[:8]
                 break
 
@@ -99,6 +101,7 @@ def main():
 
                 (
                     chain_preset_name,
+                    chain_preset_desc,
                     chain_preset_uid,
                     selected_plugin,
                     selected_plugin_name,
@@ -106,12 +109,13 @@ def main():
                     effect_chain,
                 ) = edit_preset_with_ui(plugin, effect_chain, selected_plugin, selected_plugin_name)
 
-                effect_chain[-1] = (*effect_chain[-1], (chain_preset_name, chain_preset_uid, chain_preset_path))
+                effect_chain[-1] = (*effect_chain[-1], (chain_preset_name, chain_preset_uid, chain_preset_path, chain_preset_desc))
             else:
                 print(with_prompt("That is not an effect! Try again."))
     else:
         (
             preset_name,
+            preset_desc,
             preset_uid,
             selected_plugin,
             selected_plugin_name,
@@ -121,6 +125,7 @@ def main():
 
     save_preset(
         preset_name,
+        preset_desc,
         preset_uid,
         selected_plugin,
         selected_plugin_name,
@@ -279,7 +284,7 @@ def preview_preset(plugin, effect_chain):
     os.remove(PREVIEW_TEMP_PATH)
 
 
-def save_preset(name, uid, plugin_path, plugin_name, preset_path, effect_chain):
+def save_preset(name, desc, uid, plugin_path, plugin_name, preset_path, effect_chain):
     """Saves the preset to `presets.json`"""
     preset_index_file = os.path.join(PRESET_FOLDER, "presets.json")
 
@@ -296,14 +301,16 @@ def save_preset(name, uid, plugin_path, plugin_name, preset_path, effect_chain):
         preset_data = {
             "id": uid,
             "name": name,
+            "desc": desc,
             "type": "effect_chain",
             "effects": [
                 {
                     "id": fx[3][1],
                     "name": fx[3][0],
+                    "desc": fx[3][3],
                     "plugin_path": fx[0],
                     "plugin_name": fx[1],
-                    "preset_path": fx[3][2],
+                    "preset_path": fx[3][2]
                 }
                 for fx in effect_chain # (chain_preset_name, chain_preset_id, chain_preset_path)
             ],
@@ -312,6 +319,7 @@ def save_preset(name, uid, plugin_path, plugin_name, preset_path, effect_chain):
         preset_data = {
             "id": uid,
             "name": name,
+            "desc": desc,
             "plugin_path": plugin_path,
             "plugin_name": plugin_name,
             "preset_path": preset_path,
@@ -368,6 +376,7 @@ def edit_preset_with_ui(plugin, effect_chain, selected_plugin, selected_plugin_n
     key_listener_thread.join()
 
     preset_name = input(with_prompt("enter a name for this preset: ")).strip()
+    preset_desc = input(with_prompt("enter a description for this preset: ")).strip()
     preset_uid = str(uuid.uuid4())[:8]
 
     preset_path = os.path.join(PRESET_FOLDER, f"{preset_name}_{preset_uid}.vstpreset")
@@ -378,6 +387,7 @@ def edit_preset_with_ui(plugin, effect_chain, selected_plugin, selected_plugin_n
 
     return (
         preset_name,
+        preset_desc,
         preset_uid,
         selected_plugin,
         selected_plugin_name,
