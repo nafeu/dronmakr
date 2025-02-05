@@ -13,7 +13,7 @@ from mido import Message
 from pedalboard import Pedalboard
 from pedalboard.io import AudioFile
 from threading import Event, Thread
-from utils import with_build_preset_prompt as with_prompt
+from utils import with_build_preset_prompt as with_prompt, generate_id
 
 TEMP_FOLDER = "temp"
 PRESET_FOLDER = "presets"
@@ -87,7 +87,7 @@ def main():
             if add_more != "y":
                 preset_name = input(with_prompt("enter a name for this chain preset: ")).strip()
                 preset_desc = input(with_prompt("enter a description for this chain preset: ")).strip()
-                preset_uid = str(uuid.uuid4())[:8]
+                preset_uid = generate_id()
                 break
 
             # Select another effect
@@ -377,7 +377,7 @@ def edit_preset_with_ui(plugin, effect_chain, selected_plugin, selected_plugin_n
 
     preset_name = input(with_prompt("enter a name for this preset: ")).strip()
     preset_desc = input(with_prompt("enter a description for this preset: ")).strip()
-    preset_uid = str(uuid.uuid4())[:8]
+    preset_uid = generate_id()
 
     preset_path = os.path.join(PRESET_FOLDER, f"{preset_name}_{preset_uid}.vstpreset")
     with open(preset_path, "wb") as f:

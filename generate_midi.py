@@ -1,62 +1,58 @@
-import uuid
 import os
 import random
 import sys
 import json
 import pretty_midi
-from utils import with_generate_midi_prompt as with_prompt
+from utils import with_generate_midi_prompt as with_prompt, generate_id, to_snake_case
 
 MIDI_FOLDER = "midi"
 CHORD_SCALE_LIST = "resources/chord-scale-data.json"
+
+SUPPORTED_STYLES = ["chaotic_arpeggio", "chord", "split_chord", "quantized_arpeggio"]
 
 def filter_chords(chords, filters):
     """Filters a chord collection based on optional criteria.
 
     - `tags`: List of tags (OR logic, case-insensitive)
-    - `notes`: List of notes (OR logic, case-insensitive)
     - `name`: Partial case-insensitive match
     - `root`: Exact case-insensitive match
     - `type`: Exact case-insensitive match ("scale" or "chord")
     """
 
     def matches_criteria(chord):
-        """Checks if a chord matches all provided filters."""
+        """Checks if a chord matches all provided filters in priority order."""
 
         chord_name = chord["name"].lower()
         chord_root = chord["root"].lower()
         chord_type = chord["type"].lower()
         chord_tags = [tag.lower() for tag in chord["tags"]]
-        chord_notes = [note.lower() for note in chord["notes"]]
 
-        if "tags" in filters and filters["tags"]:
-            filter_tags = [tag.lower() for tag in filters["tags"]]
-            if not any(tag in chord_tags for tag in filter_tags):
-                return False  # Must match at least one tag
-
-        if "notes" in filters and filters["notes"]:
-            filter_notes = [note.lower() for note in filters["notes"]]
-            if not any(note in chord_notes for note in filter_notes):
-                return False  # Must match at least one note
+        if "root" in filters and filters["root"]:
+            filter_roots = [r.lower() for r in filters["root"]]
+            if chord_root not in filter_roots:
+                return False  # Must match at least one root
 
         if "name" in filters and filters["name"]:
             if filters["name"].lower() not in chord_name:
                 return False  # Partial match required
 
-        if "root" in filters and filters["root"]:
-            if filters["root"].lower() != chord_root:
-                return False  # Must match exactly
+        if "tags" in filters and filters["tags"]:
+            filter_tags = [tag.lower() for tag in filters["tags"]]
+            if not any(tag in chord_tags for tag in filter_tags):
+                return False # At least one tag must match
 
         if "type" in filters and filters["type"]:
             if filters["type"].lower() != chord_type:
-                return False  # Must match "scale" or "chord"
+                return False # Must match "scale" or "chord"
 
         return True
+
 
     # Apply filtering (return all entries if filters are empty)
     return [chord for chord in chords if matches_criteria(chord)]
 
 def generate_midi(
-    style="chaotic_arpeggio", # Style of playback
+    style, # Style of playback
     output_name="output",
     note_density=2, # Notes per beat (higher = more active)
     duration_variance=0.5, # Variance in note lengths (0 = fixed, 1 = max randomness)
@@ -66,7 +62,10 @@ def generate_midi(
     filters={}
 ):
     """Generates a MIDI file based on the selected style with exact num_bars length."""
-    if style not in ["chaotic_arpeggio", "chord", "split_chord", "quantized_arpeggio"]:
+    if not style:
+        style = random.choice(SUPPORTED_STYLES)
+
+    if style not in SUPPORTED_STYLES:
         print(with_prompt(f"error: unsupported style '{style}'"))
         sys.exit()
 
@@ -187,13 +186,13 @@ def generate_midi(
 
     # Write to a MIDI file
     os.makedirs(MIDI_FOLDER, exist_ok=True)
-    uid = str(uuid.uuid4())[:8]
+    uid = generate_id()
     output_path = f"{MIDI_FOLDER}/{track_name}-{uid}.mid"
     midi.write(output_path)
 
     print(with_prompt(f"exported to {output_path}"))
 
-    return output_path
+    return (output_path, to_snake_case(f"{root}_{chord_name}"))
 
 def main():
     args = sys.argv[1:]

@@ -1,36 +1,41 @@
+import os
 import sys
-import random
+import typer
 from generate_midi import generate_midi
 from generate_sample import generate_sample
 from stretch_sample import stretch_sample
-from utils import with_main_prompt as with_prompt
+from utils import with_main_prompt as with_prompt, get_version, generate_id, generate_name
 
-def main():
-    args = sys.argv[1:]
-    if not args:
-        print(with_prompt("error: missing args, use --help"))
-        return
+EXPORTS_FOLDER = "exports"
 
-    command = args[0]
+cli = typer.Typer()
 
-    if command == "-h" or command == "--help":
-        print("Usage: python dronmakr.py [options...]")
-        print("\nOptions:")
-        print("- -h, --help: Show this help message")
-        print("- -v, --version: Display the program version")
-    elif command in ("-v", "--version"):
-        print("1.0.0")
-    elif command == "generate":
-        if not args[1]:
-            print(with_prompt("error: missing output_name"))
-            return
-        output_name = args[1]
-        midi_style = random.choice(["chaotic_arpeggio", "chord", "split_chord", "quantized_arpeggio"])
-        midi_file = generate_midi(style=midi_style)
-        generated_sample = generate_sample(input_path=midi_file, output_path=f"{output_name}.wav")
-        stretch_sample(input_path=generated_sample, output_path=f"{output_name}_stretched.wav")
-    else:
-        print(f"Unknown option or command: {command}. Use --help for available options.")
+@cli.command()
+def generate(
+    name: str = typer.Option(None, help="Name for the generated sample."),
+    chart_name: str = typer.Option(None, help="Chart name to filter chords/scales."),
+    tags: str = typer.Option(None, help="Comma delimited list of tags to filter chords/scales."),
+    roots: str = typer.Option(None, help="Comma delimited list of roots to filter chords/scales."),
+    chart_type: str = typer.Option(None, help="Type of chart used for midi, either 'chord' or 'scale'."),
+    style: str = typer.Option(None, help='Style of sample. One of "chaotic_arpeggio", "chord", "split_chord", "quantized_arpeggio".'),
+):
+    print(get_version())
+
+    if not os.path.exists('presets/presets.json'):
+        print(with_prompt("'presets/presets.json' does not exist, please run 'build_preset.py'"))
+        sys.exit(1)
+
+    filters = {}
+
+    if tags: filters["tags"] = tags.split(",")
+    if roots: filters["roots"] = roots.split(",")
+    if chart_type: filters["type"] = chart_type
+    if chart_name: filters["name"] = chart_name
+
+    midi_file, selected_chart = generate_midi(style=style, filters=filters)
+    output_path = f"{EXPORTS_FOLDER}/{selected_chart}_{name or generate_name()}_{generate_id()}"
+    generated_sample = generate_sample(input_path=midi_file, output_path=f"{output_path}.wav")
+    stretch_sample(input_path=generated_sample, output_path=f"{output_path}_stretched.wav")
 
 if __name__ == "__main__":
-    main()
+    cli()
