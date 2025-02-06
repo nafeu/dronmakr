@@ -3,7 +3,7 @@ import random
 import sys
 import json
 import pretty_midi
-from utils import with_generate_midi_prompt as with_prompt, generate_id, to_snake_case
+from utils import with_generate_midi_prompt as with_prompt, generate_id, generate_midi_header, YELLOW, RESET, format_name
 
 MIDI_FOLDER = "midi"
 CHORD_SCALE_LIST = "resources/chord-scale-data.json"
@@ -53,7 +53,7 @@ def filter_chords(chords, filters):
 
 def generate_midi(
     style, # Style of playback
-    output_name="output",
+    output_name="",
     note_density=2, # Notes per beat (higher = more active)
     duration_variance=0.5, # Variance in note lengths (0 = fixed, 1 = max randomness)
     velocity_range=(80, 120), # MIDI note velocity range
@@ -61,9 +61,13 @@ def generate_midi(
     humanization=0.02, # Time shift variance in seconds (default: 20ms)
     filters={}
 ):
+    print(generate_midi_header())
     """Generates a MIDI file based on the selected style with exact num_bars length."""
     if not style:
         style = random.choice(SUPPORTED_STYLES)
+
+    if output_name:
+        output_name = "_" + output_name
 
     if style not in SUPPORTED_STYLES:
         print(with_prompt(f"error: unsupported style '{style}'"))
@@ -85,9 +89,9 @@ def generate_midi(
     chord = random_chord_choice["notes"]
     root = random_chord_choice['root']
     chord_name = random_chord_choice['name']
-    track_name = f"{root}-{chord_name}-{output_name}-{style}"
+    track_name = format_name(f"{root}_{chord_name}{output_name}_{style}")
 
-    print(with_prompt(f"writing '{root} {chord_name}' as '{style}' into MIDI"))
+    print(with_prompt(f"writing {YELLOW}{root} {chord_name}{RESET} as {YELLOW}{style}{RESET}"))
 
     # Create a PrettyMIDI object
     midi = pretty_midi.PrettyMIDI()
@@ -186,13 +190,13 @@ def generate_midi(
 
     # Write to a MIDI file
     os.makedirs(MIDI_FOLDER, exist_ok=True)
-    uid = generate_id()
-    output_path = f"{MIDI_FOLDER}/{track_name}-{uid}.mid"
+
+    output_path = f"{MIDI_FOLDER}/{track_name}_{generate_id()}.mid"
     midi.write(output_path)
 
-    print(with_prompt(f"exported to {output_path}"))
+    print(f"{YELLOW}│{RESET}")
 
-    return (output_path, to_snake_case(f"{root}_{chord_name}"))
+    return (output_path, f"{root} {chord_name}")
 
 def main():
     args = sys.argv[1:]

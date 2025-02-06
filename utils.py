@@ -1,5 +1,6 @@
-import uuid
 import random
+import re
+import uuid
 
 BLUE = "\033[34m"
 CYAN = "\033[36m"
@@ -12,28 +13,45 @@ RESET = "\033[0m"
 APP_NAME = "dronmakr"
 
 def get_version():
-    return f"{RED}┌ {APP_NAME} ■ v0.1.0{RESET}"
+    return f"{RED}┌ {APP_NAME} ■ v0.1.0 - January 2025\n│{RESET}   github.com/nafeu (phrakturemusic@proton.me)\n{RED}│{RESET}"
 
 def with_main_prompt(text):
-    return f"{RED}└■{RED}{RESET} {text}"
+    return f"{RED}│{RESET}   {text}"
 
 def with_build_preset_prompt(text):
-    return f"{MAGENTA}└■ preset builder ┆{RESET} {text}"
+    return f"{MAGENTA}│{RESET}   {text}"
 
 def with_generate_midi_prompt(text):
-    return f"{YELLOW}└■ generating midi ┆{RESET} {text}"
+    return f"{YELLOW}│{RESET}   {text}"
 
 def with_generate_sample_prompt(text):
-    return f"{GREEN}└■ generating sample ┆{RESET} {text}"
+    return f"{GREEN}│{RESET}   {text}"
 
 def with_stretch_sample_prompt(text):
-    return f"{BLUE}└■ stretching sample ┆{RESET} {text}"
+    return f"{BLUE}│{RESET}   {text}"
+
+def build_preset_header():
+    return f"{MAGENTA}■ preset builder{RESET}"
+
+def generate_midi_header():
+    return f"{YELLOW}■ generating midi{RESET}"
+
+def generate_sample_header():
+    return f"{GREEN}■ generating sample{RESET}"
+
+def stretch_sample_header():
+    return f"{BLUE}■ stretching sample{RESET}"
 
 def generate_id():
     return str(uuid.uuid4())[:8]
 
-def to_snake_case(s):
-    return ''.join(['_' + i.lower() if i.isupper() else i for i in s]).lstrip('_')
+def format_name(text):
+    text = re.sub(r'(?<!^)(?=[A-Z])', '_', text.replace(' ', '_').replace('-', '_').lower())
+    return text
+
+def extract_plugin(plugin_path):
+    return plugin_path.split('/')[-1]
+
 
 # Word lists
 fantasy_prefixes = ["vael", "zyph", "eldar", "nyx", "sol", "astra", "lys", "xyra", "thal", "drith", "zeph", "kael", "myrr", "syl", "orin", "thyss", "xant", "ery", "fael", "grynn", "ithil", "jorin", "kyra", "lor", "mira", "nyth", "oryn", "phae", "quorin", "ryl", "sylva", "taur", "ulric", "vex", "wyst", "xyph", "yth", "zorin"]

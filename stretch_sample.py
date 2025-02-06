@@ -19,7 +19,7 @@ import sys
 import numpy as np
 import soundfile as sf
 from datetime import datetime
-from utils import with_stretch_sample_prompt as with_prompt
+from utils import with_stretch_sample_prompt as with_prompt, stretch_sample_header, BLUE, RESET
 
 
 def optimize_windowsize(n):
@@ -190,9 +190,12 @@ def stretch_sample(
     start_frame=0,
     end_frame=None
 ):
+    print(stretch_sample_header())
     print(with_prompt(f"applying paulstretch (stretch={stretch}, window_size={window_size})"))
     paulstretch(input_path, output_path, stretch=stretch, window_size=window_size, start_frame=start_frame, end_frame=end_frame, show_logs=False)
-    print(with_prompt(f"exported to '{output_path}'"))
+    print(f"{BLUE}│{RESET}")
+
+    return output_path
 
 def main():
     args = sys.argv[1:]
