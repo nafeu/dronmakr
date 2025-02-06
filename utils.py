@@ -19,7 +19,7 @@ def with_main_prompt(text):
     return f"{RED}│{RESET}   {text}"
 
 def with_build_preset_prompt(text):
-    return f"{MAGENTA}│{RESET}   {text}"
+    return f"{MAGENTA}┌ {APP_NAME} ■ preset builder {MAGENTA}┐{RESET} {text}"
 
 def with_generate_midi_prompt(text):
     return f"{YELLOW}│{RESET}   {text}"

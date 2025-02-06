@@ -4,7 +4,7 @@ import json
 import random
 import numpy as np
 import pedalboard
-from pedalboard import Pedalboard
+from pedalboard import Gain, Pedalboard
 from pedalboard.io import AudioFile
 import mido
 from mido import MidiFile, Message
@@ -102,6 +102,13 @@ def generate_sample(input_path="input.mid", output_path="generated_sample.wav", 
         reset=False,
     )
 
+    # Create a gain reduction effect (-6dB = 0.5 multiplier)
+    gain_reduction = Pedalboard([
+        Gain(gain_db=-6)  # -6dB reduction
+    ])
+
+    pre_fx_signal = gain_reduction(pre_fx_signal, SAMPLE_RATE)
+
     print(with_prompt(f"sending midi and rendering audio ({audio_length_s:.2f}s)"))
 
     # Apply the selected effect plugin
@@ -112,7 +119,6 @@ def generate_sample(input_path="input.mid", output_path="generated_sample.wav", 
     with AudioFile(output_path, "w", SAMPLE_RATE, 2) as f:
         f.write(post_fx_signal)
 
-    print(with_prompt(f"exported to \'{output_path}\'"))
     print(f"{GREEN}│{RESET}")
 
     return output_path

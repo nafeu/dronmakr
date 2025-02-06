@@ -19,6 +19,7 @@ def generate(
     roots: str = typer.Option(None, help="Comma delimited list of roots to filter chords/scales."),
     chart_type: str = typer.Option(None, help="Type of chart used for midi, either 'chord' or 'scale'."),
     style: str = typer.Option(None, help='Style of sample. One of "chaotic_arpeggio", "chord", "split_chord", "quantized_arpeggio".'),
+    iterations: int = typer.Option(1, help="Number of times to generate samples (default: 1).")
 ):
     start_time = time.time()
     print(get_version())
@@ -34,18 +35,28 @@ def generate(
     if chart_type: filters["type"] = chart_type
     if chart_name: filters["name"] = chart_name
 
-    midi_file, selected_chart = generate_midi(style=style, filters=filters)
-    sample_name = format_name(f"{selected_chart}_{name or generate_name()}_{generate_id()}")
-    output_path = f"{EXPORTS_FOLDER}/{sample_name}"
-    generated_sample = generate_sample(input_path=midi_file, output_path=f"{output_path}.wav")
-    generated_sample_stretched = stretch_sample(input_path=generated_sample, output_path=f"{output_path}_stretched.wav")
+    results = []
+
+    for _ in range(iterations):
+        midi_file, selected_chart = generate_midi(style=style, filters=filters)
+        sample_name = format_name(f"{selected_chart}_{name or generate_name()}_{generate_id()}")
+        output_path = f"{EXPORTS_FOLDER}/{sample_name}"
+        generated_sample = generate_sample(input_path=midi_file, output_path=f"{output_path}.wav")
+        generated_sample_stretched, generated_sample_stretched_reverberated = stretch_sample(input_path=generated_sample, output_path=f"{output_path}_stretched.wav")
+        results.append(midi_file)
+        results.append(generated_sample)
+        results.append(generated_sample_stretched)
+        results.append(generated_sample_stretched_reverberated)
 
     end_time = time.time()
     time_elapsed = round(end_time - start_time)
     print(f"{RED}■ completed in {time_elapsed}s{RESET}")
-    print(with_prompt(f"generated: {midi_file}"))
-    print(with_prompt(f"           {generated_sample}"))
-    print(with_prompt(f"           {generated_sample_stretched}"))
+
+    for index, result in enumerate(results):
+        if index == 0:
+            print(with_prompt(f"generated: {result}"))
+        else:
+            print(with_prompt(f"           {result}"))
 
 if __name__ == "__main__":
     cli()
