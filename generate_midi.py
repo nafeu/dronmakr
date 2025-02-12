@@ -3,12 +3,20 @@ import random
 import sys
 import json
 import pretty_midi
-from utils import with_generate_midi_prompt as with_prompt, generate_id, generate_midi_header, YELLOW, RESET, format_name
+from utils import (
+    with_generate_midi_prompt as with_prompt,
+    generate_id,
+    generate_midi_header,
+    YELLOW,
+    RESET,
+    format_name,
+)
 
 MIDI_FOLDER = "midi"
 CHORD_SCALE_LIST = "resources/chord-scale-data.json"
 
 SUPPORTED_STYLES = ["chaotic_arpeggio", "chord", "split_chord", "quantized_arpeggio"]
+
 
 def filter_chords(chords, filters):
     """Filters a chord collection based on optional criteria.
@@ -39,27 +47,29 @@ def filter_chords(chords, filters):
         if "tags" in filters and filters["tags"]:
             filter_tags = [tag.lower() for tag in filters["tags"]]
             if not any(tag in chord_tags for tag in filter_tags):
-                return False # At least one tag must match
+                return False  # At least one tag must match
 
         if "type" in filters and filters["type"]:
             if filters["type"].lower() != chord_type:
-                return False # Must match "scale" or "chord"
+                return False  # Must match "scale" or "chord"
 
         return True
-
 
     # Apply filtering (return all entries if filters are empty)
     return [chord for chord in chords if matches_criteria(chord)]
 
+
 def generate_midi(
-    style, # Style of playback
+    style,  # Style of playback
     output_name="",
-    note_density=2, # Notes per beat (higher = more active)
-    duration_variance=0.5, # Variance in note lengths (0 = fixed, 1 = max randomness)
-    velocity_range=(80, 120), # MIDI note velocity range
-    num_bars=16, # Default to 16 bars
-    humanization=0.02, # Time shift variance in seconds (default: 20ms)
-    filters={}
+    note_density=2,  # Notes per beat (higher = more active)
+    duration_variance=0.5,  # Variance in note lengths (0 = fixed, 1 = max randomness)
+    velocity_range=(80, 120),  # MIDI note velocity range
+    num_bars=16,  # Default to 16 bars
+    humanization=0.02,  # Time shift variance in seconds (default: 20ms)
+    filters={},
+    iteration=None,
+    iterations=None,
 ):
     print(generate_midi_header())
     """Generates a MIDI file based on the selected style with exact num_bars length."""
@@ -87,11 +97,15 @@ def generate_midi(
     # Randomly select a chord
     random_chord_choice = random.choice(chords)
     chord = random_chord_choice["notes"]
-    root = random_chord_choice['root']
-    chord_name = random_chord_choice['name']
+    root = random_chord_choice["root"]
+    chord_name = random_chord_choice["name"]
     track_name = format_name(f"{root}_{chord_name}{output_name}_{style}")
 
-    print(with_prompt(f"writing {YELLOW}{root} {chord_name}{RESET} as {YELLOW}{style}{RESET}"))
+    print(
+        with_prompt(
+            f"writing {YELLOW}{root} {chord_name}{RESET} as {YELLOW}{style}{RESET}"
+        )
+    )
 
     # Create a PrettyMIDI object
     midi = pretty_midi.PrettyMIDI()
@@ -122,12 +136,11 @@ def generate_midi(
         velocity = random.randint(*velocity_range)
         start_time = max(0.0, random.uniform(-humanization, humanization))
         for note in midi_notes:
-            instrument.notes.append(pretty_midi.Note(
-                velocity=velocity,
-                pitch=note,
-                start=start_time,
-                end=total_duration
-            ))
+            instrument.notes.append(
+                pretty_midi.Note(
+                    velocity=velocity, pitch=note, start=start_time, end=total_duration
+                )
+            )
 
     elif style == "split_chord":
         # **Split Chord:** Play full chord at start and again at the middle
@@ -135,12 +148,14 @@ def generate_midi(
         for start_time in [0.0, total_duration / 2]:
             start_time += random.uniform(-humanization, humanization)
             for note in midi_notes:
-                instrument.notes.append(pretty_midi.Note(
-                    velocity=velocity,
-                    pitch=note,
-                    start=max(0.0, start_time),
-                    end=start_time + bar_length
-                ))
+                instrument.notes.append(
+                    pretty_midi.Note(
+                        velocity=velocity,
+                        pitch=note,
+                        start=max(0.0, start_time),
+                        end=start_time + bar_length,
+                    )
+                )
 
     elif style == "quantized_arpeggio":
         # **Quantized Arpeggio:** Play notes one at a time, half-notes, looping lowest to highest
@@ -150,13 +165,17 @@ def generate_midi(
                 if time >= total_duration:
                     break
                 velocity = random.randint(*velocity_range)
-                start_time = max(0.0, time + random.uniform(-humanization, humanization))
-                instrument.notes.append(pretty_midi.Note(
-                    velocity=velocity,
-                    pitch=note,
-                    start=start_time,
-                    end=min(start_time + note_duration, total_duration)
-                ))
+                start_time = max(
+                    0.0, time + random.uniform(-humanization, humanization)
+                )
+                instrument.notes.append(
+                    pretty_midi.Note(
+                        velocity=velocity,
+                        pitch=note,
+                        start=start_time,
+                        end=min(start_time + note_duration, total_duration),
+                    )
+                )
                 time += note_duration
 
     else:
@@ -170,10 +189,7 @@ def generate_midi(
             velocity = random.randint(*velocity_range)
 
             midi_note = pretty_midi.Note(
-                velocity=velocity,
-                pitch=note,
-                start=time,
-                end=end_time
+                velocity=velocity, pitch=note, start=time, end=end_time
             )
             instrument.notes.append(midi_note)
             time = end_time  # Move forward to prevent overlap
@@ -198,6 +214,7 @@ def generate_midi(
 
     return (output_path, f"{root} {chord_name}")
 
+
 def main():
     args = sys.argv[1:]
     if not args:
@@ -205,6 +222,7 @@ def main():
         return
 
     generate_midi(args[0])
+
 
 if __name__ == "__main__":
     main()

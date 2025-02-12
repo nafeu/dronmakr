@@ -12,7 +12,7 @@
 # Example usage:
 # `pip install cffi numpy pysoundfile`
 #
-# from stretch_sample import paulstretch
+# from process_sample import paulstretch
 # paulstretch("input.wav", "output.wav", stretch=8.0, window_size=0.25)
 
 import sys
@@ -47,7 +47,7 @@ def load_wav(filename, start_frame=0, end_frame=None):
         ar = [[], []]
 
         # hack mono to stereo conversion
-        if (str(type(wavedata[0])) == "<class 'numpy.float64'>"):
+        if str(type(wavedata[0])) == "<class 'numpy.float64'>":
             for a in wavedata:
                 ar[0].append(a)
                 ar[1].append(a)
@@ -65,12 +65,12 @@ def load_wav(filename, start_frame=0, end_frame=None):
 
 def paulstretch(
     input_path,
-    output_path,
+    output_path=None,
     stretch=8.0,  # Default stretch amount
     window_size=0.25,  # Default window size (seconds)
     start_frame=0,
     end_frame=None,
-    show_logs=True
+    show_logs=True,
 ):
     """
     Applies Paul's Extreme Sound Stretch (Paulstretch) algorithm to an input WAV file.
@@ -93,10 +93,15 @@ def paulstretch(
     nchannels = smp.shape[0] if smp.ndim > 1 else 1
 
     if show_logs:
-        print(f"Processing {input_path} with stretch={stretch}, window_size={window_size}s")
+        print(
+            f"Processing {input_path} with stretch={stretch}, window_size={window_size}s"
+        )
+
+    if not output_path:
+        output_path = input_path.replace(".wav", f"_stretched.wav")
 
     # Open output file
-    outfile = sf.SoundFile(output_path, 'w', samplerate, nchannels)
+    outfile = sf.SoundFile(output_path, "w", samplerate, nchannels)
 
     # Ensure window size is optimized and even
     windowsize = int(window_size * samplerate)
@@ -109,9 +114,9 @@ def paulstretch(
     end_size = max(int(samplerate * 0.05), 16)
 
     if smp.ndim > 1:
-        smp[:, nsamples - end_size: nsamples] *= np.linspace(1, 0, end_size)
+        smp[:, nsamples - end_size : nsamples] *= np.linspace(1, 0, end_size)
     else:
-        smp[nsamples - end_size: nsamples] *= np.linspace(1, 0, end_size)
+        smp[nsamples - end_size : nsamples] *= np.linspace(1, 0, end_size)
 
     # Compute the displacement inside the input file
     start_pos = 0.0
@@ -127,10 +132,18 @@ def paulstretch(
     while True:
         # Get the windowed buffer
         istart_pos = int(np.floor(start_pos))
-        buf = smp[:, istart_pos:istart_pos + windowsize] if smp.ndim > 1 else smp[istart_pos:istart_pos + windowsize]
+        buf = (
+            smp[:, istart_pos : istart_pos + windowsize]
+            if smp.ndim > 1
+            else smp[istart_pos : istart_pos + windowsize]
+        )
 
         if buf.shape[-1] < windowsize:
-            pad_shape = (nchannels, windowsize - buf.shape[1]) if smp.ndim > 1 else (windowsize - buf.shape[0],)
+            pad_shape = (
+                (nchannels, windowsize - buf.shape[1])
+                if smp.ndim > 1
+                else (windowsize - buf.shape[0],)
+            )
             buf = np.append(buf, np.zeros(pad_shape), axis=-1)
 
         buf = buf * window
@@ -149,8 +162,11 @@ def paulstretch(
         buf *= window
 
         # Overlap-add the output
-        output = buf[:, 0:half_windowsize] + old_windowed_buf[:, half_windowsize:windowsize] if smp.ndim > 1 else \
-            buf[0:half_windowsize] + old_windowed_buf[half_windowsize:windowsize]
+        output = (
+            buf[:, 0:half_windowsize] + old_windowed_buf[:, half_windowsize:windowsize]
+            if smp.ndim > 1
+            else buf[0:half_windowsize] + old_windowed_buf[half_windowsize:windowsize]
+        )
         old_windowed_buf = buf
 
         # Clamp values to -1.0 to 1.0
@@ -180,6 +196,8 @@ def paulstretch(
         print(f"Stretched in: {datetime.now() - start_time}")
         print(f"Exported to: {output_path}")
 
+    return output_path
+
 
 def main():
     args = sys.argv[1:]
@@ -194,6 +212,7 @@ def main():
     window_size = float(args[3]) if len(args) > 3 else 0.25
 
     paulstretch(input_path, output_path, stretch=stretch, window_size=window_size)
+
 
 if __name__ == "__main__":
     main()

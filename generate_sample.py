@@ -8,13 +8,22 @@ from pedalboard import Gain, Pedalboard
 from pedalboard.io import AudioFile
 import mido
 from mido import MidiFile, Message
-from utils import with_generate_sample_prompt as with_prompt, extract_plugin, GREEN, RESET, generate_sample_header
+from utils import (
+    with_generate_sample_prompt as with_prompt,
+    extract_plugin,
+    GREEN,
+    RESET,
+    generate_sample_header,
+)
+
 
 # Convert MIDI file to MIDI messages
 def midi_to_messages(midi_file_path):
     """Reads a MIDI file and converts it to MIDI messages for processing."""
-    if not midi_file_path.lower().endswith('.mid'):
-        raise ValueError(f"Invalid file type: {midi_file_path}. The script requires a MIDI (.mid) file.")
+    if not midi_file_path.lower().endswith(".mid"):
+        raise ValueError(
+            f"Invalid file type: {midi_file_path}. The script requires a MIDI (.mid) file."
+        )
 
     mid = MidiFile(midi_file_path)
     midi_messages = []
@@ -23,14 +32,31 @@ def midi_to_messages(midi_file_path):
     for track in mid.tracks:
         for msg in track:
             if msg.type in ["note_on", "note_off"]:  # Only process note messages
-                current_time += msg.time / mid.ticks_per_beat  # Convert ticks to seconds
-                midi_messages.append(Message(msg.type, note=msg.note, velocity=msg.velocity, time=current_time))
+                current_time += (
+                    msg.time / mid.ticks_per_beat
+                )  # Convert ticks to seconds
+                midi_messages.append(
+                    Message(
+                        msg.type,
+                        note=msg.note,
+                        velocity=msg.velocity,
+                        time=current_time,
+                    )
+                )
 
     return midi_messages, mid.length  # Return the list of messages and the duration
 
+
 SAMPLE_RATE = 44100
 
-def generate_sample(input_path="input.mid", output_path="generated_sample.wav", presets_path="presets"):
+
+def generate_sample(
+    input_path="input.mid",
+    output_path="generated_sample.wav",
+    presets_path="presets",
+    instrument=None,
+    effect=None,
+):
     print(generate_sample_header())
 
     loaded_effects = []
@@ -44,47 +70,98 @@ def generate_sample(input_path="input.mid", output_path="generated_sample.wav", 
     effects = [p for p in presets if p["type"] == "effect_chain"]
 
     if not instruments or not effects:
-        raise ValueError("No valid instruments or effects found in presets.json")
+        raise ValueError(f"No valid instruments or effects found in {presets_path}")
 
-    # Randomly pick one instrument and one effect
-    instrument_preset = random.choice(instruments)
-    effect_preset = random.choice(effects)
+    if not instrument:
+        instrument_preset = random.choice(instruments)
+    else:
+        # Try to find a matching instrument by name
+        for preset in instruments:
+            if preset["name"] == instrument:
+                instrument_preset = preset
+                break
+        else:
+            # If no match found, raise an error
+            raise ValueError(f"No instrument found with the name '{instrument}'")
 
-    print(with_prompt(f"selected {GREEN}{instrument_preset['name']}{RESET} sound processed with {GREEN}{effect_preset['name']}{RESET}"))
+    if not effect:
+        effect_preset = random.choice(effects)
+    else:
+        # Try to find a matching instrument by name
+        for preset in effects:
+            if preset["name"] == effect:
+                effect_preset = preset
+                break
+        else:
+            # If no match found, raise an error
+            raise ValueError(f"No instrument found with the name '{effect}'")
+
+    print(
+        with_prompt(
+            f"selected {GREEN}{instrument_preset['name']}{RESET} sound processed with {GREEN}{effect_preset['name']}{RESET}"
+        )
+    )
 
     # Load the instrument plugin with `plugin_name` if available
     if instrument_preset["plugin_name"]:
-        print(with_prompt(f"loading instrument {GREEN}{extract_plugin(instrument_preset['plugin_path'])}{RESET} as {GREEN}{instrument_preset['plugin_name']}{RESET}"))
+        print(
+            with_prompt(
+                f"loading instrument {GREEN}{extract_plugin(instrument_preset['plugin_path'])}{RESET} as {GREEN}{instrument_preset['plugin_name']}{RESET}"
+            )
+        )
         instrument_plugin = pedalboard.VST3Plugin(
             instrument_preset["plugin_path"],
-            plugin_name=instrument_preset["plugin_name"]
+            plugin_name=instrument_preset["plugin_name"],
         )
     else:
-        print(with_prompt(f"loading preset {GREEN}{extract_plugin(instrument_preset['plugin_path'])}{RESET}"))
+        print(
+            with_prompt(
+                f"loading instrument {GREEN}{extract_plugin(instrument_preset['plugin_path'])}{RESET}"
+            )
+        )
         instrument_plugin = pedalboard.VST3Plugin(instrument_preset["plugin_path"])
 
     # Load the instrument's preset data
     with open(instrument_preset["preset_path"], "rb") as f:
-        print(with_prompt(f"using preset {GREEN}{instrument_preset['name']}{RESET} ({instrument_preset['desc']})"))
+        print(
+            with_prompt(
+                f"using preset {GREEN}{instrument_preset['name']}{RESET} ({instrument_preset['desc']})"
+            )
+        )
         instrument_plugin.preset_data = f.read()
 
     # Load the effect plugin with `plugin_name` if available
-    print(with_prompt(f"loading fx chain {GREEN}{effect_preset['name']}{RESET} ({effect_preset['desc']})"))
+    print(
+        with_prompt(
+            f"loading fx chain {GREEN}{effect_preset['name']}{RESET} ({effect_preset['desc']})"
+        )
+    )
 
     for effect in effect_preset["effects"]:
         if effect["plugin_name"]:
-            print(with_prompt(f"inserting {GREEN}{extract_plugin(effect['plugin_path'])}{RESET} as {effect['plugin_name']}"))
+            print(
+                with_prompt(
+                    f"inserting {GREEN}{extract_plugin(effect['plugin_path'])}{RESET} as {effect['plugin_name']}"
+                )
+            )
             effect_plugin = pedalboard.VST3Plugin(
-                effect["plugin_path"],
-                plugin_name=effect["plugin_name"]
+                effect["plugin_path"], plugin_name=effect["plugin_name"]
             )
         else:
-            print(with_prompt(f"inserting {GREEN}{extract_plugin(effect['plugin_path'])}{RESET}"))
+            print(
+                with_prompt(
+                    f"inserting {GREEN}{extract_plugin(effect['plugin_path'])}{RESET}"
+                )
+            )
             effect_plugin = pedalboard.VST3Plugin(effect["plugin_path"])
 
         # Load the effect's preset data
         with open(effect["preset_path"], "rb") as f:
-            print(with_prompt(f"using preset {GREEN}{effect['name']}{RESET} ({effect['desc']})"))
+            print(
+                with_prompt(
+                    f"using preset {GREEN}{effect['name']}{RESET} ({effect['desc']})"
+                )
+            )
             effect_plugin.preset_data = f.read()
 
         loaded_effects.append(effect_plugin)
@@ -103,9 +180,7 @@ def generate_sample(input_path="input.mid", output_path="generated_sample.wav", 
     )
 
     # Create a gain reduction effect (-6dB = 0.5 multiplier)
-    gain_reduction = Pedalboard([
-        Gain(gain_db=-6)  # -6dB reduction
-    ])
+    gain_reduction = Pedalboard([Gain(gain_db=-6)])  # -6dB reduction
 
     pre_fx_signal = gain_reduction(pre_fx_signal, SAMPLE_RATE)
 
@@ -122,6 +197,7 @@ def generate_sample(input_path="input.mid", output_path="generated_sample.wav", 
     print(f"{GREEN}│{RESET}")
 
     return output_path
+
 
 def main():
     args = sys.argv[1:]
