@@ -38,7 +38,7 @@ def with_process_sample_prompt(text):
 
 
 def build_preset_header():
-    return f"{MAGENTA}■ preset builder{RESET}"
+    return f"{MAGENTA}┌ {APP_NAME} ■ preset builder{RESET}"
 
 
 def generate_midi_header():

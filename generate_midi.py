@@ -16,7 +16,12 @@ from print_midi import print_midi
 MIDI_FOLDER = "midi"
 CHORD_SCALE_LIST = "resources/chord-scale-data.json"
 
-SUPPORTED_STYLES = ["chaotic_arpeggio", "chord", "split_chord", "quantized_arpeggio"]
+SUPPORTED_STYLES = [
+    "chaos",
+    "chord",
+    "quantized_arpeggio_quarter",
+    "split_chord",
+]
 
 
 def filter_chords(chords, filters):
@@ -116,6 +121,12 @@ def generate_midi(
         )
     )
 
+    if shift_root_note:
+        print(with_prompt("shifting root one octave down"))
+
+    if shift_octave_down:
+        print(with_prompt("shifting all notes one octave down"))
+
     # Create a PrettyMIDI object
     midi = pretty_midi.PrettyMIDI()
     instrument = pretty_midi.Instrument(program=0, name=track_name)
@@ -144,8 +155,8 @@ def generate_midi(
     # 🎵 **MIDI Note Generation Based on Style**
     time = 0.0
 
-    if style == "chaotic_arpeggio":
-        # **chaotic_arpeggio:** No humanization applied here (already random)
+    if style == "chaos":
+        # **chaos:** random notes and timings given scale
         while time < total_duration:
             note = random.choice(midi_notes)
             min_duration = seconds_per_beat / note_density
@@ -175,17 +186,15 @@ def generate_midi(
                     )
                 )
 
-    elif style == "quantized_arpeggio":
-        # **Quantized Arpeggio:** Play notes one at a time, half-notes, looping lowest to highest
-        note_duration = seconds_per_beat * 4  # Quarter-note duration
+    elif style == "quantized_arpeggio_quarter":
+        # **Quantized Arpeggio:** Play notes one at a time, quarter-notes, looping lowest to highest
+        note_duration = seconds_per_beat * 1  # Quarter-note duration
         while time < total_duration:
             for note in midi_notes:
                 if time >= total_duration:
                     break
                 velocity = random.randint(*velocity_range)
-                start_time = max(
-                    0.0, time + random.uniform(-humanization, humanization)
-                )
+                start_time = max(0.0, time)
                 instrument.notes.append(
                     pretty_midi.Note(
                         velocity=velocity,

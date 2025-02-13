@@ -87,6 +87,7 @@ def apply_normalization(input_path):
 
 
 def apply_transposition(input_path, semitones):
+    print(with_prompt(f"applying pedalboard transposition"))
     output_path = input_path.replace(".wav", f"_{semitones}st.wav")
 
     with AudioFile(input_path) as f:
