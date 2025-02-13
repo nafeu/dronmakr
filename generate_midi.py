@@ -68,6 +68,8 @@ def generate_midi(
     velocity_range=(80, 120),  # MIDI note velocity range
     num_bars=16,  # Default to 16 bars
     humanization=0.02,  # Time shift variance in seconds (default: 20ms)
+    shift_octave_down=None,
+    shift_root_note=None,
     filters={},
     iteration=None,
     iterations=None,
@@ -76,6 +78,12 @@ def generate_midi(
     """Generates a MIDI file based on the selected style with exact num_bars length."""
     if not style:
         style = random.choice(SUPPORTED_STYLES)
+
+    if shift_octave_down is None:
+        shift_octave_down = random.choice([True, False])
+
+    if shift_root_note is None:
+        shift_root_note = random.choice([True, False])
 
     if output_name:
         output_name = "_" + output_name
@@ -127,7 +135,11 @@ def generate_midi(
         midi_notes.append(midi_number)
 
     # Drop the root note one octave down
-    midi_notes[0] -= 12
+    if shift_root_note:
+        midi_notes[0] -= 12
+
+    if shift_octave_down:
+        midi_notes = [note - 12 for note in midi_notes]
 
     # 🎵 **MIDI Note Generation Based on Style**
     time = 0.0
