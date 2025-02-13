@@ -11,7 +11,6 @@ pycparser==2.22
 Pygments==2.19.1
 PySoundFile==0.9.0.post1
 python-dotenv==1.0.1
-rich==13.9.4
 shellingham==1.5.4
 six==1.17.0
 sounddevice==0.5.1

@@ -11,6 +11,7 @@ from utils import (
     RESET,
     format_name,
 )
+from print_midi import print_midi
 
 MIDI_FOLDER = "midi"
 CHORD_SCALE_LIST = "resources/chord-scale-data.json"
@@ -131,16 +132,21 @@ def generate_midi(
     # 🎵 **MIDI Note Generation Based on Style**
     time = 0.0
 
-    if style == "chord":
-        # **Straight Chord:** Play all notes together from start to finish
-        velocity = random.randint(*velocity_range)
-        start_time = max(0.0, random.uniform(-humanization, humanization))
-        for note in midi_notes:
-            instrument.notes.append(
-                pretty_midi.Note(
-                    velocity=velocity, pitch=note, start=start_time, end=total_duration
-                )
+    if style == "chaotic_arpeggio":
+        # **chaotic_arpeggio:** No humanization applied here (already random)
+        while time < total_duration:
+            note = random.choice(midi_notes)
+            min_duration = seconds_per_beat / note_density
+            max_duration = min_duration * (1 + duration_variance)
+            duration = random.uniform(min_duration, max_duration)
+            end_time = min(time + duration, total_duration)
+            velocity = random.randint(*velocity_range)
+
+            midi_note = pretty_midi.Note(
+                velocity=velocity, pitch=note, start=time, end=end_time
             )
+            instrument.notes.append(midi_note)
+            time = end_time  # Move forward to prevent overlap
 
     elif style == "split_chord":
         # **Split Chord:** Play full chord at start and again at the middle
@@ -179,20 +185,15 @@ def generate_midi(
                 time += note_duration
 
     else:
-        # **chaotic_arpeggio (Default):** No humanization applied here (already random)
-        while time < total_duration:
-            note = random.choice(midi_notes)
-            min_duration = seconds_per_beat / note_density
-            max_duration = min_duration * (1 + duration_variance)
-            duration = random.uniform(min_duration, max_duration)
-            end_time = min(time + duration, total_duration)
-            velocity = random.randint(*velocity_range)
-
-            midi_note = pretty_midi.Note(
-                velocity=velocity, pitch=note, start=time, end=end_time
+        # **Straight Chord:** (default) Play all notes together from start to finish
+        velocity = random.randint(*velocity_range)
+        start_time = max(0.0, random.uniform(-humanization, humanization))
+        for note in midi_notes:
+            instrument.notes.append(
+                pretty_midi.Note(
+                    velocity=velocity, pitch=note, start=start_time, end=total_duration
+                )
             )
-            instrument.notes.append(midi_note)
-            time = end_time  # Move forward to prevent overlap
 
     # Add instrument **without a name** to MIDI object
     midi.instruments.append(instrument)
@@ -209,6 +210,9 @@ def generate_midi(
 
     output_path = f"{MIDI_FOLDER}/{track_name}_{generate_id()}.mid"
     midi.write(output_path)
+
+    print(f"{YELLOW}│{RESET}")
+    print_midi(output_path, f"{YELLOW}│  {RESET}")
 
     print(f"{YELLOW}│{RESET}")
 
