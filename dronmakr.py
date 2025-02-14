@@ -122,9 +122,9 @@ def generate(
             f"iterations           {iterations if iterations else GENERATED_LABEL}"
         )
     )
+    print(f"{RED}│{RESET}")
 
     if dry_run:
-        print(f"{RED}│{RESET}")
         print(f"{RED}■ dry run completed{RESET}")
         sys.exit(0)
 
@@ -144,7 +144,7 @@ def generate(
     for iteration in range(iterations):
         if iterations > 1:
             print(f"{RED}■ preparing")
-            print(f"{RED}│{RESET}   iteration {iteration + 1} of {iterations + 1}")
+            print(f"{RED}│{RESET}   iteration {iteration + 1} of {iterations}")
             print(f"{RED}│{RESET}")
         midi_file, selected_chart = generate_midi(
             style=style,

@@ -50,7 +50,7 @@ def generate_sample_header():
 
 
 def process_sample_header():
-    return f"{BLUE}■ stretching sample{RESET}"
+    return f"{BLUE}■ processing sample{RESET}"
 
 
 def generate_id():

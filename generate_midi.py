@@ -17,9 +17,17 @@ MIDI_FOLDER = "midi"
 CHORD_SCALE_LIST = "resources/chord-scale-data.json"
 
 SUPPORTED_STYLES = [
+    "chaos_expand_up",
     "chaos",
     "chord",
-    "quantized_arpeggio_quarter",
+    "lead_flat",
+    "lead_straight_eighth",
+    "lead_straight_sixteenth",
+    "lead",
+    "quantized_straight_eighth",
+    "quantized_straight_quarter",
+    "quantized_up_down_eighth",
+    "quantized_up_down_quarter",
     "split_chord",
 ]
 
@@ -171,6 +179,26 @@ def generate_midi(
             instrument.notes.append(midi_note)
             time = end_time  # Move forward to prevent overlap
 
+    elif style == "chaos_expand_up":
+        # **Chaos Expand Up:** Doubles available notes, second set is transposed up 1 octave
+        expanded_midi_notes = midi_notes + [
+            note + 12 for note in midi_notes
+        ]  # Transpose copy up 1 octave
+
+        while time < total_duration:
+            note = random.choice(expanded_midi_notes)  # Choose from expanded range
+            min_duration = seconds_per_beat / note_density
+            max_duration = min_duration * (1 + duration_variance)
+            duration = random.uniform(min_duration, max_duration)
+            end_time = min(time + duration, total_duration)
+            velocity = random.randint(*velocity_range)
+
+            midi_note = pretty_midi.Note(
+                velocity=velocity, pitch=note, start=time, end=end_time
+            )
+            instrument.notes.append(midi_note)
+            time = end_time  # Move forward to prevent overlap
+
     elif style == "split_chord":
         # **Split Chord:** Play full chord at start and again at the middle
         velocity = random.randint(*velocity_range)
@@ -186,7 +214,7 @@ def generate_midi(
                     )
                 )
 
-    elif style == "quantized_arpeggio_quarter":
+    elif style == "quantized_straight_quarter":
         # **Quantized Arpeggio:** Play notes one at a time, quarter-notes, looping lowest to highest
         note_duration = seconds_per_beat * 1  # Quarter-note duration
         while time < total_duration:
@@ -204,6 +232,184 @@ def generate_midi(
                     )
                 )
                 time += note_duration
+
+    elif style == "quantized_straight_eighth":
+        # **Quantized Arpeggio:** Play notes one at a time, eighth-notes, looping lowest to highest
+        note_duration = seconds_per_beat * 0.5  # Eighth-note duration
+        while time < total_duration:
+            for note in midi_notes:
+                if time >= total_duration:
+                    break
+                velocity = random.randint(*velocity_range)
+                start_time = max(0.0, time)
+                instrument.notes.append(
+                    pretty_midi.Note(
+                        velocity=velocity,
+                        pitch=note,
+                        start=start_time,
+                        end=min(start_time + note_duration, total_duration),
+                    )
+                )
+                time += note_duration
+
+    elif style == "quantized_up_down_quarter":
+        # **Up-Down Arpeggio:** Ascends then descends, quarter-note timing
+        note_duration = seconds_per_beat * 1  # Quarter-note duration
+        up_down_pattern = (
+            midi_notes + midi_notes[::-1][1:-1]
+        )  # Ascend & descend, avoid repeat
+        while time < total_duration:
+            for note in up_down_pattern:
+                if time >= total_duration:
+                    break
+                velocity = random.randint(*velocity_range)
+                start_time = max(0.0, time)
+                instrument.notes.append(
+                    pretty_midi.Note(
+                        velocity=velocity,
+                        pitch=note,
+                        start=start_time,
+                        end=min(start_time + note_duration, total_duration),
+                    )
+                )
+                time += note_duration
+
+    elif style == "quantized_up_down_eighth":
+        # **Up-Down Arpeggio:** Ascends then descends, eigth-note timing
+        note_duration = seconds_per_beat * 0.5  # Eigth-note duration
+        up_down_pattern = (
+            midi_notes + midi_notes[::-1][1:-1]
+        )  # Ascend & descend, avoid repeat
+        while time < total_duration:
+            for note in up_down_pattern:
+                if time >= total_duration:
+                    break
+                velocity = random.randint(*velocity_range)
+                start_time = max(0.0, time)
+                instrument.notes.append(
+                    pretty_midi.Note(
+                        velocity=velocity,
+                        pitch=note,
+                        start=start_time,
+                        end=min(start_time + note_duration, total_duration),
+                    )
+                )
+                time += note_duration
+
+    elif style == "lead":
+        # **Lead Melody:** Semi-random movement within the scale
+        note_durations = [
+            seconds_per_beat * d for d in [0.25, 0.5, 1, 2]
+        ]  # 16th, 8th, quarter, half
+        total_notes = random.randint(
+            len(midi_notes), 16
+        )  # Random note count (scale size to 16)
+
+        # 🎶 Start on a random note
+        current_note = random.choice(midi_notes)
+
+        for _ in range(total_notes):
+            velocity = random.randint(*velocity_range)
+            start_time = max(0.0, time)
+            duration = random.choice(note_durations)  # Random note length
+            end_time = min(start_time + duration, total_duration)
+
+            instrument.notes.append(
+                pretty_midi.Note(
+                    velocity=velocity,
+                    pitch=current_note,
+                    start=start_time,
+                    end=end_time,
+                )
+            )
+
+            time += duration  # Move forward
+
+            # 🎼 Melody Movement: Sometimes move up/down stepwise before jumping randomly
+            if random.random() < 0.6:  # 60% chance to move stepwise
+                idx = midi_notes.index(current_note)
+                if (
+                    random.random() < 0.5 and idx < len(midi_notes) - 1
+                ):  # Move up if possible
+                    current_note = midi_notes[idx + 1]
+                elif idx > 0:  # Move down if possible
+                    current_note = midi_notes[idx - 1]
+            else:
+                current_note = random.choice(midi_notes)  # 40% chance for a random jump
+
+    elif style == "lead_flat":
+        # **Lead Melody (Flat):** Constant eighth notes, structured movement
+        note_duration = seconds_per_beat * 0.5  # Fixed eighth-note duration
+        total_notes = random.randint(
+            len(midi_notes), 16
+        )  # Random note count (scale size to 16)
+
+        # 🎶 Start on a random note
+        current_note = random.choice(midi_notes)
+
+        for _ in range(total_notes):
+            velocity = random.randint(*velocity_range)
+            start_time = max(0.0, time)
+            end_time = min(start_time + note_duration, total_duration)
+
+            instrument.notes.append(
+                pretty_midi.Note(
+                    velocity=velocity,
+                    pitch=current_note,
+                    start=start_time,
+                    end=end_time,
+                )
+            )
+
+            time += note_duration  # Move forward
+
+            # 🎼 Melody Movement: Mostly stepwise, sometimes jumps
+            if random.random() < 0.7:  # 70% chance to move stepwise
+                idx = midi_notes.index(current_note)
+                if (
+                    random.random() < 0.5 and idx < len(midi_notes) - 1
+                ):  # Move up if possible
+                    current_note = midi_notes[idx + 1]
+                elif idx > 0:  # Move down if possible
+                    current_note = midi_notes[idx - 1]
+            else:
+                current_note = random.choice(midi_notes)  # 30% chance for a jump
+
+    elif style == "lead_straight_sixteenth":
+        # **Lead (Straight, Sixteenth Notes):** Plays notes from low to high once
+        note_duration = seconds_per_beat * 0.25  # Sixteenth-note duration
+        for note in midi_notes:
+            if time >= total_duration:
+                break
+            velocity = random.randint(*velocity_range)
+            start_time = max(0.0, time)
+            instrument.notes.append(
+                pretty_midi.Note(
+                    velocity=velocity,
+                    pitch=note,
+                    start=start_time,
+                    end=min(start_time + note_duration, total_duration),
+                )
+            )
+            time += note_duration
+
+    elif style == "lead_straight_eighth":
+        # **Lead (Straight, Eighth Notes):** Plays notes from low to high once
+        note_duration = seconds_per_beat * 0.5  # Eighth-note duration
+        for note in midi_notes:
+            if time >= total_duration:
+                break
+            velocity = random.randint(*velocity_range)
+            start_time = max(0.0, time)
+            instrument.notes.append(
+                pretty_midi.Note(
+                    velocity=velocity,
+                    pitch=note,
+                    start=start_time,
+                    end=min(start_time + note_duration, total_duration),
+                )
+            )
+            time += note_duration
 
     else:
         # **Straight Chord:** (default) Play all notes together from start to finish
