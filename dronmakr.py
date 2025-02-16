@@ -14,11 +14,19 @@ from utils import (
     RED,
     RESET,
 )
+from build_preset import build_preset, list_presets
 
 EXPORTS_FOLDER = "exports"
 GENERATED_LABEL = f"{RED}...{RESET}"
 
-cli = typer.Typer()
+cli = typer.Typer(invoke_without_command=True)
+
+
+@cli.callback()
+def default(ctx: typer.Context):
+    """Default to 'generate' if no command is given."""
+    if ctx.invoked_subcommand is None:
+        ctx.invoke(generate)
 
 
 @cli.command()
@@ -73,6 +81,7 @@ def generate(
     ),
     dry_run: bool = typer.Option(False, "--dry-run", "-d", help="Verify CLI options"),
 ):
+    """Generate n iterations of samples (.wav) with parameters"""
     start_time = time.time()
     print(get_version())
 
@@ -182,6 +191,25 @@ def generate(
             print(with_prompt(f"generated: {result}"))
         else:
             print(with_prompt(f"           {result}"))
+
+
+@cli.command()
+def preset():
+    """Use interactive preset builder"""
+    build_preset()
+
+
+@cli.command()
+def list(
+    show_chain_plugins: bool = typer.Option(
+        False,
+        "--show-chain-plugins",
+        "-p",
+        help="List all the plugins used within an effect chain",
+    )
+):
+    """List all available presets"""
+    list_presets(show_chain_plugins=show_chain_plugins)
 
 
 if __name__ == "__main__":

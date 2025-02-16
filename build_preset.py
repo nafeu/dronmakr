@@ -5,7 +5,6 @@ import os
 import pedalboard
 import subprocess
 import sys
-import uuid
 import termios
 import tty
 from dotenv import load_dotenv
@@ -13,10 +12,11 @@ from mido import Message
 from pedalboard import Pedalboard
 from pedalboard.io import AudioFile
 from threading import Event, Thread
-from utils import with_build_preset_prompt as with_prompt, generate_id
+from utils import with_build_preset_prompt as with_prompt, generate_id, MAGENTA, RESET
 
 TEMP_FOLDER = "temp"
 PRESET_FOLDER = "presets"
+PRESET_JSON = "presets.json"
 PREVIEW_NUM_BARS = 1
 PREVIEW_SAMPLE = "resources/CDEFGABC.wav"
 PREVIEW_SAMPLE_RATE = 44100
@@ -28,7 +28,7 @@ listener_running = True
 close_window_event = Event()
 
 
-def main():
+def build_preset():
     os.makedirs(PRESET_FOLDER, exist_ok=True)
     os.makedirs(TEMP_FOLDER, exist_ok=True)
 
@@ -78,15 +78,24 @@ def main():
             selected_plugin_name,
             chain_preset_path,
             effect_chain,
-        ) = edit_preset_with_ui(plugin, effect_chain, selected_plugin, selected_plugin_name)
+        ) = edit_preset_with_ui(
+            plugin, effect_chain, selected_plugin, selected_plugin_name
+        )
 
-        effect_chain[-1] = (*effect_chain[-1], (chain_preset_name, chain_preset_uid, chain_preset_path, chain_preset_desc))
+        effect_chain[-1] = (
+            *effect_chain[-1],
+            (chain_preset_name, chain_preset_uid, chain_preset_path, chain_preset_desc),
+        )
 
         while True:
             add_more = input(with_prompt("Add another effect? (y/n): ")).strip().lower()
             if add_more != "y":
-                preset_name = input(with_prompt("enter a name for this chain preset: ")).strip()
-                preset_desc = input(with_prompt("enter a description for this chain preset: ")).strip()
+                preset_name = input(
+                    with_prompt("enter a name for this chain preset: ")
+                ).strip()
+                preset_desc = input(
+                    with_prompt("enter a description for this chain preset: ")
+                ).strip()
                 preset_uid = generate_id()
                 break
 
@@ -95,9 +104,7 @@ def main():
             plugin, selected_plugin_name = load_plugin(selected_plugin)
 
             if plugin.is_effect:
-                effect_chain.append(
-                    (selected_plugin, selected_plugin_name, plugin)
-                )
+                effect_chain.append((selected_plugin, selected_plugin_name, plugin))
 
                 (
                     chain_preset_name,
@@ -107,9 +114,19 @@ def main():
                     selected_plugin_name,
                     chain_preset_path,
                     effect_chain,
-                ) = edit_preset_with_ui(plugin, effect_chain, selected_plugin, selected_plugin_name)
+                ) = edit_preset_with_ui(
+                    plugin, effect_chain, selected_plugin, selected_plugin_name
+                )
 
-                effect_chain[-1] = (*effect_chain[-1], (chain_preset_name, chain_preset_uid, chain_preset_path, chain_preset_desc))
+                effect_chain[-1] = (
+                    *effect_chain[-1],
+                    (
+                        chain_preset_name,
+                        chain_preset_uid,
+                        chain_preset_path,
+                        chain_preset_desc,
+                    ),
+                )
             else:
                 print(with_prompt("That is not an effect! Try again."))
     else:
@@ -121,7 +138,9 @@ def main():
             selected_plugin_name,
             preset_path,
             effect_chain,
-        ) = edit_preset_with_ui(plugin, effect_chain, selected_plugin, selected_plugin_name)
+        ) = edit_preset_with_ui(
+            plugin, effect_chain, selected_plugin, selected_plugin_name
+        )
 
     save_preset(
         preset_name,
@@ -167,7 +186,9 @@ def format_plugin_name(plugin_path):
 
 def generate_midi():
     """Generate a simple MIDI sequence"""
-    audio_length_s = calculate_audio_length(PREVIEW_TEMPO_BPM, PREVIEW_TIME_SIGNATURE, PREVIEW_NUM_BARS)
+    audio_length_s = calculate_audio_length(
+        PREVIEW_TEMPO_BPM, PREVIEW_TIME_SIGNATURE, PREVIEW_NUM_BARS
+    )
     scale_notes = [60, 62, 64, 65, 67, 69, 71, 72]  # C D E F G A B C (MIDI notes)
     midi_messages = []
     for index, note in enumerate(scale_notes):
@@ -226,7 +247,9 @@ def load_plugin(plugin_path):
                     sub_selection = (
                         int(
                             input(
-                                with_prompt("enter the number of the plugin you want to load: ")
+                                with_prompt(
+                                    "enter the number of the plugin you want to load: "
+                                )
                             )
                         )
                         - 1
@@ -286,7 +309,7 @@ def preview_preset(plugin, effect_chain):
 
 def save_preset(name, desc, uid, plugin_path, plugin_name, preset_path, effect_chain):
     """Saves the preset to `presets.json`"""
-    preset_index_file = os.path.join(PRESET_FOLDER, "presets.json")
+    preset_index_file = os.path.join(PRESET_FOLDER, PRESET_JSON)
 
     if os.path.exists(preset_index_file):
         with open(preset_index_file, "r") as f:
@@ -310,9 +333,9 @@ def save_preset(name, desc, uid, plugin_path, plugin_name, preset_path, effect_c
                     "desc": fx[3][3],
                     "plugin_path": fx[0],
                     "plugin_name": fx[1],
-                    "preset_path": fx[3][2]
+                    "preset_path": fx[3][2],
                 }
-                for fx in effect_chain # (chain_preset_name, chain_preset_id, chain_preset_path)
+                for fx in effect_chain  # (chain_preset_name, chain_preset_id, chain_preset_path)
             ],
         }
     else:
@@ -375,7 +398,12 @@ def edit_preset_with_ui(plugin, effect_chain, selected_plugin, selected_plugin_n
     listener_running = False
     key_listener_thread.join()
 
-    preset_name = input(with_prompt("enter a name for this preset: ")).strip()
+    while True:
+        preset_name = input(with_prompt("enter a name for this preset: ")).strip()
+        if not name_exists(preset_name):
+            break
+        else:
+            print(with_prompt("name already in use, please enter a different name:"))
     preset_desc = input(with_prompt("enter a description for this preset: ")).strip()
     preset_uid = generate_id()
 
@@ -396,9 +424,91 @@ def edit_preset_with_ui(plugin, effect_chain, selected_plugin, selected_plugin_n
     )
 
 
+def list_presets(show_chain_plugins=False):
+    preset_index_file = os.path.join(PRESET_FOLDER, PRESET_JSON)
+
+    if not os.path.exists(preset_index_file):
+        print("No presets found.")
+        return
+
+    try:
+        with open(preset_index_file, "r") as f:
+            presets_data = json.load(f)
+    except json.JSONDecodeError:
+        print(with_prompt("Error reading preset index file."))
+        return
+
+    instruments = []
+    effect_chains = []
+
+    for idx, preset in enumerate(presets_data, start=1):
+        if preset.get("type") == "instrument":
+            instruments.append((idx, preset["name"], preset["desc"]))
+        elif preset.get("type") == "effect_chain":
+            effect_chains.append((idx, preset))
+
+    if len(instruments) < 1:
+        print(with_prompt("No instruments added, use 'dronmakr preset'"))
+        return
+
+    if len(effect_chains) < 1:
+        print(with_prompt("No effect chains added, use 'dronmakr preset'"))
+        return
+
+    longest_instrument_name_length = len(max(instruments, key=lambda x: len(x[1]))[1])
+    longest_effect_chain_name_length = max(
+        [len(item[1]["name"]) for item in effect_chains]
+    )
+
+    if show_chain_plugins:
+        for idx, effect_chain in effect_chains:
+            for plugin in effect_chain["effects"]:
+                if (len(plugin["name"]) + 2) > longest_effect_chain_name_length:
+                    longest_effect_chain_name_length = len(plugin["name"]) + 2
+
+    print(f"{MAGENTA}■ instruments{RESET}")
+    print(f"{MAGENTA}│{RESET}")
+    for idx, name, desc in instruments:
+        desc_spacing = " " * (longest_instrument_name_length - len(name))
+        print(f"{MAGENTA}│  {name} {RESET}{desc_spacing}{desc}")
+
+    print(f"{MAGENTA}│{RESET}")
+    if effect_chains:
+        print(f"{MAGENTA}■ effects{RESET}")
+        print(f"{MAGENTA}│{RESET}")
+        for idx, chain in effect_chains:
+            desc_spacing = " " * (longest_effect_chain_name_length - len(chain["name"]))
+            print(f"{MAGENTA}│  {chain['name']} {RESET}{desc_spacing}{chain['desc']}")
+            if show_chain_plugins:
+                for effect in chain["effects"]:
+                    desc_spacing = " " * (
+                        longest_effect_chain_name_length - len(effect["name"]) - 2
+                    )
+                    print(
+                        f"{MAGENTA}│    {effect['name']} {RESET}{desc_spacing}{effect['desc']}"
+                    )
+
+
+def name_exists(name):
+    """Checks the collection at `presets.json` and sees if any entry has that name already"""
+    preset_index_file = os.path.join(PRESET_FOLDER, PRESET_JSON)
+
+    if not os.path.exists(preset_index_file):
+        return False
+
+    with open(preset_index_file, "r") as f:
+        presets_data = json.load(f)
+
+    for preset in presets_data:
+        if preset["name"].lower() == name.lower():
+            return True
+
+    return False
+
+
 if __name__ == "__main__":
     try:
-        main()
+        build_preset()
     except (KeyboardInterrupt, EOFError):
         print(with_prompt("exiting..."))
         sys.exit(0)
