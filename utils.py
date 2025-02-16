@@ -1,6 +1,7 @@
 import random
 import re
 import uuid
+import os
 
 BLUE = "\033[34m"
 CYAN = "\033[36m"
@@ -11,10 +12,15 @@ YELLOW = "\033[33m"
 RESET = "\033[0m"
 
 APP_NAME = "dronmakr"
+EXPORTS_DIR = "exports"
 
 
 def get_version():
     return f"{RED}┌ {APP_NAME} ■ v0.1.0 - January 2025\n│{RESET}   github.com/nafeu (phrakturemusic@proton.me)\n{RED}│{RESET}"
+
+
+def get_server_version():
+    return f"{RED}┌ {APP_NAME} server ■ v0.1.0 - January 2025\n│{RESET}   github.com/nafeu (phrakturemusic@proton.me)\n{RED}│{RESET}"
 
 
 def with_main_prompt(text):
@@ -533,3 +539,25 @@ def generate_name():
         time=random.choice(time_words),
         weather=random.choice(weather_words),
     )
+
+
+def get_latest_exports():
+    """Reads the last 20 `.wav` files from the 'exports/' folder, sorted by newest first."""
+    try:
+        if not os.path.exists(EXPORTS_DIR):
+            return []
+
+        files = [
+            os.path.join(EXPORTS_DIR, f)
+            for f in os.listdir(EXPORTS_DIR)
+            if os.path.isfile(os.path.join(EXPORTS_DIR, f))
+            and f.lower().endswith(".wav")
+        ]
+
+        # Sort by newest file first (modification time descending) & return latest 20
+        sorted_files = sorted(files, key=os.path.getmtime, reverse=True)[:20]
+        return sorted_files
+
+    except Exception as e:
+        print(f"Error reading export files: {e}")
+        return []

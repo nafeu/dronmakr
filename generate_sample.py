@@ -190,6 +190,8 @@ def generate_sample(
     fx_chain = Pedalboard(loaded_effects)
     post_fx_signal = fx_chain(pre_fx_signal, SAMPLE_RATE)
 
+    output_path = output_path.replace("#", "sharp")
+
     # Export processed audio
     with AudioFile(output_path, "w", SAMPLE_RATE, 2) as f:
         f.write(post_fx_signal)

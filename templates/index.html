@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dronmakr Web Interface</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.0/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/7.4.0/wavesurfer.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --secondary: #1F2041;
+        --primary: #FFC857;
+        --theme-a: #4B3F72;
+        --theme-b: #119DA4;
+        --theme-c: #19647E;
+      }
+
+      body {
+        background-color: var(--secondary);
+        color: var(--primary);
+        font-family: Geist, monospace;
+        padding: 1rem;
+      }
+
+      #actions {
+        display: flex;
+        gap: 1rem;
+      }
+
+      .button {
+        cursor: pointer;
+      }
+
+      .button:hover {
+        opacity: 0.5;
+      }
+
+      .waveform {
+        margin-bottom: 1rem;
+      }
+    </style>
+</head>
+<body>
+    <div id="actions">
+      <div class="button" id="generate-button" onclick="startGeneration({})">generate sample</div>
+      <div class="button" id="generate-button-dry" onclick="startGeneration({ dry_run: true })">generate sample (dry-run)</div>
+    </div>
+
+    <h2>Audition Queue</h2>
+    <div id="waveform-container"></div>
+
+    <script>
+        var isGenerating = false;
+        var socket = io.connect("http://localhost:3766");
+
+        function startGeneration(params) {
+            if (isGenerating) return;
+
+            isGenerating = true;
+            document.getElementById("generate-button").innerText = "generating...";
+
+            fetch("/generate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(params)
+            }).then(response => response.json())
+              .then(data => console.log(data))
+              .catch(error => console.error("Error:", error));
+        }
+
+        // Listen for WebSocket messages
+        socket.on("status", function(data) {
+            if (data.done) {
+                isGenerating = false;
+                setTimeout(() => {
+                    document.getElementById("generate-button").innerText = "generate sample";
+                }, 1000);
+            }
+
+            if (data.files) {
+                displayWaveforms(data.files);
+            }
+
+            document.getElementById("generate-button").innerText = data.message;
+        });
+
+        function displayWaveforms(files) {
+            var container = document.getElementById("waveform-container");
+            container.innerHTML = ""; // Clear existing waveforms
+
+            files.forEach((file, index) => {
+                var filePath = "/exports/" + file.split('/').pop(); // Ensure relative path
+                var div = document.createElement("div");
+                div.className = "waveform-wrapper";
+
+                var title = document.createElement("p");
+                title.innerText = filePath.replace("/exports/", "").replace(".wav", "").replaceAll("_", " ");
+                div.appendChild(title);
+
+                var waveformDiv = document.createElement("div");
+                waveformDiv.id = "waveform-" + index;
+                waveformDiv.classList.add("waveform")
+                div.appendChild(waveformDiv);
+
+                var playButton = document.createElement("div");
+                playButton.innerText = "Play";
+                playButton.classList.add("button")
+                div.appendChild(playButton);
+
+                container.appendChild(div);
+
+                var wavesurfer = WaveSurfer.create({
+                    container: "#waveform-" + index,
+                    waveColor: "#4B3F72",
+                    progressColor: "#FFC857",
+                    backend: "MediaElement",
+                    height: 80
+                });
+
+                wavesurfer.load(filePath);
+
+                playButton.addEventListener("click", () => {
+                    if (wavesurfer.isPlaying()) {
+                        wavesurfer.pause();
+                        playButton.innerText = "Play";
+                    } else {
+                        wavesurfer.play();
+                        playButton.innerText = "Pause";
+                    }
+                });
+            });
+        }
+    </script>
+</body>
+</html>

@@ -80,10 +80,15 @@ def generate(
         None, "--shift-root-note", "-R", help="Shift root note one octave down."
     ),
     dry_run: bool = typer.Option(False, "--dry-run", "-d", help="Verify CLI options"),
+    log_server: bool = typer.Option(
+        False, "--log-server", "-v", help="Run logs as server mode"
+    ),
 ):
     """Generate n iterations of samples (.wav) with parameters"""
     start_time = time.time()
-    print(get_version())
+
+    if not log_server:
+        print(get_version())
 
     if not os.path.exists("presets/presets.json"):
         print(
@@ -135,7 +140,7 @@ def generate(
 
     if dry_run:
         print(f"{RED}■ dry run completed{RESET}")
-        sys.exit(0)
+        return ["midi/dry_run_example.mid", "exports/dry_run_export.wav"]
 
     filters = {}
 
@@ -191,6 +196,8 @@ def generate(
             print(with_prompt(f"generated: {result}"))
         else:
             print(with_prompt(f"           {result}"))
+
+    return results
 
 
 @cli.command()
