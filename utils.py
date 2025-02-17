@@ -554,8 +554,8 @@ def get_latest_exports():
             and f.lower().endswith(".wav")
         ]
 
-        # Sort by newest file first (modification time descending) & return latest 20
-        sorted_files = sorted(files, key=os.path.getmtime, reverse=True)[:20]
+        # Sort by newest file first (modification time descending) & return latest 5
+        sorted_files = sorted(files, key=os.path.getmtime, reverse=True)[:5]
         return sorted_files
 
     except Exception as e:

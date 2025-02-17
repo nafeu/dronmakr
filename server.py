@@ -4,12 +4,23 @@ eventlet.monkey_patch()
 
 import threading
 import subprocess
+import os
+import shutil
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_socketio import SocketIO
 from utils import get_server_version, get_latest_exports
+from process_sample import (
+    trim_sample_start,
+    trim_sample_end,
+    fade_sample_start,
+    fade_sample_end,
+    increase_sample_gain,
+    decrease_sample_gain,
+)
 
 
 EXPORTS_DIR = "exports"
+ARCHIVE_DIR = "archive"
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 socketio = SocketIO(app, cors_allowed_origins="*")  # WebSockets enabled
@@ -19,10 +30,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")  # WebSockets enabled
 def handle_connect():
     """Log WebSocket connections."""
     print("Client connected via WebSocket")
-    sorted_files = get_latest_exports()
-    socketio.emit(
-        "status", {"message": "generate sample", "done": False, "files": sorted_files}
-    )
+    socketio.emit("exports", {"files": get_latest_exports()})
 
 
 @app.route("/exports/<path:filename>")
@@ -57,11 +65,8 @@ def run_generate(params):
         process.wait()
 
         # Send completion message
-        sorted_files = get_latest_exports()
-        socketio.emit(
-            "status",
-            {"message": "generation complete.", "done": True, "files": sorted_files},
-        )
+        socketio.emit("status", {"message": "generation complete.", "done": True})
+        socketio.emit("exports", {"files": get_latest_exports()})
 
     except Exception as e:
         print(f"Error in subprocess: {e}")  # Log error
@@ -82,6 +87,64 @@ def generate_route():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/skip", methods=["POST"])
+def skip_file():
+    params = request.get_json() or {}
+    if not params["path"]:
+        return jsonify({"error": "File path is required."}), 400
+
+    file_path = f".{params['path']}"
+
+    if not os.path.exists(file_path):
+        return jsonify({"error": "File does not exist."}), 404
+
+    if not os.path.exists(ARCHIVE_DIR):
+        os.makedirs(ARCHIVE_DIR)
+
+    file_name = file_path.split(f"{EXPORTS_DIR}/")[1]
+
+    shutil.move(file_path, os.path.join(ARCHIVE_DIR, file_name))
+
+    socketio.emit("exports", {"files": get_latest_exports()})
+    return jsonify({"success": "File moved to archive."}), 200
+
+
+@app.route("/process", methods=["POST"])
+def process_file():
+    params = request.get_json() or {}
+    if not params["path"]:
+        return jsonify({"error": "File path is required."}), 400
+
+    file_path = f".{params['path']}"
+
+    if not os.path.exists(file_path):
+        return jsonify({"error": "File does not exist."}), 404
+
+    if not params["command"]:
+        return jsonify({"error": "File command is required."}), 400
+
+    command = params["command"]
+
+    match command:
+        case "trim_sample_start":
+            trim_sample_start(file_path, params["seconds"])
+        case "trim_sample_end":
+            trim_sample_end(file_path, params["seconds"])
+        case "fade_sample_start":
+            fade_sample_start(file_path, params["seconds"])
+        case "fade_sample_end":
+            fade_sample_end(file_path, params["seconds"])
+        case "increase_sample_gain":
+            increase_sample_gain(file_path, params["db"])
+        case "decrease_sample_gain":
+            decrease_sample_gain(file_path, params["db"])
+        case _:
+            return jsonify({"error": "Command not recognized"}), 400
+
+    socketio.emit("exports", {"files": get_latest_exports()})
+    return jsonify({"success": f"File processed with {command}"}), 200
 
 
 if __name__ == "__main__":

@@ -1,138 +1,307 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dronmakr Web Interface</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.0/socket.io.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/7.4.0/wavesurfer.min.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
-    <style>
-      :root {
-        --secondary: #1F2041;
-        --primary: #FFC857;
-        --theme-a: #4B3F72;
-        --theme-b: #119DA4;
-        --theme-c: #19647E;
-      }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dronmakr Web Interface</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.0/socket.io.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/7.4.0/wavesurfer.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --secondary: #1F2041;
+      --primary: #FFC857;
+      --theme-a: #4B3F72;
+      --theme-b: #119DA4;
+      --theme-c: #19647E;
+    }
 
-      body {
-        background-color: var(--secondary);
-        color: var(--primary);
-        font-family: Geist, monospace;
-        padding: 1rem;
-      }
+    body {
+      background-color: var(--secondary);
+      color: var(--primary);
+      font-family: Geist, monospace;
+      padding: 1rem;
+    }
 
-      #actions {
-        display: flex;
-        gap: 1rem;
-      }
+    #actions {
+      display: flex;
+      gap: 1rem;
+    }
 
-      .button {
-        cursor: pointer;
-      }
+    .button {
+      cursor: pointer;
+      border: 2px solid var(--theme-a);
+      border-radius: 10px;
+      padding-inline: 10px;
+      padding-block: 5px;
+    }
 
-      .button:hover {
-        opacity: 0.5;
-      }
+    .button:hover {
+      opacity: 0.5;
+    }
 
-      .waveform {
-        margin-bottom: 1rem;
-      }
-    </style>
+    .waveform {
+      margin-bottom: 1rem;
+    }
+
+    .waveform-wrapper {
+      border: 2px solid var(--theme-a);
+      padding: 10px;
+      margin-bottom: 1rem;
+      border-radius: 10px;
+    }
+
+    .waveform-title {
+      margin-bottom: 1rem;
+    }
+
+    .waveform-actions,
+    .title-container {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .waveform-duration {
+      color: var(--theme-c);
+      font-weight: bold;
+    }
+  </style>
 </head>
+
 <body>
-    <div id="actions">
-      <div class="button" id="generate-button" onclick="startGeneration({})">generate sample</div>
-      <div class="button" id="generate-button-dry" onclick="startGeneration({ dry_run: true })">generate sample (dry-run)</div>
+  <div id="actions">
+    <div class="button" id="generate-button" onclick="startGeneration({})">generate sample</div>
+    <div class="button" id="generate-button-dry" onclick="startGeneration({ dry_run: true })">generate sample (dry-run)
     </div>
+  </div>
 
-    <h2>Audition Queue</h2>
-    <div id="waveform-container"></div>
+  <h2>Audition Queue</h2>
+  <div id="waveform-container"></div>
 
-    <script>
-        var isGenerating = false;
-        var socket = io.connect("http://localhost:3766");
+  <script>
+    var isGenerating = false;
+    var socket = io.connect("http://localhost:3766");
+    var selectedWaveformTimestamps = [];
+    var db = 2;
 
-        function startGeneration(params) {
-            if (isGenerating) return;
+    function startGeneration(params) {
+      if (isGenerating) return;
 
-            isGenerating = true;
-            document.getElementById("generate-button").innerText = "generating...";
+      isGenerating = true;
+      document.getElementById("generate-button").innerText = "generating...";
 
-            fetch("/generate", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(params)
-            }).then(response => response.json())
-              .then(data => console.log(data))
-              .catch(error => console.error("Error:", error));
-        }
+      fetch("/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params)
+      }).then(response => response.json())
+        .then(data => console.log(data))
+        .catch(error => console.error("Error:", error));
+    }
 
-        // Listen for WebSocket messages
-        socket.on("status", function(data) {
-            if (data.done) {
-                isGenerating = false;
-                setTimeout(() => {
-                    document.getElementById("generate-button").innerText = "generate sample";
-                }, 1000);
-            }
+    function skipSample(path) {
+      fetch("/skip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path })
+      }).then(response => response.json())
+        .then(data => console.log(data))
+        .catch(error => console.error("Error:", error));
+    }
 
-            if (data.files) {
-                displayWaveforms(data.files);
-            }
+    function processSample(params) {
+      fetch("/process", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(params)
+      }).then(response => response.json())
+        .then(data => console.log(data))
+        .catch(error => console.error("Error:", error));
+    }
 
-            document.getElementById("generate-button").innerText = data.message;
+    socket.on("status", function (data) {
+      if (data.done) {
+        isGenerating = false;
+        setTimeout(() => {
+          document.getElementById("generate-button").innerText = "generate sample";
+        }, 1000);
+      }
+
+      document.getElementById("generate-button").innerText = data.message;
+    });
+
+    socket.on("exports", function (data) {
+      if (data.files) {
+        displayWaveforms(data.files);
+      }
+    });
+
+    function displayWaveforms(files) {
+      var container = document.getElementById("waveform-container");
+      container.innerHTML = ""; // Clear existing waveforms
+
+      selectedWaveformTimestamps = files.map(() => 0);
+
+      files.forEach((file, index) => {
+        var filePath = "/exports/" + file.split('/').pop(); // Ensure relative path
+        var wrapper = document.createElement("div");
+        wrapper.className = "waveform-wrapper";
+
+        var titleContainer = document.createElement("div");
+        titleContainer.classList.add("title-container");
+
+        var title = document.createElement("div");
+        title.innerText = filePath.replace("/exports/", "").replace(".wav", "");
+        title.classList.add("waveform-title");
+        titleContainer.appendChild(title);
+
+        var duration = document.createElement("div");
+        duration.innerText = "loading...";
+        duration.classList.add("waveform-duration");
+        titleContainer.appendChild(duration);
+
+        wrapper.appendChild(titleContainer);
+
+        var waveformDiv = document.createElement("div");
+        waveformDiv.id = "waveform-" + index;
+        waveformDiv.classList.add("waveform")
+        wrapper.appendChild(waveformDiv);
+
+        var actions = document.createElement("div");
+        actions.classList.add("waveform-actions")
+
+        var playButton = document.createElement("div");
+        playButton.innerText = "Play";
+        playButton.classList.add("button")
+        actions.appendChild(playButton);
+
+        var skipButton = document.createElement("div");
+        skipButton.innerText = "Skip";
+        skipButton.classList.add("button")
+        skipButton.addEventListener("click", () => skipSample(filePath));
+        actions.appendChild(skipButton);
+
+        var trimStartButton = document.createElement("div");
+        trimStartButton.innerText = `Start At ${selectedWaveformTimestamps[index].toFixed(2)}s`;
+        trimStartButton.classList.add("button")
+        trimStartButton.addEventListener("click", () => processSample({
+          path: filePath,
+          command: "trim_sample_start",
+          seconds: selectedWaveformTimestamps[index]
+        }));
+        actions.appendChild(trimStartButton);
+
+        var trimEndButton = document.createElement("div");
+        trimEndButton.innerText = `End At ${selectedWaveformTimestamps[index].toFixed(2)}s`;
+        trimEndButton.classList.add("button")
+        trimEndButton.addEventListener("click", () => processSample({
+          path: filePath,
+          command: "trim_sample_end",
+          seconds: selectedWaveformTimestamps[index]
+        }));
+        actions.appendChild(trimEndButton);
+
+        var fadeStartButton = document.createElement("div");
+        fadeStartButton.innerText = `Fade In 2s`;
+        fadeStartButton.classList.add("button")
+        fadeStartButton.addEventListener("click", () => processSample({
+          path: filePath,
+          command: "fade_sample_start",
+          seconds: 2
+        }));
+        actions.appendChild(fadeStartButton);
+
+        var fadeEndButton = document.createElement("div");
+        fadeEndButton.innerText = `Fade Out 2s`;
+        fadeEndButton.classList.add("button")
+        fadeEndButton.addEventListener("click", () => processSample({
+          path: filePath,
+          command: "fade_sample_end",
+          seconds: 2
+        }));
+        actions.appendChild(fadeEndButton);
+
+        var fadeStartLongButton = document.createElement("div");
+        fadeStartLongButton.innerText = `Fade In 5s`;
+        fadeStartLongButton.classList.add("button")
+        fadeStartLongButton.addEventListener("click", () => processSample({
+          path: filePath,
+          command: "fade_sample_start",
+          seconds: 5
+        }));
+        actions.appendChild(fadeStartLongButton);
+
+        var fadeEndLongButton = document.createElement("div");
+        fadeEndLongButton.innerText = `Fade Out 5s`;
+        fadeEndLongButton.classList.add("button")
+        fadeEndLongButton.addEventListener("click", () => processSample({
+          path: filePath,
+          command: "fade_sample_end",
+          seconds: 5
+        }));
+        actions.appendChild(fadeEndLongButton);
+
+        var increaseGainButton = document.createElement("div");
+        increaseGainButton.innerText = `Gain +${db}db`;
+        increaseGainButton.classList.add("button")
+        increaseGainButton.addEventListener("click", () => processSample({
+          path: filePath,
+          command: "increase_sample_gain",
+          db
+        }));
+        actions.appendChild(increaseGainButton);
+
+        var decreaseGainButton = document.createElement("div");
+        decreaseGainButton.innerText = `Gain -${db}db`;
+        decreaseGainButton.classList.add("button")
+        decreaseGainButton.addEventListener("click", () => processSample({
+          path: filePath,
+          command: "decrease_sample_gain",
+          db
+        }));
+        actions.appendChild(decreaseGainButton);
+
+        wrapper.appendChild(actions);
+        container.appendChild(wrapper);
+
+        var wavesurfer = WaveSurfer.create({
+          container: "#waveform-" + index,
+          waveColor: "#4B3F72",
+          progressColor: "#FFC857",
+          backend: "MediaElement",
+          height: 80
         });
 
-        function displayWaveforms(files) {
-            var container = document.getElementById("waveform-container");
-            container.innerHTML = ""; // Clear existing waveforms
+        wavesurfer.load(filePath);
 
-            files.forEach((file, index) => {
-                var filePath = "/exports/" + file.split('/').pop(); // Ensure relative path
-                var div = document.createElement("div");
-                div.className = "waveform-wrapper";
+        wavesurfer.on("seeking", function (currentTime) {
+          selectedWaveformTimestamps[index] = currentTime
+          trimStartButton.innerText = `Start At ${selectedWaveformTimestamps[index].toFixed(2)}s`;
+          trimEndButton.innerText = `End At ${selectedWaveformTimestamps[index].toFixed(2)}s`;
+        });
 
-                var title = document.createElement("p");
-                title.innerText = filePath.replace("/exports/", "").replace(".wav", "").replaceAll("_", " ");
-                div.appendChild(title);
+        wavesurfer.on("ready", function () {
+          duration.innerText = `${wavesurfer.getDuration().toFixed(2)}s`;
+        });
 
-                var waveformDiv = document.createElement("div");
-                waveformDiv.id = "waveform-" + index;
-                waveformDiv.classList.add("waveform")
-                div.appendChild(waveformDiv);
-
-                var playButton = document.createElement("div");
-                playButton.innerText = "Play";
-                playButton.classList.add("button")
-                div.appendChild(playButton);
-
-                container.appendChild(div);
-
-                var wavesurfer = WaveSurfer.create({
-                    container: "#waveform-" + index,
-                    waveColor: "#4B3F72",
-                    progressColor: "#FFC857",
-                    backend: "MediaElement",
-                    height: 80
-                });
-
-                wavesurfer.load(filePath);
-
-                playButton.addEventListener("click", () => {
-                    if (wavesurfer.isPlaying()) {
-                        wavesurfer.pause();
-                        playButton.innerText = "Play";
-                    } else {
-                        wavesurfer.play();
-                        playButton.innerText = "Pause";
-                    }
-                });
-            });
-        }
-    </script>
+        playButton.addEventListener("click", () => {
+          if (wavesurfer.isPlaying()) {
+            wavesurfer.pause();
+            playButton.innerText = "Play";
+          } else {
+            wavesurfer.play();
+            playButton.innerText = "Pause";
+          }
+        });
+      });
+    }
+  </script>
 </body>
+
 </html>

@@ -1,4 +1,6 @@
 import os
+import numpy as np
+import soundfile as sf
 import pedalboard
 from pedalboard import (
     Compressor,
@@ -88,7 +90,7 @@ def apply_normalization(input_path):
 
 def apply_transposition(input_path, semitones):
     print(with_prompt(f"applying pedalboard transposition"))
-    output_path = input_path.replace(".wav", f"_{semitones}st.wav")
+    output_path = input_path.replace(".wav", f"_-_{semitones}st.wav")
 
     with AudioFile(input_path) as f:
         audio = f.read(f.frames)
@@ -114,6 +116,98 @@ def apply_transposition(input_path, semitones):
         f.write(processed_audio)
 
     return output_path
+
+
+def trim_sample_start(input_path, start_time_s):
+    """Trims the start of the audio file at `start_time_s` and overwrites the file."""
+    audio, sample_rate = sf.read(input_path)
+    start_sample = int(start_time_s * sample_rate)
+
+    if start_sample < 0 or start_sample >= len(audio):
+        raise ValueError("Start time is out of bounds.")
+
+    trimmed_audio = audio[start_sample:]
+    sf.write(input_path, trimmed_audio, sample_rate)
+    print(f"Trimmed start at {start_time_s}s: {input_path}")
+
+
+def trim_sample_end(input_path, end_time_s):
+    """Trims the end of the audio file at `end_time_s` and overwrites the file."""
+    audio, sample_rate = sf.read(input_path)
+    end_sample = int(end_time_s * sample_rate)
+
+    if end_sample <= 0 or end_sample > len(audio):
+        raise ValueError("End time is out of bounds.")
+
+    trimmed_audio = audio[:end_sample]
+    sf.write(input_path, trimmed_audio, sample_rate)
+    print(f"Trimmed end at {end_time_s}s: {input_path}")
+
+
+def fade_sample_start(input_path, fade_in_time_s):
+    """Applies an ease-in-out fade-in over `fade_in_time_s` and overwrites the file."""
+    audio, sample_rate = sf.read(input_path)
+    fade_samples = int(fade_in_time_s * sample_rate)
+
+    if fade_samples > len(audio):
+        fade_samples = len(audio)  # Prevent fade being longer than audio
+
+    # Ease-in-out fade curve (mono)
+    fade_curve = (1 - np.cos(np.linspace(0, np.pi, fade_samples))) / 2
+
+    # Ensure fade curve applies to all channels
+    if len(audio.shape) > 1:  # Stereo or multi-channel
+        fade_curve = fade_curve[:, np.newaxis]  # Reshape to (samples, 1)
+
+    # Apply fade
+    audio[:fade_samples] *= fade_curve
+
+    sf.write(input_path, audio, sample_rate)
+    print(f"Applied fade-in ({fade_in_time_s}s) to: {input_path}")
+
+
+def fade_sample_end(input_path, fade_out_time_s):
+    """Applies an ease-in-out fade-out over `fade_out_time_s` and overwrites the file."""
+    audio, sample_rate = sf.read(input_path)
+    fade_samples = int(fade_out_time_s * sample_rate)
+
+    if fade_samples > len(audio):
+        fade_samples = len(audio)  # Prevent fade being longer than audio
+
+    # Ease-in-out fade curve (mono)
+    fade_curve = (1 - np.cos(np.linspace(0, np.pi, fade_samples))) / 2
+
+    # Ensure fade curve applies to all channels
+    if len(audio.shape) > 1:  # Stereo or multi-channel
+        fade_curve = fade_curve[:, np.newaxis]  # Reshape to (samples, 1)
+
+    # Apply fade
+    audio[-fade_samples:] *= fade_curve[::-1]
+
+    sf.write(input_path, audio, sample_rate)
+    print(f"Applied fade-out ({fade_out_time_s}s) to: {input_path}")
+
+
+def increase_sample_gain(input_path, db):
+    """Increases the gain of the audio file by `db` decibels and overwrites the file."""
+    audio, sample_rate = sf.read(input_path)
+
+    gain_factor = 10 ** (db / 20)  # Convert dB to linear scale
+    audio *= gain_factor
+
+    sf.write(input_path, audio, sample_rate)
+    print(f"Increased gain by {db} dB: {input_path}")
+
+
+def decrease_sample_gain(input_path, db):
+    """Decreases the gain of the audio file by `db` decibels and overwrites the file."""
+    audio, sample_rate = sf.read(input_path)
+
+    gain_factor = 10 ** (-db / 20)  # Convert dB to linear scale
+    audio *= gain_factor
+
+    sf.write(input_path, audio, sample_rate)
+    print(f"Decreased gain by {db} dB: {input_path}")
 
 
 def process_sample(

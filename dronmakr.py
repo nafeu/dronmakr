@@ -167,7 +167,7 @@ def generate(
             filters=filters,
         )
         sample_name = format_name(
-            f"{selected_chart}_{name or generate_name()}_{generate_id()}"
+            f"{name or generate_name()}_-_{selected_chart}_-_{generate_id()}"
         )
         output_path = f"{EXPORTS_FOLDER}/{sample_name}"
         generated_sample = generate_sample(
