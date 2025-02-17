@@ -71,17 +71,126 @@
       color: var(--theme-c);
       font-weight: bold;
     }
+
+    #generate-form {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    #generate-form>label {
+      color: var(--theme-b);
+      border: 2px solid var(--theme-c);
+      padding: 10px;
+      border-radius: 10px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #status {
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    #generate-sample-button {
+      height: 40px;
+      display: flex;
+      align-items: center;
+      border: 2px solid var(--primary);
+    }
+
+    input,
+    select {
+      background-color: var(--theme-a);
+      padding: 10px;
+      border: none;
+      border-radius: 10px;
+      color: var(--primary);
+    }
+
+    input::placeholder {
+      color: var(--secondary);
+    }
+
+    select {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      text-indent: 1px;
+      text-overflow: '';
+    }
+
+    #waveform-container {
+      margin-top: 20px;
+    }
   </style>
 </head>
 
 <body>
-  <div id="actions">
-    <div class="button" id="generate-button" onclick="startGeneration({})">generate sample</div>
-    <div class="button" id="generate-button-dry" onclick="startGeneration({ dry_run: true })">generate sample (dry-run)
-    </div>
-  </div>
+  <h1>┌ dronmakr ■ auditioner ┐ <span id="status"></span></h1>
 
-  <h2>Audition Queue</h2>
+  <form id="generate-form">
+    <label>Name:
+      <input type="text" name="name" placeholder="Enter sample name">
+    </label>
+
+    <label>Chart Name:
+      <input type="text" name="chart_name" placeholder="Enter chart name">
+    </label>
+
+    <label>Instrument:
+      <input type="text" name="instrument" placeholder="Enter instrument">
+    </label>
+
+    <label>Effect:
+      <input type="text" name="effect" placeholder="Enter effect">
+    </label>
+
+    <label>Tags:
+      <input type="text" name="tags" placeholder="e.g., ambient,drone">
+    </label>
+
+    <label>Roots:
+      <input type="text" name="roots" placeholder="e.g., C,E,G">
+    </label>
+
+    <label>Chart Type:
+      <select name="chart_type">
+        <option value="">Random</option>
+        <option value="chord">Chord</option>
+        <option value="scale">Scale</option>
+      </select>
+    </label>
+
+    <label>Style:
+      <select name="style">
+        <option value="">Random</option>
+        <option value="chaotic_arpeggio">Chaotic Arpeggio</option>
+        <option value="chord">Chord</option>
+        <option value="split_chord">Split Chord</option>
+        <option value="quantized_arpeggio">Quantized Arpeggio</option>
+      </select>
+    </label>
+
+    <label>Iterations:
+      <input type="number" name="iterations" value="1" min="1">
+    </label>
+
+    <label>
+      <input type="checkbox" name="shift_octave_down">
+      Shift all notes one octave down
+    </label>
+
+    <label>
+      <input type="checkbox" name="shift_root_note">
+      Shift root note one octave down
+    </label>
+
+    <div id="generate-sample-button" class="button" onclick="submitGenerate()">Generate Sample</div>
+  </form>
+
   <div id="waveform-container"></div>
 
   <script>
@@ -90,23 +199,56 @@
     var selectedWaveformTimestamps = [];
     var db = 2;
 
-    function startGeneration(params) {
+    function submitGenerate() {
       if (isGenerating) return;
 
+      const form = document.getElementById("generate-form");
+      const formData = new FormData(form);
+      const jsonData = {};
+
+      // Convert formData to JSON
+      formData.forEach((value, key) => {
+        if (value === "") return;  // Ignore empty fields
+
+        // Convert checkboxes to booleans
+        if (form[key].type === "checkbox") {
+          jsonData[key] = form[key].checked;
+        }
+        // Convert numbers properly
+        else if (form[key].type === "number") {
+          jsonData[key] = parseInt(value);
+        }
+        else {
+          jsonData[key] = value;
+        }
+      });
+
+      console.log("Sending JSON:", jsonData); // Debugging output
+
       isGenerating = true;
-      document.getElementById("generate-button").innerText = "generating...";
 
       fetch("/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(params)
-      }).then(response => response.json())
-        .then(data => console.log(data))
+        body: JSON.stringify(jsonData)
+      })
+        .then(response => response.json())
+        .then(data => console.log("Response:", data))
         .catch(error => console.error("Error:", error));
     }
 
     function skipSample(path) {
       fetch("/skip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path })
+      }).then(response => response.json())
+        .then(data => console.log(data))
+        .catch(error => console.error("Error:", error));
+    }
+
+    function saveSample(path) {
+      fetch("/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ path })
@@ -129,11 +271,11 @@
       if (data.done) {
         isGenerating = false;
         setTimeout(() => {
-          document.getElementById("generate-button").innerText = "generate sample";
+          document.getElementById("status").innerText = "";
         }, 1000);
       }
 
-      document.getElementById("generate-button").innerText = data.message;
+      document.getElementById("status").innerText = data.message;
     });
 
     socket.on("exports", function (data) {
@@ -186,6 +328,12 @@
         skipButton.classList.add("button")
         skipButton.addEventListener("click", () => skipSample(filePath));
         actions.appendChild(skipButton);
+
+        var saveButton = document.createElement("div");
+        saveButton.innerText = "Save";
+        saveButton.classList.add("button")
+        saveButton.addEventListener("click", () => saveSample(filePath));
+        actions.appendChild(saveButton);
 
         var trimStartButton = document.createElement("div");
         trimStartButton.innerText = `Start At ${selectedWaveformTimestamps[index].toFixed(2)}s`;

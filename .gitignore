@@ -72,6 +72,6 @@ export*.mp3
 midi/
 exports/
 archive/
-packages/
+saved/
 temp/
 generated*.wav

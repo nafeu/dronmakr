@@ -21,6 +21,7 @@ from process_sample import (
 
 EXPORTS_DIR = "exports"
 ARCHIVE_DIR = "archive"
+SAVED_DIR = "saved"
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 socketio = SocketIO(app, cors_allowed_origins="*")  # WebSockets enabled
@@ -109,6 +110,28 @@ def skip_file():
 
     socketio.emit("exports", {"files": get_latest_exports()})
     return jsonify({"success": "File moved to archive."}), 200
+
+
+@app.route("/save", methods=["POST"])
+def save_file():
+    params = request.get_json() or {}
+    if not params["path"]:
+        return jsonify({"error": "File path is required."}), 400
+
+    file_path = f".{params['path']}"
+
+    if not os.path.exists(file_path):
+        return jsonify({"error": "File does not exist."}), 404
+
+    if not os.path.exists(SAVED_DIR):
+        os.makedirs(SAVED_DIR)
+
+    file_name = file_path.split(f"{EXPORTS_DIR}/")[1]
+
+    shutil.move(file_path, os.path.join(SAVED_DIR, file_name))
+
+    socketio.emit("exports", {"files": get_latest_exports()})
+    return jsonify({"success": "File moved to saved."}), 200
 
 
 @app.route("/process", methods=["POST"])
