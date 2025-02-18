@@ -246,8 +246,9 @@
       var container = document.getElementById("waveform-container");
       container.innerHTML = ""; // Clear existing waveforms
 
-      var button = document.getElementById("generate-sample-button");
-      button.classList.add("disabled")
+      var generateSampleButton = document.getElementById("generate-sample-button");
+      generateSampleButton.classList.add("disabled");
+      generateSampleButton.innerText = "Generating...";
 
       var generationStatus = document.createElement("div");
       generationStatus.innerText = "generating...";
@@ -288,8 +289,6 @@
         .then(response => response.json())
         .then(data => {
           console.log("Response:", data);
-
-          button.classList.remove("disabled")
         })
         .catch(error => console.error("Error:", error));
     }
@@ -396,6 +395,9 @@
     socket.on("status", function (data) {
       if (data.done) {
         isGenerating = false;
+        var generateSampleButton = document.getElementById("generate-sample-button");
+        generateSampleButton.classList.remove("disabled")
+        generateSampleButton.innerText = "Generate Sample"
       }
 
       document.getElementById("generation-status").innerText = data.message;
