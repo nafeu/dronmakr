@@ -8,7 +8,8 @@ import os
 import shutil
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_socketio import SocketIO
-from utils import get_server_version, get_latest_exports
+from utils import get_server_version, get_latest_exports, get_presets
+from generate_midi import get_styles
 from process_sample import (
     trim_sample_start,
     trim_sample_end,
@@ -24,6 +25,7 @@ EXPORTS_DIR = "exports"
 ARCHIVE_DIR = "archive"
 SAVED_DIR = "saved"
 TRASH_DIR = "trash"
+PRESETS_PATH = "presets/presets.json"
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 socketio = SocketIO(app, cors_allowed_origins="*")  # WebSockets enabled
@@ -34,6 +36,7 @@ def handle_connect():
     """Log WebSocket connections."""
     print("Client connected via WebSocket")
     socketio.emit("exports", {"files": get_latest_exports()})
+    socketio.emit("configs", {"presets": get_presets(), "styles": get_styles()})
 
 
 @app.route("/exports/<path:filename>")
@@ -55,7 +58,9 @@ def run_generate(params):
         # Prepare the command
         cmd = ["python", "dronmakr.py", "generate"]
         for key, value in params.items():
-            if value is not None:
+            if key in ["shift_octave_down", "shift_root_note"]:
+                cmd.append(f"--{key.replace('_', '-')}")
+            elif value is not None:
                 cmd.append(f"--{key}")
                 cmd.append(str(value))
 
@@ -180,6 +185,12 @@ def delete_file():
 
     socketio.emit("exports", {"files": get_latest_exports()})
     return jsonify({"success": "File moved to trash."}), 200
+
+
+@app.route("/refresh", methods=["GET"])
+def refresh_configs():
+    socketio.emit("configs", {"presets": get_presets(), "styles": get_styles()})
+    return jsonify({"success": "Refreshed configurations"}), 200
 
 
 @app.route("/save", methods=["POST"])

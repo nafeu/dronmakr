@@ -182,11 +182,11 @@
         </label>
 
         <label>Instrument:
-          <input type="text" name="instrument" placeholder="Enter instrument">
+          <select id="instrument-select" name="instrument"></select>
         </label>
 
         <label>Effect:
-          <input type="text" name="effect" placeholder="Enter effect">
+          <select id="effect-select" name="effect"></select>
         </label>
 
         <label>Tags:
@@ -206,21 +206,7 @@
         </label>
 
         <label>Style:
-          <select name="style">
-            <option value="">Random</option>
-            <option value="chaos_expand_up">Chaos Expand Up</option>
-            <option value="chaos">Chaos</option>
-            <option value="chord">Chord</option>
-            <option value="lead_flat">Lead Flat</option>
-            <option value="lead_straight_eighth">Lead Straight Eighth</option>
-            <option value="lead_straight_sixteenth">Lead Straight Sixteenth</option>
-            <option value="lead">Lead</option>
-            <option value="quantized_straight_eighth">Quantized Straight Eighth</option>
-            <option value="quantized_straight_quarter">Quantized Straight Quarter</option>
-            <option value="quantized_up_down_eighth">Quantized Up Down Eighth</option>
-            <option value="quantized_up_down_quarter">Quantized Up Down Quarter</option>
-            <option value="split_chord">Split Chord</option>
-          </select>
+          <select id="style-select" name="style"></select>
         </label>
 
         <label>Iterations:
@@ -240,6 +226,7 @@
         <div id="generate-sample-button" class="button" onclick="submitGenerate()">Generate Sample</div>
         <div id="unarchive-samples-button" class="button" onclick="unarchiveSamples()">Unarchive Samples</div>
         <div id="empty-trash-button" class="button" onclick="emptyTrash()">Empty Trash</div>
+        <div id="refresh-configs-button" class="button" onclick="refreshConfigs()">Refresh Configs</div>
       </form>
     </div>
     <div id="waveforms">
@@ -324,6 +311,23 @@
         .catch(error => console.error("Error:", error));
     }
 
+    function refreshConfigs() {
+      var button = document.getElementById("refresh-configs-button");
+      button.innerHTML = "Refreshing...";
+
+      fetch("/refresh")
+        .then(response => response.json())
+        .then(data => {
+          console.log("Response:", data);
+          button.innerHTML = "Refreshed.";
+
+          setTimeout(() => {
+            button.innerHTML = "Refresh Configs"
+          }, 1000)
+        })
+        .catch(error => console.error("Error:", error));
+    }
+
     function unarchiveSamples() {
       var button = document.getElementById("unarchive-samples-button");
       button.innerHTML = "Moving Files...";
@@ -402,6 +406,66 @@
         displayWaveforms(data.files);
       }
     });
+
+    socket.on("configs", function (data) {
+      if (data.presets) {
+        updatePresets(data.presets);
+      }
+
+      if (data.styles) {
+        updateStyles(data.styles);
+      }
+    });
+
+    function updatePresets({ instruments, effects }) {
+      var instrumentSelect = document.getElementById("instrument-select");
+      var effectSelect = document.getElementById("effect-select");
+
+      instrumentSelect.innerHTML = "";
+      effectSelect.innerHTML = "";
+
+      var emptyInstrumentOption = document.createElement("option");
+      emptyInstrumentOption.innerText = "Random";
+      emptyInstrumentOption.value = "";
+      instrumentSelect.appendChild(emptyInstrumentOption);
+
+      var emptyEffectOption = document.createElement("option");
+      emptyEffectOption.innerText = "Random";
+      emptyEffectOption.value = "";
+      effectSelect.appendChild(emptyEffectOption);
+
+      instruments.forEach(instrument => {
+        var option = document.createElement("option");
+        option.innerText = instrument;
+        option.value = instrument;
+        instrumentSelect.appendChild(option);
+      });
+
+      effects.forEach(effect => {
+        var option = document.createElement("option");
+        option.innerText = effect;
+        option.value = effect;
+        effectSelect.appendChild(option);
+      });
+    }
+
+    function updateStyles({ styles }) {
+      var styleSelect = document.getElementById("style-select");
+
+      styleSelect.innerHTML = "";
+
+      var emptyStyleOption = document.createElement("option");
+      emptyStyleOption.innerText = "Random";
+      emptyStyleOption.value = "";
+      styleSelect.appendChild(emptyStyleOption);
+
+      styles.forEach(style => {
+        var option = document.createElement("option");
+        option.innerText = style;
+        option.value = style;
+        styleSelect.appendChild(option);
+      });
+    }
 
     function displayWaveforms(files) {
       var container = document.getElementById("waveform-container");

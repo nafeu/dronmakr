@@ -32,6 +32,10 @@ SUPPORTED_STYLES = [
 ]
 
 
+def get_styles():
+    return {"styles": SUPPORTED_STYLES}
+
+
 def filter_chords(chords, filters):
     """Filters a chord collection based on optional criteria.
 

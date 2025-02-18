@@ -2,6 +2,7 @@ import random
 import re
 import uuid
 import os
+import json
 
 BLUE = "\033[34m"
 CYAN = "\033[36m"
@@ -13,6 +14,7 @@ RESET = "\033[0m"
 
 APP_NAME = "dronmakr"
 EXPORTS_DIR = "exports"
+PRESETS_PATH = "presets/presets.json"
 
 
 def get_version():
@@ -569,3 +571,22 @@ def get_latest_exports(sort_override=None):
     except Exception as e:
         print(f"Error reading export files: {e}")
         return []
+
+
+def get_presets():
+    with open(PRESETS_PATH, "r") as file:
+        presets = json.load(file)
+
+    instrument_presets = []
+    effect_chain_presets = []
+
+    for preset in presets:
+        if preset["type"] == "instrument":
+            instrument_presets.append(preset["name"])
+        elif preset["type"] == "effect_chain":
+            effect_chain_presets.append(preset["name"])
+
+    return {
+        "instruments": sorted(instrument_presets),
+        "effects": sorted(effect_chain_presets),
+    }
