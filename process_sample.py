@@ -210,6 +210,17 @@ def decrease_sample_gain(input_path, db):
     print(f"Decreased gain by {db} dB: {input_path}")
 
 
+def reverse_sample(input_path):
+    """Reverses the audio file and overwrites the existing file."""
+    audio, sample_rate = sf.read(input_path)
+
+    # Reverse the audio along the time axis
+    reversed_audio = audio[::-1]
+
+    sf.write(input_path, reversed_audio, sample_rate)
+    print(f"Reversed sample saved to: {input_path}")
+
+
 def process_sample(
     input_path,
     stretch=8.0,  # Default stretch amount

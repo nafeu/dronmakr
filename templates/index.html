@@ -28,21 +28,45 @@
       padding: 1rem;
     }
 
+    #main {
+      display: flex;
+      gap: 10px;
+    }
+
+    #sidebar {
+      flex: 0.25;
+    }
+
+    #waveforms {
+      flex: 1;
+    }
+
     #actions {
       display: flex;
-      gap: 1rem;
+      gap: 5px;
     }
 
     .button {
       cursor: pointer;
       border: 2px solid var(--theme-a);
-      border-radius: 10px;
-      padding-inline: 10px;
+      /* border-radius: 10px; */
+      padding-inline: 5px;
       padding-block: 5px;
+      font-size: 0.75rem;
+      font-weight: bold;
     }
 
     .button:hover {
       opacity: 0.5;
+    }
+
+    .fixed-button {
+      width: 40px;
+      text-align: center;
+      font-weight: bold;
+      border: 2px solid var(--primary);
+      background-color: var(--primary);
+      color: var(--secondary);
     }
 
     .waveform {
@@ -57,17 +81,19 @@
     }
 
     .waveform-title {
+      font-size: 0.75rem;
       margin-bottom: 1rem;
     }
 
     .waveform-actions,
     .title-container {
       display: flex;
-      gap: 10px;
+      gap: 5px;
       flex-wrap: wrap;
     }
 
     .waveform-duration {
+      font-size: 0.75rem;
       color: var(--theme-c);
       font-weight: bold;
     }
@@ -81,13 +107,14 @@
 
     #generate-form>label {
       color: var(--theme-b);
-      border: 2px solid var(--theme-c);
+      border-left: 2px solid var(--theme-c);
       padding: 10px;
-      border-radius: 10px;
       height: 30px;
       display: flex;
       align-items: center;
+      justify-content: right;
       gap: 10px;
+      width: 300px;
     }
 
     #status {
@@ -98,8 +125,12 @@
     #generate-sample-button {
       height: 40px;
       display: flex;
+      font-weight: bold;
+      width: 300px;
       align-items: center;
       border: 2px solid var(--primary);
+      font-size: 1.5rem;
+      justify-content: center;
     }
 
     input,
@@ -107,8 +138,12 @@
       background-color: var(--theme-a);
       padding: 10px;
       border: none;
-      border-radius: 10px;
       color: var(--primary);
+      width: 125px;
+    }
+
+    select {
+      width: 145px;
     }
 
     input::placeholder {
@@ -122,85 +157,116 @@
       text-overflow: '';
     }
 
-    #waveform-container {
-      margin-top: 20px;
+    #logs {
+      background-color: var(--theme-a);
+    }
+
+    .disabled {
+      opacity: 0.25;
     }
   </style>
 </head>
 
 <body>
-  <h1>┌ dronmakr ■ auditioner ┐ <span id="status"></span></h1>
+  <h1>┌ dronmakr ■ auditioner ┐</h1>
 
-  <form id="generate-form">
-    <label>Name:
-      <input type="text" name="name" placeholder="Enter sample name">
-    </label>
+  <div id="main">
+    <div id="sidebar">
+      <form id="generate-form">
+        <label>Name:
+          <input type="text" name="name" placeholder="Enter sample name">
+        </label>
 
-    <label>Chart Name:
-      <input type="text" name="chart_name" placeholder="Enter chart name">
-    </label>
+        <label>Chart Name:
+          <input type="text" name="chart_name" placeholder="Enter chart name">
+        </label>
 
-    <label>Instrument:
-      <input type="text" name="instrument" placeholder="Enter instrument">
-    </label>
+        <label>Instrument:
+          <input type="text" name="instrument" placeholder="Enter instrument">
+        </label>
 
-    <label>Effect:
-      <input type="text" name="effect" placeholder="Enter effect">
-    </label>
+        <label>Effect:
+          <input type="text" name="effect" placeholder="Enter effect">
+        </label>
 
-    <label>Tags:
-      <input type="text" name="tags" placeholder="e.g., ambient,drone">
-    </label>
+        <label>Tags:
+          <input type="text" name="tags" placeholder="e.g., ambient,drone">
+        </label>
 
-    <label>Roots:
-      <input type="text" name="roots" placeholder="e.g., C,E,G">
-    </label>
+        <label>Roots:
+          <input type="text" name="roots" placeholder="e.g., C,E,G">
+        </label>
 
-    <label>Chart Type:
-      <select name="chart_type">
-        <option value="">Random</option>
-        <option value="chord">Chord</option>
-        <option value="scale">Scale</option>
-      </select>
-    </label>
+        <label>Chart Type:
+          <select name="chart_type">
+            <option value="">Random</option>
+            <option value="chord">Chord</option>
+            <option value="scale">Scale</option>
+          </select>
+        </label>
 
-    <label>Style:
-      <select name="style">
-        <option value="">Random</option>
-        <option value="chaotic_arpeggio">Chaotic Arpeggio</option>
-        <option value="chord">Chord</option>
-        <option value="split_chord">Split Chord</option>
-        <option value="quantized_arpeggio">Quantized Arpeggio</option>
-      </select>
-    </label>
+        <label>Style:
+          <select name="style">
+            <option value="">Random</option>
+            <option value="chaos_expand_up">Chaos Expand Up</option>
+            <option value="chaos">Chaos</option>
+            <option value="chord">Chord</option>
+            <option value="lead_flat">Lead Flat</option>
+            <option value="lead_straight_eighth">Lead Straight Eighth</option>
+            <option value="lead_straight_sixteenth">Lead Straight Sixteenth</option>
+            <option value="lead">Lead</option>
+            <option value="quantized_straight_eighth">Quantized Straight Eighth</option>
+            <option value="quantized_straight_quarter">Quantized Straight Quarter</option>
+            <option value="quantized_up_down_eighth">Quantized Up Down Eighth</option>
+            <option value="quantized_up_down_quarter">Quantized Up Down Quarter</option>
+            <option value="split_chord">Split Chord</option>
+          </select>
+        </label>
 
-    <label>Iterations:
-      <input type="number" name="iterations" value="1" min="1">
-    </label>
+        <label>Iterations:
+          <input type="number" name="iterations" value="1" min="1">
+        </label>
 
-    <label>
-      <input type="checkbox" name="shift_octave_down">
-      Shift all notes one octave down
-    </label>
+        <label>
+          <input type="checkbox" name="shift_octave_down">
+          Shift all notes one octave down
+        </label>
 
-    <label>
-      <input type="checkbox" name="shift_root_note">
-      Shift root note one octave down
-    </label>
+        <label>
+          <input type="checkbox" name="shift_root_note">
+          Shift root note one octave down
+        </label>
 
-    <div id="generate-sample-button" class="button" onclick="submitGenerate()">Generate Sample</div>
-  </form>
-
-  <div id="waveform-container"></div>
-
+        <div id="generate-sample-button" class="button" onclick="submitGenerate()">Generate Sample</div>
+        <div id="unarchive-samples-button" class="button" onclick="unarchiveSamples()">Unarchive Samples</div>
+        <div id="empty-trash-button" class="button" onclick="emptyTrash()">Empty Trash</div>
+      </form>
+    </div>
+    <div id="waveforms">
+      <div id="waveform-container"></div>
+    </div>
+  </div>
   <script>
     var isGenerating = false;
     var socket = io.connect("http://localhost:3766");
     var selectedWaveformTimestamps = [];
     var db = 2;
+    var lastEdited = "";
 
     function submitGenerate() {
       if (isGenerating) return;
+
+      var container = document.getElementById("waveform-container");
+      container.innerHTML = ""; // Clear existing waveforms
+
+      var button = document.getElementById("generate-sample-button");
+      button.classList.add("disabled")
+
+      var generationStatus = document.createElement("div");
+      generationStatus.innerText = "generating...";
+      generationStatus.classList.add("generation-status");
+      generationStatus.id = "generation-status";
+      container.appendChild(generationStatus);
 
       const form = document.getElementById("generate-form");
       const formData = new FormData(form);
@@ -233,7 +299,45 @@
         body: JSON.stringify(jsonData)
       })
         .then(response => response.json())
-        .then(data => console.log("Response:", data))
+        .then(data => {
+          console.log("Response:", data);
+
+          button.classList.remove("disabled")
+        })
+        .catch(error => console.error("Error:", error));
+    }
+
+    function emptyTrash() {
+      var button = document.getElementById("empty-trash-button");
+      button.innerHTML = "Emptying trash..."; // Clear existing waveforms
+
+      fetch("/emptytrash")
+        .then(response => response.json())
+        .then(data => {
+          console.log("Response:", data);
+          button.innerHTML = "Emptied.";
+
+          setTimeout(() => {
+            button.innerHTML = "Empty Trash"
+          }, 1000)
+        })
+        .catch(error => console.error("Error:", error));
+    }
+
+    function unarchiveSamples() {
+      var button = document.getElementById("unarchive-samples-button");
+      button.innerHTML = "Moving Files...";
+
+      fetch("/unarchive")
+        .then(response => response.json())
+        .then(data => {
+          console.log("Response:", data);
+          button.innerHTML = "Files Moved.";
+
+          setTimeout(() => {
+            button.innerHTML = "Unarchive Samples"
+          }, 1000)
+        })
         .catch(error => console.error("Error:", error));
     }
 
@@ -245,6 +349,24 @@
       }).then(response => response.json())
         .then(data => console.log(data))
         .catch(error => console.error("Error:", error));
+    }
+
+    function deleteSample(path) {
+      fetch("/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path })
+      }).then(response => response.json())
+        .then(data => console.log(data))
+        .catch(error => console.error("Error:", error));
+    }
+
+    function formatTimestamp(seconds) {
+      const roundedSeconds = Math.round(seconds); // Round to the nearest second
+      const hours = Math.floor(roundedSeconds / 3600);
+      const minutes = Math.floor((roundedSeconds % 3600) / 60);
+      const remainingSeconds = roundedSeconds % 60;
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
     }
 
     function saveSample(path) {
@@ -270,12 +392,9 @@
     socket.on("status", function (data) {
       if (data.done) {
         isGenerating = false;
-        setTimeout(() => {
-          document.getElementById("status").innerText = "";
-        }, 1000);
       }
 
-      document.getElementById("status").innerText = data.message;
+      document.getElementById("generation-status").innerText = data.message;
     });
 
     socket.on("exports", function (data) {
@@ -321,6 +440,7 @@
         var playButton = document.createElement("div");
         playButton.innerText = "Play";
         playButton.classList.add("button")
+        playButton.classList.add("fixed-button")
         actions.appendChild(playButton);
 
         var skipButton = document.createElement("div");
@@ -336,22 +456,24 @@
         actions.appendChild(saveButton);
 
         var trimStartButton = document.createElement("div");
-        trimStartButton.innerText = `Start At ${selectedWaveformTimestamps[index].toFixed(2)}s`;
+        trimStartButton.innerText = `Start At ${formatTimestamp(selectedWaveformTimestamps[index])}`;
         trimStartButton.classList.add("button")
         trimStartButton.addEventListener("click", () => processSample({
           path: filePath,
           command: "trim_sample_start",
-          seconds: selectedWaveformTimestamps[index]
+          seconds: selectedWaveformTimestamps[index],
+          files
         }));
         actions.appendChild(trimStartButton);
 
         var trimEndButton = document.createElement("div");
-        trimEndButton.innerText = `End At ${selectedWaveformTimestamps[index].toFixed(2)}s`;
+        trimEndButton.innerText = `End At ${formatTimestamp(selectedWaveformTimestamps[index])}`;
         trimEndButton.classList.add("button")
         trimEndButton.addEventListener("click", () => processSample({
           path: filePath,
           command: "trim_sample_end",
-          seconds: selectedWaveformTimestamps[index]
+          seconds: selectedWaveformTimestamps[index],
+          files
         }));
         actions.appendChild(trimEndButton);
 
@@ -361,7 +483,8 @@
         fadeStartButton.addEventListener("click", () => processSample({
           path: filePath,
           command: "fade_sample_start",
-          seconds: 2
+          seconds: 2,
+          files
         }));
         actions.appendChild(fadeStartButton);
 
@@ -371,7 +494,8 @@
         fadeEndButton.addEventListener("click", () => processSample({
           path: filePath,
           command: "fade_sample_end",
-          seconds: 2
+          seconds: 2,
+          files
         }));
         actions.appendChild(fadeEndButton);
 
@@ -381,7 +505,8 @@
         fadeStartLongButton.addEventListener("click", () => processSample({
           path: filePath,
           command: "fade_sample_start",
-          seconds: 5
+          seconds: 5,
+          files
         }));
         actions.appendChild(fadeStartLongButton);
 
@@ -391,7 +516,8 @@
         fadeEndLongButton.addEventListener("click", () => processSample({
           path: filePath,
           command: "fade_sample_end",
-          seconds: 5
+          seconds: 5,
+          files
         }));
         actions.appendChild(fadeEndLongButton);
 
@@ -401,7 +527,8 @@
         increaseGainButton.addEventListener("click", () => processSample({
           path: filePath,
           command: "increase_sample_gain",
-          db
+          db,
+          files
         }));
         actions.appendChild(increaseGainButton);
 
@@ -411,9 +538,26 @@
         decreaseGainButton.addEventListener("click", () => processSample({
           path: filePath,
           command: "decrease_sample_gain",
-          db
+          db,
+          files
         }));
         actions.appendChild(decreaseGainButton);
+
+        var reverseButton = document.createElement("div");
+        reverseButton.innerText = "Reverse";
+        reverseButton.classList.add("button")
+        reverseButton.addEventListener("click", () => processSample({
+          path: filePath,
+          command: "reverse_sample",
+          files
+        }));
+        actions.appendChild(reverseButton);
+
+        var deleteButton = document.createElement("div");
+        deleteButton.innerText = "Delete";
+        deleteButton.classList.add("button")
+        deleteButton.addEventListener("click", () => deleteSample(filePath));
+        actions.appendChild(deleteButton);
 
         wrapper.appendChild(actions);
         container.appendChild(wrapper);
@@ -430,12 +574,12 @@
 
         wavesurfer.on("seeking", function (currentTime) {
           selectedWaveformTimestamps[index] = currentTime
-          trimStartButton.innerText = `Start At ${selectedWaveformTimestamps[index].toFixed(2)}s`;
-          trimEndButton.innerText = `End At ${selectedWaveformTimestamps[index].toFixed(2)}s`;
+          trimStartButton.innerText = `Start At ${formatTimestamp(selectedWaveformTimestamps[index])}`;
+          trimEndButton.innerText = `End At ${formatTimestamp(selectedWaveformTimestamps[index])}`;
         });
 
         wavesurfer.on("ready", function () {
-          duration.innerText = `${wavesurfer.getDuration().toFixed(2)}s`;
+          duration.innerText = `${formatTimestamp(wavesurfer.getDuration())}`;
         });
 
         playButton.addEventListener("click", () => {

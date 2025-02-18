@@ -73,5 +73,6 @@ midi/
 exports/
 archive/
 saved/
+trash/
 temp/
 generated*.wav

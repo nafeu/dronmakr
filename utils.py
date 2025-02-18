@@ -541,7 +541,7 @@ def generate_name():
     )
 
 
-def get_latest_exports():
+def get_latest_exports(sort_override=None):
     """Reads the last 20 `.wav` files from the 'exports/' folder, sorted by newest first."""
     try:
         if not os.path.exists(EXPORTS_DIR):
@@ -556,6 +556,14 @@ def get_latest_exports():
 
         # Sort by newest file first (modification time descending) & return latest 5
         sorted_files = sorted(files, key=os.path.getmtime, reverse=True)[:5]
+
+        # If sort_override is provided, remove all files in it from the final sorted list
+        # and insert them at the top of the sorted list
+        if sort_override:
+            for file in sort_override:
+                if file in sorted_files:
+                    sorted_files.remove(file)
+            sorted_files = sort_override + sorted_files
         return sorted_files
 
     except Exception as e:

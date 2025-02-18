@@ -16,12 +16,14 @@ from process_sample import (
     fade_sample_end,
     increase_sample_gain,
     decrease_sample_gain,
+    reverse_sample,
 )
 
 
 EXPORTS_DIR = "exports"
 ARCHIVE_DIR = "archive"
 SAVED_DIR = "saved"
+TRASH_DIR = "trash"
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 socketio = SocketIO(app, cors_allowed_origins="*")  # WebSockets enabled
@@ -112,6 +114,74 @@ def skip_file():
     return jsonify({"success": "File moved to archive."}), 200
 
 
+@app.route("/unarchive", methods=["GET"])
+def unarchive_files():
+    if not os.path.exists(ARCHIVE_DIR):
+        return jsonify({"error": "Archive does not exist"}), 404
+
+    if not os.path.exists(EXPORTS_DIR):
+        return jsonify({"error": "Exports do not exist"}), 404
+
+    move_all_files(ARCHIVE_DIR, EXPORTS_DIR)
+
+    socketio.emit("exports", {"files": get_latest_exports()})
+    return jsonify({"success": "Files moved back from archive"}), 200
+
+
+@app.route("/emptytrash", methods=["GET"])
+def empty_trash():
+    if not os.path.exists(TRASH_DIR):
+        return jsonify({"error": "Trash does not exist"}), 404
+
+    delete_all_files(TRASH_DIR)
+
+    return jsonify({"success": "Trash has been emptied"}), 200
+
+
+def delete_all_files(directory):
+    for filename in os.listdir(directory):
+        file_path = os.path.join(directory, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print("Failed to delete %s. Reason: %s" % (file_path, e))
+
+
+def move_all_files(source_dir, target_dir):
+    if not os.path.exists(target_dir):
+        os.makedirs(target_dir)
+
+    files = os.listdir(source_dir)
+
+    for file in files:
+        shutil.move(os.path.join(source_dir, file), target_dir)
+
+
+@app.route("/delete", methods=["POST"])
+def delete_file():
+    params = request.get_json() or {}
+    if not params["path"]:
+        return jsonify({"error": "File path is required."}), 400
+
+    file_path = f".{params['path']}"
+
+    if not os.path.exists(file_path):
+        return jsonify({"error": "File does not exist."}), 404
+
+    if not os.path.exists(TRASH_DIR):
+        os.makedirs(TRASH_DIR)
+
+    file_name = file_path.split(f"{EXPORTS_DIR}/")[1]
+
+    shutil.move(file_path, os.path.join(TRASH_DIR, file_name))
+
+    socketio.emit("exports", {"files": get_latest_exports()})
+    return jsonify({"success": "File moved to trash."}), 200
+
+
 @app.route("/save", methods=["POST"])
 def save_file():
     params = request.get_json() or {}
@@ -163,10 +233,14 @@ def process_file():
             increase_sample_gain(file_path, params["db"])
         case "decrease_sample_gain":
             decrease_sample_gain(file_path, params["db"])
+        case "reverse_sample":
+            reverse_sample(file_path)
         case _:
             return jsonify({"error": "Command not recognized"}), 400
 
-    socketio.emit("exports", {"files": get_latest_exports()})
+    socketio.emit(
+        "exports", {"files": get_latest_exports(sort_override=params["files"])}
+    )
     return jsonify({"success": f"File processed with {command}"}), 200
 
 
