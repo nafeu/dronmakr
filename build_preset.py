@@ -35,6 +35,8 @@ def build_preset():
     load_dotenv()
 
     vst_paths = os.getenv("VST_PATHS", "").split(",")
+    assert_instrument = os.getenv("ASSERT_INSTRUMENT", "").split(",")
+    ignore_plugins = os.getenv("IGNORE_PLUGINS", "").split(",")
     if not vst_paths or vst_paths == [""]:
         print(with_prompt("error: No VST paths found in the .env file."))
         exit(1)
@@ -44,13 +46,17 @@ def build_preset():
         print(with_prompt("error: No VST plugins found."))
         exit(1)
 
-    plugin_map = {format_plugin_name(path): path for path in available_plugins}
+    plugin_map = {
+        format_plugin_name(path): path
+        for path in available_plugins
+        if not any(ignore in format_plugin_name(path) for ignore in ignore_plugins)
+    }
     print(with_prompt("available plugins:\n"))
 
     # Display plugins in columns
     columns = 3
     for i, plugin in enumerate(plugin_map.keys(), start=1):
-        print(f"{i}. {plugin}".ljust(35), end="")
+        print(f"{i}. {plugin}".ljust(30), end="")
         if i % columns == 0:
             print()
 
@@ -67,7 +73,7 @@ def build_preset():
     preset_name = ""
     preset_uid = ""
     preset_path = ""
-    if plugin.is_effect:
+    if plugin.is_effect and selected_plugin_name not in assert_instrument:
         effect_chain.append((selected_plugin, selected_plugin_name, plugin))
 
         (
@@ -175,13 +181,14 @@ def list_vst_plugins(vst_dirs):
         vst_dir = vst_dir.strip()
         if os.path.exists(vst_dir):
             vst_plugins.extend(glob.glob(os.path.join(vst_dir, "*.vst3")))
+            vst_plugins.extend(glob.glob(os.path.join(vst_dir, "*.vst")))
             vst_plugins.extend(glob.glob(os.path.join(vst_dir, "*.dll")))
             vst_plugins.extend(glob.glob(os.path.join(vst_dir, "*.so")))
     return vst_plugins
 
 
 def format_plugin_name(plugin_path):
-    return os.path.basename(plugin_path).replace(".vst3", "")
+    return os.path.basename(plugin_path).replace(".vst3", "").replace(".vst", "")
 
 
 def generate_midi():

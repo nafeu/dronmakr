@@ -74,5 +74,6 @@ exports/
 archive/
 saved/
 trash/
+history/
 temp/
 generated*.wav

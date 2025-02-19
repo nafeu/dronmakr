@@ -2,11 +2,19 @@ import sys
 import os
 import json
 import random
-import numpy as np
 import pedalboard
-from pedalboard import Gain, Pedalboard
+import os
+import json
+import pedalboard
+from pedalboard import (
+    Compressor,
+    Gain,
+    HighpassFilter,
+    LowpassFilter,
+    Limiter,
+    Pedalboard,
+)
 from pedalboard.io import AudioFile
-import mido
 from mido import MidiFile, Message
 from utils import (
     with_generate_sample_prompt as with_prompt,
@@ -15,6 +23,8 @@ from utils import (
     RESET,
     generate_sample_header,
 )
+
+PRESETS_PATH = "presets/presets.json"
 
 
 # Convert MIDI file to MIDI messages
@@ -53,7 +63,7 @@ SAMPLE_RATE = 44100
 def generate_sample(
     input_path="input.mid",
     output_path="generated_sample.wav",
-    presets_path="presets",
+    presets_path=PRESETS_PATH,
     instrument=None,
     effect=None,
 ):
@@ -62,7 +72,7 @@ def generate_sample(
     loaded_effects = []
 
     # Load presets from JSON
-    with open(f"{presets_path}/presets.json", "r") as f:
+    with open(presets_path, "r") as f:
         presets = json.load(f)
 
     # Separate instruments and effects
@@ -94,7 +104,7 @@ def generate_sample(
                 break
         else:
             # If no match found, raise an error
-            raise ValueError(f"No instrument found with the name '{effect}'")
+            raise ValueError(f"No effect chain found with the name '{effect}'")
 
     print(
         with_prompt(
@@ -199,6 +209,84 @@ def generate_sample(
     print(f"{GREEN}│{RESET}")
 
     return output_path
+
+
+def apply_effect(input_path, effect_chain, presets_path=PRESETS_PATH):
+    """Applies an effect chain from presets to a WAV file and overwrites it after backing up."""
+
+    # Load presets
+    with open(presets_path, "r") as f:
+        presets = json.load(f)
+
+    effects = [p for p in presets if p["type"] == "effect_chain"]
+
+    if effect_chain == "":
+        effect_preset = random.choice(effects)
+    else:
+        # Find the requested effect chain
+        effect_preset = next(
+            (
+                p
+                for p in presets
+                if p["type"] == "effect_chain" and p["name"] == effect_chain
+            ),
+            None,
+        )
+
+    if not effect_preset:
+        raise ValueError(f"Effect chain '{effect_chain}' not found in presets.")
+
+    output_path = input_path.replace(".wav", f"_{effect_preset['name']}.wav")
+
+    print(f"Applying effect chain: {effect_preset['name']}")
+
+    # Load effect plugins
+    loaded_effects = []
+
+    for effect in effect_preset["effects"]:
+        if effect["plugin_name"]:
+            print(
+                f"inserting {extract_plugin(effect['plugin_path'])} as {effect['plugin_name']}"
+            )
+            effect_plugin = pedalboard.VST3Plugin(
+                effect["plugin_path"], plugin_name=effect["plugin_name"]
+            )
+        else:
+            print(f"inserting {extract_plugin(effect['plugin_path'])}")
+            effect_plugin = pedalboard.VST3Plugin(effect["plugin_path"])
+
+        # Load the effect's preset data
+        with open(effect["preset_path"], "rb") as f:
+            print(f"using preset {effect['name']} ({effect['desc']})")
+            effect_plugin.preset_data = f.read()
+
+        loaded_effects.append(effect_plugin)
+
+    # Load audio file
+    with AudioFile(input_path) as f:
+        audio = f.read(f.frames)
+        sample_rate = f.samplerate
+
+    # Apply effects
+    normalization_chain = [
+        HighpassFilter(cutoff_frequency_hz=40),  # Remove sub-bass rumble
+        LowpassFilter(cutoff_frequency_hz=18000),  # Remove harsh highs if needed
+        Compressor(
+            threshold_db=-24, ratio=1.5, attack_ms=30, release_ms=200
+        ),  # Gentle compression for control
+        Limiter(
+            threshold_db=-4, release_ms=250
+        ),  # Ensure headroom without crushing dynamics
+    ]
+    fx_chain = Pedalboard(loaded_effects + normalization_chain)
+    processed_audio = fx_chain(audio, sample_rate)
+
+    with AudioFile(
+        output_path, "w", samplerate=sample_rate, num_channels=processed_audio.shape[0]
+    ) as f:
+        f.write(processed_audio)
+
+    print(f"Effect chain '{effect_chain}' applied and saved: {input_path}")
 
 
 def main():

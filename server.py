@@ -10,6 +10,7 @@ from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_socketio import SocketIO
 from utils import get_server_version, get_latest_exports, get_presets
 from generate_midi import get_styles
+from generate_sample import apply_effect
 from process_sample import (
     trim_sample_start,
     trim_sample_end,
@@ -141,6 +142,24 @@ def empty_trash():
     delete_all_files(TRASH_DIR)
 
     return jsonify({"success": "Trash has been emptied"}), 200
+
+
+@app.route("/reprocess", methods=["POST"])
+def reprocess():
+    params = request.get_json() or {}
+    if not params["path"]:
+        return jsonify({"error": "File path is required."}), 400
+
+    file_path = f".{params['path']}"
+
+    if not os.path.exists(file_path):
+        return jsonify({"error": "File does not exist."}), 404
+
+    apply_effect(file_path, params["effect"])
+
+    socketio.emit("exports", {"files": get_latest_exports()})
+    socketio.emit("status", {"done": True})
+    return jsonify({"success": "File moved to archive."}), 200
 
 
 def delete_all_files(directory):

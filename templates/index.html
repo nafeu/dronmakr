@@ -4,9 +4,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dronmakr Web Interface</title>
+  <title>┌ dronmakr ┐</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.0/socket.io.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/7.4.0/wavesurfer.min.js"></script>
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏳</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
@@ -354,6 +356,29 @@
         .catch(error => console.error("Error:", error));
     }
 
+    function reprocessSample(path, effect) {
+      var container = document.getElementById("waveform-container");
+      container.innerHTML = "";
+
+      var generateSampleButton = document.getElementById("generate-sample-button");
+      generateSampleButton.classList.add("disabled");
+      generateSampleButton.innerText = "Reprocessing...";
+
+      var generationStatus = document.createElement("div");
+      generationStatus.innerText = "reprocessing...";
+      generationStatus.classList.add("generation-status");
+      generationStatus.id = "generation-status";
+      container.appendChild(generationStatus);
+
+      fetch("/reprocess", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path, effect })
+      }).then(response => response.json())
+        .then(data => console.log(data))
+        .catch(error => console.error("Error:", error));
+    }
+
     function deleteSample(path) {
       fetch("/delete", {
         method: "POST",
@@ -400,7 +425,9 @@
         generateSampleButton.innerText = "Generate Sample"
       }
 
-      document.getElementById("generation-status").innerText = data.message;
+      if (document.getElementById("generation-status")) {
+        document.getElementById("generation-status").innerText = data.message;
+      }
     });
 
     socket.on("exports", function (data) {
@@ -618,6 +645,13 @@
           files
         }));
         actions.appendChild(reverseButton);
+
+        var reprocessButton = document.createElement("div");
+        reprocessButton.innerText = "Reprocess";
+        reprocessButton.classList.add("button")
+        var effect = document.getElementById("effect-select").value
+        reprocessButton.addEventListener("click", () => reprocessSample(filePath, effect));
+        actions.appendChild(reprocessButton);
 
         var deleteButton = document.createElement("div");
         deleteButton.innerText = "Delete";
