@@ -4,6 +4,18 @@
 
 Python-based music sample generator powered by [pedalboard.io](https://spotify.github.io/pedalboard/index.html), [paulstretch](https://github.com/canyondust/paulstretch_python) and your own **VST Instruments & FX** library.
 
+### _Load available audio plugins and save presets_
+
+![dronmakr cli preview](./preview-3.gif)
+
+### _Generate midi and render samples using a CLI_
+
+![dronmakr cli preview](./preview-1.gif)
+
+### _Audition the generated results_
+
+![dronmakr auditioner preview](./preview-2.gif)
+
 ## Installation & Setup
 
 _Built in Python `3.10.16`_
