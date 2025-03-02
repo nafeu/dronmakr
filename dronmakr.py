@@ -13,8 +13,10 @@ from utils import (
     format_name,
     RED,
     RESET,
+    rename_samples,
 )
 from build_preset import build_preset, list_presets
+from server import main as run_server
 
 EXPORTS_FOLDER = "exports"
 GENERATED_LABEL = f"{RED}...{RESET}"
@@ -217,6 +219,28 @@ def list(
 ):
     """List all available presets"""
     list_presets(show_chain_plugins=show_chain_plugins)
+
+
+@cli.command()
+def pack(
+    pack_name: str = typer.Option(
+        None, "--name", "-n", help="Name for the sample pack"
+    ),
+    artist_name: str = typer.Option(
+        None, "--artist", "-a", help="Artist name for sample pack"
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", "-d", help="Check updated filenames"
+    ),
+):
+    """Rename all samples inside of saved folder for packaging"""
+    rename_samples(pack_name, artist_name, dry_run)
+
+
+@cli.command()
+def server():
+    """Run auditioner web server"""
+    run_server()
 
 
 if __name__ == "__main__":

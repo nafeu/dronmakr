@@ -274,6 +274,10 @@ def process_file():
     return jsonify({"success": f"File processed with {command}"}), 200
 
 
-if __name__ == "__main__":
+def main():
     print(get_server_version())
     socketio.run(app, host="0.0.0.0", port=3766, debug=True)
+
+
+if __name__ == "__main__":
+    main()

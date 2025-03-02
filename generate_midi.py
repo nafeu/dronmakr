@@ -83,7 +83,7 @@ def generate_midi(
     note_density=2,  # Notes per beat (higher = more active)
     duration_variance=0.5,  # Variance in note lengths (0 = fixed, 1 = max randomness)
     velocity_range=(80, 120),  # MIDI note velocity range
-    num_bars=4,  # Default to 4 bars
+    num_bars=8,  # Default to 4 bars
     humanization=0.02,  # Time shift variance in seconds (default: 20ms)
     shift_octave_down=None,
     shift_root_note=None,

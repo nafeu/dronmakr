@@ -15,6 +15,7 @@ RESET = "\033[0m"
 APP_NAME = "dronmakr"
 EXPORTS_DIR = "exports"
 PRESETS_PATH = "presets/presets.json"
+SAVED_PATH = "saved"
 
 
 def get_version():
@@ -590,3 +591,43 @@ def get_presets():
         "instruments": sorted(instrument_presets),
         "effects": sorted(effect_chain_presets),
     }
+
+
+def rename_samples(pack_name, artist_name="", dry_run=False):
+    """Lists all .wav files in the 'saved/' directory."""
+    if not os.path.exists(SAVED_PATH):
+        print(f"Directory '{SAVED_PATH}' does not exist.")
+        return
+
+    if not pack_name:
+        print(f"pack_name is required")
+        return
+
+    # List all .wav files
+    wav_files = [f for f in os.listdir(SAVED_PATH) if f.endswith(".wav")]
+
+    if not wav_files:
+        print("No files found.")
+    else:
+        try:
+            chart_list = [(file.split("___")[1], file) for file in wav_files]
+        except IndexError:
+            print(f"Files have already been renamed for packaging.")
+            return
+        chart_list = [(file.split("___")[1], file) for file in wav_files]
+        chart_list = sorted(chart_list)
+        for index, chart in enumerate(chart_list):
+            original_file = chart[1]
+            new_name = f"{chart[0]}__{pack_name}_{index+1}{'__' + artist_name if artist_name else ''}.wav"
+
+            if dry_run:
+                print(new_name)
+            else:
+                original_filepath = os.path.join(SAVED_PATH, original_file)
+                new_filepath = os.path.join(SAVED_PATH, new_name)
+                if os.path.exists(new_filepath):
+                    print(f"File '{new_filepath}' already exists, skipping renaming.")
+                else:
+                    os.rename(original_filepath, new_filepath)
+
+    return wav_files
