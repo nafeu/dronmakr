@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import soundfile as sf
+import librosa
 import pedalboard
 from pedalboard import (
     Compressor,
@@ -219,6 +220,81 @@ def reverse_sample(input_path):
 
     sf.write(input_path, reversed_audio, sample_rate)
     print(f"Reversed sample saved to: {input_path}")
+
+
+def apply_granular_synthesis(
+    input_file,
+    grain_size=0.05,
+    overlap=0.5,
+    pitch_shift=0,
+    stretch_factor=1.0,
+    randomness=0.1,
+    window_type="hann",
+):
+    """
+    Apply granular synthesis directly to an audio file (overwrites the input file).
+
+    Parameters:
+    - input_file (str): Path to the input WAV file (will be overwritten).
+    - grain_size (float): Grain size in seconds.
+    - overlap (float): Overlap factor (0 to 1).
+    - pitch_shift (float): Pitch shift in semitones.
+    - stretch_factor (float): Time stretching factor (1.0 = no change).
+    - randomness (float): Random grain position shift (0.0 = no randomness, 1.0 = max randomness).
+    - window_type (str): Type of window function ('hann' or 'gaussian') to smooth grain edges.
+    """
+
+    # Load audio
+    y, sr = librosa.load(input_file, sr=None)
+
+    # Calculate grain length in samples
+    grain_samples = int(grain_size * sr)
+    hop_samples = int(grain_samples * (1 - overlap))
+
+    # Generate a windowing function to smooth grains
+    if window_type == "hann":
+        window = np.hanning(grain_samples)
+    elif window_type == "gaussian":
+        window = np.exp(
+            -0.5 * ((np.linspace(-2, 2, grain_samples)) ** 2)
+        )  # Gaussian window
+    else:
+        window = np.ones(grain_samples)  # Default to rectangular (no windowing)
+
+    # Generate grain positions
+    grain_positions = np.arange(0, len(y) - grain_samples, hop_samples)
+
+    # Apply randomness to grain positions
+    if randomness > 0:
+        max_shift = int(grain_samples * randomness)  # Max shift in samples
+        random_shifts = np.random.randint(
+            -max_shift, max_shift, size=grain_positions.shape
+        )
+        grain_positions = np.clip(
+            grain_positions + random_shifts, 0, len(y) - grain_samples
+        )  # Ensure positions stay valid
+
+    # Process grains
+    processed_audio = np.zeros(len(y))
+    for pos in grain_positions:
+        grain = y[pos : pos + grain_samples] * window  # Apply windowing function
+
+        # Apply pitch shifting
+        if pitch_shift != 0:
+            grain = librosa.effects.pitch_shift(grain, sr, pitch_shift)
+
+        # Apply time-stretching
+        if stretch_factor != 1.0:
+            grain = librosa.effects.time_stretch(grain, stretch_factor)
+
+        # Overlap-add the grain to the processed audio
+        processed_audio[pos : pos + grain_samples] += grain
+
+    # Normalize to prevent clipping
+    processed_audio = processed_audio / np.max(np.abs(processed_audio))
+
+    # Overwrite the original file with the processed audio
+    sf.write(input_file, processed_audio, sr)
 
 
 def process_sample(

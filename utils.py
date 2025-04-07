@@ -593,7 +593,9 @@ def get_presets():
     }
 
 
-def rename_samples(pack_name, artist_name="", dry_run=False):
+def rename_samples(
+    pack_name, artist_name="", affix=False, dry_run=False, delimiter="^"
+):
     """Lists all .wav files in the 'saved/' directory."""
     if not os.path.exists(SAVED_PATH):
         print(f"Directory '{SAVED_PATH}' does not exist.")
@@ -610,12 +612,24 @@ def rename_samples(pack_name, artist_name="", dry_run=False):
         print("No files found.")
     else:
         try:
-            chart_list = [(file.split("___")[1], file) for file in wav_files]
+            if affix:
+                chart_list = [(file.replace(".wav", ""), file) for file in wav_files]
+            else:
+                chart_list = [
+                    (
+                        file.split(delimiter if delimiter in file else "___")[
+                            0 if delimiter in file else 1
+                        ],
+                        file,
+                    )
+                    for file in wav_files
+                ]
         except IndexError:
             print(f"Files have already been renamed for packaging.")
             return
-        chart_list = [(file.split("___")[1], file) for file in wav_files]
+
         chart_list = sorted(chart_list)
+
         for index, chart in enumerate(chart_list):
             original_file = chart[1]
             new_name = f"{chart[0]}__{pack_name}_{index+1}{'__' + artist_name if artist_name else ''}.wav"

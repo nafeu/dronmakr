@@ -229,12 +229,24 @@ def pack(
     artist_name: str = typer.Option(
         None, "--artist", "-a", help="Artist name for sample pack"
     ),
+    affix: bool = typer.Option(
+        False, "--affix", "-f", help="Simply attach the meta to the end of the filename"
+    ),
     dry_run: bool = typer.Option(
         False, "--dry-run", "-d", help="Check updated filenames"
     ),
+    delimiter: str = typer.Option(
+        "^", "--delimiter", "-l", help="Original filename delimiter"
+    ),
 ):
     """Rename all samples inside of saved folder for packaging"""
-    rename_samples(pack_name, artist_name, dry_run)
+    rename_samples(
+        pack_name=pack_name,
+        artist_name=artist_name,
+        dry_run=dry_run,
+        affix=affix,
+        delimiter=delimiter,
+    )
 
 
 @cli.command()

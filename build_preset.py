@@ -34,14 +34,18 @@ def build_preset():
 
     load_dotenv()
 
-    vst_paths = os.getenv("VST_PATHS", "").split(",")
+    plugin_paths = os.getenv("PLUGIN_PATHS", "").split(",")
     assert_instrument = os.getenv("ASSERT_INSTRUMENT", "").split(",")
     ignore_plugins = os.getenv("IGNORE_PLUGINS", "").split(",")
-    if not vst_paths or vst_paths == [""]:
+    custom_plugins = [
+        plugin for plugin in os.getenv("CUSTOM_PLUGINS", "").split(",") if plugin
+    ]
+
+    if not plugin_paths or plugin_paths == [""]:
         print(with_prompt("error: No VST paths found in the .env file."))
         exit(1)
 
-    available_plugins = list_vst_plugins(vst_paths)
+    available_plugins = list_installed_plugins(plugin_paths, custom_plugins)
     if not available_plugins:
         print(with_prompt("error: No VST plugins found."))
         exit(1)
@@ -175,20 +179,26 @@ def calculate_beat_info(tempo_bpm, time_signature):
     return beats_per_bar, beat_duration_s
 
 
-def list_vst_plugins(vst_dirs):
-    vst_plugins = []
-    for vst_dir in vst_dirs:
-        vst_dir = vst_dir.strip()
-        if os.path.exists(vst_dir):
-            vst_plugins.extend(glob.glob(os.path.join(vst_dir, "*.vst3")))
-            vst_plugins.extend(glob.glob(os.path.join(vst_dir, "*.vst")))
-            vst_plugins.extend(glob.glob(os.path.join(vst_dir, "*.dll")))
-            vst_plugins.extend(glob.glob(os.path.join(vst_dir, "*.so")))
-    return vst_plugins
+def list_installed_plugins(plugin_dirs, custom_plugins):
+    plugin_paths = [plugin for plugin in custom_plugins]
+    for plugin_dir in plugin_dirs:
+        plugin_dir = plugin_dir.strip()
+        if os.path.exists(plugin_dir):
+            plugin_paths.extend(glob.glob(os.path.join(plugin_dir, "*.vst3")))
+            plugin_paths.extend(glob.glob(os.path.join(plugin_dir, "*.vst")))
+            plugin_paths.extend(glob.glob(os.path.join(plugin_dir, "*.dll")))
+            plugin_paths.extend(glob.glob(os.path.join(plugin_dir, "*.so")))
+            plugin_paths.extend(glob.glob(os.path.join(plugin_dir, "*.component")))
+    return plugin_paths
 
 
 def format_plugin_name(plugin_path):
-    return os.path.basename(plugin_path).replace(".vst3", "").replace(".vst", "")
+    return (
+        os.path.basename(plugin_path)
+        .replace(".vst3", "")
+        .replace(".vst", "")
+        .replace(".component", " (AU)")
+    )
 
 
 def generate_midi():
@@ -416,7 +426,10 @@ def edit_preset_with_ui(plugin, effect_chain, selected_plugin, selected_plugin_n
 
     preset_path = os.path.join(PRESET_FOLDER, f"{preset_name}_{preset_uid}.vstpreset")
     with open(preset_path, "wb") as f:
-        f.write(plugin.preset_data)
+        if hasattr(plugin, "preset_data"):
+            f.write(plugin.preset_data)
+        else:
+            f.write(plugin.raw_state)
 
     print(with_prompt(f"preset saved to {preset_path}"))
 

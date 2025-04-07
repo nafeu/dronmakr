@@ -646,6 +646,16 @@
         }));
         actions.appendChild(reverseButton);
 
+        var granularizeButton = document.createElement("div");
+        granularizeButton.innerText = "Granularize";
+        granularizeButton.classList.add("button")
+        granularizeButton.addEventListener("click", () => processSample({
+          path: filePath,
+          command: "granularize_sample",
+          files
+        }));
+        actions.appendChild(granularizeButton);
+
         var reprocessButton = document.createElement("div");
         reprocessButton.innerText = "Reprocess";
         reprocessButton.classList.add("button")

@@ -119,7 +119,7 @@ def generate_sample(
                 f"loading instrument {GREEN}{extract_plugin(instrument_preset['plugin_path'])}{RESET} as {GREEN}{instrument_preset['plugin_name']}{RESET}"
             )
         )
-        instrument_plugin = pedalboard.VST3Plugin(
+        instrument_plugin = pedalboard.load_plugin(
             instrument_preset["plugin_path"],
             plugin_name=instrument_preset["plugin_name"],
         )
@@ -129,7 +129,7 @@ def generate_sample(
                 f"loading instrument {GREEN}{extract_plugin(instrument_preset['plugin_path'])}{RESET}"
             )
         )
-        instrument_plugin = pedalboard.VST3Plugin(instrument_preset["plugin_path"])
+        instrument_plugin = pedalboard.load_plugin(instrument_preset["plugin_path"])
 
     # Load the instrument's preset data
     with open(instrument_preset["preset_path"], "rb") as f:
@@ -154,7 +154,7 @@ def generate_sample(
                     f"inserting {GREEN}{extract_plugin(effect['plugin_path'])}{RESET} as {effect['plugin_name']}"
                 )
             )
-            effect_plugin = pedalboard.VST3Plugin(
+            effect_plugin = pedalboard.load_plugin(
                 effect["plugin_path"], plugin_name=effect["plugin_name"]
             )
         else:
@@ -163,7 +163,7 @@ def generate_sample(
                     f"inserting {GREEN}{extract_plugin(effect['plugin_path'])}{RESET}"
                 )
             )
-            effect_plugin = pedalboard.VST3Plugin(effect["plugin_path"])
+            effect_plugin = pedalboard.load_plugin(effect["plugin_path"])
 
         # Load the effect's preset data
         with open(effect["preset_path"], "rb") as f:
@@ -172,7 +172,10 @@ def generate_sample(
                     f"using preset {GREEN}{effect['name']}{RESET} ({effect['desc']})"
                 )
             )
-            effect_plugin.preset_data = f.read()
+            if hasattr(effect_plugin, "preset_data"):
+                effect_plugin.preset_data = f.read()
+            else:
+                effect_plugin.raw_state = f.read()
 
         loaded_effects.append(effect_plugin)
 
@@ -248,17 +251,20 @@ def apply_effect(input_path, effect_chain, presets_path=PRESETS_PATH):
             print(
                 f"inserting {extract_plugin(effect['plugin_path'])} as {effect['plugin_name']}"
             )
-            effect_plugin = pedalboard.VST3Plugin(
+            effect_plugin = pedalboard.load_plugin(
                 effect["plugin_path"], plugin_name=effect["plugin_name"]
             )
         else:
             print(f"inserting {extract_plugin(effect['plugin_path'])}")
-            effect_plugin = pedalboard.VST3Plugin(effect["plugin_path"])
+            effect_plugin = pedalboard.load_plugin(effect["plugin_path"])
 
         # Load the effect's preset data
         with open(effect["preset_path"], "rb") as f:
             print(f"using preset {effect['name']} ({effect['desc']})")
-            effect_plugin.preset_data = f.read()
+            if hasattr(effect_plugin, "preset_data"):
+                effect_plugin.preset_data = f.read()
+            else:
+                effect_plugin.raw_state = f.read()
 
         loaded_effects.append(effect_plugin)
 

@@ -19,6 +19,7 @@ from process_sample import (
     increase_sample_gain,
     decrease_sample_gain,
     reverse_sample,
+    apply_granular_synthesis,
 )
 
 
@@ -265,6 +266,8 @@ def process_file():
             decrease_sample_gain(file_path, params["db"])
         case "reverse_sample":
             reverse_sample(file_path)
+        case "granularize_sample":
+            apply_granular_synthesis(file_path)
         case _:
             return jsonify({"error": "Command not recognized"}), 400
 
