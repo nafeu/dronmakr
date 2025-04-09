@@ -6,17 +6,19 @@ from generate_midi import generate_midi
 from generate_sample import generate_sample
 from process_sample import process_sample
 from utils import (
-    with_main_prompt as with_prompt,
-    get_version,
+    format_name,
     generate_id,
     generate_name,
-    format_name,
+    get_version,
+    get_cli_version,
     RED,
-    RESET,
     rename_samples,
+    RESET,
+    with_main_prompt as with_prompt,
 )
-from build_preset import build_preset, list_presets
+from build_preset import list_presets
 from server import main as run_server
+from version import __version__
 
 EXPORTS_FOLDER = "exports"
 GENERATED_LABEL = f"{RED}...{RESET}"
@@ -24,9 +26,25 @@ GENERATED_LABEL = f"{RED}...{RESET}"
 cli = typer.Typer(invoke_without_command=True)
 
 
-@cli.callback()
-def default(ctx: typer.Context):
-    """Default to 'generate' if no command is given."""
+def version_callback(ctx: typer.Context, value: bool):
+    if value:
+        print(get_cli_version())
+        raise typer.Exit()
+
+
+@cli.callback(invoke_without_command=True)
+def main(
+    ctx: typer.Context,
+    version: bool = typer.Option(
+        None,
+        "--version",
+        "-v",
+        callback=version_callback,
+        is_eager=True,
+        help="Show the version and exit.",
+    ),
+):
+    """CLI entrypoint."""
     if ctx.invoked_subcommand is None:
         ctx.invoke(generate)
 
@@ -200,12 +218,6 @@ def generate(
             print(with_prompt(f"           {result}"))
 
     return results
-
-
-@cli.command()
-def preset():
-    """Use interactive preset builder"""
-    build_preset()
 
 
 @cli.command()

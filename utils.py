@@ -4,6 +4,8 @@ import uuid
 import os
 import json
 
+from version import __version__
+
 BLUE = "\033[34m"
 CYAN = "\033[36m"
 GREEN = "\033[32m"
@@ -18,12 +20,16 @@ PRESETS_PATH = "presets/presets.json"
 SAVED_PATH = "saved"
 
 
+def get_cli_version():
+    return f"{RED}{APP_NAME} ■ v{__version__}\n{RESET}  github.com/nafeu/dronmakr (phrakturemusic@proton.me)"
+
+
 def get_version():
-    return f"{RED}┌ {APP_NAME} ■ v0.1.0 - January 2025\n│{RESET}   github.com/nafeu (phrakturemusic@proton.me)\n{RED}│{RESET}"
+    return f"{RED}┌ {APP_NAME} ■ v{__version__}\n│{RESET}   github.com/nafeu/dronmakr (phrakturemusic@proton.me)\n{RED}│{RESET}"
 
 
 def get_server_version():
-    return f"{RED}┌ {APP_NAME} server ■ v0.1.0 - January 2025\n│{RESET}   github.com/nafeu (phrakturemusic@proton.me)\n{RED}│{RESET}"
+    return f"{RED}┌ {APP_NAME} server ■ v{__version__}\n│{RESET}   github.com/nafeu/dronmakr (phrakturemusic@proton.me)\n{RED}│{RESET}"
 
 
 def with_main_prompt(text):
