@@ -5,7 +5,7 @@ set -e
 VERSION_FILE="version.py"
 DRY_RUN=false
 
-# --- Parse options ---
+# --- Parse arguments ---
 POSITIONAL=()
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -19,6 +19,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     *)
       echo "Unknown argument: $1"
+      echo "Usage: $0 [major|minor|patch] [--dry-run]"
       exit 1
       ;;
   esac
@@ -36,6 +37,7 @@ fi
 
 # --- Extract and bump version ---
 current_version=$(sed -nE 's/^__version__ *= *"([0-9]+\.[0-9]+\.[0-9]+)"/\1/p' "$VERSION_FILE")
+
 IFS='.' read -r major minor patch <<< "$current_version"
 
 case "$BUMP_TYPE" in
@@ -55,16 +57,16 @@ esac
 
 new_version="${major}.${minor}.${patch}"
 
-echo "Current version: ${current_version}"
-echo "New version:     ${new_version}"
+echo "🔢 Current version: ${current_version}"
+echo "🚀 New version:     ${new_version}"
 
 if [ "$DRY_RUN" = true ]; then
-  echo "[Dry Run] Skipping file update, commit, and tagging."
+  echo "[Dry Run] Would update $VERSION_FILE, commit, tag, and push."
   exit 0
 fi
 
 # --- Update version.py ---
-sed -i.bak -E "s/__version__\s*=\s*\"[0-9]+\.[0-9]+\.[0-9]+\"/__version__ = \"${new_version}\"/" "$VERSION_FILE"
+sed -i.bak -E "s/^(__version__ *= *\")[0-9]+\.[0-9]+\.[0-9]+(\".*)/\1${new_version}\2/" "$VERSION_FILE"
 rm "${VERSION_FILE}.bak"
 
 # --- Git commit and tag ---
