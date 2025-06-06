@@ -21,6 +21,7 @@ from process_sample import (
     reverse_sample,
     apply_granular_synthesis,
 )
+from version import __version__
 
 
 EXPORTS_DIR = "exports"
@@ -49,7 +50,7 @@ def serve_exported_file(filename):
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", version=__version__)
 
 
 def run_generate(params):
