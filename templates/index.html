@@ -659,8 +659,15 @@
         var reprocessButton = document.createElement("div");
         reprocessButton.innerText = "Reprocess";
         reprocessButton.classList.add("button")
-        var effect = document.getElementById("effect-select").value
-        reprocessButton.addEventListener("click", () => reprocessSample(filePath, effect));
+        reprocessButton.addEventListener("click", () => {
+          var effect = document.getElementById("effect-select").value
+
+          if (effect !== '') {
+            reprocessSample(filePath, effect)
+          } else {
+            alert('No effect preset selected. Please select one before reprocessing')
+          }
+        });
         actions.appendChild(reprocessButton);
 
         var deleteButton = document.createElement("div");
