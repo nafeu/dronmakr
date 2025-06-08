@@ -207,8 +207,8 @@
           </select>
         </label>
 
-        <label>Style:
-          <select id="style-select" name="style"></select>
+        <label>Pattern:
+          <select id="pattern-select" name="pattern"></select>
         </label>
 
         <label>Iterations:
@@ -441,8 +441,8 @@
         updatePresets(data.presets);
       }
 
-      if (data.styles) {
-        updateStyles(data.styles);
+      if (data.patterns) {
+        updatePatterns(data.patterns);
       }
     });
 
@@ -478,21 +478,21 @@
       });
     }
 
-    function updateStyles({ styles }) {
-      var styleSelect = document.getElementById("style-select");
+    function updatePatterns({ patterns }) {
+      var patternSelect = document.getElementById("pattern-select");
 
-      styleSelect.innerHTML = "";
+      patternSelect.innerHTML = "";
 
-      var emptyStyleOption = document.createElement("option");
-      emptyStyleOption.innerText = "Random";
-      emptyStyleOption.value = "";
-      styleSelect.appendChild(emptyStyleOption);
+      var emptyPatternOption = document.createElement("option");
+      emptyPatternOption.innerText = "Random";
+      emptyPatternOption.value = "";
+      patternSelect.appendChild(emptyPatternOption);
 
-      styles.forEach(style => {
+      patterns.forEach(pattern => {
         var option = document.createElement("option");
-        option.innerText = style;
-        option.value = style;
-        styleSelect.appendChild(option);
+        option.innerText = pattern;
+        option.value = pattern;
+        patternSelect.appendChild(option);
       });
     }
 

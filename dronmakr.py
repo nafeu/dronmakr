@@ -81,11 +81,11 @@ def generate(
         "-y",
         help="Type of chart used for midi, either 'chord' or 'scale'.",
     ),
-    style: str = typer.Option(
+    pattern: str = typer.Option(
         None,
-        "--style",
+        "--pattern",
         "-s",
-        help='Style of sample. One of "chaotic_arpeggio", "chord", "split_chord", "quantized_arpeggio".',
+        help="Name of midi pattern used to play virtual instrument.",
     ),
     iterations: int = typer.Option(
         1,
@@ -140,7 +140,9 @@ def generate(
         )
     )
     print(with_prompt(f"midi customization"))
-    print(with_prompt(f"  style              {style if style else GENERATED_LABEL}"))
+    print(
+        with_prompt(f"  pattern              {pattern if pattern else GENERATED_LABEL}")
+    )
     print(
         with_prompt(
             f"  shift octave down  {shift_octave_down if shift_octave_down else GENERATED_LABEL}"
@@ -181,7 +183,7 @@ def generate(
             print(f"{RED}│{RESET}   iteration {iteration + 1} of {iterations}")
             print(f"{RED}│{RESET}")
         midi_file, selected_chart = generate_midi(
-            style=style,
+            pattern=pattern,
             shift_octave_down=shift_octave_down,
             shift_root_note=shift_root_note,
             filters=filters,
@@ -227,10 +229,16 @@ def list(
         "--show-chain-plugins",
         "-p",
         help="List all the plugins used within an effect chain",
-    )
+    ),
+    show_patterns: bool = typer.Option(
+        False,
+        "--show-patterns",
+        "-t",
+        help="List all available midi patterns and descriptions",
+    ),
 ):
     """List all available presets"""
-    list_presets(show_chain_plugins=show_chain_plugins)
+    list_presets(show_chain_plugins=show_chain_plugins, show_patterns=show_patterns)
 
 
 @cli.command()

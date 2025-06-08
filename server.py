@@ -9,7 +9,7 @@ import shutil
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_socketio import SocketIO
 from utils import get_server_version, get_latest_exports, get_presets
-from generate_midi import get_styles
+from generate_midi import get_patterns
 from generate_sample import apply_effect
 from process_sample import (
     trim_sample_start,
@@ -39,7 +39,7 @@ def handle_connect():
     """Log WebSocket connections."""
     print("Client connected via WebSocket")
     socketio.emit("exports", {"files": get_latest_exports()})
-    socketio.emit("configs", {"presets": get_presets(), "styles": get_styles()})
+    socketio.emit("configs", {"presets": get_presets(), "patterns": get_patterns()})
 
 
 @app.route("/exports/<path:filename>")
@@ -210,7 +210,7 @@ def delete_file():
 
 @app.route("/refresh", methods=["GET"])
 def refresh_configs():
-    socketio.emit("configs", {"presets": get_presets(), "styles": get_styles()})
+    socketio.emit("configs", {"presets": get_presets(), "patterns": get_patterns()})
     return jsonify({"success": "Refreshed configurations"}), 200
 
 

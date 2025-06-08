@@ -13,6 +13,7 @@ from pedalboard import Pedalboard
 from pedalboard.io import AudioFile
 from threading import Event, Thread
 from utils import with_build_preset_prompt as with_prompt, generate_id, MAGENTA, RESET
+from generate_midi import SUPPORTED_PATTERNS_INFO
 
 TEMP_FOLDER = "temp"
 PRESET_FOLDER = "presets"
@@ -444,7 +445,7 @@ def edit_preset_with_ui(plugin, effect_chain, selected_plugin, selected_plugin_n
     )
 
 
-def list_presets(show_chain_plugins=False):
+def list_presets(show_chain_plugins=False, show_patterns=False):
     preset_index_file = os.path.join(PRESET_FOLDER, PRESET_JSON)
 
     if not os.path.exists(preset_index_file):
@@ -458,6 +459,7 @@ def list_presets(show_chain_plugins=False):
         print(with_prompt("Error reading preset index file."))
         return
 
+    patterns = []
     instruments = []
     effect_chains = []
 
@@ -467,6 +469,9 @@ def list_presets(show_chain_plugins=False):
         elif preset.get("type") == "effect_chain":
             effect_chains.append((idx, preset))
 
+    for idx, pattern in enumerate(SUPPORTED_PATTERNS_INFO, start=1):
+        patterns.append((idx, pattern[0], pattern[1]))
+
     if len(instruments) < 1:
         print(with_prompt("No instruments added, use 'dronmakr preset'"))
         return
@@ -475,6 +480,7 @@ def list_presets(show_chain_plugins=False):
         print(with_prompt("No effect chains added, use 'dronmakr preset'"))
         return
 
+    longest_pattern_name_length = len(max(patterns, key=lambda x: len(x[1]))[1])
     longest_instrument_name_length = len(max(instruments, key=lambda x: len(x[1]))[1])
     longest_effect_chain_name_length = max(
         [len(item[1]["name"]) for item in effect_chains]
@@ -485,6 +491,14 @@ def list_presets(show_chain_plugins=False):
             for plugin in effect_chain["effects"]:
                 if (len(plugin["name"]) + 2) > longest_effect_chain_name_length:
                     longest_effect_chain_name_length = len(plugin["name"]) + 2
+
+    if show_patterns:
+        print(f"{MAGENTA}■ patterns{RESET}")
+        print(f"{MAGENTA}│{RESET}")
+        for idx, name, desc in patterns:
+            desc_spacing = " " * (longest_pattern_name_length - len(name))
+            print(f"{MAGENTA}│  {name} {RESET}{desc_spacing}{desc}")
+        print(f"{MAGENTA}│{RESET}")
 
     print(f"{MAGENTA}■ instruments{RESET}")
     print(f"{MAGENTA}│{RESET}")

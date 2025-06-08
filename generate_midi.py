@@ -16,24 +16,34 @@ from print_midi import print_midi
 MIDI_FOLDER = "midi"
 CHORD_SCALE_LIST = "resources/chord-scale-data.json"
 
-SUPPORTED_STYLES = [
-    "chaos_expand_up",
-    "chaos",
-    "chord",
-    "lead_flat",
-    "lead_straight_eighth",
-    "lead_straight_sixteenth",
-    "lead",
-    "quantized_straight_eighth",
-    "quantized_straight_quarter",
-    "quantized_up_down_eighth",
-    "quantized_up_down_quarter",
-    "split_chord",
+SUPPORTED_PATTERNS_INFO = [
+    ("chaos", "random notes and timings given scale"),
+    (
+        "chaos_expand_up",
+        "Doubles available notes, second set is transposed up 1 octave",
+    ),
+    ("lead", "Semi-random movement within the scale"),
+    ("lead_flat", "Constant eighth notes, structured movement"),
+    ("lead_straight_eighth", "Plays notes from low to high once"),
+    ("lead_straight_sixteenth", "Plays notes from low to high once"),
+    (
+        "quantized_straight_eighth",
+        "Play notes one at a time, eighth-notes, looping lowest to highest",
+    ),
+    (
+        "quantized_straight_quarter",
+        "Play notes one at a time, quarter-notes, looping lowest to highest",
+    ),
+    ("quantized_up_down_eighth", "Ascends then descends, eigth-note timing"),
+    ("quantized_up_down_quarter", "Ascends then descends, quarter-note timing"),
+    ("split_chord", "Play full chord at start and again at the middle"),
 ]
 
+SUPPORTED_PATTERNS = [item[0] for item in SUPPORTED_PATTERNS_INFO]
 
-def get_styles():
-    return {"styles": SUPPORTED_STYLES}
+
+def get_patterns():
+    return {"patterns": SUPPORTED_PATTERNS}
 
 
 def filter_chords(chords, filters):
@@ -78,7 +88,7 @@ def filter_chords(chords, filters):
 
 
 def generate_midi(
-    style,  # Style of playback
+    pattern,  # Pattern of playback
     output_name="",
     note_density=2,  # Notes per beat (higher = more active)
     duration_variance=0.5,  # Variance in note lengths (0 = fixed, 1 = max randomness)
@@ -92,9 +102,9 @@ def generate_midi(
     iterations=None,
 ):
     print(generate_midi_header())
-    """Generates a MIDI file based on the selected style with exact num_bars length."""
-    if not style:
-        style = random.choice(SUPPORTED_STYLES)
+    """Generates a MIDI file based on the selected pattern with exact num_bars length."""
+    if not pattern:
+        pattern = random.choice(SUPPORTED_PATTERNS)
 
     if shift_octave_down is None:
         shift_octave_down = random.choice([True, False])
@@ -105,8 +115,8 @@ def generate_midi(
     if output_name:
         output_name = "_" + output_name
 
-    if style not in SUPPORTED_STYLES:
-        print(with_prompt(f"error: unsupported style '{style}'"))
+    if pattern not in SUPPORTED_PATTERNS:
+        print(with_prompt(f"error: unsupported pattern '{pattern}'"))
         sys.exit()
 
     # Load chords from JSON file
@@ -125,11 +135,11 @@ def generate_midi(
     chord = random_chord_choice["notes"]
     root = random_chord_choice["root"]
     chord_name = random_chord_choice["name"]
-    track_name = format_name(f"{root}_{chord_name}{output_name}_{style}")
+    track_name = format_name(f"{root}_{chord_name}{output_name}_{pattern}")
 
     print(
         with_prompt(
-            f"writing {YELLOW}{root} {chord_name}{RESET} as {YELLOW}{style}{RESET}"
+            f"writing {YELLOW}{root} {chord_name}{RESET} as {YELLOW}{pattern}{RESET}"
         )
     )
 
@@ -164,10 +174,10 @@ def generate_midi(
     if shift_octave_down:
         midi_notes = [note - 12 for note in midi_notes]
 
-    # 🎵 **MIDI Note Generation Based on Style**
+    # 🎵 **MIDI Note Generation Based on Pattern**
     time = 0.0
 
-    if style == "chaos":
+    if pattern == "chaos":
         # **chaos:** random notes and timings given scale
         while time < total_duration:
             note = random.choice(midi_notes)
@@ -183,7 +193,7 @@ def generate_midi(
             instrument.notes.append(midi_note)
             time = end_time  # Move forward to prevent overlap
 
-    elif style == "chaos_expand_up":
+    elif pattern == "chaos_expand_up":
         # **Chaos Expand Up:** Doubles available notes, second set is transposed up 1 octave
         expanded_midi_notes = midi_notes + [
             note + 12 for note in midi_notes
@@ -203,7 +213,7 @@ def generate_midi(
             instrument.notes.append(midi_note)
             time = end_time  # Move forward to prevent overlap
 
-    elif style == "split_chord":
+    elif pattern == "split_chord":
         # **Split Chord:** Play full chord at start and again at the middle
         velocity = random.randint(*velocity_range)
         for start_time in [0.0, total_duration / 2]:
@@ -218,7 +228,7 @@ def generate_midi(
                     )
                 )
 
-    elif style == "quantized_straight_quarter":
+    elif pattern == "quantized_straight_quarter":
         # **Quantized Arpeggio:** Play notes one at a time, quarter-notes, looping lowest to highest
         note_duration = seconds_per_beat * 1  # Quarter-note duration
         while time < total_duration:
@@ -237,7 +247,7 @@ def generate_midi(
                 )
                 time += note_duration
 
-    elif style == "quantized_straight_eighth":
+    elif pattern == "quantized_straight_eighth":
         # **Quantized Arpeggio:** Play notes one at a time, eighth-notes, looping lowest to highest
         note_duration = seconds_per_beat * 0.5  # Eighth-note duration
         while time < total_duration:
@@ -256,7 +266,7 @@ def generate_midi(
                 )
                 time += note_duration
 
-    elif style == "quantized_up_down_quarter":
+    elif pattern == "quantized_up_down_quarter":
         # **Up-Down Arpeggio:** Ascends then descends, quarter-note timing
         note_duration = seconds_per_beat * 1  # Quarter-note duration
         up_down_pattern = (
@@ -278,7 +288,7 @@ def generate_midi(
                 )
                 time += note_duration
 
-    elif style == "quantized_up_down_eighth":
+    elif pattern == "quantized_up_down_eighth":
         # **Up-Down Arpeggio:** Ascends then descends, eigth-note timing
         note_duration = seconds_per_beat * 0.5  # Eigth-note duration
         up_down_pattern = (
@@ -300,7 +310,7 @@ def generate_midi(
                 )
                 time += note_duration
 
-    elif style == "lead":
+    elif pattern == "lead":
         # **Lead Melody:** Semi-random movement within the scale
         note_durations = [
             seconds_per_beat * d for d in [0.25, 0.5, 1, 2]
@@ -341,7 +351,7 @@ def generate_midi(
             else:
                 current_note = random.choice(midi_notes)  # 40% chance for a random jump
 
-    elif style == "lead_flat":
+    elif pattern == "lead_flat":
         # **Lead Melody (Flat):** Constant eighth notes, structured movement
         note_duration = seconds_per_beat * 0.5  # Fixed eighth-note duration
         total_notes = random.randint(
@@ -379,7 +389,7 @@ def generate_midi(
             else:
                 current_note = random.choice(midi_notes)  # 30% chance for a jump
 
-    elif style == "lead_straight_sixteenth":
+    elif pattern == "lead_straight_sixteenth":
         # **Lead (Straight, Sixteenth Notes):** Plays notes from low to high once
         note_duration = seconds_per_beat * 0.25  # Sixteenth-note duration
         for note in midi_notes:
@@ -397,7 +407,7 @@ def generate_midi(
             )
             time += note_duration
 
-    elif style == "lead_straight_eighth":
+    elif pattern == "lead_straight_eighth":
         # **Lead (Straight, Eighth Notes):** Plays notes from low to high once
         note_duration = seconds_per_beat * 0.5  # Eighth-note duration
         for note in midi_notes:
