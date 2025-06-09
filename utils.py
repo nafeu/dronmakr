@@ -29,11 +29,15 @@ def get_version():
 
 
 def get_server_version():
-    return f"{RED}┌ {APP_NAME} server ■ v{__version__}\n│{RESET}   github.com/nafeu/dronmakr (phrakturemusic@proton.me)\n{RED}│{RESET}"
+    return f"{RED}┌ {APP_NAME} server ■ v{__version__}\n│{RESET}   github.com/nafeu/dronmakr (phrakturemusic@proton.me){RESET}"
 
 
 def with_main_prompt(text):
     return f"{RED}│{RESET}   {text}"
+
+
+def with_final_main_prompt(text):
+    return f"{RED}│\n■{RESET} {text}"
 
 
 def with_build_preset_prompt(text):

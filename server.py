@@ -6,9 +6,15 @@ import threading
 import subprocess
 import os
 import shutil
+import typer
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_socketio import SocketIO
-from utils import get_server_version, get_latest_exports, get_presets
+from utils import (
+    get_server_version,
+    get_latest_exports,
+    get_presets,
+    with_final_main_prompt,
+)
 from generate_midi import get_patterns
 from generate_sample import apply_effect
 from process_sample import (
@@ -32,6 +38,7 @@ PRESETS_PATH = "presets/presets.json"
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 socketio = SocketIO(app, cors_allowed_origins="*")  # WebSockets enabled
+cli = typer.Typer()
 
 
 @socketio.on("connect")
@@ -278,10 +285,23 @@ def process_file():
     return jsonify({"success": f"File processed with {command}"}), 200
 
 
-def main():
+@cli.command()
+def main(
+    debug: bool = typer.Option(
+        False, "--debug", "-d", help="Enable debug logs in server"
+    ),
+    port: int = typer.Option(
+        3766, "--port", "-p", help="The port for the webui server on run on"
+    ),
+):
     print(get_server_version())
-    socketio.run(app, host="0.0.0.0", port=3766, debug=True)
+    print(
+        with_final_main_prompt(
+            f"Open http://localhost:{port} in a browser to view webui"
+        )
+    )
+    socketio.run(app, host="0.0.0.0", port=port, debug=debug)
 
 
 if __name__ == "__main__":
-    main()
+    cli()

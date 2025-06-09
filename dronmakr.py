@@ -270,9 +270,16 @@ def pack(
 
 
 @cli.command()
-def server():
+def server(
+    debug: bool = typer.Option(
+        False, "--debug", "-d", help="Enable debug logs in server"
+    ),
+    port: int = typer.Option(
+        3766, "--port", "-p", help="The port for the webui server on run on"
+    ),
+):
     """Run auditioner web server"""
-    run_server()
+    run_server(debug=debug, port=port)
 
 
 if __name__ == "__main__":
