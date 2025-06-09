@@ -32,6 +32,7 @@ platformdirs==4.3.6
 pooch==1.8.2
 pretty_midi==0.2.10
 pycparser==2.22
+pydub==0.25.1
 Pygments==2.19.1
 PySoundFile==0.9.0.post1
 python-dotenv==1.0.1
