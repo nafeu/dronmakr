@@ -3,6 +3,7 @@ import re
 import uuid
 import os
 import json
+import shutil
 
 from version import __version__
 
@@ -15,9 +16,14 @@ YELLOW = "\033[33m"
 RESET = "\033[0m"
 
 APP_NAME = "dronmakr"
+ARCHIVE_DIR = "archive"
 EXPORTS_DIR = "exports"
-PRESETS_PATH = "presets/presets.json"
-SAVED_PATH = "saved"
+MIDI_DIR = "midi"
+PRESETS_DIR = "presets"
+PRESETS_PATH = f"{PRESETS_DIR}/presets.json"
+SAVED_DIR = "saved"
+TEMP_DIR = "temp"
+TRASH_DIR = "trash"
 
 
 def get_cli_version():
@@ -607,8 +613,8 @@ def rename_samples(
     pack_name, artist_name="", affix=False, dry_run=False, delimiter="^"
 ):
     """Lists all .wav files in the 'saved/' directory."""
-    if not os.path.exists(SAVED_PATH):
-        print(f"Directory '{SAVED_PATH}' does not exist.")
+    if not os.path.exists(SAVED_DIR):
+        print(f"Directory '{SAVED_DIR}' does not exist.")
         return
 
     if not pack_name:
@@ -616,7 +622,7 @@ def rename_samples(
         return
 
     # List all .wav files
-    wav_files = [f for f in os.listdir(SAVED_PATH) if f.endswith(".wav")]
+    wav_files = [f for f in os.listdir(SAVED_DIR) if f.endswith(".wav")]
 
     if not wav_files:
         print("No files found.")
@@ -647,11 +653,26 @@ def rename_samples(
             if dry_run:
                 print(new_name)
             else:
-                original_filepath = os.path.join(SAVED_PATH, original_file)
-                new_filepath = os.path.join(SAVED_PATH, new_name)
+                original_filepath = os.path.join(SAVED_DIR, original_file)
+                new_filepath = os.path.join(SAVED_DIR, new_name)
                 if os.path.exists(new_filepath):
                     print(f"File '{new_filepath}' already exists, skipping renaming.")
                 else:
                     os.rename(original_filepath, new_filepath)
 
     return wav_files
+
+
+def delete_all_files(directory):
+    deleted_files_count = 0
+    for filename in os.listdir(directory):
+        file_path = os.path.join(directory, filename)
+        try:
+            if os.path.isfile(file_path) or os.path.islink(file_path):
+                os.unlink(file_path)
+                deleted_files_count += 1
+            elif os.path.isdir(file_path):
+                shutil.rmtree(file_path)
+        except Exception as e:
+            print("Failed to delete %s. Reason: %s" % (file_path, e))
+    return deleted_files_count

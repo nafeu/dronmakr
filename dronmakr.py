@@ -15,12 +15,15 @@ from utils import (
     rename_samples,
     RESET,
     with_main_prompt as with_prompt,
+    delete_all_files,
+    EXPORTS_DIR,
+    MIDI_DIR,
+    TRASH_DIR,
 )
 from build_preset import list_presets
 from server import main as run_server
 from version import __version__
 
-EXPORTS_FOLDER = "exports"
 GENERATED_LABEL = f"{RED}...{RESET}"
 
 cli = typer.Typer(invoke_without_command=True)
@@ -191,7 +194,7 @@ def generate(
         sample_name = format_name(
             f"{name or generate_name()}_-_{selected_chart}_-_{generate_id()}"
         )
-        output_path = f"{EXPORTS_FOLDER}/{sample_name}"
+        output_path = f"{EXPORTS_DIR}/{sample_name}"
         generated_sample = generate_sample(
             input_path=midi_file,
             output_path=f"{output_path}.wav",
@@ -267,6 +270,25 @@ def pack(
         affix=affix,
         delimiter=delimiter,
     )
+
+
+@cli.command()
+def reset(
+    force: bool = typer.Option(
+        False, "--force", "-f", help="Empty directories without confirmation"
+    )
+):
+    """Delete all files within the exports, trash and midi directories"""
+    if not force:
+        confirmation = typer.confirm(
+            "Are you sure you want to empty the exports, midi and trash directories?"
+        )
+        if not confirmation:
+            return
+    directories = [EXPORTS_DIR, MIDI_DIR, TRASH_DIR]
+    for directory in directories:
+        deleted_files_count = delete_all_files(directory)
+        print(with_prompt(f"Deleted {deleted_files_count} files in {directory}"))
 
 
 @cli.command()

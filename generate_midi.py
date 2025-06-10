@@ -10,33 +10,33 @@ from utils import (
     YELLOW,
     RESET,
     format_name,
+    MIDI_DIR,
 )
 from print_midi import print_midi
 
-MIDI_FOLDER = "midi"
 CHORD_SCALE_LIST = "resources/chord-scale-data.json"
 
 SUPPORTED_PATTERNS_INFO = [
-    ("chaos", "random notes and timings given scale"),
+    ("chaos", "random notes and timings given scale/chord"),
     (
         "chaos_expand_up",
-        "Doubles available notes, second set is transposed up 1 octave",
+        "random notes and timings with second set of notes transposed up 1 octave",
     ),
-    ("lead", "Semi-random movement within the scale"),
-    ("lead_flat", "Constant eighth notes, structured movement"),
-    ("lead_straight_eighth", "Plays notes from low to high once"),
-    ("lead_straight_sixteenth", "Plays notes from low to high once"),
+    ("lead", "semi-random movement within the scale/chord"),
+    ("lead_flat", "constant eighth notes, structured movement"),
+    ("lead_straight_eighth", "plays eighth notes from low to high once"),
+    ("lead_straight_sixteenth", "plays sixteenth notes from low to high once"),
     (
         "quantized_straight_eighth",
-        "Play notes one at a time, eighth-notes, looping lowest to highest",
+        "play eighth-notes one at a time, looping lowest to highest",
     ),
     (
         "quantized_straight_quarter",
-        "Play notes one at a time, quarter-notes, looping lowest to highest",
+        "play quarter-notes one at a time, looping lowest to highest",
     ),
-    ("quantized_up_down_eighth", "Ascends then descends, eigth-note timing"),
-    ("quantized_up_down_quarter", "Ascends then descends, quarter-note timing"),
-    ("split_chord", "Play full chord at start and again at the middle"),
+    ("quantized_up_down_eighth", "ascends then descends, eigth-note timing"),
+    ("quantized_up_down_quarter", "ascends then descends, quarter-note timing"),
+    ("split_chord", "play full chord at start and again at the middle"),
 ]
 
 SUPPORTED_PATTERNS = [item[0] for item in SUPPORTED_PATTERNS_INFO]
@@ -142,6 +142,11 @@ def generate_midi(
             f"writing {YELLOW}{root} {chord_name}{RESET} as {YELLOW}{pattern}{RESET}"
         )
     )
+
+    description = next(
+        (info[1] for info in SUPPORTED_PATTERNS_INFO if info[0] == pattern), None
+    )
+    print(with_prompt(f"({description})"))
 
     if shift_root_note:
         print(with_prompt("shifting root one octave down"))
@@ -447,9 +452,9 @@ def generate_midi(
         instrument.notes.append(empty_note)
 
     # Write to a MIDI file
-    os.makedirs(MIDI_FOLDER, exist_ok=True)
+    os.makedirs(MIDI_DIR, exist_ok=True)
 
-    output_path = f"{MIDI_FOLDER}/{track_name}_{generate_id()}.mid"
+    output_path = f"{MIDI_DIR}/{track_name}_{generate_id()}.mid"
     midi.write(output_path)
 
     print(f"{YELLOW}│{RESET}")

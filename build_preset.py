@@ -12,11 +12,16 @@ from mido import Message
 from pedalboard import Pedalboard
 from pedalboard.io import AudioFile
 from threading import Event, Thread
-from utils import with_build_preset_prompt as with_prompt, generate_id, MAGENTA, RESET
+from utils import (
+    with_build_preset_prompt as with_prompt,
+    generate_id,
+    MAGENTA,
+    RESET,
+    TEMP_DIR,
+    PRESETS_DIR,
+)
 from generate_midi import SUPPORTED_PATTERNS_INFO
 
-TEMP_FOLDER = "temp"
-PRESET_FOLDER = "presets"
 PRESET_JSON = "presets.json"
 PREVIEW_NUM_BARS = 1
 PREVIEW_SAMPLE = "resources/CDEFGABC.wav"
@@ -30,8 +35,8 @@ close_window_event = Event()
 
 
 def build_preset():
-    os.makedirs(PRESET_FOLDER, exist_ok=True)
-    os.makedirs(TEMP_FOLDER, exist_ok=True)
+    os.makedirs(PRESETS_DIR, exist_ok=True)
+    os.makedirs(TEMP_DIR, exist_ok=True)
 
     load_dotenv()
 
@@ -163,8 +168,8 @@ def build_preset():
         effect_chain,
     )
 
-    if not os.listdir(TEMP_FOLDER):
-        os.rmdir(TEMP_FOLDER)
+    if not os.listdir(TEMP_DIR):
+        os.rmdir(TEMP_DIR)
 
 
 def calculate_audio_length(tempo_bpm, time_signature, num_bars):
@@ -327,7 +332,7 @@ def preview_preset(plugin, effect_chain):
 
 def save_preset(name, desc, uid, plugin_path, plugin_name, preset_path, effect_chain):
     """Saves the preset to `presets.json`"""
-    preset_index_file = os.path.join(PRESET_FOLDER, PRESET_JSON)
+    preset_index_file = os.path.join(PRESETS_DIR, PRESET_JSON)
 
     if os.path.exists(preset_index_file):
         with open(preset_index_file, "r") as f:
@@ -425,7 +430,7 @@ def edit_preset_with_ui(plugin, effect_chain, selected_plugin, selected_plugin_n
     preset_desc = input(with_prompt("enter a description for this preset: ")).strip()
     preset_uid = generate_id()
 
-    preset_path = os.path.join(PRESET_FOLDER, f"{preset_name}_{preset_uid}.vstpreset")
+    preset_path = os.path.join(PRESETS_DIR, f"{preset_name}_{preset_uid}.vstpreset")
     with open(preset_path, "wb") as f:
         if hasattr(plugin, "preset_data"):
             f.write(plugin.preset_data)
@@ -446,7 +451,7 @@ def edit_preset_with_ui(plugin, effect_chain, selected_plugin, selected_plugin_n
 
 
 def list_presets(show_chain_plugins=False, show_patterns=False):
-    preset_index_file = os.path.join(PRESET_FOLDER, PRESET_JSON)
+    preset_index_file = os.path.join(PRESETS_DIR, PRESET_JSON)
 
     if not os.path.exists(preset_index_file):
         print("No presets found.")
@@ -525,7 +530,7 @@ def list_presets(show_chain_plugins=False, show_patterns=False):
 
 def name_exists(name):
     """Checks the collection at `presets.json` and sees if any entry has that name already"""
-    preset_index_file = os.path.join(PRESET_FOLDER, PRESET_JSON)
+    preset_index_file = os.path.join(PRESETS_DIR, PRESET_JSON)
 
     if not os.path.exists(preset_index_file):
         return False

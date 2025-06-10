@@ -14,6 +14,11 @@ from utils import (
     get_latest_exports,
     get_presets,
     with_final_main_prompt,
+    delete_all_files,
+    EXPORTS_DIR,
+    ARCHIVE_DIR,
+    SAVED_DIR,
+    TRASH_DIR,
 )
 from generate_midi import get_patterns
 from generate_sample import apply_effect
@@ -28,13 +33,6 @@ from process_sample import (
     apply_granular_synthesis,
 )
 from version import __version__
-
-
-EXPORTS_DIR = "exports"
-ARCHIVE_DIR = "archive"
-SAVED_DIR = "saved"
-TRASH_DIR = "trash"
-PRESETS_PATH = "presets/presets.json"
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 socketio = SocketIO(app, cors_allowed_origins="*")  # WebSockets enabled
@@ -169,18 +167,6 @@ def reprocess():
     socketio.emit("exports", {"files": get_latest_exports()})
     socketio.emit("status", {"done": True})
     return jsonify({"success": "File moved to archive."}), 200
-
-
-def delete_all_files(directory):
-    for filename in os.listdir(directory):
-        file_path = os.path.join(directory, filename)
-        try:
-            if os.path.isfile(file_path) or os.path.islink(file_path):
-                os.unlink(file_path)
-            elif os.path.isdir(file_path):
-                shutil.rmtree(file_path)
-        except Exception as e:
-            print("Failed to delete %s. Reason: %s" % (file_path, e))
 
 
 def move_all_files(source_dir, target_dir):
