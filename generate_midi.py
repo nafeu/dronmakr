@@ -63,8 +63,8 @@ def filter_chords(chords, filters):
         chord_type = chord["type"].lower()
         chord_tags = [tag.lower() for tag in chord["tags"]]
 
-        if "root" in filters and filters["root"]:
-            filter_roots = [r.lower() for r in filters["root"]]
+        if "roots" in filters and filters["roots"]:
+            filter_roots = [r.lower() for r in filters["roots"]]
             if chord_root not in filter_roots:
                 return False  # Must match at least one root
 
