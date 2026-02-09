@@ -16,8 +16,8 @@ from pedalboard import (
 from pedalboard.io import AudioFile
 from paulstretch import paulstretch
 from utils import (
-    process_sample_header,
-    with_process_sample_prompt as with_prompt,
+    process_drone_sample_header,
+    with_process_drone_sample_prompt as with_prompt,
     BLUE,
     RESET,
 )
@@ -297,14 +297,14 @@ def apply_granular_synthesis(
     sf.write(input_file, processed_audio, sr)
 
 
-def process_sample(
+def process_drone_sample(
     input_path,
     stretch=8.0,  # Default stretch amount
     window_size=0.25,  # Default window size (seconds)
     start_frame=0,
     end_frame=None,
 ):
-    print(process_sample_header())
+    print(process_drone_sample_header())
     print(
         with_prompt(
             f"applying paulstretch (stretch={stretch}, window_size={window_size})"

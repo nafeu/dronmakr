@@ -2,9 +2,9 @@ import time
 import os
 import sys
 import typer
-from generate_midi import generate_midi
-from generate_sample import generate_sample
-from process_sample import process_sample
+from generate_midi import generate_drone_midi
+from generate_sample import generate_drone_sample
+from process_sample import process_drone_sample
 from utils import (
     format_name,
     generate_id,
@@ -49,11 +49,11 @@ def main(
 ):
     """CLI entrypoint."""
     if ctx.invoked_subcommand is None:
-        ctx.invoke(generate)
+        ctx.invoke(generate_drone)
 
 
-@cli.command()
-def generate(
+@cli.command(name="generate-drone")
+def generate_drone(
     name: str = typer.Option(
         None, "--name", "-n", help="Name for the generated sample."
     ),
@@ -156,7 +156,7 @@ def generate(
         print(with_prompt(f"midi customization"))
         print(
             with_prompt(
-                f"  pattern              {pattern if pattern else GENERATED_LABEL}"
+                f"  pattern            {pattern if pattern else GENERATED_LABEL}"
             )
         )
         print(
@@ -200,7 +200,7 @@ def generate(
             print(f"{RED}│{RESET}   iteration {iteration + 1} of {iterations}")
             print(f"{RED}│{RESET}")
 
-        midi_file, selected_chart = generate_midi(
+        midi_file, selected_chart = generate_drone_midi(
             pattern=pattern,
             shift_octave_down=shift_octave_down,
             shift_root_note=shift_root_note,
@@ -211,7 +211,7 @@ def generate(
             f"{name or generate_name()}_-_{selected_chart}_-_{generate_id()}"
         )
         output_path = f"{EXPORTS_DIR}/{sample_name}"
-        generated_sample = generate_sample(
+        generated_sample = generate_drone_sample(
             input_path=midi_file,
             output_path=f"{output_path}.wav",
             instrument=instrument,
@@ -221,7 +221,7 @@ def generate(
             generated_sample_stretched,
             generated_sample_stretched_reverberated,
             generated_sample_stretched_reverberated_transposed,
-        ) = process_sample(input_path=generated_sample)
+        ) = process_drone_sample(input_path=generated_sample)
         results.append(midi_file)
         results.append(generated_sample)
         results.append(generated_sample_stretched)

@@ -17,11 +17,11 @@ from pedalboard import (
 from pedalboard.io import AudioFile
 from mido import MidiFile, Message
 from utils import (
-    with_generate_sample_prompt as with_prompt,
+    with_generate_drone_sample_prompt as with_prompt,
     extract_plugin,
     GREEN,
     RESET,
-    generate_sample_header,
+    generate_drone_sample_header,
 )
 
 PRESETS_PATH = "presets/presets.json"
@@ -60,14 +60,14 @@ def midi_to_messages(midi_file_path):
 SAMPLE_RATE = 44100
 
 
-def generate_sample(
+def generate_drone_sample(
     input_path="input.mid",
     output_path="generated_sample.wav",
     presets_path=PRESETS_PATH,
     instrument=None,
     effect=None,
 ):
-    print(generate_sample_header())
+    print(generate_drone_sample_header())
 
     loaded_effects = []
 
@@ -305,7 +305,7 @@ def main():
     input_path = args[0]
     output_path = args[1] if len(args) > 1 else "generated_sample.wav"
 
-    generate_sample(input_path, output_path)
+    generate_drone_sample(input_path, output_path)
 
 
 if __name__ == "__main__":

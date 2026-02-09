@@ -4,9 +4,9 @@ import sys
 import json
 import pretty_midi
 from utils import (
-    with_generate_midi_prompt as with_prompt,
+    with_generate_drone_midi_prompt as with_prompt,
     generate_id,
-    generate_midi_header,
+    generate_drone_midi_header,
     YELLOW,
     RESET,
     format_name,
@@ -87,7 +87,7 @@ def filter_chords(chords, filters):
     return [chord for chord in chords if matches_criteria(chord)]
 
 
-def generate_midi(
+def generate_drone_midi(
     pattern,  # Pattern of playback
     output_name="",
     note_density=2,  # Notes per beat (higher = more active)
@@ -102,7 +102,7 @@ def generate_midi(
     iteration=None,
     iterations=None,
 ):
-    print(generate_midi_header())
+    print(generate_drone_midi_header())
     """Generates a MIDI file based on the selected pattern with exact num_bars length."""
     if not pattern:
         pattern = random.choice(SUPPORTED_PATTERNS)
@@ -478,10 +478,10 @@ def generate_midi(
 def main():
     args = sys.argv[1:]
     if not args:
-        generate_midi()
+        generate_drone_midi()
         return
 
-    generate_midi(args[0])
+    generate_drone_midi(args[0])
 
 
 if __name__ == "__main__":

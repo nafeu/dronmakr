@@ -50,15 +50,15 @@ def with_build_preset_prompt(text):
     return f"{MAGENTA}┌ {APP_NAME} ■ preset builder {MAGENTA}┐{RESET} {text}"
 
 
-def with_generate_midi_prompt(text):
+def with_generate_drone_midi_prompt(text):
     return f"{YELLOW}│{RESET}   {text}"
 
 
-def with_generate_sample_prompt(text):
+def with_generate_drone_sample_prompt(text):
     return f"{GREEN}│{RESET}   {text}"
 
 
-def with_process_sample_prompt(text):
+def with_process_drone_sample_prompt(text):
     return f"{BLUE}│{RESET}   {text}"
 
 
@@ -66,15 +66,15 @@ def build_preset_header():
     return f"{MAGENTA}┌ {APP_NAME} ■ preset builder{RESET}"
 
 
-def generate_midi_header():
+def generate_drone_midi_header():
     return f"{YELLOW}■ generating midi{RESET}"
 
 
-def generate_sample_header():
+def generate_drone_sample_header():
     return f"{GREEN}■ generating sample{RESET}"
 
 
-def process_sample_header():
+def process_drone_sample_header():
     return f"{BLUE}■ processing sample{RESET}"
 
 
