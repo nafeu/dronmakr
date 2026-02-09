@@ -105,6 +105,7 @@ Usage: dronmakr.py generate [OPTIONS]
 
 Options:
   -n, --name TEXT           Name for the generated sample.
+  -N, --notes TEXT          Comma separated list of notes with octave numbers (e.g., C2,D#3,F#3). Overrides other MIDI generation options.
   -c, --chart-name TEXT     Chart name to filter chords/scales.
   -i, --instrument TEXT     Name of the instrument.
   -e, --effect TEXT         Name of the effect or chain.

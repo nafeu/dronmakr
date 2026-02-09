@@ -57,6 +57,12 @@ def generate(
     name: str = typer.Option(
         None, "--name", "-n", help="Name for the generated sample."
     ),
+    notes: str = typer.Option(
+        None,
+        "--notes",
+        "-N",
+        help="Comma separated list of notes with octave numbers (e.g., C2,D#3,F#3). Overrides other MIDI generation options.",
+    ),
     chart_name: str = typer.Option(
         None, "--chart-name", "-c", help="Chart name to filter chords/scales."
     ),
@@ -129,33 +135,41 @@ def generate(
         )
     )
     print(with_prompt(f"  effect             {effect if effect else GENERATED_LABEL}"))
-    print(with_prompt(f"thematics"))
-    print(
-        with_prompt(
-            f"  chart name         {chart_name if chart_name else GENERATED_LABEL}"
+    if notes:
+        print(with_prompt("notes                " + notes))
+    else:
+        print(with_prompt(f"thematics"))
+        print(
+            with_prompt(
+                f"  chart name         {chart_name if chart_name else GENERATED_LABEL}"
+            )
         )
-    )
-    print(with_prompt(f"  tags               {tags if tags else GENERATED_LABEL}"))
-    print(with_prompt(f"  roots              {roots if roots else GENERATED_LABEL}"))
-    print(
-        with_prompt(
-            f"  chart type         {chart_type if chart_type else GENERATED_LABEL}"
+        print(with_prompt(f"  tags               {tags if tags else GENERATED_LABEL}"))
+        print(
+            with_prompt(f"  roots              {roots if roots else GENERATED_LABEL}")
         )
-    )
-    print(with_prompt(f"midi customization"))
-    print(
-        with_prompt(f"  pattern              {pattern if pattern else GENERATED_LABEL}")
-    )
-    print(
-        with_prompt(
-            f"  shift octave down  {shift_octave_down if shift_octave_down else GENERATED_LABEL}"
+        print(
+            with_prompt(
+                f"  chart type         {chart_type if chart_type else GENERATED_LABEL}"
+            )
         )
-    )
-    print(
-        with_prompt(
-            f"  shift root note    {shift_root_note if shift_root_note else GENERATED_LABEL}"
+        print(with_prompt(f"midi customization"))
+        print(
+            with_prompt(
+                f"  pattern              {pattern if pattern else GENERATED_LABEL}"
+            )
         )
-    )
+        print(
+            with_prompt(
+                f"  shift octave down  {shift_octave_down if shift_octave_down else GENERATED_LABEL}"
+            )
+        )
+        print(
+            with_prompt(
+                f"  shift root note    {shift_root_note if shift_root_note else GENERATED_LABEL}"
+            )
+        )
+
     print(
         with_prompt(
             f"iterations           {iterations if iterations else GENERATED_LABEL}"
@@ -185,11 +199,13 @@ def generate(
             print(f"{RED}■ preparing")
             print(f"{RED}│{RESET}   iteration {iteration + 1} of {iterations}")
             print(f"{RED}│{RESET}")
+
         midi_file, selected_chart = generate_midi(
             pattern=pattern,
             shift_octave_down=shift_octave_down,
             shift_root_note=shift_root_note,
             filters=filters,
+            notes=notes.split(",") if notes else None,
         )
         sample_name = format_name(
             f"{name or generate_name()}_-_{selected_chart}_-_{generate_id()}"

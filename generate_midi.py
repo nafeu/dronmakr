@@ -98,6 +98,7 @@ def generate_midi(
     shift_octave_down=None,
     shift_root_note=None,
     filters={},
+    notes=None,  # Add notes parameter
     iteration=None,
     iterations=None,
 ):
@@ -119,39 +120,48 @@ def generate_midi(
         print(with_prompt(f"error: unsupported pattern '{pattern}'"))
         sys.exit()
 
-    # Load chords from JSON file
-    with open(CHORD_SCALE_LIST, "r") as f:
-        chords = json.load(f)
+    if notes:
+        chord = notes
+        root = notes[0][:-1]
+        chord_name = "custom"
+        track_name = format_name(f"custom_notes_{pattern}")
+        print(with_prompt(f"writing custom notes as {YELLOW}{pattern}{RESET}"))
+    else:
+        # Load chords from JSON file
+        with open(CHORD_SCALE_LIST, "r") as f:
+            chords = json.load(f)
 
-    if not chords:
-        print(with_prompt(f"error: no chords or scales found in '{CHORD_SCALE_LIST}'"))
-        return
+        if not chords:
+            print(
+                with_prompt(f"error: no chords or scales found in '{CHORD_SCALE_LIST}'")
+            )
+            return
 
-    if filters:
-        chords = filter_chords(chords, filters)
+        if filters:
+            chords = filter_chords(chords, filters)
 
-    # Randomly select a chord
-    random_chord_choice = random.choice(chords)
-    chord = random_chord_choice["notes"]
-    root = random_chord_choice["root"]
-    chord_name = random_chord_choice["name"]
-    track_name = format_name(f"{root}_{chord_name}{output_name}_{pattern}")
+        # Randomly select a chord
+        random_chord_choice = random.choice(chords)
+        chord = random_chord_choice["notes"]
+        root = random_chord_choice["root"]
+        chord_name = random_chord_choice["name"]
+        track_name = format_name(f"{root}_{chord_name}{output_name}_{pattern}")
 
-    print(
-        with_prompt(
-            f"writing {YELLOW}{root} {chord_name}{RESET} as {YELLOW}{pattern}{RESET}"
+        print(
+            with_prompt(
+                f"writing {YELLOW}{root} {chord_name}{RESET} as {YELLOW}{pattern}{RESET}"
+            )
         )
-    )
 
     description = next(
         (info[1] for info in SUPPORTED_PATTERNS_INFO if info[0] == pattern), None
     )
     print(with_prompt(f"({description})"))
 
-    if shift_root_note:
+    if shift_root_note and not notes:
         print(with_prompt("shifting root one octave down"))
 
-    if shift_octave_down:
+    if shift_octave_down and not notes:
         print(with_prompt("shifting all notes one octave down"))
 
     # Create a PrettyMIDI object
@@ -173,10 +183,10 @@ def generate_midi(
         midi_notes.append(midi_number)
 
     # Drop the root note one octave down
-    if shift_root_note:
+    if shift_root_note and not notes:
         midi_notes[0] -= 12
 
-    if shift_octave_down:
+    if shift_octave_down and not notes:
         midi_notes = [note - 12 for note in midi_notes]
 
     # 🎵 **MIDI Note Generation Based on Pattern**
