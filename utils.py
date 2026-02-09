@@ -62,6 +62,10 @@ def with_process_drone_sample_prompt(text):
     return f"{BLUE}│{RESET}   {text}"
 
 
+def with_generate_beat_prompt(text):
+    return f"{CYAN}│{RESET}   {text}"
+
+
 def build_preset_header():
     return f"{MAGENTA}┌ {APP_NAME} ■ preset builder{RESET}"
 
@@ -76,6 +80,10 @@ def generate_drone_sample_header():
 
 def process_drone_sample_header():
     return f"{BLUE}■ processing sample{RESET}"
+
+
+def generate_beat_header():
+    return f"{CYAN}■ generating beat{RESET}"
 
 
 def generate_id():

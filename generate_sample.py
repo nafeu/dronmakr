@@ -20,11 +20,13 @@ from mido import MidiFile, Message
 
 from generate_midi import get_beat_patterns
 from utils import (
-    with_generate_drone_sample_prompt as with_prompt,
-    extract_plugin,
-    GREEN,
+    CYAN,
     RESET,
+    extract_plugin,
     generate_drone_sample_header,
+    GREEN,
+    with_generate_beat_prompt,
+    with_generate_drone_sample_prompt as with_prompt,
 )
 
 PRESETS_PATH = "presets/presets.json"
@@ -347,6 +349,7 @@ def generate_beat_sample(
     Uses get_beat_patterns from generate_midi for pattern data.
     """
     load_dotenv()
+    print(with_generate_beat_prompt("loading samples from env"))
 
     beat_duration_ms = int((60 / bpm) * 1000 / 4)  # 16th note
     steps = bars * 16
@@ -468,12 +471,13 @@ def generate_beat_sample(
         track += step
 
     track.export(output, format="wav")
-    print(f"Drum loop exported to {output}")
+    print(with_generate_beat_prompt(f"exported {output}"))
 
     if play:
-        print("Playing exported loop...")
+        print(with_generate_beat_prompt("playing..."))
         open_file_with_default_player(output)
 
+    print(f"{CYAN}│{RESET}")
     return output
 
 

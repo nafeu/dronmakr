@@ -7,10 +7,11 @@ from generate_sample import generate_drone_sample, generate_beat_sample
 from process_sample import process_drone_sample
 from utils import (
     format_name,
+    generate_beat_header,
     generate_id,
     generate_name,
-    get_version,
     get_cli_version,
+    get_version,
     RED,
     rename_samples,
     RESET,
@@ -259,6 +260,19 @@ def generate_beat(
     ),
 ):
     """Generate a drum loop from env-configured sample folders."""
+    start_time = time.time()
+
+    print(get_version())
+    print(with_prompt(f"output                {output}"))
+    print(with_prompt(f"tempo"))
+    print(with_prompt(f"  bpm                 {bpm}"))
+    print(with_prompt(f"  bars                {bars}"))
+    print(with_prompt(f"pattern               {style}"))
+    print(with_prompt(f"humanize              {humanize}"))
+    print(with_prompt(f"play when done        {play}"))
+    print(f"{RED}│{RESET}")
+
+    print(generate_beat_header())
     generate_beat_sample(
         bpm=bpm,
         bars=bars,
@@ -267,6 +281,11 @@ def generate_beat(
         style=style,
         play=play,
     )
+
+    end_time = time.time()
+    time_elapsed = round(end_time - start_time)
+    print(f"{RED}■ completed in {time_elapsed}s{RESET}")
+    print(with_prompt(f"generated: {output}"))
 
 
 @cli.command()
