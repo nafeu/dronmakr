@@ -78,3 +78,4 @@ history/
 temp/
 generated*.wav
 vst-preset-files/
+output.wav

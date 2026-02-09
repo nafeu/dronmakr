@@ -3,7 +3,7 @@ import os
 import sys
 import typer
 from generate_midi import generate_drone_midi
-from generate_sample import generate_drone_sample
+from generate_sample import generate_drone_sample, generate_beat_sample
 from process_sample import process_drone_sample
 from utils import (
     format_name,
@@ -239,6 +239,34 @@ def generate_drone(
             print(with_prompt(f"           {result}"))
 
     return results
+
+
+@cli.command(name="generate-beat")
+def generate_beat(
+    bpm: int = typer.Option(120, help="Beats per minute"),
+    bars: int = typer.Option(1, help="Number of bars to generate"),
+    output: str = typer.Option("output.wav", help="Output filename"),
+    humanize: bool = typer.Option(
+        True, help="Apply humanization (velocity + timing)"
+    ),
+    style: str = typer.Option(
+        "breakbeat",
+        help="Drum pattern style (breakbeat, dnb, trance, garage, halfstep)",
+    ),
+    play: bool = typer.Option(
+        False,
+        help="Open the exported file with the system's default WAV player",
+    ),
+):
+    """Generate a drum loop from env-configured sample folders."""
+    generate_beat_sample(
+        bpm=bpm,
+        bars=bars,
+        output=output,
+        humanize=humanize,
+        style=style,
+        play=play,
+    )
 
 
 @cli.command()
