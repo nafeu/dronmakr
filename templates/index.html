@@ -11,47 +11,115 @@
     href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏳</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&family=Roboto+Mono:ital,wght@0,100..700;1,100..700&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap"
-    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fragment+Mono:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    crossorigin="anonymous">
   <style>
     :root {
-      --secondary: #1F2041;
-      --primary: #FFC857;
-      --theme-a: #4B3F72;
-      --theme-b: #119DA4;
-      --theme-c: #19647E;
+      --secondary: #000000;
+      --primary: #ff9505;
+      --theme-a: #353531;
+      --theme-b: #016fb9;
+      --theme-c: #ec4e20;
+      --toolbar-height: 48px;
     }
 
     body {
       background-color: var(--secondary);
       color: var(--primary);
-      font-family: Geist, monospace;
+      font-family: "Fragment Mono", monospace;
       padding: 1rem;
+      padding-top: calc(var(--toolbar-height) + 1rem);
     }
 
-    #main {
+    /* Themed scrollbar */
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--theme-a) var(--secondary);
+    }
+
+    *::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    *::-webkit-scrollbar-track {
+      background: var(--secondary);
+    }
+
+    *::-webkit-scrollbar-thumb {
+      background: var(--theme-a);
+      border-radius: 4px;
+    }
+
+    *::-webkit-scrollbar-thumb:hover {
+      background: var(--theme-b);
+    }
+
+    #toolbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--toolbar-height);
       display: flex;
-      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1rem;
+      background-color: var(--secondary);
+      border-bottom: 1px solid var(--theme-a);
+      z-index: 1000;
     }
 
-    #sidebar {
-      flex: 0.25;
+    #toolbar-brand {
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: var(--primary);
+    }
+
+    #toolbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .toolbar-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1px solid var(--theme-a);
+      background: var(--theme-a);
+      color: var(--primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+
+    .toolbar-btn:hover {
+      background: var(--primary);
+      color: var(--secondary);
+      border-color: var(--primary);
+    }
+
+    .toolbar-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .toolbar-btn i {
+      font-size: 0.75rem;
     }
 
     #waveforms {
-      flex: 1;
-    }
-
-    #actions {
-      display: flex;
-      gap: 5px;
+      max-width: 100%;
     }
 
     .button {
       cursor: pointer;
-      border: 2px solid var(--theme-a);
-      /* border-radius: 10px; */
+      border-bottom: 2px solid var(--theme-a);
       padding-inline: 5px;
       padding-block: 5px;
       font-size: 0.75rem;
@@ -76,10 +144,10 @@
     }
 
     .waveform-wrapper {
-      border: 2px solid var(--theme-a);
+      /* border: 2px solid var(--theme-a); */
       padding: 10px;
       margin-bottom: 1rem;
-      border-radius: 10px;
+      /* border-radius: 10px; */
     }
 
     .waveform-title {
@@ -100,65 +168,6 @@
       font-weight: bold;
     }
 
-    #generate-form {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-
-    #generate-form>label {
-      color: var(--theme-b);
-      border-left: 2px solid var(--theme-c);
-      padding: 10px;
-      height: 30px;
-      display: flex;
-      align-items: center;
-      justify-content: right;
-      gap: 10px;
-      width: 300px;
-    }
-
-    #status {
-      font-size: 1.5rem;
-      margin-bottom: 1rem;
-    }
-
-    #generate-sample-button {
-      height: 40px;
-      display: flex;
-      font-weight: bold;
-      width: 300px;
-      align-items: center;
-      border: 2px solid var(--primary);
-      font-size: 1.5rem;
-      justify-content: center;
-    }
-
-    input,
-    select {
-      background-color: var(--theme-a);
-      padding: 10px;
-      border: none;
-      color: var(--primary);
-      width: 125px;
-    }
-
-    select {
-      width: 145px;
-    }
-
-    input::placeholder {
-      color: var(--secondary);
-    }
-
-    select {
-      -webkit-appearance: none;
-      -moz-appearance: none;
-      text-indent: 1px;
-      text-overflow: '';
-    }
-
     #logs {
       background-color: var(--theme-a);
     }
@@ -170,180 +179,79 @@
 </head>
 
 <body>
-  <h1>┌ dronmakr v{{ version }} ■ auditioner ┐</h1>
-
-  <div id="main">
-    <div id="sidebar">
-      <form id="generate-form">
-        <label>Name:
-          <input type="text" name="name" placeholder="Enter sample name">
-        </label>
-
-        <label>Chart Name:
-          <input type="text" name="chart_name" placeholder="Enter chart name">
-        </label>
-
-        <label>Instrument:
-          <select id="instrument-select" name="instrument"></select>
-        </label>
-
-        <label>Effect:
-          <select id="effect-select" name="effect"></select>
-        </label>
-
-        <label>Tags:
-          <input type="text" name="tags" placeholder="e.g., ambient,drone">
-        </label>
-
-        <label>Roots:
-          <input type="text" name="roots" placeholder="e.g., C,E,G">
-        </label>
-
-        <label>Chart Type:
-          <select name="chart_type">
-            <option value="">Random</option>
-            <option value="chord">Chord</option>
-            <option value="scale">Scale</option>
-          </select>
-        </label>
-
-        <label>Pattern:
-          <select id="pattern-select" name="pattern"></select>
-        </label>
-
-        <label>Iterations:
-          <input type="number" name="iterations" value="1" min="1">
-        </label>
-
-        <label>
-          <input type="checkbox" name="shift_octave_down">
-          Shift all notes one octave down
-        </label>
-
-        <label>
-          <input type="checkbox" name="shift_root_note">
-          Shift root note one octave down
-        </label>
-
-        <div id="generate-sample-button" class="button" onclick="submitGenerate()">Generate Sample</div>
-        <div id="unarchive-samples-button" class="button" onclick="unarchiveSamples()">Unarchive Samples</div>
-        <div id="empty-trash-button" class="button" onclick="emptyTrash()">Empty Trash</div>
-        <div id="refresh-configs-button" class="button" onclick="refreshConfigs()">Refresh Configs</div>
-      </form>
+  <header id="toolbar">
+    <span id="toolbar-brand">┌ dronmakr v{{ version }} ■ auditioner ┐</span>
+    <div id="toolbar-actions">
+      <button type="button" class="toolbar-btn" id="unarchive-samples-button" title="Unarchive Samples"
+        onclick="unarchiveSamples()" aria-label="Unarchive Samples">
+        <i class="fa-solid fa-box-open"></i>
+      </button>
+      <button type="button" class="toolbar-btn" id="empty-trash-button" title="Empty Trash" onclick="emptyTrash()"
+        aria-label="Empty Trash">
+        <i class="fa-solid fa-trash-can"></i>
+      </button>
     </div>
-    <div id="waveforms">
-      <div id="waveform-container"></div>
-    </div>
-  </div>
+  </header>
+
+  <main id="waveforms">
+    <div id="waveform-container"></div>
+  </main>
   <script>
-    var isGenerating = false;
     var socket = io.connect("http://localhost:3766");
     var selectedWaveformTimestamps = [];
     var db = 2;
     var lastEdited = "";
 
-    function submitGenerate() {
-      if (isGenerating) return;
-
-      var container = document.getElementById("waveform-container");
-      container.innerHTML = ""; // Clear existing waveforms
-
-      var generateSampleButton = document.getElementById("generate-sample-button");
-      generateSampleButton.classList.add("disabled");
-      generateSampleButton.innerText = "Generating...";
-
-      var generationStatus = document.createElement("div");
-      generationStatus.innerText = "generating...";
-      generationStatus.classList.add("generation-status");
-      generationStatus.id = "generation-status";
-      container.appendChild(generationStatus);
-
-      const form = document.getElementById("generate-form");
-      const formData = new FormData(form);
-      const jsonData = {};
-
-      // Convert formData to JSON
-      formData.forEach((value, key) => {
-        if (value === "") return;  // Ignore empty fields
-
-        // Convert checkboxes to booleans
-        if (form[key].type === "checkbox") {
-          jsonData[key] = form[key].checked;
-        }
-        // Convert numbers properly
-        else if (form[key].type === "number") {
-          jsonData[key] = parseInt(value);
-        }
-        else {
-          jsonData[key] = value;
-        }
-      });
-
-      console.log("Sending JSON:", jsonData); // Debugging output
-
-      isGenerating = true;
-
-      fetch("/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(jsonData)
-      })
-        .then(response => response.json())
-        .then(data => {
-          console.log("Response:", data);
-        })
-        .catch(error => console.error("Error:", error));
-    }
-
     function emptyTrash() {
       var button = document.getElementById("empty-trash-button");
-      button.innerHTML = "Emptying trash..."; // Clear existing waveforms
+      var originalHtml = button.innerHTML;
+      button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+      button.disabled = true;
+      button.title = "Emptying...";
 
       fetch("/emptytrash")
         .then(response => response.json())
         .then(data => {
           console.log("Response:", data);
-          button.innerHTML = "Emptied.";
-
-          setTimeout(() => {
-            button.innerHTML = "Empty Trash"
-          }, 1000)
+          button.title = "Emptied.";
+          setTimeout(function () {
+            button.innerHTML = originalHtml;
+            button.title = "Empty Trash";
+            button.disabled = false;
+          }, 800);
         })
-        .catch(error => console.error("Error:", error));
-    }
-
-    function refreshConfigs() {
-      var button = document.getElementById("refresh-configs-button");
-      button.innerHTML = "Refreshing...";
-
-      fetch("/refresh")
-        .then(response => response.json())
-        .then(data => {
-          console.log("Response:", data);
-          button.innerHTML = "Refreshed.";
-
-          setTimeout(() => {
-            button.innerHTML = "Refresh Configs"
-          }, 1000)
-        })
-        .catch(error => console.error("Error:", error));
+        .catch(function (error) {
+          console.error("Error:", error);
+          button.innerHTML = originalHtml;
+          button.title = "Empty Trash";
+          button.disabled = false;
+        });
     }
 
     function unarchiveSamples() {
       var button = document.getElementById("unarchive-samples-button");
-      button.innerHTML = "Moving Files...";
+      var originalHtml = button.innerHTML;
+      button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+      button.disabled = true;
+      button.title = "Moving files...";
 
       fetch("/unarchive")
         .then(response => response.json())
         .then(data => {
           console.log("Response:", data);
-          button.innerHTML = "Files Moved.";
-
-          setTimeout(() => {
-            button.innerHTML = "Unarchive Samples"
-          }, 1000)
+          button.title = "Files moved.";
+          setTimeout(function () {
+            button.innerHTML = originalHtml;
+            button.title = "Unarchive Samples";
+            button.disabled = false;
+          }, 800);
         })
-        .catch(error => console.error("Error:", error));
+        .catch(function (error) {
+          console.error("Error:", error);
+          button.innerHTML = originalHtml;
+          button.title = "Unarchive Samples";
+          button.disabled = false;
+        });
     }
 
     function skipSample(path) {
@@ -351,29 +259,6 @@
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ path })
-      }).then(response => response.json())
-        .then(data => console.log(data))
-        .catch(error => console.error("Error:", error));
-    }
-
-    function reprocessSample(path, effect) {
-      var container = document.getElementById("waveform-container");
-      container.innerHTML = "";
-
-      var generateSampleButton = document.getElementById("generate-sample-button");
-      generateSampleButton.classList.add("disabled");
-      generateSampleButton.innerText = "Reprocessing...";
-
-      var generationStatus = document.createElement("div");
-      generationStatus.innerText = "reprocessing...";
-      generationStatus.classList.add("generation-status");
-      generationStatus.id = "generation-status";
-      container.appendChild(generationStatus);
-
-      fetch("/reprocess", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path, effect })
       }).then(response => response.json())
         .then(data => console.log(data))
         .catch(error => console.error("Error:", error));
@@ -417,84 +302,11 @@
         .catch(error => console.error("Error:", error));
     }
 
-    socket.on("status", function (data) {
-      if (data.done) {
-        isGenerating = false;
-        var generateSampleButton = document.getElementById("generate-sample-button");
-        generateSampleButton.classList.remove("disabled")
-        generateSampleButton.innerText = "Generate Sample"
-      }
-
-      if (document.getElementById("generation-status")) {
-        document.getElementById("generation-status").innerText = data.message;
-      }
-    });
-
     socket.on("exports", function (data) {
       if (data.files) {
         displayWaveforms(data.files);
       }
     });
-
-    socket.on("configs", function (data) {
-      if (data.presets) {
-        updatePresets(data.presets);
-      }
-
-      if (data.patterns) {
-        updatePatterns(data.patterns);
-      }
-    });
-
-    function updatePresets({ instruments, effects }) {
-      var instrumentSelect = document.getElementById("instrument-select");
-      var effectSelect = document.getElementById("effect-select");
-
-      instrumentSelect.innerHTML = "";
-      effectSelect.innerHTML = "";
-
-      var emptyInstrumentOption = document.createElement("option");
-      emptyInstrumentOption.innerText = "Random";
-      emptyInstrumentOption.value = "";
-      instrumentSelect.appendChild(emptyInstrumentOption);
-
-      var emptyEffectOption = document.createElement("option");
-      emptyEffectOption.innerText = "Random";
-      emptyEffectOption.value = "";
-      effectSelect.appendChild(emptyEffectOption);
-
-      instruments.forEach(instrument => {
-        var option = document.createElement("option");
-        option.innerText = instrument;
-        option.value = instrument;
-        instrumentSelect.appendChild(option);
-      });
-
-      effects.forEach(effect => {
-        var option = document.createElement("option");
-        option.innerText = effect;
-        option.value = effect;
-        effectSelect.appendChild(option);
-      });
-    }
-
-    function updatePatterns({ patterns }) {
-      var patternSelect = document.getElementById("pattern-select");
-
-      patternSelect.innerHTML = "";
-
-      var emptyPatternOption = document.createElement("option");
-      emptyPatternOption.innerText = "Random";
-      emptyPatternOption.value = "";
-      patternSelect.appendChild(emptyPatternOption);
-
-      patterns.forEach(pattern => {
-        var option = document.createElement("option");
-        option.innerText = pattern;
-        option.value = pattern;
-        patternSelect.appendChild(option);
-      });
-    }
 
     function displayWaveforms(files) {
       var container = document.getElementById("waveform-container");
@@ -656,20 +468,6 @@
         }));
         actions.appendChild(granularizeButton);
 
-        var reprocessButton = document.createElement("div");
-        reprocessButton.innerText = "Reprocess";
-        reprocessButton.classList.add("button")
-        reprocessButton.addEventListener("click", () => {
-          var effect = document.getElementById("effect-select").value
-
-          if (effect !== '') {
-            reprocessSample(filePath, effect)
-          } else {
-            alert('No effect preset selected. Please select one before reprocessing')
-          }
-        });
-        actions.appendChild(reprocessButton);
-
         var deleteButton = document.createElement("div");
         deleteButton.innerText = "Delete";
         deleteButton.classList.add("button")
@@ -681,8 +479,8 @@
 
         var wavesurfer = WaveSurfer.create({
           container: "#waveform-" + index,
-          waveColor: "#4B3F72",
-          progressColor: "#FFC857",
+          waveColor: "#353531",
+          progressColor: "#ff9505",
           backend: "MediaElement",
           height: 80
         });
