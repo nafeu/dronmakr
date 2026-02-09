@@ -81,27 +81,27 @@ dronmakr ■ v_._._
 ```
 Usage: python dronmakr.py [OPTIONS] COMMAND [ARGS]...
 
-  Default to 'generate' if no command is given.
+  Default to 'generate-drone' if no command is given.
 
 Commands:
-  generate  Generate n iterations of samples (.wav) with parameters
-  list      List all available presets
-  pack      Rename all samples inside of saved folder for packaging
-  server    Run auditioner web server
+  generate-drone  Generate n iterations of drone samples (.wav) with parameters
+  list            List all available presets
+  pack            Rename all samples inside of saved folder for packaging
+  server          Run auditioner web server
 ```
 
 ### 1. Build Presets Using Your VST/AU Library
 
 `python build_preset.py`
 
-### 2. Generate Samples
+### 2. Generate Drone Samples
 
-`python dronmakr.py generate --help`
+`python dronmakr.py generate-drone --help`
 
 ```
-Usage: dronmakr.py generate [OPTIONS]
+Usage: dronmakr.py generate-drone [OPTIONS]
 
-  Generate n iterations of samples (.wav) with parameters
+  Generate n iterations of drone samples (.wav) with parameters
 
 Options:
   -n, --name TEXT           Name for the generated sample.
