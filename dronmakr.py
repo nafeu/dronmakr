@@ -247,12 +247,18 @@ def generate_beat(
     bpm: int = typer.Option(120, help="Beats per minute"),
     bars: int = typer.Option(1, help="Number of bars to generate"),
     output: str = typer.Option("output.wav", help="Output filename"),
-    humanize: bool = typer.Option(
-        True, help="Apply humanization (velocity + timing)"
-    ),
+    humanize: bool = typer.Option(True, help="Apply humanization (velocity + timing)"),
     style: str = typer.Option(
         "breakbeat",
         help="Drum pattern style (breakbeat, dnb, trance, garage, halfstep)",
+    ),
+    swing: float = typer.Option(
+        0.0,
+        "--swing",
+        "-w",
+        min=0.0,
+        max=1.0,
+        help="Rhythmic swing amount between 0 (straight) and 1 (strong swing).",
     ),
     play: bool = typer.Option(
         False,
@@ -268,6 +274,7 @@ def generate_beat(
     print(with_prompt(f"  bpm                 {bpm}"))
     print(with_prompt(f"  bars                {bars}"))
     print(with_prompt(f"pattern               {style}"))
+    print(with_prompt(f"swing                 {swing}"))
     print(with_prompt(f"humanize              {humanize}"))
     print(with_prompt(f"play when done        {play}"))
     print(f"{RED}│{RESET}")
@@ -279,6 +286,7 @@ def generate_beat(
         output=output,
         humanize=humanize,
         style=style,
+        swing=swing,
         play=play,
     )
 

@@ -342,6 +342,7 @@ def generate_beat_sample(
     output: str = "output.wav",
     humanize: bool = True,
     style: str = "breakbeat",
+    swing: float = 0.0,
     play: bool = False,
 ) -> str:
     """
@@ -351,8 +352,28 @@ def generate_beat_sample(
     load_dotenv()
     print(with_generate_beat_prompt("loading samples from env"))
 
-    beat_duration_ms = int((60 / bpm) * 1000 / 4)  # 16th note
+    beat_duration_ms = int((60 / bpm) * 1000 / 4)  # 16th note duration in ms
     steps = bars * 16
+
+    # Clamp swing to [0, 1]
+    swing_clamped = max(0.0, min(1.0, float(swing)))
+
+    # Compute swing offset (towards triplet feel) for off-beat 8ths
+    beat_ms = beat_duration_ms * 4  # one quarter-note in ms
+    swing_triplet_offset_ms = beat_ms / 6.0  # (1/6 of beat) ≈ 0.666 * 16th
+
+    def swing_offset_for_step(step_index: int) -> float:
+        """
+        Apply swing to 8th-note offbeats.
+        On a 16th grid, the offbeat 8th is the 3rd 16th in each beat (index 2 in 0..3).
+        """
+        if swing_clamped <= 0.0:
+            return 0.0
+        pos_in_beat = step_index % 4
+        # Only delay the off-beat 8th (3rd 16th in each group of 4)
+        if pos_in_beat == 2:
+            return swing_clamped * swing_triplet_offset_ms
+        return 0.0
 
     kicks = Path(random.choice(os.getenv("DRUM_KICK_PATHS", "").split(",")))
     hihats = Path(random.choice(os.getenv("DRUM_HIHAT_PATHS", "").split(",")))
@@ -391,18 +412,26 @@ def generate_beat_sample(
         cymbal_pattern,
     ) = get_beat_patterns(style, steps)
 
-    track = AudioSegment.silent(duration=0)
+    # Pre-size the track to the full loop length plus some extra swing headroom,
+    # so overlays always land inside a non-zero buffer.
+    approx_loop_ms = steps * beat_duration_ms + int(swing_triplet_offset_ms * swing_clamped) + 100
+    track = AudioSegment.silent(duration=approx_loop_ms)
 
     for i in range(steps):
-        step = AudioSegment.silent(duration=beat_duration_ms)
+        base_start_ms = i * beat_duration_ms
+        swing_offset_ms = swing_offset_for_step(i)
+        step_start_ms = base_start_ms + swing_offset_ms
 
         if kick_pattern[i]:
-            step = step.overlay(kick[:beat_duration_ms])
+            kick_sample = kick[:beat_duration_ms]
+            track = track.overlay(kick_sample, position=max(0, int(step_start_ms)))
 
         if snare_pattern[i]:
             snare_timing_offset = random.randint(-5, 5) if humanize else 0
             main_snare = snare[:beat_duration_ms]
-            step = step.overlay(main_snare, position=max(0, snare_timing_offset))
+            track = track.overlay(
+                main_snare, position=max(0, int(step_start_ms + snare_timing_offset))
+            )
 
         if ghost_snare_pattern[i]:
             ghost_snare_db = -6
@@ -410,65 +439,78 @@ def generate_beat_sample(
             main_ghost_snare = adjust_velocity(
                 ghost_snare[:beat_duration_ms], ghost_snare_db
             )
-            step = step.overlay(
-                main_ghost_snare, position=max(0, ghost_snare_timing_offset)
+            track = track.overlay(
+                main_ghost_snare,
+                position=max(0, int(step_start_ms + ghost_snare_timing_offset)),
             )
 
         if clap_pattern[i]:
             clap_timing_offset = random.randint(-5, 5) if humanize else 0
             main_clap = clap[:beat_duration_ms]
-            step = step.overlay(main_clap, position=max(0, clap_timing_offset))
+            track = track.overlay(
+                main_clap, position=max(0, int(step_start_ms + clap_timing_offset))
+            )
 
         if hihat_pattern[i]:
             hihat_db = random.randint(-6, 0) if humanize else 0
             hihat_sample = adjust_velocity(hihat[:beat_duration_ms], hihat_db)
-            step = step.overlay(hihat_sample)
+            track = track.overlay(hihat_sample, position=max(0, int(step_start_ms)))
 
         if hihat_alt_pattern[i]:
             hihat_alt_db = random.randint(-6, 0) if humanize else 0
             hihat_alt_sample = adjust_velocity(
                 hihat_alt[:beat_duration_ms], hihat_alt_db
             )
-            step = step.overlay(hihat_alt_sample)
+            track = track.overlay(hihat_alt_sample, position=max(0, int(step_start_ms)))
 
         if shaker_pattern[i]:
             shaker_db = random.randint(-6, 0) if humanize else 0
             shaker_sample = adjust_velocity(shaker[:beat_duration_ms], shaker_db)
-            step = step.overlay(shaker_sample)
+            track = track.overlay(shaker_sample, position=max(0, int(step_start_ms)))
 
         if perc_a_pattern[i]:
             perc_a_timing_offset = random.randint(-5, 5) if humanize else 0
             perc_a_db = random.randint(-6, 0) if humanize else 0
             perc_a_sample = adjust_velocity(perc_a[:beat_duration_ms], perc_a_db)
-            step = step.overlay(perc_a_sample, position=max(0, perc_a_timing_offset))
+            track = track.overlay(
+                perc_a_sample,
+                position=max(0, int(step_start_ms + perc_a_timing_offset)),
+            )
 
         if perc_b_pattern[i]:
             perc_b_timing_offset = random.randint(-5, 5) if humanize else 0
             perc_b_db = random.randint(-6, 0) if humanize else 0
             perc_b_sample = adjust_velocity(perc_b[:beat_duration_ms], perc_b_db)
-            step = step.overlay(perc_b_sample, position=max(0, perc_b_timing_offset))
+            track = track.overlay(
+                perc_b_sample,
+                position=max(0, int(step_start_ms + perc_b_timing_offset)),
+            )
 
         if perc_c_pattern[i]:
             perc_c_timing_offset = random.randint(-5, 5) if humanize else 0
             perc_c_db = random.randint(-6, 0) if humanize else 0
             perc_c_sample = adjust_velocity(perc_c[:beat_duration_ms], perc_c_db)
-            step = step.overlay(perc_c_sample, position=max(0, perc_c_timing_offset))
+            track = track.overlay(
+                perc_c_sample,
+                position=max(0, int(step_start_ms + perc_c_timing_offset)),
+            )
 
         if tom_pattern[i]:
             tom_timing_offset = random.randint(-5, 5) if humanize else 0
             tom_db = random.randint(-6, 0) if humanize else 0
             tom_sample = adjust_velocity(tom[:beat_duration_ms], tom_db)
-            step = step.overlay(tom_sample, position=max(0, tom_timing_offset))
+            track = track.overlay(
+                tom_sample, position=max(0, int(step_start_ms + tom_timing_offset))
+            )
 
         if cymbal_pattern[i]:
             cymbal_timing_offset = random.randint(-5, 5) if humanize else 0
             cymbal_db = random.randint(-6, 0) if humanize else 0
             cymbal_sample = adjust_velocity(cymbal[:beat_duration_ms], cymbal_db)
-            step = step.overlay(
-                cymbal_sample, position=max(0, cymbal_timing_offset)
+            track = track.overlay(
+                cymbal_sample,
+                position=max(0, int(step_start_ms + cymbal_timing_offset)),
             )
-
-        track += step
 
     track.export(output, format="wav")
     print(with_generate_beat_prompt(f"exported {output}"))

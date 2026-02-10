@@ -17,6 +17,8 @@ from utils import (
 from print_midi import print_midi
 
 CHORD_SCALE_LIST = "resources/chord-scale-data.json"
+BEAT_PATTERNS_FILE = "resources/beat-patterns.json"
+_BEAT_PATTERNS_CACHE = None
 
 SUPPORTED_PATTERNS_INFO = [
     ("chaos", "random notes and timings given scale/chord"),
@@ -52,68 +54,51 @@ def get_beat_patterns(style: str, steps: int) -> Tuple[List[int], ...]:
     """
     Returns drum patterns (kick, snare, ghost_snare, clap, hihat, hihat_alt,
     shaker, perc_a, perc_b, perc_c, tom, cymbal) for a given style and step count.
+    Patterns are stored in JSON and loaded on first use.
     """
     base = 16
-    mult = steps // base
 
-    if style == "breakbeat":
-        kick = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0] * mult
-        snar = [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0] * mult
-        ghos = [0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0] * mult
-        clap = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] * mult
-        hhat = [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0] * mult
-        halt = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] * mult
-        shkr = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] * mult
-        prca = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] * mult
-        prcb = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] * mult
-        prcc = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] * mult
-        tomm = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] * mult
-        cymb = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] * mult
-    elif style == "trance":
-        kick = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0] * mult
-        snar = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] * mult
-        ghos = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] * mult
-        clap = [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0] * mult
-        hhat = [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0] * mult
-        halt = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] * mult
-        shkr = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] * mult
-        prca = [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0] * mult
-        prcb = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0] * mult
-        prcc = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1] * mult
-        tomm = [0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0] * mult
-        cymb = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] * mult
-    else:
-        # dnb, garage, halfstep, etc.
-        kick = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0] * mult
-        snar = [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0] * mult
-        ghos = [0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0] * mult
-        clap = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] * mult
-        hhat = [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0] * mult
-        halt = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] * mult
-        shkr = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] * mult
-        prca = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] * mult
-        prcb = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] * mult
-        prcc = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] * mult
-        tomm = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] * mult
-        cymb = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] * mult
+    def load_beat_patterns():
+        """Load and cache beat patterns from JSON on first use."""
+        global _BEAT_PATTERNS_CACHE
+        if _BEAT_PATTERNS_CACHE is None:
+            with open(BEAT_PATTERNS_FILE, "r") as f:
+                _BEAT_PATTERNS_CACHE = json.load(f)
+        return _BEAT_PATTERNS_CACHE
+
+    patterns = load_beat_patterns()
+
+    # Fallback to "default" style if the requested style is not defined
+    if style not in patterns:
+        style = "default"
+
+    style_patterns = patterns[style]
+
+    # Ensure consistent instrument ordering
+
+    drum_sample_order = [
+        "kick",
+        "snar",
+        "ghos",
+        "clap",
+        "hhat",
+        "halt",
+        "shkr",
+        "prca",
+        "prcb",
+        "prcc",
+        "tomm",
+        "cymb",
+    ]
 
     def pad(pattern):
         return (pattern * ((steps // len(pattern)) + 1))[:steps]
 
-    return (
-        pad(kick),
-        pad(snar),
-        pad(ghos),
-        pad(clap),
-        pad(hhat),
-        pad(halt),
-        pad(shkr),
-        pad(prca),
-        pad(prcb),
-        pad(prcc),
-        pad(tomm),
-        pad(cymb),
-    )
+    # Provide a sensible default for any missing instrument in the JSON
+    def get_drum_sample_pattern(name):
+        return style_patterns.get(name, [0] * base)
+
+    return tuple(pad(get_drum_sample_pattern(name)) for name in drum_sample_order)
 
 
 def filter_chords(chords, filters):
@@ -165,6 +150,7 @@ def generate_drone_midi(
     velocity_range=(80, 120),  # MIDI note velocity range
     num_bars=8,  # Default to 4 bars
     humanization=0.02,  # Time shift variance in seconds (default: 20ms)
+    swing: float = 0.0,  # Rhythmic swing amount (0 = straight, 1 = strong swing)
     shift_octave_down=None,
     shift_root_note=None,
     filters={},
@@ -521,6 +507,37 @@ def generate_drone_midi(
                 )
             )
 
+    # Apply rhythmic swing after note generation (if requested)
+    def apply_swing_to_instrument(
+        inst: pretty_midi.Instrument, bpm_val: int, swing_amt: float
+    ):
+        """
+        Apply simple 8th-note swing: delay off-beat 8ths towards a triplet feel.
+        swing_amt in [0, 1], where 0 = straight, 1 ≈ triplet swing.
+        """
+        swing_clamped = max(0.0, min(1.0, float(swing_amt)))
+        if swing_clamped <= 0.0:
+            return
+
+        seconds_per_beat_local = 60.0 / bpm_val
+        subdivision_beats = 0.5  # eighth-note grid
+
+        straight_off_beat = subdivision_beats  # 0.5 beat
+        swung_off_beat = 2.0 / 3.0  # ≈0.666 beat (triplet feel)
+        shift_beats = (swung_off_beat - straight_off_beat) * swing_clamped
+        shift_seconds = shift_beats * seconds_per_beat_local
+
+        for note in inst.notes:
+            beat_pos = note.start / seconds_per_beat_local
+            idx = int(beat_pos / subdivision_beats)
+            # Odd indices correspond to off-beat 8ths (positions between quarter notes)
+            if idx % 2 == 1:
+                note.start += shift_seconds
+                note.end += shift_seconds
+
+    if swing:
+        apply_swing_to_instrument(instrument, bpm, swing)
+
     # Add instrument **without a name** to MIDI object
     midi.instruments.append(instrument)
 
@@ -546,12 +563,13 @@ def generate_drone_midi(
 
 
 def main():
+    # Preserve simple legacy behavior if this module is run directly.
     args = sys.argv[1:]
     if not args:
-        generate_drone_midi()
+        generate_drone_midi(pattern=None)
         return
 
-    generate_drone_midi(args[0])
+    generate_drone_midi(pattern=args[0])
 
 
 if __name__ == "__main__":
