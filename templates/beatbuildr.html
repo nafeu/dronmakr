@@ -11,6 +11,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fragment+Mono:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    crossorigin="anonymous">
   <style>
     :root {
       --secondary: #000000;
@@ -20,6 +22,8 @@
       --theme-c: #ec4e20;
       --toolbar-height: 48px;
       --grid-cell-size: 28px;
+      /* Width of the row/sample label column (header + each row); change to resize. */
+      --grid-label-width: 280px;
     }
 
     body {
@@ -28,6 +32,14 @@
       font-family: "Fragment Mono", monospace;
       padding: 1rem;
       padding-top: calc(var(--toolbar-height) + 1rem);
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    #sequencer-grid,
+    #sequencer-grid * {
+      user-select: none;
+      -webkit-user-select: none;
     }
 
     /* Themed scrollbar */
@@ -111,6 +123,13 @@
       text-transform: uppercase;
       letter-spacing: 0.08em;
       color: var(--theme-a);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    #sidebar-column h2 i {
+      font-size: 0.75rem;
     }
 
     #sidebar-empty-note {
@@ -118,29 +137,79 @@
       color: var(--theme-a);
     }
 
-    #kit-meta {
+    .transport-actions {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.4rem 1rem;
+      gap: 0.5rem;
       margin-bottom: 0.75rem;
+    }
+
+    .transport-btn {
+      width: 2.5rem;
+      height: 2.5rem;
+      padding: 0;
+      font-family: inherit;
+      font-size: 1rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid;
+      flex-shrink: 0;
+    }
+
+    .transport-btn i {
+      pointer-events: none;
+    }
+
+    .transport-btn-primary {
+      background: var(--primary);
+      color: var(--secondary);
+      border-color: var(--primary);
+    }
+
+    .transport-btn-secondary {
+      background: #050505;
+      color: var(--primary);
+      border-color: var(--theme-a);
+    }
+
+    .transport-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .transport-tempo {
+      margin-bottom: 0.5rem;
+    }
+
+    .transport-tempo label {
+      display: block;
       font-size: 0.7rem;
-    }
-
-    .kit-meta-item {
-      display: flex;
-      align-items: baseline;
-      gap: 0.25rem;
-    }
-
-    .kit-meta-label {
       color: var(--theme-a);
       text-transform: uppercase;
-      letter-spacing: 0.08em;
-      font-size: 0.65rem;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.35rem;
     }
 
-    .kit-meta-value {
+    .transport-tempo input[type="number"] {
+      width: 100%;
+      min-height: 2.5rem;
+      padding: 0.5rem 0.75rem;
+      font-family: inherit;
+      font-size: 1.25rem;
+      font-weight: 600;
+      background: #0a0a0a;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
       color: var(--primary);
+      box-sizing: border-box;
+    }
+
+    .transport-tempo input[type="number"]:focus {
+      outline: none;
+      border-color: var(--theme-b);
+      box-shadow: 0 0 0 1px var(--theme-b);
     }
 
     #sequencer-grid {
@@ -152,7 +221,7 @@
 
     .grid-row {
       display: grid;
-      grid-template-columns: 120px repeat(16, var(--grid-cell-size));
+      grid-template-columns: var(--grid-label-width) repeat(16, var(--grid-cell-size));
       align-items: stretch;
     }
 
@@ -160,6 +229,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 0.75rem;
       padding: 0 0.4rem;
       border-right: 1px solid var(--theme-a);
       border-bottom: 1px solid var(--theme-a);
@@ -172,10 +242,44 @@
     .row-label-main {
       text-transform: lowercase;
       color: var(--primary);
+      flex-shrink: 0;
+    }
+
+    .row-label-sample-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      min-width: 0;
+      flex: 1;
     }
 
     .row-label-sample {
       color: var(--theme-a);
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .row-label-sample-refresh {
+      flex-shrink: 0;
+      width: 1.1rem;
+      height: 1.1rem;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      border-radius: 2px;
+      cursor: pointer;
+      color: var(--theme-a);
+      font-size: 0.6rem;
+    }
+
+    .row-label-sample-refresh:hover {
+      color: var(--primary);
+      background: rgba(255, 149, 5, 0.15);
+    }
+
+    .grid-row-label:hover .row-label-sample-refresh {
+      display: flex;
     }
 
     .grid-cell {
@@ -207,7 +311,7 @@
 
     .grid-header {
       display: grid;
-      grid-template-columns: 120px repeat(16, var(--grid-cell-size));
+      grid-template-columns: var(--grid-label-width) repeat(16, var(--grid-cell-size));
       border-bottom: 1px solid var(--theme-a);
       background: #050505;
       position: sticky;
@@ -222,6 +326,13 @@
       color: var(--theme-a);
       padding: 0.2rem 0.4rem;
       border-right: 1px solid var(--theme-a);
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .grid-header-label i {
+      font-size: 0.6rem;
     }
 
     .grid-header-step {
@@ -249,35 +360,37 @@
 <body>
   <header id="toolbar">
     <span id="toolbar-brand">┌ dronmakr v{{ version }} ■ beatbuildr ┐</span>
-    <span id="toolbar-status">connecting…</span>
+    <span id="toolbar-status"><i class="fa-solid fa-spinner fa-spin"></i> connecting…</span>
   </header>
 
   <main id="app-layout">
     <section id="main-column">
-      <div id="kit-meta">
-        <div class="kit-meta-item">
-          <span class="kit-meta-label">status</span>
-          <span class="kit-meta-value" id="kit-status">awaiting drum kit…</span>
-        </div>
-      </div>
       <div id="sequencer-grid"></div>
     </section>
 
     <aside id="sidebar-column">
-      <h2>toolbar</h2>
+      <h2><i class="fa-solid fa-sliders"></i> toolbar</h2>
       <div id="transport">
-        <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
-          <button id="play-toggle"
-            style="flex:0 0 auto; padding:0.25rem 0.75rem; font-family:inherit; font-size:0.75rem; background:var(--primary); color:var(--secondary); border:1px solid var(--primary); cursor:pointer;">
-            play
+        <div class="transport-actions">
+          <button type="button" id="undo-btn" class="transport-btn transport-btn-secondary" title="Undo last edit" disabled>
+            <i class="fa-solid fa-undo"></i>
           </button>
-          <button id="stop-button"
-            style="flex:0 0 auto; padding:0.25rem 0.75rem; font-family:inherit; font-size:0.75rem; background:#050505; color:var(--primary); border:1px solid var(--theme-a); cursor:pointer;">
-            stop
+          <button type="button" id="redo-btn" class="transport-btn transport-btn-secondary" title="Redo" disabled>
+            <i class="fa-solid fa-redo"></i>
+          </button>
+          <button type="button" id="play-toggle" class="transport-btn transport-btn-primary" title="Play">
+            <i class="fa-solid fa-play"></i>
+          </button>
+          <button type="button" id="stop-button" class="transport-btn transport-btn-secondary" title="Stop">
+            <i class="fa-solid fa-stop"></i>
+          </button>
+          <button type="button" id="new-kit-btn" class="transport-btn transport-btn-secondary" title="Load new random drum kit">
+            <i class="fa-solid fa-drum"></i>
           </button>
         </div>
-        <div style="font-size:0.7rem; color:var(--theme-a);">
-          tempo <span id="tempo-display">120</span> bpm · 16 steps
+        <div class="transport-tempo">
+          <label for="tempo-input">Tempo (bpm)</label>
+          <input type="number" id="tempo-input" min="40" max="240" value="120" title="Beats per minute">
         </div>
       </div>
     </aside>
@@ -286,23 +399,34 @@
   <script>
     const ROWS = ["kick", "snar", "ghos", "clap", "hhat", "halt", "shkr", "prca", "prcb", "prcc", "tomm", "cymb"];
     const STEPS = 16;
-    const BPM = 120;
-    const STEP_DURATION_SEC = 60 / BPM / 4; // 16th-note
+    const BPM_MIN = 40;
+    const BPM_MAX = 240;
 
     const state = {
       kit: null,
       pattern: {}, // { rowKey: [0/1,...] }
       buffers: {}, // { rowKey: AudioBuffer | null }
+      bpm: 120,
+      undoState: null,  // snapshot before last edit
+      redoState: null,  // snapshot before we undid (so we can redo)
+    };
+
+    const dragState = {
+      active: false,
+      flippedKeys: null, // Set of "rowKey-step"
     };
 
     const toolbarStatusEl = document.getElementById("toolbar-status");
-    const kitStatusEl = document.getElementById("kit-status");
     const gridContainer = document.getElementById("sequencer-grid");
     const playToggleBtn = document.getElementById("play-toggle");
     const stopButton = document.getElementById("stop-button");
-    const tempoDisplay = document.getElementById("tempo-display");
+    const tempoInput = document.getElementById("tempo-input");
+    const undoBtn = document.getElementById("undo-btn");
+    const redoBtn = document.getElementById("redo-btn");
 
-    tempoDisplay.textContent = BPM.toString();
+    function getStepDurationSec() {
+      return 60 / state.bpm / 4; // 16th-note
+    }
 
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     let isPlaying = false;
@@ -314,6 +438,49 @@
         state.pattern[row] = new Array(STEPS).fill(0);
         state.buffers[row] = null;
       });
+      state.undoState = null;
+      state.redoState = null;
+    }
+
+    function deepCopyPattern() {
+      const copy = {};
+      ROWS.forEach(row => {
+        copy[row] = state.pattern[row].slice();
+      });
+      return copy;
+    }
+
+    function saveUndoState() {
+      state.redoState = null;
+      state.undoState = deepCopyPattern();
+      updateUndoRedoButtons();
+    }
+
+    function updateUndoRedoButtons() {
+      undoBtn.disabled = state.undoState === null;
+      redoBtn.disabled = state.redoState === null;
+    }
+
+    function undo() {
+      if (state.undoState === null) return;
+      state.redoState = deepCopyPattern();
+      ROWS.forEach(row => {
+        state.pattern[row] = state.undoState[row].slice();
+      });
+      state.undoState = null;
+      updateUndoRedoButtons();
+      renderGrid();
+    }
+
+    function redo() {
+      if (state.redoState === null) return;
+      state.undoState = deepCopyPattern();
+      ROWS.forEach(row => {
+        state.pattern[row] = state.redoState[row].slice();
+      });
+      state.redoState = null;
+      updateUndoRedoButtons();
+      renderGrid();
     }
 
     function renderGrid() {
@@ -324,7 +491,7 @@
 
       const headerLabel = document.createElement("div");
       headerLabel.className = "grid-header-label";
-      headerLabel.textContent = "row / sample";
+      headerLabel.innerHTML = "<i class=\"fa-solid fa-table-cells\"></i> sample";
       header.appendChild(headerLabel);
 
       for (let step = 0; step < STEPS; step++) {
@@ -352,14 +519,35 @@
         mainLabel.textContent = rowKey;
         rowLabel.appendChild(mainLabel);
 
+        const sampleWrap = document.createElement("div");
+        sampleWrap.className = "row-label-sample-wrap";
+
         const sampleLabel = document.createElement("span");
         sampleLabel.className = "row-label-sample";
         const sampleDescriptor = state.kit && state.kit.kit && state.kit.kit[rowKey];
-        sampleLabel.textContent = sampleDescriptor && sampleDescriptor.name
+        const sampleName = sampleDescriptor && sampleDescriptor.name
           ? sampleDescriptor.name
           : "no sample";
-        rowLabel.appendChild(sampleLabel);
+        sampleLabel.textContent = sampleName;
+        sampleLabel.title = sampleName;
+        sampleWrap.appendChild(sampleLabel);
 
+        const refreshBtn = document.createElement("span");
+        refreshBtn.className = "row-label-sample-refresh";
+        refreshBtn.title = "Replace with another random sample";
+        refreshBtn.setAttribute("aria-label", "Replace sample");
+        refreshBtn.innerHTML = "<i class=\"fa-solid fa-arrow-rotate-right\"></i>";
+        refreshBtn.dataset.row = rowKey;
+        refreshBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (state.socket && state.socket.connected) {
+            state.socket.emit("replaceSample", { row: rowKey });
+          }
+        });
+        sampleWrap.appendChild(refreshBtn);
+
+        rowLabel.appendChild(sampleWrap);
         rowWrapper.appendChild(rowLabel);
 
         for (let step = 0; step < STEPS; step++) {
@@ -372,17 +560,6 @@
           cell.dataset.row = rowKey;
           cell.dataset.step = step.toString();
 
-          cell.addEventListener("click", () => {
-            const current = state.pattern[rowKey][step];
-            const next = current === 1 ? 0 : 1;
-            state.pattern[rowKey][step] = next;
-            if (next === 1) {
-              cell.classList.add("active");
-            } else {
-              cell.classList.remove("active");
-            }
-          });
-
           rowWrapper.appendChild(cell);
         }
 
@@ -390,35 +567,68 @@
       });
     }
 
-    function updateKitStatus(kit) {
-      if (!kit) {
-        kitStatusEl.textContent = "awaiting drum kit…";
-        return;
+    function flipCell(rowKey, stepIndex) {
+      const current = state.pattern[rowKey][stepIndex];
+      const next = current === 1 ? 0 : 1;
+      state.pattern[rowKey][stepIndex] = next;
+      const cell = gridContainer.querySelector(`.grid-cell[data-row="${rowKey}"][data-step="${stepIndex}"]`);
+      if (cell) {
+        if (next === 1) {
+          cell.classList.add("active");
+        } else {
+          cell.classList.remove("active");
+        }
       }
-
-      const resolvedRows = ROWS.filter(rowKey => kit.kit && kit.kit[rowKey]);
-      kitStatusEl.textContent = `loaded ${resolvedRows.length} of ${ROWS.length} drum slots`;
     }
+
+    function setupGridDrag() {
+      gridContainer.addEventListener("mousedown", (e) => {
+        const cell = e.target.closest(".grid-cell");
+        if (!cell) return;
+        e.preventDefault();
+        const rowKey = cell.dataset.row;
+        const stepIndex = parseInt(cell.dataset.step, 10);
+        saveUndoState();
+        dragState.active = true;
+        dragState.flippedKeys = new Set();
+        const key = `${rowKey}-${stepIndex}`;
+        dragState.flippedKeys.add(key);
+        flipCell(rowKey, stepIndex);
+      });
+    }
+
+    document.addEventListener("mousemove", (e) => {
+      if (!dragState.active) return;
+      const cell = e.target.closest(".grid-cell");
+      if (!cell) return;
+      const rowKey = cell.dataset.row;
+      const stepIndex = parseInt(cell.dataset.step, 10);
+      const key = `${rowKey}-${stepIndex}`;
+      if (dragState.flippedKeys.has(key)) return;
+      dragState.flippedKeys.add(key);
+      flipCell(rowKey, stepIndex);
+    });
+
+    document.addEventListener("mouseup", () => {
+      dragState.active = false;
+      dragState.flippedKeys = null;
+    });
 
     initEmptyPattern();
     renderGrid();
-    updateKitStatus(null);
+    updateUndoRedoButtons();
+
+    setupGridDrag();
 
     const socket = io("http://localhost:3767");
+    state.socket = socket;
 
     socket.on("connect", () => {
-      toolbarStatusEl.textContent = "connected";
+      toolbarStatusEl.innerHTML = "<i class=\"fa-solid fa-link\"></i> connected";
     });
 
     socket.on("disconnect", () => {
-      toolbarStatusEl.textContent = "disconnected";
-    });
-
-    socket.on("kit", (data) => {
-      state.kit = data;
-      updateKitStatus(data);
-      renderGrid();
-      console.log("Received drum kit:", data);
+      toolbarStatusEl.innerHTML = "<i class=\"fa-solid fa-unlink\"></i> disconnected";
     });
 
     async function loadBufferForRow(rowKey, url) {
@@ -449,10 +659,21 @@
 
     socket.on("kit", async (data) => {
       state.kit = data;
-      updateKitStatus(data);
       await hydrateKitBuffers(data);
       renderGrid();
       console.log("Received drum kit:", data);
+    });
+
+    socket.on("sampleReplaced", async (data) => {
+      if (!data || !data.row || !state.kit || !state.kit.kit) return;
+      const rowKey = data.row;
+      state.kit.kit[rowKey] = { name: data.name, path: data.path, url: data.url };
+      await loadBufferForRow(rowKey, data.url);
+      renderGrid();
+    });
+
+    document.getElementById("new-kit-btn").addEventListener("click", () => {
+      if (socket.connected) socket.emit("requestNewKit");
     });
 
     function clearPlayhead() {
@@ -498,10 +719,17 @@
       }
       isPlaying = true;
       currentStep = 0;
-      playToggleBtn.textContent = "pause";
+      playToggleBtn.innerHTML = "<i class=\"fa-solid fa-pause\"></i>";
+      playToggleBtn.title = "Pause";
 
       advanceStep();
-      playIntervalId = setInterval(advanceStep, STEP_DURATION_SEC * 1000);
+      playIntervalId = setInterval(advanceStep, getStepDurationSec() * 1000);
+    }
+
+    function restartPlaybackInterval() {
+      if (!isPlaying || playIntervalId === null) return;
+      clearInterval(playIntervalId);
+      playIntervalId = setInterval(advanceStep, getStepDurationSec() * 1000);
     }
 
     function stopPlayback() {
@@ -511,7 +739,8 @@
         return;
       }
       isPlaying = false;
-      playToggleBtn.textContent = "play";
+      playToggleBtn.innerHTML = "<i class=\"fa-solid fa-play\"></i>";
+      playToggleBtn.title = "Play";
       if (playIntervalId !== null) {
         clearInterval(playIntervalId);
         playIntervalId = null;
@@ -531,8 +760,26 @@
     stopButton.addEventListener("click", () => {
       stopPlayback();
     });
+
+    tempoInput.addEventListener("change", () => {
+      let val = parseInt(tempoInput.value, 10);
+      if (Number.isNaN(val)) val = state.bpm;
+      state.bpm = Math.max(BPM_MIN, Math.min(BPM_MAX, val));
+      tempoInput.value = state.bpm;
+      if (isPlaying) restartPlaybackInterval();
+    });
+
+    tempoInput.addEventListener("input", () => {
+      let val = parseInt(tempoInput.value, 10);
+      if (!Number.isNaN(val)) {
+        state.bpm = Math.max(BPM_MIN, Math.min(BPM_MAX, val));
+        if (isPlaying) restartPlaybackInterval();
+      }
+    });
+
+    undoBtn.addEventListener("click", undo);
+    redoBtn.addEventListener("click", redo);
   </script>
 </body>
 
 </html>
-

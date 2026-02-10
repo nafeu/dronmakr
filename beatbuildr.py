@@ -129,6 +129,33 @@ def generate_random_drum_kit() -> dict:
     return {"rows": DRUM_ROW_ORDER, "kit": kit, "base_url": "/kit-samples"}
 
 
+def replace_sample_for_row(row: str) -> dict | None:
+    """
+    Replace a single row's sample with a new random one from the same env.
+    Overwrites the file in the existing kit temp dir. Returns descriptor or None.
+    """
+    load_dotenv()
+    env_key = ENV_TO_ROW_MAPPING.get(row)
+    if not env_key:
+        return None
+    src_path = _get_random_sample_for_env(env_key)
+    if not src_path:
+        return None
+    kit_temp_root = Path(TEMP_DIR) / "beatbuildr"
+    kit_temp_root.mkdir(parents=True, exist_ok=True)
+    filename = f"{row}_{src_path.name}"
+    dest_path = kit_temp_root / filename
+    try:
+        shutil.copy2(src_path, dest_path)
+    except Exception:
+        return None
+    return {
+        "name": src_path.stem,
+        "path": str(src_path),
+        "url": f"/kit-samples/{filename}",
+    }
+
+
 @socketio.on("connect")
 def handle_connect():
     """Handle WebSocket connections."""
@@ -137,6 +164,24 @@ def handle_connect():
 
     drum_kit = generate_random_drum_kit()
     socketio.emit("kit", drum_kit)
+
+
+@socketio.on("requestNewKit")
+def handle_request_new_kit():
+    """Client requested a full new random drum kit."""
+    drum_kit = generate_random_drum_kit()
+    socketio.emit("kit", drum_kit)
+
+
+@socketio.on("replaceSample")
+def handle_replace_sample(payload):
+    """Replace a single row's sample. Payload: { "row": "kick" }."""
+    row = (payload or {}).get("row")
+    if row not in DRUM_ROW_ORDER:
+        return
+    descriptor = replace_sample_for_row(row)
+    if descriptor:
+        socketio.emit("sampleReplaced", {"row": row, **descriptor})
 
 
 @app.route("/kit-samples/<path:filename>")
