@@ -3,7 +3,11 @@ import os
 import sys
 import webbrowser
 import threading
+
 import typer
+from build_preset import list_presets
+from auditionr import main as run_server
+from beatbuildr import main as run_beatbuildr_server
 from generate_midi import generate_drone_midi
 from generate_sample import generate_drone_sample, generate_beat_sample
 from process_sample import process_drone_sample
@@ -23,8 +27,6 @@ from utils import (
     MIDI_DIR,
     TRASH_DIR,
 )
-from build_preset import list_presets
-from auditionr import main as run_server
 from version import __version__
 
 GENERATED_LABEL = f"{RED}...{RESET}"
@@ -394,6 +396,36 @@ def auditionr(
             pass
 
     # Block until the server thread exits
+    server_thread.join()
+
+
+@cli.command()
+def beatbuildr(
+    debug: bool = typer.Option(
+        False, "--debug", "-d", help="Enable debug logs in beatbuildr"
+    ),
+    port: int = typer.Option(
+        3767, "--port", "-p", help="The port for the beatbuildr webui to run on"
+    ),
+):
+    """Run beatbuildr web server"""
+
+    def _run_server():
+        run_beatbuildr_server(debug=debug, port=port, open_browser=False)
+
+    server_thread = threading.Thread(target=_run_server, daemon=False)
+    server_thread.start()
+
+    # Give the server a moment to bind and start listening
+    time.sleep(1)
+
+    if server_thread.is_alive():
+        try:
+            webbrowser.open(f"http://localhost:{port}")
+        except Exception:
+            # Fail silently if the browser can't be opened.
+            pass
+
     server_thread.join()
 
 

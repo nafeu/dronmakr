@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>┌ dronmakr v{{ version }} ■ beatbuildr ┐</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.0/socket.io.js"></script>
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥁</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fragment+Mono:ital@0;1&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --secondary: #000000;
+      --primary: #ff9505;
+      --theme-a: #353531;
+      --theme-b: #016fb9;
+      --theme-c: #ec4e20;
+      --toolbar-height: 48px;
+      --grid-cell-size: 28px;
+    }
+
+    body {
+      background-color: var(--secondary);
+      color: var(--primary);
+      font-family: "Fragment Mono", monospace;
+      padding: 1rem;
+      padding-top: calc(var(--toolbar-height) + 1rem);
+    }
+
+    /* Themed scrollbar */
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--theme-a) var(--secondary);
+    }
+
+    *::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    *::-webkit-scrollbar-track {
+      background: var(--secondary);
+    }
+
+    *::-webkit-scrollbar-thumb {
+      background: var(--theme-a);
+      border-radius: 4px;
+    }
+
+    *::-webkit-scrollbar-thumb:hover {
+      background: var(--theme-b);
+    }
+
+    #toolbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--toolbar-height);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1rem;
+      background-color: var(--secondary);
+      border-bottom: 1px solid var(--theme-a);
+      z-index: 1000;
+    }
+
+    #toolbar-brand {
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: var(--primary);
+    }
+
+    #toolbar-status {
+      font-size: 0.75rem;
+      color: var(--theme-b);
+    }
+
+    #app-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 3fr) minmax(220px, 1fr);
+      gap: 1rem;
+      align-items: flex-start;
+    }
+
+    #main-column {
+      border: 1px solid var(--theme-a);
+      padding: 0.75rem;
+      border-radius: 4px;
+      background: #050505;
+      overflow: auto;
+    }
+
+    #sidebar-column {
+      border: 1px solid var(--theme-a);
+      padding: 0.75rem;
+      border-radius: 4px;
+      background: #050505;
+      min-height: 200px;
+    }
+
+    #sidebar-column h2 {
+      margin: 0;
+      margin-bottom: 0.5rem;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--theme-a);
+    }
+
+    #sidebar-empty-note {
+      font-size: 0.75rem;
+      color: var(--theme-a);
+    }
+
+    #kit-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem 1rem;
+      margin-bottom: 0.75rem;
+      font-size: 0.7rem;
+    }
+
+    .kit-meta-item {
+      display: flex;
+      align-items: baseline;
+      gap: 0.25rem;
+    }
+
+    .kit-meta-label {
+      color: var(--theme-a);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 0.65rem;
+    }
+
+    .kit-meta-value {
+      color: var(--primary);
+    }
+
+    #sequencer-grid {
+      border-top: 1px solid var(--theme-a);
+      border-left: 1px solid var(--theme-a);
+      font-size: 0.7rem;
+      overflow: auto;
+    }
+
+    .grid-row {
+      display: grid;
+      grid-template-columns: 120px repeat(16, var(--grid-cell-size));
+      align-items: stretch;
+    }
+
+    .grid-row-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 0.4rem;
+      border-right: 1px solid var(--theme-a);
+      border-bottom: 1px solid var(--theme-a);
+      background: #050505;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .row-label-main {
+      text-transform: lowercase;
+      color: var(--primary);
+    }
+
+    .row-label-sample {
+      color: var(--theme-a);
+    }
+
+    .grid-cell {
+      border-right: 1px solid var(--theme-a);
+      border-bottom: 1px solid var(--theme-a);
+      cursor: pointer;
+      background: #050505;
+      aspect-ratio: 1 / 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .grid-cell:hover {
+      background: #111111;
+      box-shadow: inset 0 0 0 1px var(--theme-b);
+    }
+
+    .grid-cell.active {
+      background: var(--primary);
+      box-shadow: inset 0 0 0 1px #000000;
+    }
+
+    .grid-cell.active:nth-child(4n+2) {
+      /* Slight accent on off-beats when active */
+      box-shadow: inset 0 0 0 1px var(--theme-c);
+    }
+
+    .grid-header {
+      display: grid;
+      grid-template-columns: 120px repeat(16, var(--grid-cell-size));
+      border-bottom: 1px solid var(--theme-a);
+      background: #050505;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+
+    .grid-header-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--theme-a);
+      padding: 0.2rem 0.4rem;
+      border-right: 1px solid var(--theme-a);
+    }
+
+    .grid-header-step {
+      font-size: 0.6rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-right: 1px solid var(--theme-a);
+      padding: 0.15rem 0;
+      color: var(--theme-a);
+    }
+
+    .grid-header-step.beat {
+      color: var(--theme-b);
+    }
+  </style>
+</head>
+
+<body>
+  <header id="toolbar">
+    <span id="toolbar-brand">┌ dronmakr v{{ version }} ■ beatbuildr ┐</span>
+    <span id="toolbar-status">connecting…</span>
+  </header>
+
+  <main id="app-layout">
+    <section id="main-column">
+      <div id="kit-meta">
+        <div class="kit-meta-item">
+          <span class="kit-meta-label">status</span>
+          <span class="kit-meta-value" id="kit-status">awaiting drum kit…</span>
+        </div>
+      </div>
+      <div id="sequencer-grid"></div>
+    </section>
+
+    <aside id="sidebar-column">
+      <h2>toolbar</h2>
+      <div id="transport">
+        <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
+          <button id="play-toggle"
+            style="flex:0 0 auto; padding:0.25rem 0.75rem; font-family:inherit; font-size:0.75rem; background:var(--primary); color:var(--secondary); border:1px solid var(--primary); cursor:pointer;">
+            play
+          </button>
+          <button id="stop-button"
+            style="flex:0 0 auto; padding:0.25rem 0.75rem; font-family:inherit; font-size:0.75rem; background:#050505; color:var(--primary); border:1px solid var(--theme-a); cursor:pointer;">
+            stop
+          </button>
+        </div>
+        <div style="font-size:0.7rem; color:var(--theme-a);">
+          tempo <span id="tempo-display">120</span> bpm · 16 steps
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    const ROWS = ["kick", "snar", "ghos", "clap", "hhat", "halt", "shkr", "prca", "prcb", "prcc", "tomm", "cymb"];
+    const STEPS = 16;
+    const BPM = 120;
+    const STEP_DURATION_SEC = 60 / BPM / 4; // 16th-note
+
+    const state = {
+      kit: null,
+      pattern: {}, // { rowKey: [0/1,...] }
+      buffers: {}, // { rowKey: AudioBuffer | null }
+    };
+
+    const toolbarStatusEl = document.getElementById("toolbar-status");
+    const kitStatusEl = document.getElementById("kit-status");
+    const gridContainer = document.getElementById("sequencer-grid");
+    const playToggleBtn = document.getElementById("play-toggle");
+    const stopButton = document.getElementById("stop-button");
+    const tempoDisplay = document.getElementById("tempo-display");
+
+    tempoDisplay.textContent = BPM.toString();
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    let isPlaying = false;
+    let currentStep = 0;
+    let playIntervalId = null;
+
+    function initEmptyPattern() {
+      ROWS.forEach(row => {
+        state.pattern[row] = new Array(STEPS).fill(0);
+        state.buffers[row] = null;
+      });
+    }
+
+    function renderGrid() {
+      gridContainer.innerHTML = "";
+
+      const header = document.createElement("div");
+      header.className = "grid-header";
+
+      const headerLabel = document.createElement("div");
+      headerLabel.className = "grid-header-label";
+      headerLabel.textContent = "row / sample";
+      header.appendChild(headerLabel);
+
+      for (let step = 0; step < STEPS; step++) {
+        const stepEl = document.createElement("div");
+        stepEl.className = "grid-header-step";
+        const isQuarter = step % 4 === 0;
+        if (isQuarter) {
+          stepEl.classList.add("beat");
+        }
+        stepEl.textContent = step + 1;
+        header.appendChild(stepEl);
+      }
+
+      gridContainer.appendChild(header);
+
+      ROWS.forEach((rowKey) => {
+        const rowWrapper = document.createElement("div");
+        rowWrapper.className = "grid-row";
+
+        const rowLabel = document.createElement("div");
+        rowLabel.className = "grid-row-label";
+
+        const mainLabel = document.createElement("span");
+        mainLabel.className = "row-label-main";
+        mainLabel.textContent = rowKey;
+        rowLabel.appendChild(mainLabel);
+
+        const sampleLabel = document.createElement("span");
+        sampleLabel.className = "row-label-sample";
+        const sampleDescriptor = state.kit && state.kit.kit && state.kit.kit[rowKey];
+        sampleLabel.textContent = sampleDescriptor && sampleDescriptor.name
+          ? sampleDescriptor.name
+          : "no sample";
+        rowLabel.appendChild(sampleLabel);
+
+        rowWrapper.appendChild(rowLabel);
+
+        for (let step = 0; step < STEPS; step++) {
+          const cell = document.createElement("div");
+          cell.className = "grid-cell";
+          if (state.pattern[rowKey][step] === 1) {
+            cell.classList.add("active");
+          }
+
+          cell.dataset.row = rowKey;
+          cell.dataset.step = step.toString();
+
+          cell.addEventListener("click", () => {
+            const current = state.pattern[rowKey][step];
+            const next = current === 1 ? 0 : 1;
+            state.pattern[rowKey][step] = next;
+            if (next === 1) {
+              cell.classList.add("active");
+            } else {
+              cell.classList.remove("active");
+            }
+          });
+
+          rowWrapper.appendChild(cell);
+        }
+
+        gridContainer.appendChild(rowWrapper);
+      });
+    }
+
+    function updateKitStatus(kit) {
+      if (!kit) {
+        kitStatusEl.textContent = "awaiting drum kit…";
+        return;
+      }
+
+      const resolvedRows = ROWS.filter(rowKey => kit.kit && kit.kit[rowKey]);
+      kitStatusEl.textContent = `loaded ${resolvedRows.length} of ${ROWS.length} drum slots`;
+    }
+
+    initEmptyPattern();
+    renderGrid();
+    updateKitStatus(null);
+
+    const socket = io("http://localhost:3767");
+
+    socket.on("connect", () => {
+      toolbarStatusEl.textContent = "connected";
+    });
+
+    socket.on("disconnect", () => {
+      toolbarStatusEl.textContent = "disconnected";
+    });
+
+    socket.on("kit", (data) => {
+      state.kit = data;
+      updateKitStatus(data);
+      renderGrid();
+      console.log("Received drum kit:", data);
+    });
+
+    async function loadBufferForRow(rowKey, url) {
+      try {
+        const res = await fetch(url);
+        const arrayBuffer = await res.arrayBuffer();
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        state.buffers[rowKey] = audioBuffer;
+      } catch (e) {
+        console.error("Failed to load sample for", rowKey, e);
+        state.buffers[rowKey] = null;
+      }
+    }
+
+    async function hydrateKitBuffers(kit) {
+      if (!kit || !kit.kit) return;
+      const tasks = [];
+      ROWS.forEach((rowKey) => {
+        const desc = kit.kit[rowKey];
+        if (desc && desc.url) {
+          tasks.push(loadBufferForRow(rowKey, desc.url));
+        } else {
+          state.buffers[rowKey] = null;
+        }
+      });
+      await Promise.all(tasks);
+    }
+
+    socket.on("kit", async (data) => {
+      state.kit = data;
+      updateKitStatus(data);
+      await hydrateKitBuffers(data);
+      renderGrid();
+      console.log("Received drum kit:", data);
+    });
+
+    function clearPlayhead() {
+      document.querySelectorAll(".grid-header-step.playhead").forEach(el => el.classList.remove("playhead"));
+      document.querySelectorAll(".grid-cell.playhead").forEach(el => el.classList.remove("playhead"));
+    }
+
+    function updatePlayhead(stepIndex) {
+      clearPlayhead();
+
+      const headerSteps = document.querySelectorAll(".grid-header-step");
+      headerSteps.forEach((el, idx) => {
+        if (idx === stepIndex) {
+          el.classList.add("playhead");
+        }
+      });
+
+      document.querySelectorAll(`.grid-cell[data-step="${stepIndex}"]`).forEach(el => {
+        el.classList.add("playhead");
+      });
+    }
+
+    function scheduleStep(stepIndex) {
+      const when = audioCtx.currentTime + 0.05; // small lookahead
+      ROWS.forEach(rowKey => {
+        const patternRow = state.pattern[rowKey];
+        const buffer = state.buffers[rowKey];
+        if (!patternRow || !buffer) return;
+        if (patternRow[stepIndex] !== 1) return;
+
+        const source = audioCtx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(audioCtx.destination);
+        source.start(when);
+      });
+    }
+
+    function advanceStep() {
+      updatePlayhead(currentStep);
+      scheduleStep(currentStep);
+      currentStep = (currentStep + 1) % STEPS;
+    }
+
+    async function startPlayback() {
+      if (isPlaying) return;
+      if (audioCtx.state === "suspended") {
+        await audioCtx.resume();
+      }
+      isPlaying = true;
+      currentStep = 0;
+      playToggleBtn.textContent = "pause";
+
+      advanceStep();
+      playIntervalId = setInterval(advanceStep, STEP_DURATION_SEC * 1000);
+    }
+
+    function stopPlayback() {
+      if (!isPlaying) {
+        clearPlayhead();
+        currentStep = 0;
+        return;
+      }
+      isPlaying = false;
+      playToggleBtn.textContent = "play";
+      if (playIntervalId !== null) {
+        clearInterval(playIntervalId);
+        playIntervalId = null;
+      }
+      clearPlayhead();
+      currentStep = 0;
+    }
+
+    playToggleBtn.addEventListener("click", () => {
+      if (isPlaying) {
+        stopPlayback();
+      } else {
+        startPlayback();
+      }
+    });
+
+    stopButton.addEventListener("click", () => {
+      stopPlayback();
+    });
+  </script>
+</body>
+
+</html>
+
