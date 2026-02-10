@@ -8,7 +8,7 @@ import typer
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_socketio import SocketIO
 from utils import (
-    get_server_version,
+    get_auditionr_version,
     get_latest_exports,
     get_presets,
     with_final_main_prompt,
@@ -36,11 +36,15 @@ app = Flask(__name__, static_folder="static", template_folder="templates")
 socketio = SocketIO(app, cors_allowed_origins="*")  # WebSockets enabled
 cli = typer.Typer()
 
+# Controls whether to log WebSocket connections; set from main()'s debug flag.
+DEBUG_WEBSOCKETS = False
+
 
 @socketio.on("connect")
 def handle_connect():
-    """Log WebSocket connections."""
-    print("Client connected via WebSocket")
+    """Handle WebSocket connections."""
+    if DEBUG_WEBSOCKETS:
+        print("Client connected via WebSocket")
     socketio.emit("exports", {"files": get_latest_exports()})
     socketio.emit("configs", {"presets": get_presets(), "patterns": get_patterns()})
 
@@ -53,7 +57,7 @@ def serve_exported_file(filename):
 
 @app.route("/")
 def index():
-    return render_template("index.html", version=__version__)
+    return render_template("auditionr.html", version=__version__)
 
 
 @app.route("/skip", methods=["POST"])
@@ -231,7 +235,10 @@ def main(
         3766, "--port", "-p", help="The port for the webui server on run on"
     ),
 ):
-    print(get_server_version())
+    global DEBUG_WEBSOCKETS
+    DEBUG_WEBSOCKETS = debug
+
+    print(get_auditionr_version())
     print(
         with_final_main_prompt(
             f"Open http://localhost:{port} in a browser to view webui"
@@ -242,3 +249,4 @@ def main(
 
 if __name__ == "__main__":
     cli()
+

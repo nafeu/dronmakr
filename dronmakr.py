@@ -1,6 +1,8 @@
 import time
 import os
 import sys
+import webbrowser
+import threading
 import typer
 from generate_midi import generate_drone_midi
 from generate_sample import generate_drone_sample, generate_beat_sample
@@ -22,7 +24,7 @@ from utils import (
     TRASH_DIR,
 )
 from build_preset import list_presets
-from server import main as run_server
+from auditionr import main as run_server
 from version import __version__
 
 GENERATED_LABEL = f"{RED}...{RESET}"
@@ -363,16 +365,36 @@ def reset(
 
 
 @cli.command()
-def server(
+def auditionr(
     debug: bool = typer.Option(
-        False, "--debug", "-d", help="Enable debug logs in server"
+        False, "--debug", "-d", help="Enable debug logs in auditionr"
     ),
     port: int = typer.Option(
-        3766, "--port", "-p", help="The port for the webui server on run on"
+        3766, "--port", "-p", help="The port for the webui auditionr to run on"
     ),
 ):
-    """Run auditioner web server"""
-    run_server(debug=debug, port=port)
+    """Run auditionr web server"""
+
+    def _run_server():
+        run_server(debug=debug, port=port)
+
+    # Start the server in a background thread so we can wait briefly
+    # and open the browser only if it appears to be running.
+    server_thread = threading.Thread(target=_run_server, daemon=False)
+    server_thread.start()
+
+    # Give the server a moment to bind and start listening
+    time.sleep(1)
+
+    if server_thread.is_alive():
+        try:
+            webbrowser.open(f"http://localhost:{port}")
+        except Exception:
+            # Fail silently if the browser can't be opened.
+            pass
+
+    # Block until the server thread exits
+    server_thread.join()
 
 
 if __name__ == "__main__":

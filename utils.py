@@ -34,8 +34,8 @@ def get_version():
     return f"{RED}┌ {APP_NAME} ■ v{__version__}\n│{RESET}   github.com/nafeu/dronmakr (phrakturemusic@proton.me)\n{RED}│{RESET}"
 
 
-def get_server_version():
-    return f"{RED}┌ {APP_NAME} server ■ v{__version__}\n│{RESET}   github.com/nafeu/dronmakr (phrakturemusic@proton.me){RESET}"
+def get_auditionr_version():
+    return f"{RED}┌ {APP_NAME} ■ v{__version__} auditionr\n│{RESET}   github.com/nafeu/dronmakr (phrakturemusic@proton.me){RESET}"
 
 
 def with_main_prompt(text):
