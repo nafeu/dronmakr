@@ -16,7 +16,12 @@ from flask import Flask, render_template, send_from_directory
 from flask_socketio import SocketIO
 from version import __version__
 
-from utils import TEMP_DIR, delete_all_files, get_auditionr_version, with_final_main_prompt
+from utils import (
+    TEMP_DIR,
+    delete_all_files,
+    get_beatbuildr_version,
+    with_final_beatbuildr_prompt,
+)
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -164,9 +169,9 @@ def main(
     global DEBUG_WEBSOCKETS
     DEBUG_WEBSOCKETS = debug
 
-    print(get_auditionr_version())
+    print(get_beatbuildr_version())
     print(
-        with_final_main_prompt(
+        with_final_beatbuildr_prompt(
             f"Open http://localhost:{port} in a browser to view beatbuildr"
         )
     )
@@ -193,4 +198,3 @@ def main(
 
 if __name__ == "__main__":
     cli()
-

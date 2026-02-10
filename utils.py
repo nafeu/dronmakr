@@ -38,12 +38,20 @@ def get_auditionr_version():
     return f"{RED}┌ {APP_NAME} ■ v{__version__} auditionr\n│{RESET}   github.com/nafeu/dronmakr (phrakturemusic@proton.me){RESET}"
 
 
+def get_beatbuildr_version():
+    return f"{CYAN}┌ {APP_NAME} ■ v{__version__} beatbuildr\n│{RESET}   github.com/nafeu/dronmakr (phrakturemusic@proton.me){RESET}"
+
+
 def with_main_prompt(text):
     return f"{RED}│{RESET}   {text}"
 
 
-def with_final_main_prompt(text):
+def with_final_auditionr_prompt(text):
     return f"{RED}│\n■{RESET} {text}"
+
+
+def with_final_beatbuildr_prompt(text):
+    return f"{CYAN}│\n■{RESET} {text}"
 
 
 def with_build_preset_prompt(text):

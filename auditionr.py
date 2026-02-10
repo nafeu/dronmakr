@@ -11,7 +11,7 @@ from utils import (
     get_auditionr_version,
     get_latest_exports,
     get_presets,
-    with_final_main_prompt,
+    with_final_auditionr_prompt,
     delete_all_files,
     EXPORTS_DIR,
     ARCHIVE_DIR,
@@ -240,7 +240,7 @@ def main(
 
     print(get_auditionr_version())
     print(
-        with_final_main_prompt(
+        with_final_auditionr_prompt(
             f"Open http://localhost:{port} in a browser to view webui"
         )
     )
@@ -249,4 +249,3 @@ def main(
 
 if __name__ == "__main__":
     cli()
-

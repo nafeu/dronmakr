@@ -237,6 +237,12 @@
     .grid-header-step.beat {
       color: var(--theme-b);
     }
+
+    /* Playhead styling (header only) */
+    .grid-header-step.playhead {
+      background: var(--theme-b);
+      color: var(--secondary);
+    }
   </style>
 </head>
 
@@ -451,7 +457,6 @@
 
     function clearPlayhead() {
       document.querySelectorAll(".grid-header-step.playhead").forEach(el => el.classList.remove("playhead"));
-      document.querySelectorAll(".grid-cell.playhead").forEach(el => el.classList.remove("playhead"));
     }
 
     function updatePlayhead(stepIndex) {
@@ -462,10 +467,6 @@
         if (idx === stepIndex) {
           el.classList.add("playhead");
         }
-      });
-
-      document.querySelectorAll(`.grid-cell[data-step="${stepIndex}"]`).forEach(el => {
-        el.classList.add("playhead");
       });
     }
 
