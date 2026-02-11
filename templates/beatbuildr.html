@@ -213,10 +213,12 @@
     }
 
     #sequencer-grid {
-      border-top: 1px solid var(--theme-a);
       border-left: 1px solid var(--theme-a);
       font-size: 0.7rem;
       overflow: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
     }
 
     .grid-row {
@@ -229,7 +231,7 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 0.75rem;
+      gap: 0.35rem;
       padding: 0 0.4rem;
       border-right: 1px solid var(--theme-a);
       border-bottom: 1px solid var(--theme-a);
@@ -240,9 +242,26 @@
     }
 
     .row-label-main {
+      display: inline-flex;
+      align-items: center;
+      font-family: inherit;
+      font-size: inherit;
       text-transform: lowercase;
       color: var(--primary);
       flex-shrink: 0;
+      cursor: pointer;
+      background: transparent;
+      border: none;
+      border-radius: 3px;
+    }
+
+    .row-label-main:hover {
+      background: rgba(255, 149, 5, 0.15);
+      color: var(--primary);
+    }
+
+    .row-label-main:active {
+      background: rgba(255, 149, 5, 0.25);
     }
 
     .row-label-sample-wrap {
@@ -304,14 +323,10 @@
       box-shadow: inset 0 0 0 1px #000000;
     }
 
-    .grid-cell.active:nth-child(4n+2) {
-      /* Slight accent on off-beats when active */
-      box-shadow: inset 0 0 0 1px var(--theme-c);
-    }
-
     .grid-header {
       display: grid;
       grid-template-columns: var(--grid-label-width) repeat(16, var(--grid-cell-size));
+      border-top: 1px solid var(--theme-a);
       border-bottom: 1px solid var(--theme-a);
       background: #050505;
       position: sticky;
@@ -372,7 +387,8 @@
       <h2><i class="fa-solid fa-sliders"></i> toolbar</h2>
       <div id="transport">
         <div class="transport-actions">
-          <button type="button" id="undo-btn" class="transport-btn transport-btn-secondary" title="Undo last edit" disabled>
+          <button type="button" id="undo-btn" class="transport-btn transport-btn-secondary" title="Undo last edit"
+            disabled>
             <i class="fa-solid fa-undo"></i>
           </button>
           <button type="button" id="redo-btn" class="transport-btn transport-btn-secondary" title="Redo" disabled>
@@ -384,7 +400,8 @@
           <button type="button" id="stop-button" class="transport-btn transport-btn-secondary" title="Stop">
             <i class="fa-solid fa-stop"></i>
           </button>
-          <button type="button" id="new-kit-btn" class="transport-btn transport-btn-secondary" title="Load new random drum kit">
+          <button type="button" id="new-kit-btn" class="transport-btn transport-btn-secondary"
+            title="Load new random drum kit">
             <i class="fa-solid fa-drum"></i>
           </button>
         </div>
@@ -514,9 +531,16 @@
         const rowLabel = document.createElement("div");
         rowLabel.className = "grid-row-label";
 
-        const mainLabel = document.createElement("span");
+        const mainLabel = document.createElement("button");
+        mainLabel.type = "button";
         mainLabel.className = "row-label-main";
         mainLabel.textContent = rowKey;
+        mainLabel.title = "Preview sample";
+        mainLabel.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          playPreview(rowKey);
+        });
         rowLabel.appendChild(mainLabel);
 
         const sampleWrap = document.createElement("div");
@@ -689,6 +713,18 @@
           el.classList.add("playhead");
         }
       });
+    }
+
+    function playPreview(rowKey) {
+      const buffer = state.buffers[rowKey];
+      if (!buffer) return;
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+      const source = audioCtx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(audioCtx.destination);
+      source.start(0);
     }
 
     function scheduleStep(stepIndex) {
