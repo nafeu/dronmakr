@@ -3,6 +3,7 @@ import numpy as np
 import soundfile as sf
 import librosa
 import pedalboard
+from scipy.signal import butter, fftconvolve, filtfilt
 from pedalboard import (
     Chorus,
     Compressor,
@@ -228,26 +229,92 @@ def reverse_sample(input_path):
     print(f"Reversed sample saved to: {input_path}")
 
 
-def apply_reverb_to_sample(input_path):
-    """Apply pedalboard Reverb and overwrite the file. Default room/wet settings."""
+def _highpass_ir(ir: np.ndarray, sample_rate: float, cutoff_hz: float, order: int = 2) -> np.ndarray:
+    """Apply highpass to an IR so reverb has no energy below cutoff_hz (avoids low-end phase clash)."""
+    if cutoff_hz <= 0 or cutoff_hz >= sample_rate / 2.1:
+        return ir
+    nyq = 0.5 * sample_rate
+    low = cutoff_hz / nyq
+    b, a = butter(order, low, btype="high")
+    return filtfilt(b, a, ir).astype(ir.dtype)
+
+
+def _make_reverb_ir(
+    sample_rate,
+    length_sec=0.7,
+    decay_sec=0.5,
+    early_reflections=5,
+    highpass_cutoff_hz=0.0,
+):
+    """
+    Build a high-quality reverb impulse response for offline convolution.
+    Early reflections (discrete echoes) + dense tail (exponential decay of
+    filtered noise). Optional highpass on the IR so reverb doesn't reflect
+    low-end (set highpass_cutoff_hz > 0, e.g. 80–120 for drums).
+    """
+    n = int(sample_rate * length_sec)
+    ir = np.zeros(n, dtype=np.float64)
+    # Early reflections: sparse delays, smaller time window for small room
+    rng = np.random.default_rng(42)
+    for _ in range(early_reflections):
+        idx = int(rng.uniform(0.002 * sample_rate, 0.04 * sample_rate))
+        if idx < n:
+            ir[idx] += rng.uniform(0.12, 0.35)
+    # Dense tail: exponential decay of lowpassed noise
+    tail_start = int(0.03 * sample_rate)
+    tail_len = n - tail_start
+    noise = rng.standard_normal(tail_len)
+    alpha = 0.3
+    for i in range(1, tail_len):
+        noise[i] = alpha * noise[i - 1] + (1 - alpha) * noise[i]
+    t = np.arange(tail_len, dtype=np.float64) / sample_rate
+    decay = np.exp(-t * (3.0 / decay_sec))
+    ir[tail_start:] = ir[tail_start:] + noise * decay
+    if highpass_cutoff_hz > 0:
+        ir = _highpass_ir(ir, sample_rate, highpass_cutoff_hz)
+    ir = ir / (np.max(np.abs(ir)) + 1e-12)
+    return ir.astype(np.float32)
+
+
+def apply_reverb_to_sample(
+    input_path,
+    wet_level=0.35,
+    reverb_length_sec=0.7,
+    decay_sec=0.5,
+    reverb_highpass_hz=100.0,
+):
+    """
+    Apply high-quality convolution reverb (offline). Uses a generated IR with
+    early reflections + dense decay tail. Optional highpass on the reverb
+    only (reverb_highpass_hz > 0) to avoid low-end phase clash on drums;
+    set to 0 to leave low-end in the reverb.
+    """
     with AudioFile(input_path) as f:
         audio = f.read(f.frames)
         sample_rate = f.samplerate
-    board = Pedalboard([
-        Reverb(
-            room_size=0.5,
-            damping=0.5,
-            wet_level=0.35,
-            dry_level=0.65,
-            width=0.8,
-        ),
-    ])
-    processed = board(audio, sample_rate)
+    n_channels, n_samples = audio.shape
+    ir = _make_reverb_ir(
+        sample_rate,
+        length_sec=reverb_length_sec,
+        decay_sec=decay_sec,
+        highpass_cutoff_hz=reverb_highpass_hz,
+    )
+    wet = np.zeros_like(audio)
+    for ch in range(n_channels):
+        wet[ch] = fftconvolve(audio[ch], ir, mode="full")[:n_samples]
+    wet_peak = np.max(np.abs(wet)) + 1e-12
+    dry_peak = np.max(np.abs(audio)) + 1e-12
+    wet = wet * (dry_peak / wet_peak)
+    mix = wet_level * wet + (1.0 - wet_level) * audio
     with AudioFile(
-        input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
+        input_path, "w", samplerate=sample_rate, num_channels=n_channels
     ) as out:
-        out.write(processed)
-    print(f"Applied reverb to: {input_path}")
+        out.write(mix)
+    msg = f"Applied convolution reverb (wet={wet_level}, {reverb_length_sec}s IR"
+    if reverb_highpass_hz > 0:
+        msg += f", HPF {reverb_highpass_hz} Hz"
+    msg += f") to: {input_path}"
+    print(msg)
 
 
 def apply_distortion_to_sample(input_path):
