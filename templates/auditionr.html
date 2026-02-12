@@ -220,6 +220,13 @@
     var selectedWaveformTimestamps = [];
     var db = 2;
     var lastEdited = "";
+    var sharedAudioContext = null;
+    var currentDrumpatternStop = null;
+
+    function getAudioContext() {
+      if (!sharedAudioContext) sharedAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+      return sharedAudioContext;
+    }
 
     function emptyTrash() {
       var button = document.getElementById("empty-trash-button");
@@ -328,6 +335,10 @@
     });
 
     function displayWaveforms(files) {
+      if (currentDrumpatternStop) {
+        currentDrumpatternStop();
+        currentDrumpatternStop = null;
+      }
       var container = document.getElementById("waveform-container");
       container.innerHTML = ""; // Clear existing waveforms
 
@@ -369,6 +380,7 @@
         playButton.innerText = "Play";
         playButton.classList.add("button")
         playButton.classList.add("fixed-button")
+        if (isDrumpattern) playButton.classList.add("disabled");
         actions.appendChild(playButton);
 
         var skipButton = document.createElement("div");
@@ -521,26 +533,74 @@
           if (trimEndButton) trimEndButton.innerText = `End At ${formatTimestamp(selectedWaveformTimestamps[index])}`;
         });
 
+        var drumpatternBuffer = null;
+        var drumpatternPlaying = false;
+        var drumpatternSourceNode = null;
+        var drumpatternStartTime = 0;
+        var drumpatternRafId = null;
+
         wavesurfer.on("ready", function () {
           duration.innerText = `${formatTimestamp(wavesurfer.getDuration())}`;
+          if (isDrumpattern) {
+            fetch(filePath)
+              .then(function (r) { return r.arrayBuffer(); })
+              .then(function (ab) {
+                return getAudioContext().decodeAudioData(ab);
+              })
+              .then(function (buffer) {
+                drumpatternBuffer = buffer;
+                playButton.classList.remove("disabled");
+              })
+              .catch(function (e) {
+                console.error("Drumpattern decode failed", e);
+                playButton.classList.remove("disabled");
+              });
+          }
         });
 
-        if (isDrumpattern) {
-          // Loop by seeking to start just before the end (avoids delay from "finish" event).
-          var loopThreshold = 0.03;
-          wavesurfer.on("timeupdate", function (currentTime) {
-            if (!wavesurfer.isPlaying()) return;
-            var d = wavesurfer.getDuration();
-            if (d > 0 && currentTime >= d - loopThreshold) wavesurfer.seekTo(0);
-          });
-          // Fallback if we miss the window (e.g. tab in background).
-          wavesurfer.on("finish", function () {
-            wavesurfer.seekTo(0);
-            wavesurfer.play();
-          });
+        function stopDrumpatternPlayback() {
+          if (!drumpatternPlaying && !drumpatternSourceNode) return;
+          try { if (drumpatternSourceNode) drumpatternSourceNode.stop(); } catch (err) {}
+          drumpatternSourceNode = null;
+          drumpatternPlaying = false;
+          if (drumpatternRafId != null) cancelAnimationFrame(drumpatternRafId);
+          drumpatternRafId = null;
+          playButton.innerText = "Play";
+          if (currentDrumpatternStop === stopDrumpatternPlayback) currentDrumpatternStop = null;
         }
 
-        playButton.addEventListener("click", () => {
+        function updateDrumpatternPlayhead() {
+          if (!drumpatternPlaying || !drumpatternBuffer) return;
+          var ctx = getAudioContext();
+          var d = drumpatternBuffer.duration;
+          var elapsed = ctx.currentTime - drumpatternStartTime;
+          var t = d > 0 ? (elapsed % d) / d : 0;
+          wavesurfer.seekTo(Math.min(1, Math.max(0, t)));
+          drumpatternRafId = requestAnimationFrame(updateDrumpatternPlayhead);
+        }
+
+        playButton.addEventListener("click", function () {
+          if (isDrumpattern) {
+            if (!drumpatternBuffer) return;
+            if (drumpatternPlaying) {
+              stopDrumpatternPlayback();
+              return;
+            }
+            var ctx = getAudioContext();
+            if (ctx.state === "suspended") ctx.resume();
+            var src = ctx.createBufferSource();
+            src.buffer = drumpatternBuffer;
+            src.loop = true;
+            src.connect(ctx.destination);
+            src.start(0);
+            drumpatternSourceNode = src;
+            drumpatternStartTime = ctx.currentTime;
+            drumpatternPlaying = true;
+            currentDrumpatternStop = stopDrumpatternPlayback;
+            playButton.innerText = "Pause";
+            drumpatternRafId = requestAnimationFrame(updateDrumpatternPlayhead);
+            return;
+          }
           if (wavesurfer.isPlaying()) {
             wavesurfer.pause();
             playButton.innerText = "Play";
