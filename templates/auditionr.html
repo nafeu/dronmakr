@@ -526,6 +526,14 @@
         });
 
         if (isDrumpattern) {
+          // Loop by seeking to start just before the end (avoids delay from "finish" event).
+          var loopThreshold = 0.03;
+          wavesurfer.on("timeupdate", function (currentTime) {
+            if (!wavesurfer.isPlaying()) return;
+            var d = wavesurfer.getDuration();
+            if (d > 0 && currentTime >= d - loopThreshold) wavesurfer.seekTo(0);
+          });
+          // Fallback if we miss the window (e.g. tab in background).
           wavesurfer.on("finish", function () {
             wavesurfer.seekTo(0);
             wavesurfer.play();
