@@ -395,6 +395,104 @@
         saveButton.addEventListener("click", () => saveSample(filePath));
         actions.appendChild(saveButton);
 
+        if (isDrumpattern) {
+          var reverbBtn = document.createElement("div");
+          reverbBtn.innerText = "Reverberate";
+          reverbBtn.classList.add("button");
+          reverbBtn.addEventListener("click", () => processSample({ path: filePath, command: "reverb_sample", files }));
+          actions.appendChild(reverbBtn);
+
+          var distortBtn = document.createElement("div");
+          distortBtn.innerText = "Distort";
+          distortBtn.classList.add("button");
+          distortBtn.addEventListener("click", () => processSample({ path: filePath, command: "distort_sample", files }));
+          actions.appendChild(distortBtn);
+
+          var chorusBtn = document.createElement("div");
+          chorusBtn.innerText = "Chorus";
+          chorusBtn.classList.add("button");
+          chorusBtn.addEventListener("click", () => processSample({ path: filePath, command: "chorus_sample", files }));
+          actions.appendChild(chorusBtn);
+
+          var flangerBtn = document.createElement("div");
+          flangerBtn.innerText = "Flanger";
+          flangerBtn.classList.add("button");
+          flangerBtn.addEventListener("click", () => processSample({ path: filePath, command: "flanger_sample", files }));
+          actions.appendChild(flangerBtn);
+
+          var phaserBtn = document.createElement("div");
+          phaserBtn.innerText = "Phaser";
+          phaserBtn.classList.add("button");
+          phaserBtn.addEventListener("click", () => processSample({ path: filePath, command: "phaser_sample", files }));
+          actions.appendChild(phaserBtn);
+
+          var lpfBtn = document.createElement("div");
+          lpfBtn.innerText = "LPF";
+          lpfBtn.classList.add("button");
+          lpfBtn.addEventListener("click", () => processSample({ path: filePath, command: "lpf_sample", files }));
+          actions.appendChild(lpfBtn);
+
+          var hpfBtn = document.createElement("div");
+          hpfBtn.innerText = "HPF";
+          hpfBtn.classList.add("button");
+          hpfBtn.addEventListener("click", () => processSample({ path: filePath, command: "hpf_sample", files }));
+          actions.appendChild(hpfBtn);
+
+          var lowsPlus2Btn = document.createElement("div");
+          lowsPlus2Btn.innerText = "Lows +2dB";
+          lowsPlus2Btn.classList.add("button");
+          lowsPlus2Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_lows_sample", db: 2, files }));
+          actions.appendChild(lowsPlus2Btn);
+
+          var lowsMinus2Btn = document.createElement("div");
+          lowsMinus2Btn.innerText = "Lows -2dB";
+          lowsMinus2Btn.classList.add("button");
+          lowsMinus2Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_lows_sample", db: -2, files }));
+          actions.appendChild(lowsMinus2Btn);
+
+          var midsPlus2Btn = document.createElement("div");
+          midsPlus2Btn.innerText = "Mids +2dB";
+          midsPlus2Btn.classList.add("button");
+          midsPlus2Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_mids_sample", db: 2, files }));
+          actions.appendChild(midsPlus2Btn);
+
+          var midsMinus2Btn = document.createElement("div");
+          midsMinus2Btn.innerText = "Mids -2dB";
+          midsMinus2Btn.classList.add("button");
+          midsMinus2Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_mids_sample", db: -2, files }));
+          actions.appendChild(midsMinus2Btn);
+
+          var highsPlus2Btn = document.createElement("div");
+          highsPlus2Btn.innerText = "Highs +2dB";
+          highsPlus2Btn.classList.add("button");
+          highsPlus2Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_highs_sample", db: 2, files }));
+          actions.appendChild(highsPlus2Btn);
+
+          var highsMinus2Btn = document.createElement("div");
+          highsMinus2Btn.innerText = "Highs -2dB";
+          highsMinus2Btn.classList.add("button");
+          highsMinus2Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_highs_sample", db: -2, files }));
+          actions.appendChild(highsMinus2Btn);
+
+          var gainPlus2Btn = document.createElement("div");
+          gainPlus2Btn.innerText = "Gain +2dB";
+          gainPlus2Btn.classList.add("button");
+          gainPlus2Btn.addEventListener("click", () => processSample({ path: filePath, command: "increase_sample_gain", db: 2, files }));
+          actions.appendChild(gainPlus2Btn);
+
+          var gainMinus2Btn = document.createElement("div");
+          gainMinus2Btn.innerText = "Gain -2dB";
+          gainMinus2Btn.classList.add("button");
+          gainMinus2Btn.addEventListener("click", () => processSample({ path: filePath, command: "decrease_sample_gain", db: 2, files }));
+          actions.appendChild(gainMinus2Btn);
+
+          var reverseDrumpatternBtn = document.createElement("div");
+          reverseDrumpatternBtn.innerText = "Reverse";
+          reverseDrumpatternBtn.classList.add("button");
+          reverseDrumpatternBtn.addEventListener("click", () => processSample({ path: filePath, command: "reverse_sample", files }));
+          actions.appendChild(reverseDrumpatternBtn);
+        }
+
         var trimStartButton = null;
         var trimEndButton = null;
 

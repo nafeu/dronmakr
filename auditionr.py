@@ -29,6 +29,16 @@ from process_sample import (
     decrease_sample_gain,
     reverse_sample,
     apply_granular_synthesis,
+    apply_reverb_to_sample,
+    apply_distortion_to_sample,
+    apply_chorus_to_sample,
+    apply_flanger_to_sample,
+    apply_phaser_to_sample,
+    apply_lowpass_to_sample,
+    apply_highpass_to_sample,
+    apply_eq_lows_to_sample,
+    apply_eq_mids_to_sample,
+    apply_eq_highs_to_sample,
 )
 from version import __version__
 
@@ -217,6 +227,26 @@ def process_file():
             reverse_sample(file_path)
         case "granularize_sample":
             apply_granular_synthesis(file_path)
+        case "reverb_sample":
+            apply_reverb_to_sample(file_path)
+        case "distort_sample":
+            apply_distortion_to_sample(file_path)
+        case "chorus_sample":
+            apply_chorus_to_sample(file_path)
+        case "flanger_sample":
+            apply_flanger_to_sample(file_path)
+        case "phaser_sample":
+            apply_phaser_to_sample(file_path)
+        case "lpf_sample":
+            apply_lowpass_to_sample(file_path)
+        case "hpf_sample":
+            apply_highpass_to_sample(file_path)
+        case "eq_lows_sample":
+            apply_eq_lows_to_sample(file_path, params.get("db", 0))
+        case "eq_mids_sample":
+            apply_eq_mids_to_sample(file_path, params.get("db", 0))
+        case "eq_highs_sample":
+            apply_eq_highs_to_sample(file_path, params.get("db", 0))
         case _:
             return jsonify({"error": "Command not recognized"}), 400
 

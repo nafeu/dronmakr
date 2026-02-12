@@ -4,14 +4,20 @@ import soundfile as sf
 import librosa
 import pedalboard
 from pedalboard import (
+    Chorus,
     Compressor,
-    Reverb,
+    Distortion,
     Gain,
     HighpassFilter,
-    LowpassFilter,
+    HighShelfFilter,
     Limiter,
+    LowpassFilter,
+    LowShelfFilter,
     Pedalboard,
+    PeakFilter,
+    Phaser,
     Resample,
+    Reverb,
 )
 from pedalboard.io import AudioFile
 from paulstretch import paulstretch
@@ -220,6 +226,168 @@ def reverse_sample(input_path):
 
     sf.write(input_path, reversed_audio, sample_rate)
     print(f"Reversed sample saved to: {input_path}")
+
+
+def apply_reverb_to_sample(input_path):
+    """Apply pedalboard Reverb and overwrite the file. Default room/wet settings."""
+    with AudioFile(input_path) as f:
+        audio = f.read(f.frames)
+        sample_rate = f.samplerate
+    board = Pedalboard([
+        Reverb(
+            room_size=0.5,
+            damping=0.5,
+            wet_level=0.35,
+            dry_level=0.65,
+            width=0.8,
+        ),
+    ])
+    processed = board(audio, sample_rate)
+    with AudioFile(
+        input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
+    ) as out:
+        out.write(processed)
+    print(f"Applied reverb to: {input_path}")
+
+
+def apply_distortion_to_sample(input_path):
+    """Apply pedalboard Distortion and overwrite the file."""
+    with AudioFile(input_path) as f:
+        audio = f.read(f.frames)
+        sample_rate = f.samplerate
+    board = Pedalboard([Distortion(drive_db=6)])
+    processed = board(audio, sample_rate)
+    with AudioFile(
+        input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
+    ) as out:
+        out.write(processed)
+    print(f"Applied distortion to: {input_path}")
+
+
+def apply_chorus_to_sample(input_path):
+    """Apply pedalboard Chorus and overwrite the file."""
+    with AudioFile(input_path) as f:
+        audio = f.read(f.frames)
+        sample_rate = f.samplerate
+    board = Pedalboard([Chorus(rate_hz=1.0, depth=0.25, centre_delay_ms=7.0, feedback=0.0, mix=0.5)])
+    processed = board(audio, sample_rate)
+    with AudioFile(
+        input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
+    ) as out:
+        out.write(processed)
+    print(f"Applied chorus to: {input_path}")
+
+
+def apply_flanger_to_sample(input_path):
+    """Apply flanger-style effect (Chorus with short delay and feedback) and overwrite the file."""
+    with AudioFile(input_path) as f:
+        audio = f.read(f.frames)
+        sample_rate = f.samplerate
+    board = Pedalboard([
+        Chorus(
+            rate_hz=0.5,
+            depth=0.4,
+            centre_delay_ms=2.0,
+            feedback=0.3,
+            mix=0.5,
+        ),
+    ])
+    processed = board(audio, sample_rate)
+    with AudioFile(
+        input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
+    ) as out:
+        out.write(processed)
+    print(f"Applied flanger to: {input_path}")
+
+
+def apply_phaser_to_sample(input_path):
+    """Apply pedalboard Phaser and overwrite the file."""
+    with AudioFile(input_path) as f:
+        audio = f.read(f.frames)
+        sample_rate = f.samplerate
+    board = Pedalboard([Phaser(rate_hz=1.0, depth=0.7, centre_frequency_hz=1000, feedback=0.5, mix=0.5)])
+    processed = board(audio, sample_rate)
+    with AudioFile(
+        input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
+    ) as out:
+        out.write(processed)
+    print(f"Applied phaser to: {input_path}")
+
+
+def apply_lowpass_to_sample(input_path, cutoff_hz=8000):
+    """Apply low-pass filter and overwrite the file. Cuts highs above cutoff."""
+    with AudioFile(input_path) as f:
+        audio = f.read(f.frames)
+        sample_rate = f.samplerate
+    board = Pedalboard([LowpassFilter(cutoff_frequency_hz=cutoff_hz)])
+    processed = board(audio, sample_rate)
+    with AudioFile(
+        input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
+    ) as out:
+        out.write(processed)
+    print(f"Applied LPF ({cutoff_hz} Hz) to: {input_path}")
+
+
+def apply_highpass_to_sample(input_path, cutoff_hz=80):
+    """Apply high-pass filter and overwrite the file. Cuts lows below cutoff."""
+    with AudioFile(input_path) as f:
+        audio = f.read(f.frames)
+        sample_rate = f.samplerate
+    board = Pedalboard([HighpassFilter(cutoff_frequency_hz=cutoff_hz)])
+    processed = board(audio, sample_rate)
+    with AudioFile(
+        input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
+    ) as out:
+        out.write(processed)
+    print(f"Applied HPF ({cutoff_hz} Hz) to: {input_path}")
+
+
+def apply_eq_lows_to_sample(input_path, gain_db, cutoff_hz=250):
+    """Apply low-shelf EQ and overwrite the file. gain_db: +2 or -2."""
+    with AudioFile(input_path) as f:
+        audio = f.read(f.frames)
+        sample_rate = f.samplerate
+    board = Pedalboard([
+        LowShelfFilter(cutoff_frequency_hz=cutoff_hz, gain_db=gain_db, q=0.7),
+    ])
+    processed = board(audio, sample_rate)
+    with AudioFile(
+        input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
+    ) as out:
+        out.write(processed)
+    print(f"Applied Lows {gain_db:+.0f} dB to: {input_path}")
+
+
+def apply_eq_mids_to_sample(input_path, gain_db, centre_hz=1000):
+    """Apply mid peak EQ and overwrite the file. gain_db: +2 or -2."""
+    with AudioFile(input_path) as f:
+        audio = f.read(f.frames)
+        sample_rate = f.samplerate
+    board = Pedalboard([
+        PeakFilter(cutoff_frequency_hz=centre_hz, gain_db=gain_db, q=0.7),
+    ])
+    processed = board(audio, sample_rate)
+    with AudioFile(
+        input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
+    ) as out:
+        out.write(processed)
+    print(f"Applied Mids {gain_db:+.0f} dB to: {input_path}")
+
+
+def apply_eq_highs_to_sample(input_path, gain_db, cutoff_hz=4000):
+    """Apply high-shelf EQ and overwrite the file. gain_db: +2 or -2."""
+    with AudioFile(input_path) as f:
+        audio = f.read(f.frames)
+        sample_rate = f.samplerate
+    board = Pedalboard([
+        HighShelfFilter(cutoff_frequency_hz=cutoff_hz, gain_db=gain_db, q=0.7),
+    ])
+    processed = board(audio, sample_rate)
+    with AudioFile(
+        input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
+    ) as out:
+        out.write(processed)
+    print(f"Applied Highs {gain_db:+.0f} dB to: {input_path}")
 
 
 def apply_granular_synthesis(
