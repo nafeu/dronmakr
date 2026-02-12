@@ -248,12 +248,14 @@ def generate_drone(
 
 @cli.command(name="generate-beat")
 def generate_beat(
-    bpm: int = typer.Option(120, help="Beats per minute"),
-    bars: int = typer.Option(1, help="Number of bars to generate"),
+    bpm: int = typer.Option(120, "--bpm", "-t", help="Beats per minute"),
+    loops: int = typer.Option(1, "--loops", "-l", help="Number of bars to generate"),
     output: str = typer.Option("output.wav", help="Output filename"),
     humanize: bool = typer.Option(True, help="Apply humanization (velocity + timing)"),
-    style: str = typer.Option(
+    pattern: str = typer.Option(
         "breakbeat",
+        "--pattern",
+        "-p",
         help="Drum pattern style (breakbeat, dnb, trance, garage, halfstep)",
     ),
     swing: float = typer.Option(
@@ -276,8 +278,8 @@ def generate_beat(
     print(with_prompt(f"output                {output}"))
     print(with_prompt(f"tempo"))
     print(with_prompt(f"  bpm                 {bpm}"))
-    print(with_prompt(f"  bars                {bars}"))
-    print(with_prompt(f"pattern               {style}"))
+    print(with_prompt(f"  loops               {loops}"))
+    print(with_prompt(f"pattern               {pattern}"))
     print(with_prompt(f"swing                 {swing}"))
     print(with_prompt(f"humanize              {humanize}"))
     print(with_prompt(f"play when done        {play}"))
@@ -286,10 +288,10 @@ def generate_beat(
     print(generate_beat_header())
     generate_beat_sample(
         bpm=bpm,
-        bars=bars,
+        bars=loops,
         output=output,
         humanize=humanize,
-        style=style,
+        style=pattern,
         swing=swing,
         play=play,
     )
