@@ -30,7 +30,12 @@ from process_sample import (
     reverse_sample,
     apply_granular_synthesis,
     apply_reverb_to_sample,
+    apply_reverb_room_to_sample,
+    apply_reverb_hall_to_sample,
+    apply_reverb_large_to_sample,
     apply_distortion_to_sample,
+    apply_compress_to_sample,
+    apply_overdrive_mids_to_sample,
     apply_chorus_to_sample,
     apply_flanger_to_sample,
     apply_phaser_to_sample,
@@ -229,6 +234,16 @@ def process_file():
             apply_granular_synthesis(file_path)
         case "reverb_sample":
             apply_reverb_to_sample(file_path)
+        case "reverb_room_sample":
+            apply_reverb_room_to_sample(file_path)
+        case "reverb_hall_sample":
+            apply_reverb_hall_to_sample(file_path)
+        case "reverb_large_sample":
+            apply_reverb_large_to_sample(file_path)
+        case "compress_sample":
+            apply_compress_to_sample(file_path)
+        case "overdrive_mids_sample":
+            apply_overdrive_mids_to_sample(file_path)
         case "distort_sample":
             apply_distortion_to_sample(file_path)
         case "chorus_sample":

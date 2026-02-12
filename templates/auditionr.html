@@ -402,6 +402,36 @@
           reverbBtn.addEventListener("click", () => processSample({ path: filePath, command: "reverb_sample", files }));
           actions.appendChild(reverbBtn);
 
+          var reverbRoomBtn = document.createElement("div");
+          reverbRoomBtn.innerText = "Room";
+          reverbRoomBtn.classList.add("button");
+          reverbRoomBtn.addEventListener("click", () => processSample({ path: filePath, command: "reverb_room_sample", files }));
+          actions.appendChild(reverbRoomBtn);
+
+          var reverbHallBtn = document.createElement("div");
+          reverbHallBtn.innerText = "Hall";
+          reverbHallBtn.classList.add("button");
+          reverbHallBtn.addEventListener("click", () => processSample({ path: filePath, command: "reverb_hall_sample", files }));
+          actions.appendChild(reverbHallBtn);
+
+          var reverbLargeBtn = document.createElement("div");
+          reverbLargeBtn.innerText = "Large";
+          reverbLargeBtn.classList.add("button");
+          reverbLargeBtn.addEventListener("click", () => processSample({ path: filePath, command: "reverb_large_sample", files }));
+          actions.appendChild(reverbLargeBtn);
+
+          var compressBtn = document.createElement("div");
+          compressBtn.innerText = "Compress";
+          compressBtn.classList.add("button");
+          compressBtn.addEventListener("click", () => processSample({ path: filePath, command: "compress_sample", files }));
+          actions.appendChild(compressBtn);
+
+          var overdriveMidsBtn = document.createElement("div");
+          overdriveMidsBtn.innerText = "Overdrive";
+          overdriveMidsBtn.classList.add("button");
+          overdriveMidsBtn.addEventListener("click", () => processSample({ path: filePath, command: "overdrive_mids_sample", files }));
+          actions.appendChild(overdriveMidsBtn);
+
           var distortBtn = document.createElement("div");
           distortBtn.innerText = "Distort";
           distortBtn.classList.add("button");

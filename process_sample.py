@@ -317,6 +317,39 @@ def apply_reverb_to_sample(
     print(msg)
 
 
+def apply_reverb_room_to_sample(input_path):
+    """Small room reverb: short length and decay."""
+    apply_reverb_to_sample(
+        input_path,
+        wet_level=0.3,
+        reverb_length_sec=0.4,
+        decay_sec=0.3,
+        reverb_highpass_hz=100.0,
+    )
+
+
+def apply_reverb_hall_to_sample(input_path):
+    """Hall reverb: medium size and decay."""
+    apply_reverb_to_sample(
+        input_path,
+        wet_level=0.35,
+        reverb_length_sec=1.0,
+        decay_sec=0.8,
+        reverb_highpass_hz=100.0,
+    )
+
+
+def apply_reverb_large_to_sample(input_path):
+    """Large reverb: long length and decay."""
+    apply_reverb_to_sample(
+        input_path,
+        wet_level=0.4,
+        reverb_length_sec=1.8,
+        decay_sec=1.5,
+        reverb_highpass_hz=100.0,
+    )
+
+
 def apply_distortion_to_sample(input_path):
     """Apply pedalboard Distortion and overwrite the file."""
     with AudioFile(input_path) as f:
@@ -329,6 +362,56 @@ def apply_distortion_to_sample(input_path):
     ) as out:
         out.write(processed)
     print(f"Applied distortion to: {input_path}")
+
+
+def apply_compress_to_sample(
+    input_path,
+    threshold_db=-20.0,
+    ratio=10.0,
+    attack_ms=3.0,
+    release_ms=80.0,
+):
+    """Apply aggressive pedalboard compression and overwrite the file."""
+    with AudioFile(input_path) as f:
+        audio = f.read(f.frames)
+        sample_rate = f.samplerate
+    board = Pedalboard([
+        Compressor(
+            threshold_db=threshold_db,
+            ratio=ratio,
+            attack_ms=attack_ms,
+            release_ms=release_ms,
+        ),
+    ])
+    processed = board(audio, sample_rate)
+    with AudioFile(
+        input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
+    ) as out:
+        out.write(processed)
+    print(f"Applied aggressive compression to: {input_path}")
+
+
+def apply_overdrive_mids_to_sample(
+    input_path,
+    drive_db=14.0,
+    highpass_hz=200.0,
+    lowpass_hz=4000.0,
+):
+    """Overdrive focused on mids: HPF to cut lows, distortion, LPF to cut highs."""
+    with AudioFile(input_path) as f:
+        audio = f.read(f.frames)
+        sample_rate = f.samplerate
+    board = Pedalboard([
+        HighpassFilter(cutoff_frequency_hz=highpass_hz),
+        Distortion(drive_db=drive_db),
+        LowpassFilter(cutoff_frequency_hz=lowpass_hz),
+    ])
+    processed = board(audio, sample_rate)
+    with AudioFile(
+        input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
+    ) as out:
+        out.write(processed)
+    print(f"Applied mid-focused overdrive to: {input_path}")
 
 
 def apply_chorus_to_sample(input_path):
