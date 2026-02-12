@@ -14,8 +14,8 @@ from process_sample import process_drone_sample
 from utils import (
     format_name,
     generate_beat_header,
+    generate_drone_name,
     generate_id,
-    generate_name,
     get_cli_version,
     get_version,
     RED,
@@ -213,7 +213,7 @@ def generate_drone(
             notes=notes.split(",") if notes else None,
         )
         sample_name = format_name(
-            f"{name or generate_name()}_-_{selected_chart}_-_{generate_id()}"
+            f"{name or generate_drone_name()}_-_{selected_chart}_-_{generate_id()}"
         )
         output_path = f"{EXPORTS_DIR}/{sample_name}"
         generated_sample = generate_drone_sample(
