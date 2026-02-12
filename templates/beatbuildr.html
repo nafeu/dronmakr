@@ -212,6 +212,90 @@
       box-shadow: 0 0 0 1px var(--theme-b);
     }
 
+    .transport-swing {
+      margin-bottom: 0.5rem;
+    }
+
+    .transport-swing label {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 0.7rem;
+      color: var(--theme-a);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.35rem;
+    }
+
+    .swing-value {
+      font-size: 0.8rem;
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .swing-slider-wrapper {
+      position: relative;
+      width: 100%;
+      height: 2.5rem;
+      display: flex;
+      align-items: center;
+    }
+
+    .swing-fake-track {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--secondary);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .transport-swing input[type="range"] {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+      z-index: 2;
+    }
+
+    .transport-swing input[type="range"]::-webkit-slider-track {
+      background: transparent;
+      border: none;
+    }
+
+    .transport-swing input[type="range"]::-moz-range-track {
+      background: transparent;
+      border: none;
+    }
+
+    .transport-swing input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      background: var(--primary);
+      border: 2px solid var(--secondary);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .transport-swing input[type="range"]::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      background: var(--primary);
+      border: 2px solid var(--secondary);
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .transport-swing input[type="range"]:focus {
+      outline: none;
+    }
+
     .pattern-save-section {
       margin-top: 1rem;
       padding-top: 1rem;
@@ -551,6 +635,16 @@
           <label for="tempo-input">Tempo (bpm)</label>
           <input type="number" id="tempo-input" min="40" max="240" value="120" title="Beats per minute">
         </div>
+        <div class="transport-swing">
+          <label for="swing-input">
+            <span>Swing</span>
+            <span class="swing-value" id="swing-display">0%</span>
+          </label>
+          <div class="swing-slider-wrapper">
+            <div class="swing-fake-track"></div>
+            <input type="range" id="swing-input" min="0" max="100" value="0" step="1" title="Swing amount (0 = straight, 100 = triplet feel)">
+          </div>
+        </div>
         <div class="pattern-save-section">
           <h3><i class="fa-solid fa-floppy-disk"></i> Save Pattern</h3>
           <input type="text" id="pattern-name-input" class="pattern-name-input" placeholder="Enter pattern name"
@@ -575,6 +669,7 @@
       pattern: {}, // { rowKey: [0/1,...] }
       buffers: {}, // { rowKey: AudioBuffer | null }
       bpm: 120,
+      swing: 0, // 0.0 to 1.0 (0 = straight, 1 = triplet feel)
       undoState: null,  // snapshot before last edit
       redoState: null,  // snapshot before we undid (so we can redo)
     };
@@ -589,6 +684,8 @@
     const playToggleBtn = document.getElementById("play-toggle");
     const stopButton = document.getElementById("stop-button");
     const tempoInput = document.getElementById("tempo-input");
+    const swingInput = document.getElementById("swing-input");
+    const swingDisplay = document.getElementById("swing-display");
     const undoBtn = document.getElementById("undo-btn");
     const redoBtn = document.getElementById("redo-btn");
 
@@ -878,8 +975,29 @@
       source.start(0);
     }
 
+    function getSwingOffsetForStep(stepIndex) {
+      /**
+       * Calculate swing timing offset for a given step.
+       * Swing delays off-beat 8th notes (positions 2, 6, 10, 14 in 16-step grid).
+       * Returns offset in seconds.
+       */
+      if (state.swing <= 0) return 0;
+
+      const posInBeat = stepIndex % 4;
+      // Apply swing to off-beat 8th notes (3rd 16th in each group of 4)
+      if (posInBeat === 2) {
+        const beatDurationSec = 60 / state.bpm; // quarter note
+        const swingTripletOffsetSec = beatDurationSec / 6.0; // 1/6 of beat
+        return state.swing * swingTripletOffsetSec;
+      }
+      return 0;
+    }
+
     function scheduleStep(stepIndex) {
-      const when = audioCtx.currentTime + 0.05; // small lookahead
+      const baseTime = audioCtx.currentTime + 0.05; // small lookahead
+      const swingOffset = getSwingOffsetForStep(stepIndex);
+      const when = baseTime + swingOffset;
+
       ROWS.forEach(rowKey => {
         const patternRow = state.pattern[rowKey];
         const buffer = state.buffers[rowKey];
@@ -962,6 +1080,12 @@
         state.bpm = Math.max(BPM_MIN, Math.min(BPM_MAX, val));
         if (isPlaying) restartPlaybackInterval();
       }
+    });
+
+    swingInput.addEventListener("input", () => {
+      const val = parseInt(swingInput.value, 10);
+      state.swing = val / 100; // Convert 0-100 to 0.0-1.0
+      swingDisplay.textContent = `${val}%`;
     });
 
     undoBtn.addEventListener("click", undo);
