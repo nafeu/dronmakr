@@ -6,6 +6,7 @@ import threading
 import json
 import random
 import builtins
+import subprocess
 
 import typer
 from build_preset import list_presets
@@ -26,6 +27,7 @@ from utils import (
     rename_samples,
     RESET,
     with_main_prompt as with_prompt,
+    with_generate_beat_prompt,
     delete_all_files,
     EXPORTS_DIR,
     MIDI_DIR,
@@ -36,6 +38,23 @@ from version import __version__
 GENERATED_LABEL = f"{RED}...{RESET}"
 
 cli = typer.Typer(invoke_without_command=True)
+
+
+def open_files_with_default_player(file_paths):
+    """Open one or more files with the system default application."""
+    if not file_paths:
+        return
+
+    try:
+        if sys.platform.startswith("darwin"):
+            subprocess.run(["open"] + file_paths)
+        elif sys.platform.startswith("win"):
+            for file_path in file_paths:
+                os.startfile(file_path)
+        elif sys.platform.startswith("linux"):
+            subprocess.run(["xdg-open"] + file_paths)
+    except Exception as e:
+        print(with_prompt(f"Failed to open files: {e}"))
 
 
 def version_callback(ctx: typer.Context, value: bool):
@@ -121,6 +140,11 @@ def generate_drone(
     log_server: bool = typer.Option(
         False, "--log-server", "-v", help="Run logs as server mode"
     ),
+    play: bool = typer.Option(
+        False,
+        "--play",
+        help="Open all generated files with the system's default player",
+    ),
 ):
     """Generate n iterations of samples (.wav) with parameters"""
     start_time = time.time()
@@ -184,6 +208,7 @@ def generate_drone(
             f"iterations           {iterations if iterations else GENERATED_LABEL}"
         )
     )
+    print(with_prompt(f"play when done        {play}"))
     print(f"{RED}│{RESET}")
 
     if dry_run:
@@ -247,6 +272,12 @@ def generate_drone(
         else:
             print(with_prompt(f"           {result}"))
 
+    # Open all generated .wav files if play is enabled
+    if play and results:
+        wav_files = [f for f in results if f.endswith(".wav")]
+        if wav_files:
+            open_files_with_default_player(wav_files)
+
     return results
 
 
@@ -289,9 +320,15 @@ def generate_beat(
     try:
         with open("config/beat-patterns.json", "r") as f:
             beat_patterns_data = json.load(f)
-            available_patterns = builtins.list(beat_patterns_data.keys()) if beat_patterns_data else []
+            available_patterns = (
+                builtins.list(beat_patterns_data.keys()) if beat_patterns_data else []
+            )
             if not available_patterns:
-                print(with_prompt(f"Error: No patterns found in config/beat-patterns.json"))
+                print(
+                    with_prompt(
+                        f"Error: No patterns found in config/beat-patterns.json"
+                    )
+                )
                 sys.exit(1)
     except FileNotFoundError:
         print(with_prompt("Error: config/beat-patterns.json not found"))
@@ -302,16 +339,10 @@ def generate_beat(
 
     print(get_version())
     print(with_prompt(f"tempo"))
-    print(
-        with_prompt(
-            f"  bpm                 {bpm if bpm else GENERATED_LABEL} (random 80-180)"
-        )
-    )
+    print(with_prompt(f"  bpm                 {bpm if bpm else GENERATED_LABEL}"))
     print(with_prompt(f"  loops               {loops}"))
     print(
-        with_prompt(
-            f"pattern               {pattern if pattern else GENERATED_LABEL} (random)"
-        )
+        with_prompt(f"pattern               {pattern if pattern else GENERATED_LABEL}")
     )
     print(with_prompt(f"swing                 {swing}"))
     print(with_prompt(f"humanize              {humanize}"))
@@ -340,13 +371,15 @@ def generate_beat(
         # Generate beat name
         beat_name = generate_beat_name()
 
-        # Generate output filename
+        # Generate output filename (metadata separated by ___ like generate-drone)
         sample_name = format_name(
-            f"drumpattern_{beat_name}_{current_pattern}_{current_bpm}_{generate_id()}"
+            f"drumpattern___{beat_name}___{current_pattern}___{current_bpm}bpm___{generate_id()}"
         )
         output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
 
         print(generate_beat_header())
+        print(with_generate_beat_prompt(f"bpm: {current_bpm}"))
+        print(with_generate_beat_prompt(f"pattern: {current_pattern}"))
         generate_beat_sample(
             bpm=current_bpm,
             bars=loops,
@@ -354,7 +387,7 @@ def generate_beat(
             humanize=humanize,
             style=current_pattern,
             swing=swing,
-            play=play if iteration == iterations - 1 else False,  # Only play last iteration
+            play=False,  # Never play during generation
         )
 
         results.append(output_path)
@@ -368,6 +401,10 @@ def generate_beat(
             print(with_prompt(f"generated: {result}"))
         else:
             print(with_prompt(f"           {result}"))
+
+    # Open all files at once if play is enabled
+    if play and results:
+        open_files_with_default_player(results)
 
     return results
 
