@@ -381,36 +381,46 @@ def apply_phaser_to_sample(input_path):
     print(f"Applied phaser to: {input_path}")
 
 
-def apply_lowpass_to_sample(input_path, cutoff_hz=8000):
-    """Apply low-pass filter and overwrite the file. Cuts highs above cutoff."""
+def _apply_iir_per_channel(audio: np.ndarray, sample_rate: float, b: np.ndarray, a: np.ndarray) -> np.ndarray:
+    """Apply IIR filter (b, a) to each channel. audio shape (channels, samples)."""
+    out = np.zeros_like(audio)
+    for ch in range(audio.shape[0]):
+        out[ch] = filtfilt(b, a, audio[ch])
+    return out
+
+
+def apply_lowpass_to_sample(input_path, cutoff_hz=6000, order=6):
+    """Apply steep low-pass filter and overwrite the file. High-order Butterworth for a clean cutoff."""
     with AudioFile(input_path) as f:
         audio = f.read(f.frames)
         sample_rate = f.samplerate
-    board = Pedalboard([LowpassFilter(cutoff_frequency_hz=cutoff_hz)])
-    processed = board(audio, sample_rate)
+    nyq = 0.5 * sample_rate
+    b, a = butter(order, cutoff_hz / nyq, btype="low")
+    processed = _apply_iir_per_channel(audio, sample_rate, b, a)
     with AudioFile(
         input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
     ) as out:
         out.write(processed)
-    print(f"Applied LPF ({cutoff_hz} Hz) to: {input_path}")
+    print(f"Applied LPF ({cutoff_hz} Hz, order {order}) to: {input_path}")
 
 
-def apply_highpass_to_sample(input_path, cutoff_hz=80):
-    """Apply high-pass filter and overwrite the file. Cuts lows below cutoff."""
+def apply_highpass_to_sample(input_path, cutoff_hz=100, order=6):
+    """Apply steep high-pass filter and overwrite the file. High-order Butterworth for a clean cutoff."""
     with AudioFile(input_path) as f:
         audio = f.read(f.frames)
         sample_rate = f.samplerate
-    board = Pedalboard([HighpassFilter(cutoff_frequency_hz=cutoff_hz)])
-    processed = board(audio, sample_rate)
+    nyq = 0.5 * sample_rate
+    b, a = butter(order, cutoff_hz / nyq, btype="high")
+    processed = _apply_iir_per_channel(audio, sample_rate, b, a)
     with AudioFile(
         input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
     ) as out:
         out.write(processed)
-    print(f"Applied HPF ({cutoff_hz} Hz) to: {input_path}")
+    print(f"Applied HPF ({cutoff_hz} Hz, order {order}) to: {input_path}")
 
 
 def apply_eq_lows_to_sample(input_path, gain_db, cutoff_hz=250):
-    """Apply low-shelf EQ and overwrite the file. gain_db: +2 or -2."""
+    """Apply low-shelf EQ and overwrite the file. gain_db: e.g. +5 or -5."""
     with AudioFile(input_path) as f:
         audio = f.read(f.frames)
         sample_rate = f.samplerate
@@ -426,7 +436,7 @@ def apply_eq_lows_to_sample(input_path, gain_db, cutoff_hz=250):
 
 
 def apply_eq_mids_to_sample(input_path, gain_db, centre_hz=1000):
-    """Apply mid peak EQ and overwrite the file. gain_db: +2 or -2."""
+    """Apply mid peak EQ and overwrite the file. gain_db: e.g. +5 or -5."""
     with AudioFile(input_path) as f:
         audio = f.read(f.frames)
         sample_rate = f.samplerate
@@ -442,7 +452,7 @@ def apply_eq_mids_to_sample(input_path, gain_db, centre_hz=1000):
 
 
 def apply_eq_highs_to_sample(input_path, gain_db, cutoff_hz=4000):
-    """Apply high-shelf EQ and overwrite the file. gain_db: +2 or -2."""
+    """Apply high-shelf EQ and overwrite the file. gain_db: e.g. +5 or -5."""
     with AudioFile(input_path) as f:
         audio = f.read(f.frames)
         sample_rate = f.samplerate

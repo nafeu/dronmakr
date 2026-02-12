@@ -438,41 +438,41 @@
           hpfBtn.addEventListener("click", () => processSample({ path: filePath, command: "hpf_sample", files }));
           actions.appendChild(hpfBtn);
 
-          var lowsPlus2Btn = document.createElement("div");
-          lowsPlus2Btn.innerText = "Lows +2dB";
-          lowsPlus2Btn.classList.add("button");
-          lowsPlus2Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_lows_sample", db: 2, files }));
-          actions.appendChild(lowsPlus2Btn);
+          var lowsPlus5Btn = document.createElement("div");
+          lowsPlus5Btn.innerText = "Lows +5dB";
+          lowsPlus5Btn.classList.add("button");
+          lowsPlus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_lows_sample", db: 5, files }));
+          actions.appendChild(lowsPlus5Btn);
 
-          var lowsMinus2Btn = document.createElement("div");
-          lowsMinus2Btn.innerText = "Lows -2dB";
-          lowsMinus2Btn.classList.add("button");
-          lowsMinus2Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_lows_sample", db: -2, files }));
-          actions.appendChild(lowsMinus2Btn);
+          var lowsMinus5Btn = document.createElement("div");
+          lowsMinus5Btn.innerText = "Lows -5dB";
+          lowsMinus5Btn.classList.add("button");
+          lowsMinus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_lows_sample", db: -5, files }));
+          actions.appendChild(lowsMinus5Btn);
 
-          var midsPlus2Btn = document.createElement("div");
-          midsPlus2Btn.innerText = "Mids +2dB";
-          midsPlus2Btn.classList.add("button");
-          midsPlus2Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_mids_sample", db: 2, files }));
-          actions.appendChild(midsPlus2Btn);
+          var midsPlus5Btn = document.createElement("div");
+          midsPlus5Btn.innerText = "Mids +5dB";
+          midsPlus5Btn.classList.add("button");
+          midsPlus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_mids_sample", db: 5, files }));
+          actions.appendChild(midsPlus5Btn);
 
-          var midsMinus2Btn = document.createElement("div");
-          midsMinus2Btn.innerText = "Mids -2dB";
-          midsMinus2Btn.classList.add("button");
-          midsMinus2Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_mids_sample", db: -2, files }));
-          actions.appendChild(midsMinus2Btn);
+          var midsMinus5Btn = document.createElement("div");
+          midsMinus5Btn.innerText = "Mids -5dB";
+          midsMinus5Btn.classList.add("button");
+          midsMinus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_mids_sample", db: -5, files }));
+          actions.appendChild(midsMinus5Btn);
 
-          var highsPlus2Btn = document.createElement("div");
-          highsPlus2Btn.innerText = "Highs +2dB";
-          highsPlus2Btn.classList.add("button");
-          highsPlus2Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_highs_sample", db: 2, files }));
-          actions.appendChild(highsPlus2Btn);
+          var highsPlus5Btn = document.createElement("div");
+          highsPlus5Btn.innerText = "Highs +5dB";
+          highsPlus5Btn.classList.add("button");
+          highsPlus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_highs_sample", db: 5, files }));
+          actions.appendChild(highsPlus5Btn);
 
-          var highsMinus2Btn = document.createElement("div");
-          highsMinus2Btn.innerText = "Highs -2dB";
-          highsMinus2Btn.classList.add("button");
-          highsMinus2Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_highs_sample", db: -2, files }));
-          actions.appendChild(highsMinus2Btn);
+          var highsMinus5Btn = document.createElement("div");
+          highsMinus5Btn.innerText = "Highs -5dB";
+          highsMinus5Btn.classList.add("button");
+          highsMinus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_highs_sample", db: -5, files }));
+          actions.appendChild(highsMinus5Btn);
 
           var gainPlus2Btn = document.createElement("div");
           gainPlus2Btn.innerText = "Gain +2dB";
