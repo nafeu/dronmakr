@@ -212,6 +212,148 @@
       box-shadow: 0 0 0 1px var(--theme-b);
     }
 
+    .pattern-save-section {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--theme-a);
+    }
+
+    .pattern-save-section h3 {
+      margin: 0 0 0.5rem 0;
+      font-size: 0.7rem;
+      color: var(--theme-a);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .pattern-name-input {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      font-family: inherit;
+      font-size: 0.75rem;
+      background: #0a0a0a;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      color: var(--primary);
+      box-sizing: border-box;
+      margin-bottom: 0.5rem;
+    }
+
+    .pattern-name-input::placeholder {
+      color: var(--theme-a);
+      opacity: 0.6;
+    }
+
+    .pattern-name-input:focus {
+      outline: none;
+      border-color: var(--theme-b);
+      box-shadow: 0 0 0 1px var(--theme-b);
+    }
+
+    .pattern-save-btn {
+      width: 100%;
+      padding: 0.5rem;
+      font-family: inherit;
+      font-size: 0.85rem;
+      background: var(--primary);
+      color: var(--secondary);
+      border: 1px solid var(--primary);
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      font-weight: 600;
+    }
+
+    .pattern-save-btn:hover {
+      background: #ff8900;
+      border-color: #ff8900;
+    }
+
+    .pattern-save-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .pattern-status-area {
+      margin-top: 0.5rem;
+      min-height: 2rem;
+      font-size: 0.7rem;
+    }
+
+    .pattern-status-message {
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .pattern-status-message.success {
+      background: rgba(76, 175, 80, 0.15);
+      color: #4caf50;
+      border: 1px solid rgba(76, 175, 80, 0.3);
+    }
+
+    .pattern-status-message.error {
+      background: rgba(244, 67, 54, 0.15);
+      color: #f44336;
+      border: 1px solid rgba(244, 67, 54, 0.3);
+    }
+
+    .pattern-confirm-prompt {
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      background: rgba(255, 152, 0, 0.1);
+      border: 1px solid rgba(255, 152, 0, 0.3);
+      color: var(--primary);
+    }
+
+    .pattern-confirm-prompt-text {
+      font-size: 0.7rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .pattern-confirm-buttons {
+      display: flex;
+      gap: 0.35rem;
+    }
+
+    .pattern-confirm-btn {
+      flex: 1;
+      padding: 0.3rem;
+      font-family: inherit;
+      font-size: 0.7rem;
+      cursor: pointer;
+      border-radius: 3px;
+      border: 1px solid;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+    }
+
+    .pattern-confirm-btn.yes {
+      background: var(--primary);
+      color: var(--secondary);
+      border-color: var(--primary);
+    }
+
+    .pattern-confirm-btn.no {
+      background: transparent;
+      color: var(--primary);
+      border-color: var(--theme-a);
+    }
+
+    .pattern-confirm-btn:hover {
+      opacity: 0.8;
+    }
+
     #sequencer-grid {
       border-left: 1px solid var(--theme-a);
       font-size: 0.7rem;
@@ -384,7 +526,7 @@
     </section>
 
     <aside id="sidebar-column">
-      <h2><i class="fa-solid fa-sliders"></i> toolbar</h2>
+      <h2><i class="fa-solid fa-sliders"></i> preview</h2>
       <div id="transport">
         <div class="transport-actions">
           <button type="button" id="undo-btn" class="transport-btn transport-btn-secondary" title="Undo last edit"
@@ -408,6 +550,15 @@
         <div class="transport-tempo">
           <label for="tempo-input">Tempo (bpm)</label>
           <input type="number" id="tempo-input" min="40" max="240" value="120" title="Beats per minute">
+        </div>
+        <div class="pattern-save-section">
+          <h3><i class="fa-solid fa-floppy-disk"></i> Save Pattern</h3>
+          <input type="text" id="pattern-name-input" class="pattern-name-input" placeholder="Enter pattern name"
+            maxlength="30">
+          <button type="button" id="pattern-save-btn" class="pattern-save-btn" title="Save current pattern">
+            <i class="fa-solid fa-floppy-disk"></i> Save
+          </button>
+          <div id="pattern-status-area" class="pattern-status-area"></div>
         </div>
       </div>
     </aside>
@@ -815,6 +966,89 @@
 
     undoBtn.addEventListener("click", undo);
     redoBtn.addEventListener("click", redo);
+
+    // Pattern save functionality
+    const patternNameInput = document.getElementById("pattern-name-input");
+    const patternSaveBtn = document.getElementById("pattern-save-btn");
+    const patternStatusArea = document.getElementById("pattern-status-area");
+
+    function encodePatternForSave() {
+      const encoded = {};
+      ROWS.forEach(rowKey => {
+        encoded[rowKey] = state.pattern[rowKey].slice();
+      });
+      return encoded;
+    }
+
+    function showStatusMessage(message, type = "success") {
+      patternStatusArea.innerHTML = `
+        <div class="pattern-status-message ${type}">
+          <i class="fa-solid fa-${type === 'success' ? 'circle-check' : 'circle-exclamation'}"></i>
+          ${message}
+        </div>
+      `;
+      if (type === "success") {
+        setTimeout(() => {
+          patternStatusArea.innerHTML = "";
+        }, 3000);
+      }
+    }
+
+    function showConfirmPrompt(patternName) {
+      patternStatusArea.innerHTML = `
+        <div class="pattern-confirm-prompt">
+          <div class="pattern-confirm-prompt-text">
+            <i class="fa-solid fa-triangle-exclamation"></i> Pattern "${patternName}" exists. Overwrite?
+          </div>
+          <div class="pattern-confirm-buttons">
+            <button type="button" class="pattern-confirm-btn yes" data-confirm="yes">
+              <i class="fa-solid fa-check"></i> Yes
+            </button>
+            <button type="button" class="pattern-confirm-btn no" data-confirm="no">
+              <i class="fa-solid fa-xmark"></i> No
+            </button>
+          </div>
+        </div>
+      `;
+
+      const yesBtn = patternStatusArea.querySelector('[data-confirm="yes"]');
+      const noBtn = patternStatusArea.querySelector('[data-confirm="no"]');
+
+      yesBtn.addEventListener("click", () => {
+        const pattern = encodePatternForSave();
+        if (state.socket && state.socket.connected) {
+          state.socket.emit("savePattern", { name: patternName, pattern, overwrite: true });
+        }
+      });
+
+      noBtn.addEventListener("click", () => {
+        patternStatusArea.innerHTML = "";
+      });
+    }
+
+    patternSaveBtn.addEventListener("click", () => {
+      const patternName = patternNameInput.value.trim();
+      if (!patternName) {
+        showStatusMessage("Please enter a pattern name", "error");
+        return;
+      }
+
+      const pattern = encodePatternForSave();
+      if (state.socket && state.socket.connected) {
+        state.socket.emit("savePattern", { name: patternName, pattern, overwrite: false });
+      }
+    });
+
+    socket.on("patternSaveResult", (data) => {
+      if (data.needsConfirmation) {
+        showConfirmPrompt(data.name);
+      } else if (data.success) {
+        showStatusMessage(`Pattern "${data.name}" saved successfully`, "success");
+        patternNameInput.value = "";
+      } else if (data.error) {
+        showStatusMessage(data.error, "error");
+      }
+    });
   </script>
 </body>
 

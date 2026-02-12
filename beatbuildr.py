@@ -184,6 +184,76 @@ def handle_replace_sample(payload):
         socketio.emit("sampleReplaced", {"row": row, **descriptor})
 
 
+@socketio.on("savePattern")
+def handle_save_pattern(payload):
+    """
+    Save a beat pattern to config/beat-patterns.json.
+    Payload: { "name": str, "pattern": dict, "overwrite": bool }
+    """
+    import json
+    
+    name = (payload or {}).get("name", "").strip()
+    pattern = (payload or {}).get("pattern")
+    overwrite = (payload or {}).get("overwrite", False)
+    
+    if not name:
+        socketio.emit("patternSaveResult", {"error": "Pattern name is required"})
+        return
+    
+    if not pattern or not isinstance(pattern, dict):
+        socketio.emit("patternSaveResult", {"error": "Invalid pattern data"})
+        return
+    
+    # Validate pattern structure
+    expected_rows = set(DRUM_ROW_ORDER)
+    if set(pattern.keys()) != expected_rows:
+        socketio.emit("patternSaveResult", {"error": "Invalid pattern structure"})
+        return
+    
+    beat_patterns_file = "config/beat-patterns.json"
+    
+    try:
+        # Load existing patterns
+        if os.path.exists(beat_patterns_file):
+            with open(beat_patterns_file, "r") as f:
+                patterns = json.load(f)
+        else:
+            patterns = {}
+        
+        # Check if pattern name exists
+        if name in patterns and not overwrite:
+            socketio.emit("patternSaveResult", {"needsConfirmation": True, "name": name})
+            return
+        
+        # Save the pattern
+        patterns[name] = pattern
+        
+        # Write back to file with custom formatting (arrays on single lines)
+        os.makedirs(os.path.dirname(beat_patterns_file), exist_ok=True)
+        with open(beat_patterns_file, "w") as f:
+            f.write("{\n")
+            pattern_items = list(patterns.items())
+            for i, (pattern_name, pattern_data) in enumerate(pattern_items):
+                is_last_pattern = i == len(pattern_items) - 1
+                f.write(f'  "{pattern_name}": {{\n')
+                
+                row_items = list(pattern_data.items())
+                for j, (row_key, row_values) in enumerate(row_items):
+                    is_last_row = j == len(row_items) - 1
+                    values_str = json.dumps(row_values)
+                    comma = "" if is_last_row else ","
+                    f.write(f'    "{row_key}": {values_str}{comma}\n')
+                
+                comma = "" if is_last_pattern else ","
+                f.write(f'  }}{comma}\n')
+            f.write("}\n")
+        
+        socketio.emit("patternSaveResult", {"success": True, "name": name})
+        
+    except Exception as e:
+        socketio.emit("patternSaveResult", {"error": f"Failed to save pattern: {str(e)}"})
+
+
 @app.route("/kit-samples/<path:filename>")
 def serve_kit_sample(filename: str):
     """Serve the currently selected drum kit samples to the browser."""
@@ -194,6 +264,18 @@ def serve_kit_sample(filename: str):
 @app.route("/")
 def index():
     return render_template("beatbuildr.html", version=__version__)
+
+
+def ensure_beat_patterns():
+    """Ensure config/beat-patterns.json exists, copy from sample if needed."""
+    beat_patterns_file = "config/beat-patterns.json"
+    beat_patterns_sample = "resources/beat-patterns-sample.json"
+    
+    if not os.path.exists(beat_patterns_file):
+        os.makedirs(os.path.dirname(beat_patterns_file), exist_ok=True)
+        if os.path.exists(beat_patterns_sample):
+            shutil.copy2(beat_patterns_sample, beat_patterns_file)
+            print(f"Created {beat_patterns_file} from sample template")
 
 
 @cli.command()
@@ -213,6 +295,9 @@ def main(
     """Run the beatbuildr web server."""
     global DEBUG_WEBSOCKETS
     DEBUG_WEBSOCKETS = debug
+
+    # Ensure beat patterns config exists before starting server
+    ensure_beat_patterns()
 
     print(get_beatbuildr_version())
     print(

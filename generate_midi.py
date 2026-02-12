@@ -17,8 +17,28 @@ from utils import (
 from print_midi import print_midi
 
 CHORD_SCALE_LIST = "resources/chord-scale-data.json"
-BEAT_PATTERNS_FILE = "resources/beat-patterns.json"
+BEAT_PATTERNS_FILE = "config/beat-patterns.json"
+BEAT_PATTERNS_SAMPLE_FILE = "resources/beat-patterns-sample.json"
 _BEAT_PATTERNS_CACHE = None
+
+
+def ensure_beat_patterns_file():
+    """
+    Ensure config/beat-patterns.json exists.
+    If not, copy from resources/beat-patterns-sample.json.
+    """
+    import os
+    import shutil
+
+    if not os.path.exists(BEAT_PATTERNS_FILE):
+        os.makedirs(os.path.dirname(BEAT_PATTERNS_FILE), exist_ok=True)
+        if os.path.exists(BEAT_PATTERNS_SAMPLE_FILE):
+            shutil.copy2(BEAT_PATTERNS_SAMPLE_FILE, BEAT_PATTERNS_FILE)
+        else:
+            raise FileNotFoundError(
+                f"Sample beat patterns file not found at {BEAT_PATTERNS_SAMPLE_FILE}"
+            )
+
 
 SUPPORTED_PATTERNS_INFO = [
     ("chaos", "random notes and timings given scale/chord"),
@@ -62,6 +82,7 @@ def get_beat_patterns(style: str, steps: int) -> Tuple[List[int], ...]:
         """Load and cache beat patterns from JSON on first use."""
         global _BEAT_PATTERNS_CACHE
         if _BEAT_PATTERNS_CACHE is None:
+            ensure_beat_patterns_file()
             with open(BEAT_PATTERNS_FILE, "r") as f:
                 _BEAT_PATTERNS_CACHE = json.load(f)
         return _BEAT_PATTERNS_CACHE
