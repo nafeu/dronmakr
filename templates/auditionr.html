@@ -525,6 +525,13 @@
           duration.innerText = `${formatTimestamp(wavesurfer.getDuration())}`;
         });
 
+        if (isDrumpattern) {
+          wavesurfer.on("finish", function () {
+            wavesurfer.seekTo(0);
+            wavesurfer.play();
+          });
+        }
+
         playButton.addEventListener("click", () => {
           if (wavesurfer.isPlaying()) {
             wavesurfer.pause();

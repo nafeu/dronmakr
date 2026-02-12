@@ -512,6 +512,10 @@ def generate_beat_sample(
                 position=max(0, int(step_start_ms + cymbal_timing_offset)),
             )
 
+    # Trim to exact loop length so the exported WAV loops seamlessly (no trailing silence).
+    exact_loop_ms = steps * beat_duration_ms
+    track = track[:exact_loop_ms]
+
     track.export(output, format="wav")
     print(with_generate_beat_prompt(f"exported {output}"))
 
