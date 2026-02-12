@@ -3,6 +3,9 @@ import os
 import sys
 import webbrowser
 import threading
+import json
+import random
+import builtins
 
 import typer
 from build_preset import list_presets
@@ -14,6 +17,7 @@ from process_sample import process_drone_sample
 from utils import (
     format_name,
     generate_beat_header,
+    generate_beat_name,
     generate_drone_name,
     generate_id,
     get_cli_version,
@@ -248,15 +252,15 @@ def generate_drone(
 
 @cli.command(name="generate-beat")
 def generate_beat(
-    bpm: int = typer.Option(120, "--bpm", "-t", help="Beats per minute"),
+    bpm: int = typer.Option(
+        None, "--bpm", "-t", help="Beats per minute (random 80-180 if not specified)"
+    ),
     loops: int = typer.Option(1, "--loops", "-l", help="Number of bars to generate"),
-    output: str = typer.Option("output.wav", help="Output filename"),
-    humanize: bool = typer.Option(True, help="Apply humanization (velocity + timing)"),
     pattern: str = typer.Option(
-        "breakbeat",
+        None,
         "--pattern",
         "-p",
-        help="Drum pattern style (breakbeat, dnb, trance, garage, halfstep)",
+        help="Drum pattern style (random from config if not specified)",
     ),
     swing: float = typer.Option(
         0.0,
@@ -266,40 +270,106 @@ def generate_beat(
         max=1.0,
         help="Rhythmic swing amount between 0 (straight) and 1 (strong swing).",
     ),
+    humanize: bool = typer.Option(True, help="Apply humanization (velocity + timing)"),
     play: bool = typer.Option(
         False,
         help="Open the exported file with the system's default WAV player",
     ),
+    iterations: int = typer.Option(
+        1,
+        "--iterations",
+        "-i",
+        help="Number of times to generate beats (default: 1).",
+    ),
 ):
-    """Generate a drum loop from env-configured sample folders."""
+    """Generate n iterations of drum loops from env-configured sample folders."""
     start_time = time.time()
 
+    # Load available patterns from config
+    try:
+        with open("config/beat-patterns.json", "r") as f:
+            beat_patterns_data = json.load(f)
+            available_patterns = builtins.list(beat_patterns_data.keys()) if beat_patterns_data else []
+            if not available_patterns:
+                print(with_prompt(f"Error: No patterns found in config/beat-patterns.json"))
+                sys.exit(1)
+    except FileNotFoundError:
+        print(with_prompt("Error: config/beat-patterns.json not found"))
+        sys.exit(1)
+    except json.JSONDecodeError as e:
+        print(with_prompt(f"Error: Invalid JSON in config/beat-patterns.json: {e}"))
+        sys.exit(1)
+
     print(get_version())
-    print(with_prompt(f"output                {output}"))
     print(with_prompt(f"tempo"))
-    print(with_prompt(f"  bpm                 {bpm}"))
+    print(
+        with_prompt(
+            f"  bpm                 {bpm if bpm else GENERATED_LABEL} (random 80-180)"
+        )
+    )
     print(with_prompt(f"  loops               {loops}"))
-    print(with_prompt(f"pattern               {pattern}"))
+    print(
+        with_prompt(
+            f"pattern               {pattern if pattern else GENERATED_LABEL} (random)"
+        )
+    )
     print(with_prompt(f"swing                 {swing}"))
     print(with_prompt(f"humanize              {humanize}"))
     print(with_prompt(f"play when done        {play}"))
+    print(
+        with_prompt(
+            f"iterations            {iterations if iterations else GENERATED_LABEL}"
+        )
+    )
     print(f"{RED}│{RESET}")
 
-    print(generate_beat_header())
-    generate_beat_sample(
-        bpm=bpm,
-        bars=loops,
-        output=output,
-        humanize=humanize,
-        style=pattern,
-        swing=swing,
-        play=play,
-    )
+    results = []
+
+    for iteration in range(iterations):
+        if iterations > 1:
+            print(f"{RED}■ preparing")
+            print(f"{RED}│{RESET}   iteration {iteration + 1} of {iterations}")
+            print(f"{RED}│{RESET}")
+
+        # Determine BPM for this iteration
+        current_bpm = bpm if bpm else random.randint(80, 180)
+
+        # Determine pattern for this iteration
+        current_pattern = pattern if pattern else random.choice(available_patterns)
+
+        # Generate beat name
+        beat_name = generate_beat_name()
+
+        # Generate output filename
+        sample_name = format_name(
+            f"drumpattern_{beat_name}_{current_pattern}_{current_bpm}_{generate_id()}"
+        )
+        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+
+        print(generate_beat_header())
+        generate_beat_sample(
+            bpm=current_bpm,
+            bars=loops,
+            output=output_path,
+            humanize=humanize,
+            style=current_pattern,
+            swing=swing,
+            play=play if iteration == iterations - 1 else False,  # Only play last iteration
+        )
+
+        results.append(output_path)
 
     end_time = time.time()
     time_elapsed = round(end_time - start_time)
     print(f"{RED}■ completed in {time_elapsed}s{RESET}")
-    print(with_prompt(f"generated: {output}"))
+
+    for index, result in enumerate(results):
+        if index == 0:
+            print(with_prompt(f"generated: {result}"))
+        else:
+            print(with_prompt(f"           {result}"))
+
+    return results
 
 
 @cli.command()
