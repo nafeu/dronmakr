@@ -168,6 +168,25 @@
       font-weight: bold;
     }
 
+    /* Drumpattern sample: blue theme */
+    .drumpattern-sample .waveform-title {
+      color: var(--theme-b);
+    }
+
+    .drumpattern-sample .waveform-actions .button {
+      color: var(--theme-b);
+    }
+
+    .drumpattern-sample .waveform-actions .fixed-button {
+      background-color: var(--theme-b);
+      border-color: var(--theme-b);
+      color: var(--secondary);
+    }
+
+    .drumpattern-sample .waveform-actions .button:hover {
+      border-color: var(--theme-b);
+    }
+
     #logs {
       background-color: var(--theme-a);
     }
@@ -316,14 +335,18 @@
 
       files.forEach((file, index) => {
         var filePath = "/exports/" + file.split('/').pop(); // Ensure relative path
+        var displayName = filePath.replace("/exports/", "").replace(".wav", "");
+        var isDrumpattern = displayName.startsWith("drumpattern___");
+
         var wrapper = document.createElement("div");
         wrapper.className = "waveform-wrapper";
+        if (isDrumpattern) wrapper.classList.add("drumpattern-sample");
 
         var titleContainer = document.createElement("div");
         titleContainer.classList.add("title-container");
 
         var title = document.createElement("div");
-        title.innerText = filePath.replace("/exports/", "").replace(".wav", "");
+        title.innerText = displayName;
         title.classList.add("waveform-title");
         titleContainer.appendChild(title);
 
@@ -360,113 +383,118 @@
         saveButton.addEventListener("click", () => saveSample(filePath));
         actions.appendChild(saveButton);
 
-        var trimStartButton = document.createElement("div");
-        trimStartButton.innerText = `Start At ${formatTimestamp(selectedWaveformTimestamps[index])}`;
-        trimStartButton.classList.add("button")
-        trimStartButton.addEventListener("click", () => processSample({
-          path: filePath,
-          command: "trim_sample_start",
-          seconds: selectedWaveformTimestamps[index],
-          files
-        }));
-        actions.appendChild(trimStartButton);
+        var trimStartButton = null;
+        var trimEndButton = null;
 
-        var trimEndButton = document.createElement("div");
-        trimEndButton.innerText = `End At ${formatTimestamp(selectedWaveformTimestamps[index])}`;
-        trimEndButton.classList.add("button")
-        trimEndButton.addEventListener("click", () => processSample({
-          path: filePath,
-          command: "trim_sample_end",
-          seconds: selectedWaveformTimestamps[index],
-          files
-        }));
-        actions.appendChild(trimEndButton);
+        if (!isDrumpattern) {
+          trimStartButton = document.createElement("div");
+          trimStartButton.innerText = `Start At ${formatTimestamp(selectedWaveformTimestamps[index])}`;
+          trimStartButton.classList.add("button")
+          trimStartButton.addEventListener("click", () => processSample({
+            path: filePath,
+            command: "trim_sample_start",
+            seconds: selectedWaveformTimestamps[index],
+            files
+          }));
+          actions.appendChild(trimStartButton);
 
-        var fadeStartButton = document.createElement("div");
-        fadeStartButton.innerText = `Fade In 2s`;
-        fadeStartButton.classList.add("button")
-        fadeStartButton.addEventListener("click", () => processSample({
-          path: filePath,
-          command: "fade_sample_start",
-          seconds: 2,
-          files
-        }));
-        actions.appendChild(fadeStartButton);
+          trimEndButton = document.createElement("div");
+          trimEndButton.innerText = `End At ${formatTimestamp(selectedWaveformTimestamps[index])}`;
+          trimEndButton.classList.add("button")
+          trimEndButton.addEventListener("click", () => processSample({
+            path: filePath,
+            command: "trim_sample_end",
+            seconds: selectedWaveformTimestamps[index],
+            files
+          }));
+          actions.appendChild(trimEndButton);
 
-        var fadeEndButton = document.createElement("div");
-        fadeEndButton.innerText = `Fade Out 2s`;
-        fadeEndButton.classList.add("button")
-        fadeEndButton.addEventListener("click", () => processSample({
-          path: filePath,
-          command: "fade_sample_end",
-          seconds: 2,
-          files
-        }));
-        actions.appendChild(fadeEndButton);
+          var fadeStartButton = document.createElement("div");
+          fadeStartButton.innerText = `Fade In 2s`;
+          fadeStartButton.classList.add("button")
+          fadeStartButton.addEventListener("click", () => processSample({
+            path: filePath,
+            command: "fade_sample_start",
+            seconds: 2,
+            files
+          }));
+          actions.appendChild(fadeStartButton);
 
-        var fadeStartLongButton = document.createElement("div");
-        fadeStartLongButton.innerText = `Fade In 5s`;
-        fadeStartLongButton.classList.add("button")
-        fadeStartLongButton.addEventListener("click", () => processSample({
-          path: filePath,
-          command: "fade_sample_start",
-          seconds: 5,
-          files
-        }));
-        actions.appendChild(fadeStartLongButton);
+          var fadeEndButton = document.createElement("div");
+          fadeEndButton.innerText = `Fade Out 2s`;
+          fadeEndButton.classList.add("button")
+          fadeEndButton.addEventListener("click", () => processSample({
+            path: filePath,
+            command: "fade_sample_end",
+            seconds: 2,
+            files
+          }));
+          actions.appendChild(fadeEndButton);
 
-        var fadeEndLongButton = document.createElement("div");
-        fadeEndLongButton.innerText = `Fade Out 5s`;
-        fadeEndLongButton.classList.add("button")
-        fadeEndLongButton.addEventListener("click", () => processSample({
-          path: filePath,
-          command: "fade_sample_end",
-          seconds: 5,
-          files
-        }));
-        actions.appendChild(fadeEndLongButton);
+          var fadeStartLongButton = document.createElement("div");
+          fadeStartLongButton.innerText = `Fade In 5s`;
+          fadeStartLongButton.classList.add("button")
+          fadeStartLongButton.addEventListener("click", () => processSample({
+            path: filePath,
+            command: "fade_sample_start",
+            seconds: 5,
+            files
+          }));
+          actions.appendChild(fadeStartLongButton);
 
-        var increaseGainButton = document.createElement("div");
-        increaseGainButton.innerText = `Gain +${db}db`;
-        increaseGainButton.classList.add("button")
-        increaseGainButton.addEventListener("click", () => processSample({
-          path: filePath,
-          command: "increase_sample_gain",
-          db,
-          files
-        }));
-        actions.appendChild(increaseGainButton);
+          var fadeEndLongButton = document.createElement("div");
+          fadeEndLongButton.innerText = `Fade Out 5s`;
+          fadeEndLongButton.classList.add("button")
+          fadeEndLongButton.addEventListener("click", () => processSample({
+            path: filePath,
+            command: "fade_sample_end",
+            seconds: 5,
+            files
+          }));
+          actions.appendChild(fadeEndLongButton);
 
-        var decreaseGainButton = document.createElement("div");
-        decreaseGainButton.innerText = `Gain -${db}db`;
-        decreaseGainButton.classList.add("button")
-        decreaseGainButton.addEventListener("click", () => processSample({
-          path: filePath,
-          command: "decrease_sample_gain",
-          db,
-          files
-        }));
-        actions.appendChild(decreaseGainButton);
+          var increaseGainButton = document.createElement("div");
+          increaseGainButton.innerText = `Gain +${db}db`;
+          increaseGainButton.classList.add("button")
+          increaseGainButton.addEventListener("click", () => processSample({
+            path: filePath,
+            command: "increase_sample_gain",
+            db,
+            files
+          }));
+          actions.appendChild(increaseGainButton);
 
-        var reverseButton = document.createElement("div");
-        reverseButton.innerText = "Reverse";
-        reverseButton.classList.add("button")
-        reverseButton.addEventListener("click", () => processSample({
-          path: filePath,
-          command: "reverse_sample",
-          files
-        }));
-        actions.appendChild(reverseButton);
+          var decreaseGainButton = document.createElement("div");
+          decreaseGainButton.innerText = `Gain -${db}db`;
+          decreaseGainButton.classList.add("button")
+          decreaseGainButton.addEventListener("click", () => processSample({
+            path: filePath,
+            command: "decrease_sample_gain",
+            db,
+            files
+          }));
+          actions.appendChild(decreaseGainButton);
 
-        var granularizeButton = document.createElement("div");
-        granularizeButton.innerText = "Granularize";
-        granularizeButton.classList.add("button")
-        granularizeButton.addEventListener("click", () => processSample({
-          path: filePath,
-          command: "granularize_sample",
-          files
-        }));
-        actions.appendChild(granularizeButton);
+          var reverseButton = document.createElement("div");
+          reverseButton.innerText = "Reverse";
+          reverseButton.classList.add("button")
+          reverseButton.addEventListener("click", () => processSample({
+            path: filePath,
+            command: "reverse_sample",
+            files
+          }));
+          actions.appendChild(reverseButton);
+
+          var granularizeButton = document.createElement("div");
+          granularizeButton.innerText = "Granularize";
+          granularizeButton.classList.add("button")
+          granularizeButton.addEventListener("click", () => processSample({
+            path: filePath,
+            command: "granularize_sample",
+            files
+          }));
+          actions.appendChild(granularizeButton);
+        }
 
         var deleteButton = document.createElement("div");
         deleteButton.innerText = "Delete";
@@ -480,7 +508,7 @@
         var wavesurfer = WaveSurfer.create({
           container: "#waveform-" + index,
           waveColor: "#353531",
-          progressColor: "#ff9505",
+          progressColor: isDrumpattern ? "#016fb9" : "#ff9505",
           backend: "MediaElement",
           height: 80
         });
@@ -488,9 +516,9 @@
         wavesurfer.load(filePath);
 
         wavesurfer.on("seeking", function (currentTime) {
-          selectedWaveformTimestamps[index] = currentTime
-          trimStartButton.innerText = `Start At ${formatTimestamp(selectedWaveformTimestamps[index])}`;
-          trimEndButton.innerText = `End At ${formatTimestamp(selectedWaveformTimestamps[index])}`;
+          selectedWaveformTimestamps[index] = currentTime;
+          if (trimStartButton) trimStartButton.innerText = `Start At ${formatTimestamp(selectedWaveformTimestamps[index])}`;
+          if (trimEndButton) trimEndButton.innerText = `End At ${formatTimestamp(selectedWaveformTimestamps[index])}`;
         });
 
         wavesurfer.on("ready", function () {
