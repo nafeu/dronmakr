@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>┌ dronmakr v{{ version }} ┐</title>
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏳</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fragment+Mono:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    crossorigin="anonymous">
+  <style>
+    :root {
+      --secondary: #000000;
+      --primary: #ff9505;
+      --theme-a: #353531;
+      --theme-b: #016fb9;
+      --theme-c: #ec4e20;
+      --toolbar-height: 48px;
+    }
+
+    body {
+      background-color: var(--secondary);
+      color: var(--primary);
+      font-family: "Fragment Mono", monospace;
+      padding: 1rem;
+      padding-top: calc(var(--toolbar-height) + 1rem);
+    }
+
+    #toolbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--toolbar-height);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1rem;
+      background-color: var(--secondary);
+      border-bottom: 1px solid var(--theme-a);
+      z-index: 1000;
+    }
+
+    #toolbar-brand {
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: var(--primary);
+    }
+
+    .toolbar-nav {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      font-size: 0.85rem;
+    }
+
+    .toolbar-nav a {
+      color: var(--primary);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      padding-bottom: 2px;
+    }
+
+    .toolbar-nav a:hover {
+      border-bottom-color: var(--primary);
+      opacity: 0.9;
+    }
+
+    .toolbar-nav a.active {
+      border-bottom-color: var(--primary);
+      font-weight: 600;
+    }
+
+    main {
+      max-width: 42rem;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 1.25rem;
+      margin-bottom: 0.5rem;
+    }
+
+    p {
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: var(--theme-b);
+      margin-bottom: 1rem;
+    }
+
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+
+    .card {
+      border: 1px solid var(--theme-a);
+      padding: 1rem;
+      border-radius: 4px;
+      background: #050505;
+      text-decoration: none;
+      color: var(--primary);
+      display: block;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .card:hover {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.06);
+    }
+
+    .card h2 {
+      font-size: 0.95rem;
+      margin: 0 0 0.35rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .card p {
+      margin: 0;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+
+<body>
+  <header id="toolbar">
+    <span id="toolbar-brand">┌ dronmakr v{{ version }} ┐</span>
+    <nav class="toolbar-nav">
+      <a href="/" class="active">Home</a>
+      <a href="/auditionr">Auditionr</a>
+      <a href="/beatbuildr">Beatbuildr</a>
+    </nav>
+    <span></span>
+  </header>
+
+  <main>
+    <h1>dronmakr</h1>
+    <p>Generate drones and beats, audition and process samples, build drum patterns — all from one suite.</p>
+    <div class="card-grid">
+      <a href="/auditionr" class="card">
+        <h2><i class="fa-solid fa-wave-square"></i> Auditionr</h2>
+        <p>Audition exports, apply effects, trim and process samples, save or archive.</p>
+      </a>
+      <a href="/beatbuildr" class="card">
+        <h2><i class="fa-solid fa-drum"></i> Beatbuildr</h2>
+        <p>Build drum patterns with a random kit, preview, and save patterns to config.</p>
+      </a>
+    </div>
+  </main>
+</body>
+
+</html>

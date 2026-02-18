@@ -1,35 +1,24 @@
-import eventlet
+"""
+Beatbuildr: drum kit and pattern builder logic. Registers routes and socket
+handlers when used from the unified webui.
+"""
 
-eventlet.monkey_patch()
-
+import json
 import os
 import random
 import shutil
-import threading
-import time
-import webbrowser
 from pathlib import Path
 
-import typer
 from dotenv import load_dotenv
-from flask import Flask, render_template, send_from_directory
-from flask_socketio import SocketIO
-from version import __version__
+from flask import send_from_directory
 
 from utils import (
     TEMP_DIR,
     delete_all_files,
-    get_beatbuildr_version,
-    with_final_beatbuildr_prompt,
 )
 
-app = Flask(__name__, static_folder="static", template_folder="templates")
-socketio = SocketIO(app, cors_allowed_origins="*")
-cli = typer.Typer()
-
-# Controls whether to log WebSocket connections; set from main()'s debug flag.
-DEBUG_WEBSOCKETS = False
-
+# Injected by register_beatbuildr(app, socketio); used by socket handlers for emits.
+_socketio = None
 
 DRUM_ROW_ORDER = [
     "kick",
@@ -156,79 +145,61 @@ def replace_sample_for_row(row: str) -> dict | None:
     }
 
 
-@socketio.on("connect")
-def handle_connect():
-    """Handle WebSocket connections."""
-    if DEBUG_WEBSOCKETS:
-        print("Client connected via WebSocket (beatbuildr)")
-
-    drum_kit = generate_random_drum_kit()
-    socketio.emit("kit", drum_kit)
-
-
-@socketio.on("requestNewKit")
-def handle_request_new_kit():
+def _handle_request_new_kit():
     """Client requested a full new random drum kit."""
     drum_kit = generate_random_drum_kit()
-    socketio.emit("kit", drum_kit)
+    _socketio.emit("kit", drum_kit)
 
 
-@socketio.on("replaceSample")
-def handle_replace_sample(payload):
+def _handle_replace_sample(payload):
     """Replace a single row's sample. Payload: { "row": "kick" }."""
     row = (payload or {}).get("row")
     if row not in DRUM_ROW_ORDER:
         return
     descriptor = replace_sample_for_row(row)
     if descriptor:
-        socketio.emit("sampleReplaced", {"row": row, **descriptor})
+        _socketio.emit("sampleReplaced", {"row": row, **descriptor})
 
 
-@socketio.on("savePattern")
-def handle_save_pattern(payload):
+def _handle_save_pattern(payload):
     """
     Save a beat pattern to config/beat-patterns.json.
     Payload: { "name": str, "pattern": dict, "overwrite": bool }
     """
-    import json
-    
     name = (payload or {}).get("name", "").strip()
     pattern = (payload or {}).get("pattern")
     overwrite = (payload or {}).get("overwrite", False)
-    
+
     if not name:
-        socketio.emit("patternSaveResult", {"error": "Pattern name is required"})
+        _socketio.emit("patternSaveResult", {"error": "Pattern name is required"})
         return
-    
+
     if not pattern or not isinstance(pattern, dict):
-        socketio.emit("patternSaveResult", {"error": "Invalid pattern data"})
+        _socketio.emit("patternSaveResult", {"error": "Invalid pattern data"})
         return
-    
-    # Validate pattern structure
+
     expected_rows = set(DRUM_ROW_ORDER)
     if set(pattern.keys()) != expected_rows:
-        socketio.emit("patternSaveResult", {"error": "Invalid pattern structure"})
+        _socketio.emit("patternSaveResult", {"error": "Invalid pattern structure"})
         return
-    
+
     beat_patterns_file = "config/beat-patterns.json"
-    
+
     try:
-        # Load existing patterns
         if os.path.exists(beat_patterns_file):
             with open(beat_patterns_file, "r") as f:
                 patterns = json.load(f)
         else:
             patterns = {}
-        
-        # Check if pattern name exists
+
         if name in patterns and not overwrite:
-            socketio.emit("patternSaveResult", {"needsConfirmation": True, "name": name})
+            _socketio.emit(
+                "patternSaveResult", {"needsConfirmation": True, "name": name}
+            )
             return
-        
-        # Save the pattern
+
         patterns[name] = pattern
-        
-        # Write back to file with custom formatting (arrays on single lines)
+
         os.makedirs(os.path.dirname(beat_patterns_file), exist_ok=True)
         with open(beat_patterns_file, "w") as f:
             f.write("{\n")
@@ -236,41 +207,37 @@ def handle_save_pattern(payload):
             for i, (pattern_name, pattern_data) in enumerate(pattern_items):
                 is_last_pattern = i == len(pattern_items) - 1
                 f.write(f'  "{pattern_name}": {{\n')
-                
+
                 row_items = list(pattern_data.items())
                 for j, (row_key, row_values) in enumerate(row_items):
                     is_last_row = j == len(row_items) - 1
                     values_str = json.dumps(row_values)
                     comma = "" if is_last_row else ","
                     f.write(f'    "{row_key}": {values_str}{comma}\n')
-                
+
                 comma = "" if is_last_pattern else ","
-                f.write(f'  }}{comma}\n')
+                f.write(f"  }}{comma}\n")
             f.write("}\n")
-        
-        socketio.emit("patternSaveResult", {"success": True, "name": name})
-        
+
+        _socketio.emit("patternSaveResult", {"success": True, "name": name})
+
     except Exception as e:
-        socketio.emit("patternSaveResult", {"error": f"Failed to save pattern: {str(e)}"})
+        _socketio.emit(
+            "patternSaveResult", {"error": f"Failed to save pattern: {str(e)}"}
+        )
 
 
-@app.route("/kit-samples/<path:filename>")
 def serve_kit_sample(filename: str):
     """Serve the currently selected drum kit samples to the browser."""
     kit_temp_root = Path(TEMP_DIR) / "beatbuildr"
     return send_from_directory(kit_temp_root, filename)
 
 
-@app.route("/")
-def index():
-    return render_template("beatbuildr.html", version=__version__)
-
-
 def ensure_beat_patterns():
     """Ensure config/beat-patterns.json exists, copy from sample if needed."""
     beat_patterns_file = "config/beat-patterns.json"
     beat_patterns_sample = "resources/beat-patterns-sample.json"
-    
+
     if not os.path.exists(beat_patterns_file):
         os.makedirs(os.path.dirname(beat_patterns_file), exist_ok=True)
         if os.path.exists(beat_patterns_sample):
@@ -278,53 +245,23 @@ def ensure_beat_patterns():
             print(f"Created {beat_patterns_file} from sample template")
 
 
-@cli.command()
-def main(
-    debug: bool = typer.Option(
-        False, "--debug", "-d", help="Enable debug logs in server"
-    ),
-    port: int = typer.Option(
-        3767, "--port", "-p", help="The port for the beatbuildr webui server to run on"
-    ),
-    open_browser: bool = typer.Option(
-        True,
-        "--open-browser/--no-open-browser",
-        help="Automatically open the beatbuildr UI in a browser",
-    ),
-):
-    """Run the beatbuildr web server."""
-    global DEBUG_WEBSOCKETS
-    DEBUG_WEBSOCKETS = debug
+def register_beatbuildr(app, socketio):
+    """Register beatbuildr routes and socket handlers on the given app and socketio."""
+    global _socketio
+    _socketio = socketio
 
-    # Ensure beat patterns config exists before starting server
-    ensure_beat_patterns()
-
-    print(get_beatbuildr_version())
-    print(
-        with_final_beatbuildr_prompt(
-            f"Open http://localhost:{port} in a browser to view beatbuildr"
-        )
+    app.add_url_rule(
+        "/kit-samples/<path:filename>",
+        "beatbuildr_serve_kit_sample",
+        serve_kit_sample,
     )
 
-    def _run_server():
-        socketio.run(app, host="0.0.0.0", port=port, debug=debug)
-
-    server_thread = threading.Thread(target=_run_server, daemon=False)
-    server_thread.start()
-
-    # Give the server a moment to bind and start listening
-    time.sleep(1)
-
-    if open_browser and server_thread.is_alive():
-        try:
-            webbrowser.open(f"http://localhost:{port}")
-        except Exception:
-            # Fail silently if the browser can't be opened.
-            pass
-
-    # Block until the server thread exits
-    server_thread.join()
+    socketio.on_event("requestNewKit", _handle_request_new_kit)
+    socketio.on_event("replaceSample", _handle_replace_sample)
+    socketio.on_event("savePattern", _handle_save_pattern)
 
 
 if __name__ == "__main__":
-    cli()
+    from webui import run
+
+    run()

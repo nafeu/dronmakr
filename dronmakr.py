@@ -2,8 +2,6 @@ import fnmatch
 import time
 import os
 import sys
-import webbrowser
-import threading
 import json
 import random
 import builtins
@@ -11,8 +9,7 @@ import subprocess
 
 import typer
 from build_preset import list_presets
-from auditionr import main as run_server
-from beatbuildr import main as run_beatbuildr_server
+from webui import run as run_webui
 from generate_midi import generate_drone_midi
 from generate_sample import generate_drone_sample, generate_beat_sample
 from process_sample import process_drone_sample
@@ -76,9 +73,9 @@ def main(
         help="Show the version and exit.",
     ),
 ):
-    """CLI entrypoint."""
+    """CLI entrypoint. With no subcommand, launches the unified web UI."""
     if ctx.invoked_subcommand is None:
-        ctx.invoke(generate_drone)
+        ctx.invoke(webui, debug=False, port=3766, open_browser=True)
 
 
 @cli.command(name="generate-drone")
@@ -342,13 +339,19 @@ def generate_beat(
     matching_patterns = None
     if pattern is not None and pattern:
         if "*" in pattern:
-            matching_patterns = [p for p in available_patterns if fnmatch.fnmatch(p, pattern)]
+            matching_patterns = [
+                p for p in available_patterns if fnmatch.fnmatch(p, pattern)
+            ]
             if not matching_patterns:
                 print(with_prompt(f"Error: No patterns match '{pattern}'"))
                 sys.exit(1)
         else:
             if pattern not in available_patterns:
-                print(with_prompt(f"Error: Pattern '{pattern}' not found in config/beat-patterns.json"))
+                print(
+                    with_prompt(
+                        f"Error: Pattern '{pattern}' not found in config/beat-patterns.json"
+                    )
+                )
                 sys.exit(1)
             matching_patterns = [pattern]
 
@@ -475,6 +478,22 @@ def pack(
 
 
 @cli.command()
+def webui(
+    debug: bool = typer.Option(
+        False, "--debug", "-d", help="Enable debug logs in the web server"
+    ),
+    port: int = typer.Option(3766, "--port", "-p", help="Port for the unified web UI"),
+    open_browser: bool = typer.Option(
+        True,
+        "--open-browser/--no-open-browser",
+        help="Open the web UI in the default browser on start",
+    ),
+):
+    """Run the unified web UI (auditionr + beatbuildr on one server)."""
+    run_webui(debug=debug, port=port, open_browser=open_browser)
+
+
+@cli.command()
 def reset(
     force: bool = typer.Option(
         False, "--force", "-f", help="Empty directories without confirmation"
@@ -491,69 +510,6 @@ def reset(
     for directory in directories:
         deleted_files_count = delete_all_files(directory)
         print(with_prompt(f"Deleted {deleted_files_count} files in {directory}"))
-
-
-@cli.command()
-def auditionr(
-    debug: bool = typer.Option(
-        False, "--debug", "-d", help="Enable debug logs in auditionr"
-    ),
-    port: int = typer.Option(
-        3766, "--port", "-p", help="The port for the webui auditionr to run on"
-    ),
-):
-    """Run auditionr web server"""
-
-    def _run_server():
-        run_server(debug=debug, port=port)
-
-    # Start the server in a background thread so we can wait briefly
-    # and open the browser only if it appears to be running.
-    server_thread = threading.Thread(target=_run_server, daemon=False)
-    server_thread.start()
-
-    # Give the server a moment to bind and start listening
-    time.sleep(1)
-
-    if server_thread.is_alive():
-        try:
-            webbrowser.open(f"http://localhost:{port}")
-        except Exception:
-            # Fail silently if the browser can't be opened.
-            pass
-
-    # Block until the server thread exits
-    server_thread.join()
-
-
-@cli.command()
-def beatbuildr(
-    debug: bool = typer.Option(
-        False, "--debug", "-d", help="Enable debug logs in beatbuildr"
-    ),
-    port: int = typer.Option(
-        3767, "--port", "-p", help="The port for the beatbuildr webui to run on"
-    ),
-):
-    """Run beatbuildr web server"""
-
-    def _run_server():
-        run_beatbuildr_server(debug=debug, port=port, open_browser=False)
-
-    server_thread = threading.Thread(target=_run_server, daemon=False)
-    server_thread.start()
-
-    # Give the server a moment to bind and start listening
-    time.sleep(1)
-
-    if server_thread.is_alive():
-        try:
-            webbrowser.open(f"http://localhost:{port}")
-        except Exception:
-            # Fail silently if the browser can't be opened.
-            pass
-
-    server_thread.join()
 
 
 if __name__ == "__main__":

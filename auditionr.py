@@ -1,17 +1,15 @@
-import eventlet
-
-eventlet.monkey_patch()
+"""
+Auditionr: sample audition and processing logic. Registers routes and uses
+shared app/socketio when used from the unified webui.
+"""
 
 import os
 import shutil
-import typer
-from flask import Flask, render_template, request, jsonify, send_from_directory
-from flask_socketio import SocketIO
+
+from flask import request, jsonify, send_from_directory
 from utils import (
-    get_auditionr_version,
     get_latest_exports,
     get_presets,
-    with_final_auditionr_prompt,
     delete_all_files,
     EXPORTS_DIR,
     ARCHIVE_DIR,
@@ -45,37 +43,16 @@ from process_sample import (
     apply_eq_mids_to_sample,
     apply_eq_highs_to_sample,
 )
-from version import __version__
 
-app = Flask(__name__, static_folder="static", template_folder="templates")
-socketio = SocketIO(app, cors_allowed_origins="*")  # WebSockets enabled
-cli = typer.Typer()
-
-# Controls whether to log WebSocket connections; set from main()'s debug flag.
-DEBUG_WEBSOCKETS = False
+# Injected by register_auditionr(app, socketio); used by view functions for emits.
+_socketio = None
 
 
-@socketio.on("connect")
-def handle_connect():
-    """Handle WebSocket connections."""
-    if DEBUG_WEBSOCKETS:
-        print("Client connected via WebSocket")
-    socketio.emit("exports", {"files": get_latest_exports()})
-    socketio.emit("configs", {"presets": get_presets(), "patterns": get_patterns()})
-
-
-@app.route("/exports/<path:filename>")
 def serve_exported_file(filename):
     """Allows direct access to exported .wav files"""
     return send_from_directory(EXPORTS_DIR, filename)
 
 
-@app.route("/")
-def index():
-    return render_template("auditionr.html", version=__version__)
-
-
-@app.route("/skip", methods=["POST"])
 def skip_file():
     params = request.get_json() or {}
     if not params["path"]:
@@ -93,11 +70,10 @@ def skip_file():
 
     shutil.move(file_path, os.path.join(ARCHIVE_DIR, file_name))
 
-    socketio.emit("exports", {"files": get_latest_exports()})
+    _socketio.emit("exports", {"files": get_latest_exports()})
     return jsonify({"success": "File moved to archive."}), 200
 
 
-@app.route("/unarchive", methods=["GET"])
 def unarchive_files():
     if not os.path.exists(ARCHIVE_DIR):
         return jsonify({"error": "Archive does not exist"}), 404
@@ -107,11 +83,10 @@ def unarchive_files():
 
     move_all_files(ARCHIVE_DIR, EXPORTS_DIR)
 
-    socketio.emit("exports", {"files": get_latest_exports()})
+    _socketio.emit("exports", {"files": get_latest_exports()})
     return jsonify({"success": "Files moved back from archive"}), 200
 
 
-@app.route("/emptytrash", methods=["GET"])
 def empty_trash():
     if not os.path.exists(TRASH_DIR):
         return jsonify({"error": "Trash does not exist"}), 404
@@ -121,7 +96,6 @@ def empty_trash():
     return jsonify({"success": "Trash has been emptied"}), 200
 
 
-@app.route("/reprocess", methods=["POST"])
 def reprocess():
     params = request.get_json() or {}
     if not params["path"]:
@@ -134,8 +108,8 @@ def reprocess():
 
     apply_effect(file_path, params["effect"])
 
-    socketio.emit("exports", {"files": get_latest_exports()})
-    socketio.emit("status", {"done": True})
+    _socketio.emit("exports", {"files": get_latest_exports()})
+    _socketio.emit("status", {"done": True})
     return jsonify({"success": "File moved to archive."}), 200
 
 
@@ -149,7 +123,6 @@ def move_all_files(source_dir, target_dir):
         shutil.move(os.path.join(source_dir, file), target_dir)
 
 
-@app.route("/delete", methods=["POST"])
 def delete_file():
     params = request.get_json() or {}
     if not params["path"]:
@@ -167,17 +140,15 @@ def delete_file():
 
     shutil.move(file_path, os.path.join(TRASH_DIR, file_name))
 
-    socketio.emit("exports", {"files": get_latest_exports()})
+    _socketio.emit("exports", {"files": get_latest_exports()})
     return jsonify({"success": "File moved to trash."}), 200
 
 
-@app.route("/refresh", methods=["GET"])
 def refresh_configs():
-    socketio.emit("configs", {"presets": get_presets(), "patterns": get_patterns()})
+    _socketio.emit("configs", {"presets": get_presets(), "patterns": get_patterns()})
     return jsonify({"success": "Refreshed configurations"}), 200
 
 
-@app.route("/save", methods=["POST"])
 def save_file():
     params = request.get_json() or {}
     if not params["path"]:
@@ -195,11 +166,10 @@ def save_file():
 
     shutil.move(file_path, os.path.join(SAVED_DIR, file_name))
 
-    socketio.emit("exports", {"files": get_latest_exports()})
+    _socketio.emit("exports", {"files": get_latest_exports()})
     return jsonify({"success": "File moved to saved."}), 200
 
 
-@app.route("/process", methods=["POST"])
 def process_file():
     params = request.get_json() or {}
     if not params["path"]:
@@ -265,32 +235,41 @@ def process_file():
         case _:
             return jsonify({"error": "Command not recognized"}), 400
 
-    socketio.emit(
+    _socketio.emit(
         "exports", {"files": get_latest_exports(sort_override=params["files"])}
     )
     return jsonify({"success": f"File processed with {command}"}), 200
 
 
-@cli.command()
-def main(
-    debug: bool = typer.Option(
-        False, "--debug", "-d", help="Enable debug logs in server"
-    ),
-    port: int = typer.Option(
-        3766, "--port", "-p", help="The port for the webui server on run on"
-    ),
-):
-    global DEBUG_WEBSOCKETS
-    DEBUG_WEBSOCKETS = debug
+def register_auditionr(app, socketio):
+    """Register auditionr routes on the given Flask app. Socketio is used for emits."""
+    global _socketio
+    _socketio = socketio
 
-    print(get_auditionr_version())
-    print(
-        with_final_auditionr_prompt(
-            f"Open http://localhost:{port} in a browser to view webui"
-        )
+    app.add_url_rule(
+        "/exports/<path:filename>",
+        "auditionr_serve_exported_file",
+        serve_exported_file,
     )
-    socketio.run(app, host="0.0.0.0", port=port, debug=debug)
+    app.add_url_rule("/skip", "auditionr_skip_file", skip_file, methods=["POST"])
+    app.add_url_rule(
+        "/unarchive", "auditionr_unarchive_files", unarchive_files, methods=["GET"]
+    )
+    app.add_url_rule(
+        "/emptytrash", "auditionr_empty_trash", empty_trash, methods=["GET"]
+    )
+    app.add_url_rule("/reprocess", "auditionr_reprocess", reprocess, methods=["POST"])
+    app.add_url_rule("/delete", "auditionr_delete_file", delete_file, methods=["POST"])
+    app.add_url_rule(
+        "/refresh", "auditionr_refresh_configs", refresh_configs, methods=["GET"]
+    )
+    app.add_url_rule("/save", "auditionr_save_file", save_file, methods=["POST"])
+    app.add_url_rule(
+        "/process", "auditionr_process_file", process_file, methods=["POST"]
+    )
 
 
 if __name__ == "__main__":
-    cli()
+    from webui import run
+
+    run()

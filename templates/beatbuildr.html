@@ -88,6 +88,30 @@
       color: var(--primary);
     }
 
+    .toolbar-nav {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      font-size: 0.85rem;
+    }
+
+    .toolbar-nav a {
+      color: var(--primary);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      padding-bottom: 2px;
+    }
+
+    .toolbar-nav a:hover {
+      border-bottom-color: var(--primary);
+      opacity: 0.9;
+    }
+
+    .toolbar-nav a.active {
+      border-bottom-color: var(--primary);
+      font-weight: 600;
+    }
+
     #toolbar-status {
       font-size: 0.75rem;
       color: var(--theme-b);
@@ -601,6 +625,11 @@
 <body>
   <header id="toolbar">
     <span id="toolbar-brand">┌ dronmakr v{{ version }} ■ beatbuildr ┐</span>
+    <nav class="toolbar-nav">
+      <a href="/">Home</a>
+      <a href="/auditionr">Auditionr</a>
+      <a href="/beatbuildr" class="active">Beatbuildr</a>
+    </nav>
     <span id="toolbar-status"><i class="fa-solid fa-spinner fa-spin"></i> connecting…</span>
   </header>
 
@@ -892,7 +921,7 @@
 
     setupGridDrag();
 
-    const socket = io("http://localhost:3767");
+    const socket = io();
     state.socket = socket;
 
     socket.on("connect", () => {

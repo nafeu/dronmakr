@@ -78,6 +78,30 @@
       color: var(--primary);
     }
 
+    .toolbar-nav {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      font-size: 0.85rem;
+    }
+
+    .toolbar-nav a {
+      color: var(--primary);
+      text-decoration: none;
+      border-bottom: 1px solid transparent;
+      padding-bottom: 2px;
+    }
+
+    .toolbar-nav a:hover {
+      border-bottom-color: var(--primary);
+      opacity: 0.9;
+    }
+
+    .toolbar-nav a.active {
+      border-bottom-color: var(--primary);
+      font-weight: 600;
+    }
+
     #toolbar-actions {
       display: flex;
       align-items: center;
@@ -200,6 +224,11 @@
 <body>
   <header id="toolbar">
     <span id="toolbar-brand">┌ dronmakr v{{ version }} ■ auditionr ┐</span>
+    <nav class="toolbar-nav">
+      <a href="/">Home</a>
+      <a href="/auditionr" class="active">Auditionr</a>
+      <a href="/beatbuildr">Beatbuildr</a>
+    </nav>
     <div id="toolbar-actions">
       <button type="button" class="toolbar-btn" id="unarchive-samples-button" title="Unarchive Samples"
         onclick="unarchiveSamples()" aria-label="Unarchive Samples">
@@ -216,7 +245,7 @@
     <div id="waveform-container"></div>
   </main>
   <script>
-    var socket = io.connect("http://localhost:3766");
+    var socket = io();
     var selectedWaveformTimestamps = [];
     var db = 2;
     var lastEdited = "";
