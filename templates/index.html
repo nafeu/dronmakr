@@ -45,35 +45,47 @@
       z-index: 1000;
     }
 
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
     #toolbar-brand {
       font-size: 0.9rem;
       font-weight: 600;
       letter-spacing: 0.02em;
       color: var(--primary);
+      min-width: 20ch;
+      flex-shrink: 0;
     }
 
     .toolbar-nav {
       display: flex;
       align-items: center;
-      gap: 1.25rem;
+      gap: 0.5rem;
       font-size: 0.85rem;
     }
 
     .toolbar-nav a {
       color: var(--primary);
       text-decoration: none;
-      border-bottom: 1px solid transparent;
-      padding-bottom: 2px;
+      padding: 0.35rem 0.65rem;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      background: var(--theme-a);
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
     }
 
     .toolbar-nav a:hover {
-      border-bottom-color: var(--primary);
-      opacity: 0.9;
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.15);
     }
 
     .toolbar-nav a.active {
-      border-bottom-color: var(--primary);
-      font-weight: 600;
+      border-color: var(--primary);
+      background: var(--primary);
+      color: var(--secondary);
     }
 
     main {
@@ -133,12 +145,13 @@
 
 <body>
   <header id="toolbar">
-    <span id="toolbar-brand">┌ dronmakr v{{ version }} ┐</span>
-    <nav class="toolbar-nav">
-      <a href="/" class="active">Home</a>
-      <a href="/auditionr">Auditionr</a>
-      <a href="/beatbuildr">Beatbuildr</a>
-    </nav>
+    <div class="toolbar-left">
+      <span id="toolbar-brand">┌ dronmakr v{{ version }} ┐</span>
+      <nav class="toolbar-nav">
+        <a href="/auditionr"><i class="fa-solid fa-wave-square"></i> auditionr</a>
+        <a href="/beatbuildr"><i class="fa-solid fa-drum"></i> beatbuildr</a>
+      </nav>
+    </div>
     <span></span>
   </header>
 
@@ -147,11 +160,11 @@
     <p>Generate drones and beats, audition and process samples, build drum patterns — all from one suite.</p>
     <div class="card-grid">
       <a href="/auditionr" class="card">
-        <h2><i class="fa-solid fa-wave-square"></i> Auditionr</h2>
+        <h2><i class="fa-solid fa-wave-square"></i> auditionr</h2>
         <p>Audition exports, apply effects, trim and process samples, save or archive.</p>
       </a>
       <a href="/beatbuildr" class="card">
-        <h2><i class="fa-solid fa-drum"></i> Beatbuildr</h2>
+        <h2><i class="fa-solid fa-drum"></i> beatbuildr</h2>
         <p>Build drum patterns with a random kit, preview, and save patterns to config.</p>
       </a>
     </div>

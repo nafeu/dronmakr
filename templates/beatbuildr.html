@@ -81,35 +81,56 @@
       z-index: 1000;
     }
 
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
     #toolbar-brand {
       font-size: 0.9rem;
       font-weight: 600;
       letter-spacing: 0.02em;
       color: var(--primary);
+      min-width: 20ch;
+      flex-shrink: 0;
+      text-decoration: none;
+      outline: none;
+    }
+
+    #toolbar-brand:hover,
+    #toolbar-brand:focus,
+    #toolbar-brand:visited {
+      color: var(--primary);
+      text-decoration: none;
     }
 
     .toolbar-nav {
       display: flex;
       align-items: center;
-      gap: 1.25rem;
+      gap: 0.5rem;
       font-size: 0.85rem;
     }
 
     .toolbar-nav a {
       color: var(--primary);
       text-decoration: none;
-      border-bottom: 1px solid transparent;
-      padding-bottom: 2px;
+      padding: 0.35rem 0.65rem;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      background: var(--theme-a);
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
     }
 
     .toolbar-nav a:hover {
-      border-bottom-color: var(--primary);
-      opacity: 0.9;
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.15);
     }
 
     .toolbar-nav a.active {
-      border-bottom-color: var(--primary);
-      font-weight: 600;
+      border-color: var(--primary);
+      background: var(--primary);
+      color: var(--secondary);
     }
 
     #toolbar-status {
@@ -624,12 +645,13 @@
 
 <body>
   <header id="toolbar">
-    <span id="toolbar-brand">┌ dronmakr v{{ version }} ■ beatbuildr ┐</span>
-    <nav class="toolbar-nav">
-      <a href="/">Home</a>
-      <a href="/auditionr">Auditionr</a>
-      <a href="/beatbuildr" class="active">Beatbuildr</a>
-    </nav>
+    <div class="toolbar-left">
+      <a href="/" id="toolbar-brand">┌ dronmakr v{{ version }} ┐</a>
+      <nav class="toolbar-nav">
+        <a href="/auditionr"><i class="fa-solid fa-wave-square"></i> auditionr</a>
+        <a href="/beatbuildr" class="active"><i class="fa-solid fa-drum"></i> beatbuildr</a>
+      </nav>
+    </div>
     <span id="toolbar-status"><i class="fa-solid fa-spinner fa-spin"></i> connecting…</span>
   </header>
 
@@ -671,7 +693,8 @@
           </label>
           <div class="swing-slider-wrapper">
             <div class="swing-fake-track"></div>
-            <input type="range" id="swing-input" min="0" max="100" value="0" step="1" title="Swing amount (0 = straight, 100 = triplet feel)">
+            <input type="range" id="swing-input" min="0" max="100" value="0" step="1"
+              title="Swing amount (0 = straight, 100 = triplet feel)">
           </div>
         </div>
         <div class="pattern-save-section">

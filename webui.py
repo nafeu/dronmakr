@@ -74,10 +74,15 @@ def run(
     global DEBUG_WEBSOCKETS
     DEBUG_WEBSOCKETS = debug
 
+    if debug:
+        app.config["TEMPLATES_AUTO_RELOAD"] = True
+
     ensure_beat_patterns()
 
     print(get_version())
     print(with_prompt(f"Open: http://localhost:{port} in your browser."))
+    if debug:
+        print(with_prompt("Dev mode: template changes apply on refresh (no restart needed)."))
 
     def _run_server():
         socketio.run(
