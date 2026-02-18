@@ -173,11 +173,25 @@
       opacity: 0.5;
     }
 
+    .button.icon-btn {
+      width: 36px;
+      min-width: 36px;
+      padding: 6px;
+      text-align: center;
+      border: none;
+      border-bottom: 2px solid var(--theme-a);
+    }
+
+    .button.icon-btn:hover {
+      border-bottom-color: var(--primary);
+    }
+
     .fixed-button {
       width: 40px;
       text-align: center;
       font-weight: bold;
-      border: 2px solid var(--primary);
+      border: none;
+      border-bottom: 2px solid var(--primary);
       background-color: var(--primary);
       color: var(--secondary);
     }
@@ -222,12 +236,12 @@
 
     .drumpattern-sample .waveform-actions .fixed-button {
       background-color: var(--theme-b);
-      border-color: var(--theme-b);
+      border-bottom-color: var(--theme-b);
       color: var(--secondary);
     }
 
     .drumpattern-sample .waveform-actions .button:hover {
-      border-color: var(--theme-b);
+      border-bottom-color: var(--theme-b);
     }
 
     #logs {
@@ -236,6 +250,10 @@
 
     .disabled {
       opacity: 0.25;
+    }
+
+    .center-offset {
+      margin-top: 3px;
     }
   </style>
 </head>
@@ -428,21 +446,23 @@
         actions.classList.add("waveform-actions")
 
         var playButton = document.createElement("div");
-        playButton.innerText = "Play";
-        playButton.classList.add("button")
-        playButton.classList.add("fixed-button")
+        playButton.innerHTML = "<i class=\"fa-solid fa-play center-offset\"></i>";
+        playButton.classList.add("button", "fixed-button");
+        playButton.title = "Play";
         if (isDrumpattern) playButton.classList.add("disabled");
         actions.appendChild(playButton);
 
         var skipButton = document.createElement("div");
-        skipButton.innerText = "Skip";
-        skipButton.classList.add("button")
+        skipButton.innerHTML = "<i class=\"fa-solid fa-box-archive\"></i>";
+        skipButton.classList.add("button", "icon-btn");
+        skipButton.title = "Archive";
         skipButton.addEventListener("click", () => skipSample(filePath));
         actions.appendChild(skipButton);
 
         var saveButton = document.createElement("div");
-        saveButton.innerText = "Save";
-        saveButton.classList.add("button")
+        saveButton.innerHTML = "<i class=\"fa-solid fa-floppy-disk\"></i>";
+        saveButton.classList.add("button", "icon-btn");
+        saveButton.title = "Save";
         saveButton.addEventListener("click", () => saveSample(filePath));
         actions.appendChild(saveButton);
 
@@ -568,8 +588,9 @@
           actions.appendChild(gainMinus2Btn);
 
           var reverseDrumpatternBtn = document.createElement("div");
-          reverseDrumpatternBtn.innerText = "Reverse";
-          reverseDrumpatternBtn.classList.add("button");
+          reverseDrumpatternBtn.innerHTML = "<i class=\"fa-solid fa-rotate-left\"></i>";
+          reverseDrumpatternBtn.classList.add("button", "icon-btn");
+          reverseDrumpatternBtn.title = "Reverse";
           reverseDrumpatternBtn.addEventListener("click", () => processSample({ path: filePath, command: "reverse_sample", files }));
           actions.appendChild(reverseDrumpatternBtn);
         }
@@ -667,8 +688,9 @@
           actions.appendChild(decreaseGainButton);
 
           var reverseButton = document.createElement("div");
-          reverseButton.innerText = "Reverse";
-          reverseButton.classList.add("button")
+          reverseButton.innerHTML = "<i class=\"fa-solid fa-rotate-left\"></i>";
+          reverseButton.classList.add("button", "icon-btn");
+          reverseButton.title = "Reverse";
           reverseButton.addEventListener("click", () => processSample({
             path: filePath,
             command: "reverse_sample",
@@ -688,8 +710,9 @@
         }
 
         var deleteButton = document.createElement("div");
-        deleteButton.innerText = "Delete";
-        deleteButton.classList.add("button")
+        deleteButton.innerHTML = "<i class=\"fa-solid fa-trash-can\"></i>";
+        deleteButton.classList.add("button", "icon-btn");
+        deleteButton.title = "Delete";
         deleteButton.addEventListener("click", () => deleteSample(filePath));
         actions.appendChild(deleteButton);
 
@@ -744,7 +767,8 @@
           drumpatternPlaying = false;
           if (drumpatternRafId != null) cancelAnimationFrame(drumpatternRafId);
           drumpatternRafId = null;
-          playButton.innerText = "Play";
+          playButton.innerHTML = "<i class=\"fa-solid fa-play center-offset\"></i>";
+          playButton.title = "Play";
           if (currentDrumpatternStop === stopDrumpatternPlayback) currentDrumpatternStop = null;
         }
 
@@ -776,16 +800,19 @@
             drumpatternStartTime = ctx.currentTime;
             drumpatternPlaying = true;
             currentDrumpatternStop = stopDrumpatternPlayback;
-            playButton.innerText = "Pause";
+            playButton.innerHTML = "<i class=\"fa-solid fa-pause center-offset\"></i>";
+            playButton.title = "Pause";
             drumpatternRafId = requestAnimationFrame(updateDrumpatternPlayhead);
             return;
           }
           if (wavesurfer.isPlaying()) {
             wavesurfer.pause();
-            playButton.innerText = "Play";
+            playButton.innerHTML = "<i class=\"fa-solid fa-play center-offset\"></i>";
+            playButton.title = "Play";
           } else {
             wavesurfer.play();
-            playButton.innerText = "Pause";
+            playButton.innerHTML = "<i class=\"fa-solid fa-pause center-offset\"></i>";
+            playButton.title = "Pause";
           }
         });
       });
