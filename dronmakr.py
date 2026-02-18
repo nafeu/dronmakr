@@ -1,3 +1,4 @@
+import fnmatch
 import time
 import os
 import sys
@@ -309,7 +310,7 @@ def generate_beat(
     iterations: int = typer.Option(
         1,
         "--iterations",
-        "-i",
+        "-I",
         help="Number of times to generate beats (default: 1).",
     ),
 ):
@@ -336,6 +337,20 @@ def generate_beat(
     except json.JSONDecodeError as e:
         print(with_prompt(f"Error: Invalid JSON in config/beat-patterns.json: {e}"))
         sys.exit(1)
+
+    # Resolve pattern: exact match, wildcard match (*), or random if not specified
+    matching_patterns = None
+    if pattern is not None and pattern:
+        if "*" in pattern:
+            matching_patterns = [p for p in available_patterns if fnmatch.fnmatch(p, pattern)]
+            if not matching_patterns:
+                print(with_prompt(f"Error: No patterns match '{pattern}'"))
+                sys.exit(1)
+        else:
+            if pattern not in available_patterns:
+                print(with_prompt(f"Error: Pattern '{pattern}' not found in config/beat-patterns.json"))
+                sys.exit(1)
+            matching_patterns = [pattern]
 
     print(get_version())
     print(with_prompt(f"tempo"))
@@ -366,7 +381,10 @@ def generate_beat(
         current_bpm = bpm if bpm else random.randint(80, 180)
 
         # Determine pattern for this iteration
-        current_pattern = pattern if pattern else random.choice(available_patterns)
+        if matching_patterns is not None:
+            current_pattern = random.choice(matching_patterns)
+        else:
+            current_pattern = random.choice(available_patterns)
 
         # Generate beat name
         beat_name = generate_beat_name()
