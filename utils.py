@@ -46,12 +46,8 @@ def with_main_prompt(text):
     return f"{RED}│{RESET}   {text}"
 
 
-def with_final_auditionr_prompt(text):
-    return f"{RED}│\n■{RESET} {text}"
-
-
-def with_final_beatbuildr_prompt(text):
-    return f"{CYAN}│\n■{RESET} {text}"
+def with_final_main_prompt(text):
+    return f"{RED}■{RESET}   {text}"
 
 
 def with_build_preset_prompt(text):

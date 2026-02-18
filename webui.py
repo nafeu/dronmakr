@@ -14,7 +14,7 @@ from flask import Flask, render_template
 from flask_socketio import SocketIO
 
 from version import __version__
-from utils import get_version, with_main_prompt as with_prompt
+from utils import get_version, with_final_main_prompt, with_main_prompt as with_prompt
 
 # Import registration and helpers from sub-apps
 from auditionr import register_auditionr
@@ -80,9 +80,15 @@ def run(
     ensure_beat_patterns()
 
     print(get_version())
-    print(with_prompt(f"Open: http://localhost:{port} in your browser."))
     if debug:
-        print(with_prompt("Dev mode: template changes apply on refresh (no restart needed)."))
+        print(with_prompt(f"Open: http://localhost:{port} in your browser."))
+        print(
+            with_final_main_prompt(
+                "Dev mode: template changes apply on refresh (no restart needed)."
+            )
+        )
+    else:
+        print(with_final_main_prompt(f"Open: http://localhost:{port} in your browser."))
 
     def _run_server():
         socketio.run(
