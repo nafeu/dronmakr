@@ -30,6 +30,29 @@
       padding-top: calc(var(--toolbar-height) + 1rem);
     }
 
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--theme-a) var(--secondary);
+    }
+
+    *::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    *::-webkit-scrollbar-track {
+      background: var(--secondary);
+    }
+
+    *::-webkit-scrollbar-thumb {
+      background: var(--theme-a);
+      border-radius: 4px;
+    }
+
+    *::-webkit-scrollbar-thumb:hover {
+      background: var(--theme-b);
+    }
+
     #toolbar {
       position: fixed;
       top: 0;
@@ -91,91 +114,128 @@
     }
 
     main {
-      max-width: 52rem;
-      margin: 0 auto;
+      max-width: 56rem;
     }
 
-    h1 {
-      font-size: 1.25rem;
+    .settings-card {
+      border: 1px solid var(--theme-a);
+      padding: 0.75rem;
+      border-radius: 4px;
+      background: #050505;
+      overflow: auto;
+    }
+
+    .settings-card h1 {
+      margin: 0 0 0.5rem 0;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--theme-a);
+    }
+
+    .settings-card .intro {
+      font-size: 0.7rem;
+      color: var(--theme-a);
       margin-bottom: 1rem;
+      line-height: 1.4;
     }
 
     .settings-form {
       display: flex;
       flex-direction: column;
-      gap: 1rem;
+      gap: 0.75rem;
     }
 
     .field-group {
       display: flex;
       flex-direction: column;
-      gap: 0.25rem;
+      gap: 0.2rem;
     }
 
     .field-group label {
-      font-size: 0.8rem;
-      color: var(--theme-b);
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--theme-a);
     }
 
     .field-row {
       display: flex;
       gap: 0.5rem;
-      align-items: center;
+      align-items: flex-start;
     }
 
-    .field-row input[type="text"] {
-      flex: 1;
-      min-width: 0;
+    .field-row textarea {
+      width: 600px;
+      min-height: 3.5rem;
       padding: 0.5rem 0.75rem;
       font-family: inherit;
-      font-size: 0.85rem;
-      background: var(--theme-a);
+      font-size: 0.8rem;
+      line-height: 1.4;
+      background: #0a0a0a;
       border: 1px solid var(--theme-a);
       border-radius: 4px;
       color: var(--primary);
+      resize: none;
     }
 
-    .field-row input[type="text"]:focus {
+    .field-row textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .field-group textarea {
+      width: 600px;
+      min-height: 3rem;
+      padding: 0.5rem 0.75rem;
+      font-family: inherit;
+      font-size: 0.8rem;
+      background: #0a0a0a;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      color: var(--primary);
+      resize: none;
+    }
+
+    .field-group textarea:focus {
       outline: none;
       border-color: var(--primary);
     }
 
     .btn-add {
       flex-shrink: 0;
-      width: 36px;
-      height: 36px;
+      width: 2rem;
+      height: 2rem;
       padding: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: var(--theme-a);
+      background: #0a0a0a;
       border: 1px solid var(--theme-a);
       border-radius: 4px;
       color: var(--primary);
       cursor: pointer;
-      font-size: 1rem;
+      font-size: 0.75rem;
       transition: background 0.15s ease, border-color 0.15s ease;
     }
 
     .btn-add:hover {
       border-color: var(--primary);
-      background: rgba(255, 149, 5, 0.2);
+      background: rgba(255, 149, 5, 0.15);
     }
 
     .append-row {
       display: flex;
       gap: 0.5rem;
-      align-items: center;
-      margin-top: 0.35rem;
+      margin-top: 0.5rem;
     }
 
     .append-row input {
-      flex: 1;
-      min-width: 0;
-      padding: 0.35rem 0.5rem;
+      width: 568px;
+      padding: 0.3rem 0.5rem;
       font-family: inherit;
-      font-size: 0.8rem;
-      background: var(--theme-a);
+      font-size: 0.75rem;
+      background: #0a0a0a;
       border: 1px solid var(--theme-a);
       border-radius: 4px;
       color: var(--primary);
@@ -187,10 +247,10 @@
     }
 
     .btn-save {
-      margin-top: 1.5rem;
-      padding: 0.65rem 1.25rem;
+      margin-top: 1rem;
+      padding: 0.5rem 1rem;
       font-family: inherit;
-      font-size: 0.9rem;
+      font-size: 0.8rem;
       background: var(--primary);
       color: var(--secondary);
       border: 1px solid var(--primary);
@@ -213,11 +273,11 @@
       position: fixed;
       bottom: 1.5rem;
       right: 1.5rem;
-      padding: 0.75rem 1rem;
-      background: var(--theme-a);
-      border: 1px solid var(--primary);
+      padding: 0.6rem 0.9rem;
+      background: #050505;
+      border: 1px solid var(--theme-a);
       border-radius: 4px;
-      font-size: 0.85rem;
+      font-size: 0.75rem;
       z-index: 2000;
       animation: fadeIn 0.2s ease;
     }
@@ -228,12 +288,12 @@
     }
 
     .section-title {
-      font-size: 0.75rem;
+      font-size: 0.65rem;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--theme-b);
-      margin: 1.5rem 0 0.5rem 0;
-      padding-top: 1rem;
+      letter-spacing: 0.08em;
+      color: var(--theme-a);
+      margin: 1rem 0 0.35rem 0;
+      padding-top: 0.75rem;
       border-top: 1px solid var(--theme-a);
     }
 
@@ -244,8 +304,15 @@
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(0.5rem); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(0.5rem);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
   </style>
 </head>
@@ -264,40 +331,40 @@
   </header>
 
   <main>
-    <h1>Settings</h1>
-    <p style="color: var(--theme-b); font-size: 0.85rem; margin-bottom: 1.5rem;">
-      Edit configuration values. Changes are saved to <code>config/settings.json</code>. Use the + button next to path fields to select a folder, or type values manually (comma-separated for multiple).
-    </p>
     <form id="settingsForm" class="settings-form">
-      <div class="section-title">Plugins & Instruments</div>
       <div class="field-group" data-key="PLUGIN_PATHS" data-is-path="true">
         <label for="PLUGIN_PATHS">PLUGIN_PATHS</label>
         <div class="field-row">
-          <input type="text" id="PLUGIN_PATHS" name="PLUGIN_PATHS" value="{{ settings.get('PLUGIN_PATHS', '') }}" placeholder="Comma-separated paths to VST/AU plugin folders">
+          <textarea id="PLUGIN_PATHS" name="PLUGIN_PATHS" rows="2"
+            placeholder="Comma-separated paths to VST/AU folders">{{ settings.get('PLUGIN_PATHS', '') }}</textarea>
           <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
       <div class="field-group" data-key="CUSTOM_PLUGINS" data-is-path="true">
         <label for="CUSTOM_PLUGINS">CUSTOM_PLUGINS</label>
         <div class="field-row">
-          <input type="text" id="CUSTOM_PLUGINS" name="CUSTOM_PLUGINS" value="{{ settings.get('CUSTOM_PLUGINS', '') }}" placeholder="Comma-separated paths to custom plugins">
+          <textarea id="CUSTOM_PLUGINS" name="CUSTOM_PLUGINS" rows="2"
+            placeholder="Comma-separated paths">{{ settings.get('CUSTOM_PLUGINS', '') }}</textarea>
           <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
       <div class="field-group" data-key="ASSERT_INSTRUMENT" data-append-type="plugin">
         <label for="ASSERT_INSTRUMENT">ASSERT_INSTRUMENT</label>
         <div class="field-row">
-          <input type="text" id="ASSERT_INSTRUMENT" name="ASSERT_INSTRUMENT" value="{{ settings.get('ASSERT_INSTRUMENT', '') }}" placeholder="Plugin name(s) treated as instruments">
+          <textarea id="ASSERT_INSTRUMENT" name="ASSERT_INSTRUMENT" rows="2"
+            placeholder="Plugin names treated as instruments">{{ settings.get('ASSERT_INSTRUMENT', '') }}</textarea>
         </div>
         <div class="append-row">
-          <input type="text" id="ASSERT_INSTRUMENT_append" placeholder="Add plugin name..." data-target="ASSERT_INSTRUMENT">
+          <input type="text" id="ASSERT_INSTRUMENT_append" placeholder="Add plugin name..."
+            data-target="ASSERT_INSTRUMENT">
           <button type="button" class="btn-add" title="Append"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
       <div class="field-group" data-key="IGNORE_PLUGINS" data-append-type="plugin">
         <label for="IGNORE_PLUGINS">IGNORE_PLUGINS</label>
         <div class="field-row">
-          <input type="text" id="IGNORE_PLUGINS" name="IGNORE_PLUGINS" value="{{ settings.get('IGNORE_PLUGINS', '') }}" placeholder="Plugin name(s) to ignore">
+          <textarea id="IGNORE_PLUGINS" name="IGNORE_PLUGINS" rows="2"
+            placeholder="Plugin names to ignore">{{ settings.get('IGNORE_PLUGINS', '') }}</textarea>
         </div>
         <div class="append-row">
           <input type="text" id="IGNORE_PLUGINS_append" placeholder="Add plugin name..." data-target="IGNORE_PLUGINS">
@@ -306,66 +373,76 @@
       </div>
       <div class="field-group" data-key="QT_LOGGING_RULES">
         <label for="QT_LOGGING_RULES">QT_LOGGING_RULES</label>
-        <input type="text" id="QT_LOGGING_RULES" name="QT_LOGGING_RULES" value="{{ settings.get('QT_LOGGING_RULES', '*.debug=false') }}" placeholder="e.g. *.debug=false">
+        <textarea id="QT_LOGGING_RULES" name="QT_LOGGING_RULES" rows="1"
+          placeholder="e.g. *.debug=false">{{ settings.get('QT_LOGGING_RULES', '*.debug=false') }}</textarea>
       </div>
       <div class="field-group" data-key="IMKLogLevel">
         <label for="IMKLogLevel">IMKLogLevel</label>
-        <input type="text" id="IMKLogLevel" name="IMKLogLevel" value="{{ settings.get('IMKLogLevel', 'none') }}" placeholder="e.g. none">
+        <textarea id="IMKLogLevel" name="IMKLogLevel" rows="1"
+          placeholder="e.g. none">{{ settings.get('IMKLogLevel', 'none') }}</textarea>
       </div>
       <div class="section-title">Drum Sample Paths</div>
       <div class="field-group" data-key="DRUM_KICK_PATHS" data-is-path="true">
         <label for="DRUM_KICK_PATHS">DRUM_KICK_PATHS</label>
         <div class="field-row">
-          <input type="text" id="DRUM_KICK_PATHS" name="DRUM_KICK_PATHS" value="{{ settings.get('DRUM_KICK_PATHS', '') }}" placeholder="Path(s) to kick samples">
+          <textarea id="DRUM_KICK_PATHS" name="DRUM_KICK_PATHS" rows="2"
+            placeholder="Path(s) to kick samples">{{ settings.get('DRUM_KICK_PATHS', '') }}</textarea>
           <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
       <div class="field-group" data-key="DRUM_SNARE_PATHS" data-is-path="true">
         <label for="DRUM_SNARE_PATHS">DRUM_SNARE_PATHS</label>
         <div class="field-row">
-          <input type="text" id="DRUM_SNARE_PATHS" name="DRUM_SNARE_PATHS" value="{{ settings.get('DRUM_SNARE_PATHS', '') }}" placeholder="Path(s) to snare samples">
+          <textarea id="DRUM_SNARE_PATHS" name="DRUM_SNARE_PATHS" rows="2"
+            placeholder="Path(s) to snare samples">{{ settings.get('DRUM_SNARE_PATHS', '') }}</textarea>
           <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
       <div class="field-group" data-key="DRUM_HIHAT_PATHS" data-is-path="true">
         <label for="DRUM_HIHAT_PATHS">DRUM_HIHAT_PATHS</label>
         <div class="field-row">
-          <input type="text" id="DRUM_HIHAT_PATHS" name="DRUM_HIHAT_PATHS" value="{{ settings.get('DRUM_HIHAT_PATHS', '') }}" placeholder="Path(s) to hihat samples">
+          <textarea id="DRUM_HIHAT_PATHS" name="DRUM_HIHAT_PATHS" rows="2"
+            placeholder="Path(s) to hihat samples">{{ settings.get('DRUM_HIHAT_PATHS', '') }}</textarea>
           <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
       <div class="field-group" data-key="DRUM_CLAP_PATHS" data-is-path="true">
         <label for="DRUM_CLAP_PATHS">DRUM_CLAP_PATHS</label>
         <div class="field-row">
-          <input type="text" id="DRUM_CLAP_PATHS" name="DRUM_CLAP_PATHS" value="{{ settings.get('DRUM_CLAP_PATHS', '') }}" placeholder="Path(s) to clap samples">
+          <textarea id="DRUM_CLAP_PATHS" name="DRUM_CLAP_PATHS" rows="2"
+            placeholder="Path(s) to clap samples">{{ settings.get('DRUM_CLAP_PATHS', '') }}</textarea>
           <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
       <div class="field-group" data-key="DRUM_PERC_PATHS" data-is-path="true">
         <label for="DRUM_PERC_PATHS">DRUM_PERC_PATHS</label>
         <div class="field-row">
-          <input type="text" id="DRUM_PERC_PATHS" name="DRUM_PERC_PATHS" value="{{ settings.get('DRUM_PERC_PATHS', '') }}" placeholder="Path(s) to percussion samples">
+          <textarea id="DRUM_PERC_PATHS" name="DRUM_PERC_PATHS" rows="2"
+            placeholder="Path(s) to percussion samples">{{ settings.get('DRUM_PERC_PATHS', '') }}</textarea>
           <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
       <div class="field-group" data-key="DRUM_TOM_PATHS" data-is-path="true">
         <label for="DRUM_TOM_PATHS">DRUM_TOM_PATHS</label>
         <div class="field-row">
-          <input type="text" id="DRUM_TOM_PATHS" name="DRUM_TOM_PATHS" value="{{ settings.get('DRUM_TOM_PATHS', '') }}" placeholder="Path(s) to tom samples">
+          <textarea id="DRUM_TOM_PATHS" name="DRUM_TOM_PATHS" rows="2"
+            placeholder="Path(s) to tom samples">{{ settings.get('DRUM_TOM_PATHS', '') }}</textarea>
           <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
       <div class="field-group" data-key="DRUM_SHAKER_PATHS" data-is-path="true">
         <label for="DRUM_SHAKER_PATHS">DRUM_SHAKER_PATHS</label>
         <div class="field-row">
-          <input type="text" id="DRUM_SHAKER_PATHS" name="DRUM_SHAKER_PATHS" value="{{ settings.get('DRUM_SHAKER_PATHS', '') }}" placeholder="Path(s) to shaker samples">
+          <textarea id="DRUM_SHAKER_PATHS" name="DRUM_SHAKER_PATHS" rows="2"
+            placeholder="Path(s) to shaker samples">{{ settings.get('DRUM_SHAKER_PATHS', '') }}</textarea>
           <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
       <div class="field-group" data-key="DRUM_CYMBAL_PATHS" data-is-path="true">
         <label for="DRUM_CYMBAL_PATHS">DRUM_CYMBAL_PATHS</label>
         <div class="field-row">
-          <input type="text" id="DRUM_CYMBAL_PATHS" name="DRUM_CYMBAL_PATHS" value="{{ settings.get('DRUM_CYMBAL_PATHS', '') }}" placeholder="Path(s) to cymbal samples">
+          <textarea id="DRUM_CYMBAL_PATHS" name="DRUM_CYMBAL_PATHS" rows="2"
+            placeholder="Path(s) to cymbal samples">{{ settings.get('DRUM_CYMBAL_PATHS', '') }}</textarea>
           <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
@@ -433,8 +510,8 @@
       const btn = form.querySelector(".btn-save");
       btn.disabled = true;
       const data = {};
-      document.querySelectorAll("input[name]").forEach(inp => {
-        if (inp.name && !inp.name.endsWith("_append")) data[inp.name] = inp.value;
+      document.querySelectorAll("input[name], textarea[name]").forEach(el => {
+        if (el.name && !el.name.endsWith("_append")) data[el.name] = el.value;
       });
       try {
         const res = await fetch("/api/settings", {
