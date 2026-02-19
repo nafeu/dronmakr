@@ -995,6 +995,29 @@ def get_latest_exports(sort_override=None):
         return []
 
 
+def _count_wav_in_dir(dir_path):
+    """Count .wav files in a directory. Returns 0 if dir does not exist."""
+    if not os.path.exists(dir_path) or not os.path.isdir(dir_path):
+        return 0
+    try:
+        return sum(
+            1 for f in os.listdir(dir_path)
+            if os.path.isfile(os.path.join(dir_path, f)) and f.lower().endswith(".wav")
+        )
+    except Exception:
+        return 0
+
+
+def get_auditionr_folder_counts():
+    """Return counts of .wav files in archive, trash, exports, and saved folders."""
+    return {
+        "archive": _count_wav_in_dir(ARCHIVE_DIR),
+        "trash": _count_wav_in_dir(TRASH_DIR),
+        "exports": _count_wav_in_dir(EXPORTS_DIR),
+        "saved": _count_wav_in_dir(SAVED_DIR),
+    }
+
+
 def get_presets():
     with open(PRESETS_PATH, "r") as file:
         presets = json.load(file)

@@ -21,7 +21,7 @@ from auditionr import register_auditionr
 from beatbuildr import register_beatbuildr, ensure_beat_patterns
 
 # Helpers for unified socket connect
-from utils import get_latest_exports, get_presets
+from utils import get_auditionr_folder_counts, get_latest_exports, get_presets
 from generate_midi import get_patterns
 from beatbuildr import generate_random_drum_kit
 
@@ -37,6 +37,7 @@ def handle_connect():
     if DEBUG_WEBSOCKETS:
         print("Client connected via WebSocket")
     socketio.emit("exports", {"files": get_latest_exports()})
+    socketio.emit("folder_counts", get_auditionr_folder_counts())
     socketio.emit("configs", {"presets": get_presets(), "patterns": get_patterns()})
     drum_kit = generate_random_drum_kit()
     socketio.emit("kit", drum_kit)

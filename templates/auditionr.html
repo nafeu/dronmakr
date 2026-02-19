@@ -128,7 +128,7 @@
 
     .toolbar-action-btn {
       display: inline-flex;
-      align-items: center;
+      align-items: flex-end;
       gap: 0.4rem;
       padding: 0.35rem 0.65rem;
       font-size: 0.85rem;
@@ -154,6 +154,51 @@
 
     .toolbar-action-btn i {
       font-size: 0.8rem;
+    }
+
+    .toolbar-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      color: var(--theme-b);
+    }
+
+    .toolbar-status-badge {
+      display: inline-flex;
+      align-items: flex-end;
+      gap: 0.4rem;
+      padding: 0.35rem 0.65rem;
+      font-size: 0.85rem;
+      border-radius: 4px;
+      background: rgba(1, 111, 185, 0.2);
+      border: 1px solid var(--theme-b);
+      box-sizing: border-box;
+    }
+
+    .toolbar-status-badge.saved {
+      color: var(--theme-c);
+      background: rgba(236, 78, 32, 0.2);
+      border-color: var(--theme-c);
+    }
+
+    .toolbar-status-badge i,
+    .toolbar-action-btn i {
+      flex-shrink: 0;
+    }
+
+    .status-label,
+    .btn-label {
+      white-space: nowrap;
+      display: none;
+    }
+
+    @media (min-width: 1200px) {
+
+      .status-label,
+      .btn-label {
+        display: inline;
+      }
     }
 
     #waveforms {
@@ -268,15 +313,29 @@
       </nav>
     </div>
     <div id="toolbar-actions">
+      <div class="toolbar-status">
+        <span class="toolbar-status-badge" id="status-queue" title="Files in queue to review">
+          <i class="fa-solid fa-inbox"></i>
+          <span id="queue-num">0</span>
+          <span class="status-label"> in queue</span>
+        </span>
+        <span class="toolbar-status-badge saved" id="status-saved" title="Saved files">
+          <i class="fa-solid fa-heart"></i>
+          <span id="saved-num">0</span>
+          <span class="status-label"> saved</span>
+        </span>
+      </div>
       <button type="button" class="toolbar-action-btn" id="unarchive-samples-button" title="Unarchive Samples"
         onclick="unarchiveSamples()" aria-label="Unarchive Samples">
         <i class="fa-solid fa-box-open"></i>
-        <span>Unarchive Samples</span>
+        <span class="btn-label">Unarchive Samples </span>
+        <span id="unarchive-count">(0)</span>
       </button>
       <button type="button" class="toolbar-action-btn" id="empty-trash-button" title="Empty Trash"
         onclick="emptyTrash()" aria-label="Empty Trash">
         <i class="fa-solid fa-trash-can"></i>
-        <span>Empty Trash</span>
+        <span class="btn-label">Empty Trash </span>
+        <span id="trash-count">(0)</span>
       </button>
     </div>
   </header>
@@ -286,6 +345,7 @@
   </main>
   <script>
     var socket = io();
+    var lastFolderCounts = { archive: 0, trash: 0, exports: 0, saved: 0 };
     var selectedWaveformTimestamps = [];
     var db = 2;
     var lastEdited = "";
@@ -311,6 +371,7 @@
           button.title = "Emptied.";
           setTimeout(function () {
             button.innerHTML = originalHtml;
+            updateFolderCounts(lastFolderCounts);
             button.title = "Empty Trash";
             button.disabled = false;
           }, 800);
@@ -337,6 +398,7 @@
           button.title = "Files moved.";
           setTimeout(function () {
             button.innerHTML = originalHtml;
+            updateFolderCounts(lastFolderCounts);
             button.title = "Unarchive Samples";
             button.disabled = false;
           }, 800);
@@ -402,6 +464,23 @@
         displayWaveforms(data.files);
       }
     });
+
+    socket.on("folder_counts", function (data) {
+      updateFolderCounts(data);
+    });
+
+    function updateFolderCounts(counts) {
+      if (!counts) return;
+      lastFolderCounts = counts;
+      var queueNumEl = document.getElementById("queue-num");
+      var savedNumEl = document.getElementById("saved-num");
+      var unarchiveCountEl = document.getElementById("unarchive-count");
+      var trashCountEl = document.getElementById("trash-count");
+      if (queueNumEl) queueNumEl.textContent = counts.exports || 0;
+      if (savedNumEl) savedNumEl.textContent = counts.saved || 0;
+      if (unarchiveCountEl) unarchiveCountEl.textContent = "(" + (counts.archive || 0) + ")";
+      if (trashCountEl) trashCountEl.textContent = "(" + (counts.trash || 0) + ")";
+    }
 
     function displayWaveforms(files) {
       if (currentDrumpatternStop) {

@@ -9,6 +9,7 @@ import shutil
 from flask import request, jsonify, send_from_directory
 from utils import (
     get_latest_exports,
+    get_auditionr_folder_counts,
     get_presets,
     delete_all_files,
     EXPORTS_DIR,
@@ -48,6 +49,11 @@ from process_sample import (
 _socketio = None
 
 
+def _emit_folder_counts():
+    if _socketio:
+        _socketio.emit("folder_counts", get_auditionr_folder_counts())
+
+
 def serve_exported_file(filename):
     """Allows direct access to exported .wav files"""
     return send_from_directory(EXPORTS_DIR, filename)
@@ -71,6 +77,7 @@ def skip_file():
     shutil.move(file_path, os.path.join(ARCHIVE_DIR, file_name))
 
     _socketio.emit("exports", {"files": get_latest_exports()})
+    _emit_folder_counts()
     return jsonify({"success": "File moved to archive."}), 200
 
 
@@ -84,6 +91,7 @@ def unarchive_files():
     move_all_files(ARCHIVE_DIR, EXPORTS_DIR)
 
     _socketio.emit("exports", {"files": get_latest_exports()})
+    _emit_folder_counts()
     return jsonify({"success": "Files moved back from archive"}), 200
 
 
@@ -93,6 +101,7 @@ def empty_trash():
 
     delete_all_files(TRASH_DIR)
 
+    _emit_folder_counts()
     return jsonify({"success": "Trash has been emptied"}), 200
 
 
@@ -109,6 +118,7 @@ def reprocess():
     apply_effect(file_path, params["effect"])
 
     _socketio.emit("exports", {"files": get_latest_exports()})
+    _emit_folder_counts()
     _socketio.emit("status", {"done": True})
     return jsonify({"success": "File moved to archive."}), 200
 
@@ -141,6 +151,7 @@ def delete_file():
     shutil.move(file_path, os.path.join(TRASH_DIR, file_name))
 
     _socketio.emit("exports", {"files": get_latest_exports()})
+    _emit_folder_counts()
     return jsonify({"success": "File moved to trash."}), 200
 
 
@@ -167,6 +178,7 @@ def save_file():
     shutil.move(file_path, os.path.join(SAVED_DIR, file_name))
 
     _socketio.emit("exports", {"files": get_latest_exports()})
+    _emit_folder_counts()
     return jsonify({"success": "File moved to saved."}), 200
 
 
@@ -238,6 +250,7 @@ def process_file():
     _socketio.emit(
         "exports", {"files": get_latest_exports(sort_override=params["files"])}
     )
+    _emit_folder_counts()
     return jsonify({"success": f"File processed with {command}"}), 200
 
 
