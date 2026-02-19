@@ -9,8 +9,8 @@ import random
 import shutil
 from pathlib import Path
 
-from dotenv import load_dotenv
 from flask import send_from_directory
+from settings import get_setting
 
 from utils import (
     TEMP_DIR,
@@ -66,10 +66,10 @@ def _choose_random_file(folder: Path) -> Path | None:
 
 def _get_random_sample_for_env(env_key: str) -> Path | None:
     """
-    Pick a random WAV file from one of the comma-separated paths in the given env var.
+    Pick a random WAV file from one of the comma-separated paths in the given setting.
     Returns a small descriptor dict with name and path, or None if not resolvable.
     """
-    paths = os.getenv(env_key, "")
+    paths = get_setting(env_key, "")
     roots = [p.strip() for p in paths.split(",") if p.strip()]
     if not roots:
         return None
@@ -80,11 +80,9 @@ def _get_random_sample_for_env(env_key: str) -> Path | None:
 
 def generate_random_drum_kit() -> dict:
     """
-    Build a random drum kit using the same env-configured sample folders
+    Build a random drum kit using the same settings-configured sample folders
     that power the `generate-beat` CLI command.
     """
-    load_dotenv()
-
     # Prepare temp directory to host the current kit's samples so they can be
     # served over HTTP to the browser.
     kit_temp_root = Path(TEMP_DIR) / "beatbuildr"
@@ -120,10 +118,9 @@ def generate_random_drum_kit() -> dict:
 
 def replace_sample_for_row(row: str) -> dict | None:
     """
-    Replace a single row's sample with a new random one from the same env.
+    Replace a single row's sample with a new random one from the same setting.
     Overwrites the file in the existing kit temp dir. Returns descriptor or None.
     """
-    load_dotenv()
     env_key = ENV_TO_ROW_MAPPING.get(row)
     if not env_key:
         return None

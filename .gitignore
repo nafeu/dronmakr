@@ -79,4 +79,4 @@ temp/
 generated*.wav
 vst-preset-files/
 output.wav
-config/beat-patterns.json
+config/

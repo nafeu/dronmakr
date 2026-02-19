@@ -4,8 +4,8 @@ import json
 import random
 import subprocess
 import pedalboard
-from dotenv import load_dotenv
 from pathlib import Path
+from settings import get_setting
 from pydub import AudioSegment
 from pedalboard import (
     Compressor,
@@ -350,13 +350,12 @@ def generate_beat_sample(
     play: bool = False,
 ) -> str:
     """
-    Generate a drum loop from env-configured sample folders and export to WAV.
+    Generate a drum loop from settings-configured sample folders and export to WAV.
     Uses get_beat_patterns from generate_midi for pattern data.
     Exports at 44.1 kHz, 16-bit, with exact bar duration so the file lines up
     and loops correctly in DAWs (e.g. Ableton) when the project tempo matches.
     """
-    load_dotenv()
-    print(with_generate_beat_prompt("loading samples from env"))
+    print(with_generate_beat_prompt("loading samples from settings"))
 
     # Use float for timing so loop duration is exact for the given BPM (no truncation).
     # 1 bar = 4 beats; 1 beat = 60/bpm seconds; 1 16th = (60/bpm)/4 seconds.
@@ -383,14 +382,15 @@ def generate_beat_sample(
             return swing_clamped * swing_triplet_offset_ms
         return 0.0
 
-    kicks = Path(random.choice(os.getenv("DRUM_KICK_PATHS", "").split(",")))
-    hihats = Path(random.choice(os.getenv("DRUM_HIHAT_PATHS", "").split(",")))
-    percs = Path(random.choice(os.getenv("DRUM_PERC_PATHS", "").split(",")))
-    toms = Path(random.choice(os.getenv("DRUM_TOM_PATHS", "").split(",")))
-    snares = Path(random.choice(os.getenv("DRUM_SNARE_PATHS", "").split(",")))
-    shakers = Path(random.choice(os.getenv("DRUM_SHAKER_PATHS", "").split(",")))
-    claps = Path(random.choice(os.getenv("DRUM_CLAP_PATHS", "").split(",")))
-    cymbals = Path(random.choice(os.getenv("DRUM_CYMBAL_PATHS", "").split(",")))
+    drum_path = lambda key: random.choice([p.strip() for p in get_setting(key, "").split(",") if p.strip()] or [""])
+    kicks = Path(drum_path("DRUM_KICK_PATHS") or ".")
+    hihats = Path(drum_path("DRUM_HIHAT_PATHS") or ".")
+    percs = Path(drum_path("DRUM_PERC_PATHS") or ".")
+    toms = Path(drum_path("DRUM_TOM_PATHS") or ".")
+    snares = Path(drum_path("DRUM_SNARE_PATHS") or ".")
+    shakers = Path(drum_path("DRUM_SHAKER_PATHS") or ".")
+    claps = Path(drum_path("DRUM_CLAP_PATHS") or ".")
+    cymbals = Path(drum_path("DRUM_CYMBAL_PATHS") or ".")
 
     kick = get_random_sample(kicks)
     snare = get_random_sample(snares)

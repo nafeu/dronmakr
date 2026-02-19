@@ -8,6 +8,8 @@ import builtins
 import subprocess
 
 import typer
+
+from settings import ensure_settings
 from build_preset import list_presets
 from webui import run as run_webui
 from generate_midi import generate_drone_midi
@@ -74,6 +76,7 @@ def main(
     ),
 ):
     """CLI entrypoint. With no subcommand, launches the unified web UI."""
+    ensure_settings()
     if ctx.invoked_subcommand is None:
         ctx.invoke(webui, debug=False, port=3766, open_browser=True)
 

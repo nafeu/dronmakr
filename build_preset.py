@@ -7,8 +7,8 @@ import subprocess
 import sys
 import termios
 import tty
-from dotenv import load_dotenv
 from mido import Message
+from settings import get_setting
 from pedalboard import Pedalboard
 from pedalboard.io import AudioFile
 from threading import Event, Thread
@@ -38,17 +38,15 @@ def build_preset():
     os.makedirs(PRESETS_DIR, exist_ok=True)
     os.makedirs(TEMP_DIR, exist_ok=True)
 
-    load_dotenv()
-
-    plugin_paths = os.getenv("PLUGIN_PATHS", "").split(",")
-    assert_instrument = os.getenv("ASSERT_INSTRUMENT", "").split(",")
-    ignore_plugins = os.getenv("IGNORE_PLUGINS", "").split(",")
+    plugin_paths = get_setting("PLUGIN_PATHS", "").split(",")
+    assert_instrument = get_setting("ASSERT_INSTRUMENT", "").split(",")
+    ignore_plugins = get_setting("IGNORE_PLUGINS", "").split(",")
     custom_plugins = [
-        plugin for plugin in os.getenv("CUSTOM_PLUGINS", "").split(",") if plugin
+        plugin for plugin in get_setting("CUSTOM_PLUGINS", "").split(",") if plugin
     ]
 
     if not plugin_paths or plugin_paths == [""]:
-        print(with_prompt("error: No VST paths found in the .env file."))
+        print(with_prompt("error: No VST paths found in settings (PLUGIN_PATHS)."))
         exit(1)
 
     available_plugins = list_installed_plugins(plugin_paths, custom_plugins)

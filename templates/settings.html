@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>┌ dronmakr v{{ version }} ■ settings ┐</title>
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚙</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fragment+Mono:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    crossorigin="anonymous">
+  <style>
+    :root {
+      --secondary: #000000;
+      --primary: #ff9505;
+      --theme-a: #353531;
+      --theme-b: #016fb9;
+      --theme-c: #ec4e20;
+      --toolbar-height: 48px;
+    }
+
+    body {
+      background-color: var(--secondary);
+      color: var(--primary);
+      font-family: "Fragment Mono", monospace;
+      padding: 1rem;
+      padding-top: calc(var(--toolbar-height) + 1rem);
+    }
+
+    #toolbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--toolbar-height);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1rem;
+      background-color: var(--secondary);
+      border-bottom: 1px solid var(--theme-a);
+      z-index: 1000;
+    }
+
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    #toolbar-brand {
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: var(--primary);
+      min-width: 20ch;
+      flex-shrink: 0;
+      text-decoration: none;
+      outline: none;
+    }
+
+    .toolbar-nav {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+    }
+
+    .toolbar-nav a {
+      color: var(--primary);
+      text-decoration: none;
+      padding: 0.35rem 0.65rem;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      background: var(--theme-a);
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .toolbar-nav a:hover {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.15);
+    }
+
+    .toolbar-nav a.active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: var(--secondary);
+    }
+
+    main {
+      max-width: 52rem;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+    }
+
+    .settings-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .field-group label {
+      font-size: 0.8rem;
+      color: var(--theme-b);
+    }
+
+    .field-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .field-row input[type="text"] {
+      flex: 1;
+      min-width: 0;
+      padding: 0.5rem 0.75rem;
+      font-family: inherit;
+      font-size: 0.85rem;
+      background: var(--theme-a);
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      color: var(--primary);
+    }
+
+    .field-row input[type="text"]:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .btn-add {
+      flex-shrink: 0;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--theme-a);
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      color: var(--primary);
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .btn-add:hover {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.2);
+    }
+
+    .append-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      margin-top: 0.35rem;
+    }
+
+    .append-row input {
+      flex: 1;
+      min-width: 0;
+      padding: 0.35rem 0.5rem;
+      font-family: inherit;
+      font-size: 0.8rem;
+      background: var(--theme-a);
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      color: var(--primary);
+    }
+
+    .append-row input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .btn-save {
+      margin-top: 1.5rem;
+      padding: 0.65rem 1.25rem;
+      font-family: inherit;
+      font-size: 0.9rem;
+      background: var(--primary);
+      color: var(--secondary);
+      border: 1px solid var(--primary);
+      border-radius: 4px;
+      cursor: pointer;
+      align-self: flex-start;
+      transition: opacity 0.15s ease;
+    }
+
+    .btn-save:hover {
+      opacity: 0.9;
+    }
+
+    .btn-save:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      padding: 0.75rem 1rem;
+      background: var(--theme-a);
+      border: 1px solid var(--primary);
+      border-radius: 4px;
+      font-size: 0.85rem;
+      z-index: 2000;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .toast.error {
+      border-color: var(--theme-c);
+      color: var(--theme-c);
+    }
+
+    .section-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--theme-b);
+      margin: 1.5rem 0 0.5rem 0;
+      padding-top: 1rem;
+      border-top: 1px solid var(--theme-a);
+    }
+
+    .section-title:first-child {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: none;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(0.5rem); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+
+<body>
+  <header id="toolbar">
+    <div class="toolbar-left">
+      <a href="/" id="toolbar-brand">┌ dronmakr v{{ version }} ┐</a>
+      <nav class="toolbar-nav">
+        <a href="/auditionr"><i class="fa-solid fa-wave-square"></i> auditionr</a>
+        <a href="/beatbuildr"><i class="fa-solid fa-drum"></i> beatbuildr</a>
+        <a href="/settings" class="active"><i class="fa-solid fa-gear"></i> settings</a>
+      </nav>
+    </div>
+    <span></span>
+  </header>
+
+  <main>
+    <h1>Settings</h1>
+    <p style="color: var(--theme-b); font-size: 0.85rem; margin-bottom: 1.5rem;">
+      Edit configuration values. Changes are saved to <code>config/settings.json</code>. Use the + button next to path fields to select a folder, or type values manually (comma-separated for multiple).
+    </p>
+    <form id="settingsForm" class="settings-form">
+      <div class="section-title">Plugins & Instruments</div>
+      <div class="field-group" data-key="PLUGIN_PATHS" data-is-path="true">
+        <label for="PLUGIN_PATHS">PLUGIN_PATHS</label>
+        <div class="field-row">
+          <input type="text" id="PLUGIN_PATHS" name="PLUGIN_PATHS" value="{{ settings.get('PLUGIN_PATHS', '') }}" placeholder="Comma-separated paths to VST/AU plugin folders">
+          <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
+        </div>
+      </div>
+      <div class="field-group" data-key="CUSTOM_PLUGINS" data-is-path="true">
+        <label for="CUSTOM_PLUGINS">CUSTOM_PLUGINS</label>
+        <div class="field-row">
+          <input type="text" id="CUSTOM_PLUGINS" name="CUSTOM_PLUGINS" value="{{ settings.get('CUSTOM_PLUGINS', '') }}" placeholder="Comma-separated paths to custom plugins">
+          <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
+        </div>
+      </div>
+      <div class="field-group" data-key="ASSERT_INSTRUMENT" data-append-type="plugin">
+        <label for="ASSERT_INSTRUMENT">ASSERT_INSTRUMENT</label>
+        <div class="field-row">
+          <input type="text" id="ASSERT_INSTRUMENT" name="ASSERT_INSTRUMENT" value="{{ settings.get('ASSERT_INSTRUMENT', '') }}" placeholder="Plugin name(s) treated as instruments">
+        </div>
+        <div class="append-row">
+          <input type="text" id="ASSERT_INSTRUMENT_append" placeholder="Add plugin name..." data-target="ASSERT_INSTRUMENT">
+          <button type="button" class="btn-add" title="Append"><i class="fa-solid fa-plus"></i></button>
+        </div>
+      </div>
+      <div class="field-group" data-key="IGNORE_PLUGINS" data-append-type="plugin">
+        <label for="IGNORE_PLUGINS">IGNORE_PLUGINS</label>
+        <div class="field-row">
+          <input type="text" id="IGNORE_PLUGINS" name="IGNORE_PLUGINS" value="{{ settings.get('IGNORE_PLUGINS', '') }}" placeholder="Plugin name(s) to ignore">
+        </div>
+        <div class="append-row">
+          <input type="text" id="IGNORE_PLUGINS_append" placeholder="Add plugin name..." data-target="IGNORE_PLUGINS">
+          <button type="button" class="btn-add" title="Append"><i class="fa-solid fa-plus"></i></button>
+        </div>
+      </div>
+      <div class="field-group" data-key="QT_LOGGING_RULES">
+        <label for="QT_LOGGING_RULES">QT_LOGGING_RULES</label>
+        <input type="text" id="QT_LOGGING_RULES" name="QT_LOGGING_RULES" value="{{ settings.get('QT_LOGGING_RULES', '*.debug=false') }}" placeholder="e.g. *.debug=false">
+      </div>
+      <div class="field-group" data-key="IMKLogLevel">
+        <label for="IMKLogLevel">IMKLogLevel</label>
+        <input type="text" id="IMKLogLevel" name="IMKLogLevel" value="{{ settings.get('IMKLogLevel', 'none') }}" placeholder="e.g. none">
+      </div>
+      <div class="section-title">Drum Sample Paths</div>
+      <div class="field-group" data-key="DRUM_KICK_PATHS" data-is-path="true">
+        <label for="DRUM_KICK_PATHS">DRUM_KICK_PATHS</label>
+        <div class="field-row">
+          <input type="text" id="DRUM_KICK_PATHS" name="DRUM_KICK_PATHS" value="{{ settings.get('DRUM_KICK_PATHS', '') }}" placeholder="Path(s) to kick samples">
+          <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
+        </div>
+      </div>
+      <div class="field-group" data-key="DRUM_SNARE_PATHS" data-is-path="true">
+        <label for="DRUM_SNARE_PATHS">DRUM_SNARE_PATHS</label>
+        <div class="field-row">
+          <input type="text" id="DRUM_SNARE_PATHS" name="DRUM_SNARE_PATHS" value="{{ settings.get('DRUM_SNARE_PATHS', '') }}" placeholder="Path(s) to snare samples">
+          <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
+        </div>
+      </div>
+      <div class="field-group" data-key="DRUM_HIHAT_PATHS" data-is-path="true">
+        <label for="DRUM_HIHAT_PATHS">DRUM_HIHAT_PATHS</label>
+        <div class="field-row">
+          <input type="text" id="DRUM_HIHAT_PATHS" name="DRUM_HIHAT_PATHS" value="{{ settings.get('DRUM_HIHAT_PATHS', '') }}" placeholder="Path(s) to hihat samples">
+          <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
+        </div>
+      </div>
+      <div class="field-group" data-key="DRUM_CLAP_PATHS" data-is-path="true">
+        <label for="DRUM_CLAP_PATHS">DRUM_CLAP_PATHS</label>
+        <div class="field-row">
+          <input type="text" id="DRUM_CLAP_PATHS" name="DRUM_CLAP_PATHS" value="{{ settings.get('DRUM_CLAP_PATHS', '') }}" placeholder="Path(s) to clap samples">
+          <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
+        </div>
+      </div>
+      <div class="field-group" data-key="DRUM_PERC_PATHS" data-is-path="true">
+        <label for="DRUM_PERC_PATHS">DRUM_PERC_PATHS</label>
+        <div class="field-row">
+          <input type="text" id="DRUM_PERC_PATHS" name="DRUM_PERC_PATHS" value="{{ settings.get('DRUM_PERC_PATHS', '') }}" placeholder="Path(s) to percussion samples">
+          <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
+        </div>
+      </div>
+      <div class="field-group" data-key="DRUM_TOM_PATHS" data-is-path="true">
+        <label for="DRUM_TOM_PATHS">DRUM_TOM_PATHS</label>
+        <div class="field-row">
+          <input type="text" id="DRUM_TOM_PATHS" name="DRUM_TOM_PATHS" value="{{ settings.get('DRUM_TOM_PATHS', '') }}" placeholder="Path(s) to tom samples">
+          <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
+        </div>
+      </div>
+      <div class="field-group" data-key="DRUM_SHAKER_PATHS" data-is-path="true">
+        <label for="DRUM_SHAKER_PATHS">DRUM_SHAKER_PATHS</label>
+        <div class="field-row">
+          <input type="text" id="DRUM_SHAKER_PATHS" name="DRUM_SHAKER_PATHS" value="{{ settings.get('DRUM_SHAKER_PATHS', '') }}" placeholder="Path(s) to shaker samples">
+          <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
+        </div>
+      </div>
+      <div class="field-group" data-key="DRUM_CYMBAL_PATHS" data-is-path="true">
+        <label for="DRUM_CYMBAL_PATHS">DRUM_CYMBAL_PATHS</label>
+        <div class="field-row">
+          <input type="text" id="DRUM_CYMBAL_PATHS" name="DRUM_CYMBAL_PATHS" value="{{ settings.get('DRUM_CYMBAL_PATHS', '') }}" placeholder="Path(s) to cymbal samples">
+          <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
+        </div>
+      </div>
+      <button type="submit" class="btn-save">Save settings</button>
+    </form>
+  </main>
+  <div id="toast" class="toast" style="display: none;"></div>
+  <script>
+    const form = document.getElementById("settingsForm");
+    const toast = document.getElementById("toast");
+
+    function showToast(msg, isError = false) {
+      toast.textContent = msg;
+      toast.className = "toast" + (isError ? " error" : "");
+      toast.style.display = "block";
+      setTimeout(() => { toast.style.display = "none"; }, 3500);
+    }
+
+    function appendComma(current, addition) {
+      const cur = (current || "").trim();
+      const add = (addition || "").trim();
+      if (!add) return cur;
+      if (!cur) return add;
+      return cur + "," + add;
+    }
+
+    // Path + button: call folder picker API and append path
+    document.querySelectorAll("[data-is-path='true'] .btn-add").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const group = btn.closest(".field-group");
+        const key = group.dataset.key;
+        const input = document.getElementById(key);
+        showToast("Opening folder picker — check for a dialog (may be behind this window)...");
+        try {
+          const res = await fetch("/api/settings/pick-folder", { method: "POST" });
+          const data = await res.json();
+          if (data.path) {
+            input.value = appendComma(input.value, data.path);
+            showToast("Folder added.");
+          } else if (data.error) {
+            showToast("Folder picker failed: " + data.error, true);
+          }
+        } catch (e) {
+          showToast("Failed to open folder picker: " + e.message, true);
+        }
+      });
+    });
+
+    // Append + button for ASSERT_INSTRUMENT and IGNORE_PLUGINS
+    document.querySelectorAll("[data-append-type='plugin'] .append-row .btn-add").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const appendInput = btn.previousElementSibling;
+        const targetId = appendInput.dataset.target;
+        const mainInput = document.getElementById(targetId);
+        const add = appendInput.value.trim();
+        if (add) {
+          mainInput.value = appendComma(mainInput.value, add);
+          appendInput.value = "";
+        }
+      });
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = form.querySelector(".btn-save");
+      btn.disabled = true;
+      const data = {};
+      document.querySelectorAll("input[name]").forEach(inp => {
+        if (inp.name && !inp.name.endsWith("_append")) data[inp.name] = inp.value;
+      });
+      try {
+        const res = await fetch("/api/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (res.ok && result.ok) {
+          showToast("Settings saved.");
+        } else {
+          showToast(result.error || "Failed to save.", true);
+        }
+      } catch (err) {
+        showToast("Error: " + err.message, true);
+      }
+      btn.disabled = false;
+    });
+  </script>
+</body>
+
+</html>

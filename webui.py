@@ -10,7 +10,7 @@ import threading
 import time
 import webbrowser
 
-from flask import Flask, render_template
+from flask import Flask, jsonify, render_template, request
 from flask_socketio import SocketIO
 
 from version import __version__
@@ -19,6 +19,7 @@ from utils import get_version, with_final_main_prompt, with_main_prompt as with_
 # Import registration and helpers from sub-apps
 from auditionr import register_auditionr
 from beatbuildr import register_beatbuildr, ensure_beat_patterns
+from settings import ensure_settings, get_setting, load_settings, save_settings
 
 # Helpers for unified socket connect
 from utils import get_auditionr_folder_counts, get_latest_exports, get_presets
@@ -61,6 +62,103 @@ def beatbuildr_page():
     return render_template("beatbuildr.html", version=__version__)
 
 
+@app.route("/settings")
+def settings_page():
+    """Settings page for editing config/settings.json values."""
+    settings = load_settings()
+    return render_template("settings.html", version=__version__, settings=settings)
+
+
+@app.route("/api/settings", methods=["GET"])
+def api_settings_get():
+    """Return current settings as JSON."""
+    return jsonify(load_settings())
+
+
+@app.route("/api/settings", methods=["POST"])
+def api_settings_save():
+    """Save settings from JSON body."""
+    data = request.get_json()
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid JSON"}), 400
+    settings = load_settings()
+    for k, v in data.items():
+        if isinstance(v, str):
+            settings[k] = v
+    save_settings(settings)
+    return jsonify({"ok": True})
+
+
+def _pick_folder_native():
+    """Open native folder picker. Tries tkinter first, then platform fallbacks."""
+    import subprocess
+    import sys
+
+    # 1. Try tkinter (works when Python was built with tk support)
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        path = filedialog.askdirectory(parent=root, title="Select folder")
+        root.destroy()
+        return (path or "").strip()
+    except ImportError:
+        pass
+    except Exception:
+        pass
+
+    # 2. Fallback: macOS osascript (always available on macOS)
+    if sys.platform == "darwin":
+        try:
+            # Activate Finder so the folder dialog appears in front of the browser
+            script = 'tell application "Finder" to activate\nreturn POSIX path of (choose folder)'
+            result = subprocess.run(
+                ['osascript', '-e', script],
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            if result.returncode == 0 and result.stdout:
+                return result.stdout.strip()
+            # returncode 1 = user cancelled
+            return ""
+        except FileNotFoundError:
+            pass
+        except subprocess.TimeoutExpired:
+            return ""
+
+    # 3. Fallback: Linux zenity / kdialog
+    if sys.platform.startswith("linux"):
+        for cmd in [["zenity", "--file-selection", "--directory"], ["kdialog", "--getexistingdirectory"]]:
+            try:
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                if result.returncode == 0 and result.stdout:
+                    return result.stdout.strip()
+                if result.returncode != 0:
+                    return ""  # user cancelled
+            except FileNotFoundError:
+                continue
+            except subprocess.TimeoutExpired:
+                return ""
+
+    return None  # no picker available
+
+
+@app.route("/api/settings/pick-folder", methods=["POST"])
+def api_settings_pick_folder():
+    """Open native folder picker and return selected path. Requires display."""
+    path = _pick_folder_native()
+    if path is not None:
+        return jsonify({"path": path})
+    return jsonify({
+        "path": "",
+        "error": "No folder picker available. Install python3-tk (Linux) or use a Python build with tkinter.",
+    }), 500
+
+
 # Register auditionr and beatbuildr routes and socket handlers on the unified app.
 register_auditionr(app, socketio)
 register_beatbuildr(app, socketio)
@@ -78,6 +176,7 @@ def run(
     if debug:
         app.config["TEMPLATES_AUTO_RELOAD"] = True
 
+    ensure_settings()
     ensure_beat_patterns()
 
     print(get_version())
