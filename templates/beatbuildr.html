@@ -399,8 +399,15 @@
       gap: 0.35rem;
     }
 
+    .pattern-save-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
     .pattern-name-input {
-      width: 100%;
+      flex: 1;
+      min-width: 0;
       padding: 0.5rem 0.75rem;
       font-family: inherit;
       font-size: 0.75rem;
@@ -409,7 +416,6 @@
       border-radius: 4px;
       color: var(--primary);
       box-sizing: border-box;
-      margin-bottom: 0.5rem;
     }
 
     .pattern-name-input::placeholder {
@@ -424,10 +430,12 @@
     }
 
     .pattern-save-btn {
-      width: 100%;
-      padding: 0.5rem;
+      flex-shrink: 0;
+      width: 2.25rem;
+      height: 2rem;
+      padding: 0;
       font-family: inherit;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       background: var(--primary);
       color: var(--secondary);
       border: 1px solid var(--primary);
@@ -436,8 +444,6 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 0.5rem;
-      font-weight: 600;
     }
 
     .pattern-save-btn:hover {
@@ -450,9 +456,10 @@
       cursor: not-allowed;
     }
 
-    .pattern-status-area {
-      margin-top: 0.5rem;
-      min-height: 2rem;
+    .preview-status-area {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--theme-a);
       font-size: 0.7rem;
     }
 
@@ -793,6 +800,7 @@
       margin: 2px;
       margin-right: 0.5rem;
       padding-inline: 0.5rem;
+      border-radius: 3px;
     }
 
     .browser-list-item-name-wrap {
@@ -1133,15 +1141,6 @@
         <div id="browser-tab-kits" class="browser-tab-panel">
           <input type="text" id="browser-kit-filter" class="browser-filter-input" placeholder="Filter kits…">
           <ul id="browser-kit-list" class="browser-list"></ul>
-          <div class="browser-save-section">
-            <h3><i class="fa-solid fa-floppy-disk"></i> Save current kit</h3>
-            <input type="text" id="browser-kit-name-input" class="browser-name-input" placeholder="Enter kit name"
-              maxlength="30">
-            <button type="button" id="browser-kit-save-btn" class="browser-save-btn">
-              <i class="fa-solid fa-floppy-disk"></i> Save
-            </button>
-            <div id="browser-kit-status-area" class="browser-status-area"></div>
-          </div>
         </div>
         <div id="browser-tab-kicks" class="browser-tab-panel" hidden>
           <div class="browser-kicks-header">
@@ -1163,7 +1162,7 @@
     </section>
 
     <aside id="sidebar-column">
-      <h2><i class="fa-solid fa-sliders"></i> preview</h2>
+      <h2><i class="fa-solid fa-sliders"></i> preview settings</h2>
       <div id="transport">
         <div class="transport-actions">
           <button type="button" id="undo-btn" class="transport-btn transport-btn-secondary" title="Undo last edit"
@@ -1205,13 +1204,25 @@
         </div>
         <div class="pattern-save-section">
           <h3><i class="fa-solid fa-floppy-disk"></i> Save Pattern</h3>
-          <input type="text" id="pattern-name-input" class="pattern-name-input" placeholder="Enter pattern name"
-            maxlength="30">
-          <button type="button" id="pattern-save-btn" class="pattern-save-btn" title="Save current pattern">
-            <i class="fa-solid fa-floppy-disk"></i> Save
-          </button>
-          <div id="pattern-status-area" class="pattern-status-area"></div>
+          <div class="pattern-save-row">
+            <input type="text" id="pattern-name-input" class="pattern-name-input" placeholder="Enter pattern name"
+              maxlength="30">
+            <button type="button" id="pattern-save-btn" class="pattern-save-btn" title="Save current pattern">
+              <i class="fa-solid fa-floppy-disk"></i>
+            </button>
+          </div>
         </div>
+        <div class="pattern-save-section kit-save-section">
+          <h3><i class="fa-solid fa-drum"></i> Save current kit</h3>
+          <div class="pattern-save-row">
+            <input type="text" id="browser-kit-name-input" class="pattern-name-input" placeholder="Enter kit name"
+              maxlength="30">
+            <button type="button" id="browser-kit-save-btn" class="pattern-save-btn" title="Save current drum kit">
+              <i class="fa-solid fa-floppy-disk"></i>
+            </button>
+          </div>
+        </div>
+        <div id="preview-status-area" class="preview-status-area"></div>
       </div>
     </aside>
   </main>
@@ -1688,7 +1699,7 @@
     // Pattern save functionality
     const patternNameInput = document.getElementById("pattern-name-input");
     const patternSaveBtn = document.getElementById("pattern-save-btn");
-    const patternStatusArea = document.getElementById("pattern-status-area");
+    const previewStatusArea = document.getElementById("preview-status-area");
 
     function encodePatternForSave() {
       const encoded = {};
@@ -1699,7 +1710,7 @@
     }
 
     function showStatusMessage(message, type = "success") {
-      patternStatusArea.innerHTML = `
+      previewStatusArea.innerHTML = `
         <div class="pattern-status-message ${type}">
           <i class="fa-solid fa-${type === 'success' ? 'circle-check' : 'circle-exclamation'}"></i>
           ${message}
@@ -1707,13 +1718,13 @@
       `;
       if (type === "success") {
         setTimeout(() => {
-          patternStatusArea.innerHTML = "";
+          previewStatusArea.innerHTML = "";
         }, 3000);
       }
     }
 
     function showConfirmPrompt(patternName) {
-      patternStatusArea.innerHTML = `
+      previewStatusArea.innerHTML = `
         <div class="pattern-confirm-prompt">
           <div class="pattern-confirm-prompt-text">
             <i class="fa-solid fa-triangle-exclamation"></i> Pattern "${patternName}" exists. Overwrite?
@@ -1729,8 +1740,8 @@
         </div>
       `;
 
-      const yesBtn = patternStatusArea.querySelector('[data-confirm="yes"]');
-      const noBtn = patternStatusArea.querySelector('[data-confirm="no"]');
+      const yesBtn = previewStatusArea.querySelector('[data-confirm="yes"]');
+      const noBtn = previewStatusArea.querySelector('[data-confirm="no"]');
 
       yesBtn.addEventListener("click", () => {
         const pattern = encodePatternForSave();
@@ -1740,7 +1751,7 @@
       });
 
       noBtn.addEventListener("click", () => {
-        patternStatusArea.innerHTML = "";
+        previewStatusArea.innerHTML = "";
       });
     }
 
@@ -1794,7 +1805,6 @@
     const browserKitList = document.getElementById("browser-kit-list");
     const browserKitNameInput = document.getElementById("browser-kit-name-input");
     const browserKitSaveBtn = document.getElementById("browser-kit-save-btn");
-    const browserKitStatusArea = document.getElementById("browser-kit-status-area");
 
     let drumKitsList = [];
 
@@ -1852,19 +1862,11 @@
     }
 
     function showKitStatusMessage(message, type = "success") {
-      browserKitStatusArea.innerHTML = `
-        <div class="browser-status-message ${type}">
-          <i class="fa-solid fa-${type === "success" ? "circle-check" : "circle-exclamation"}"></i>
-          ${message}
-        </div>
-      `;
-      if (type === "success") {
-        setTimeout(() => { browserKitStatusArea.innerHTML = ""; }, 3000);
-      }
+      showStatusMessage(message, type);
     }
 
     function showKitConfirmPrompt(kitName) {
-      browserKitStatusArea.innerHTML = `
+      previewStatusArea.innerHTML = `
         <div class="browser-confirm-prompt">
           <div class="browser-confirm-prompt-text">
             <i class="fa-solid fa-triangle-exclamation"></i> Kit "${kitName}" exists. Overwrite?
@@ -1875,14 +1877,14 @@
           </div>
         </div>
       `;
-      browserKitStatusArea.querySelector('[data-confirm="yes"]').addEventListener("click", () => {
+      previewStatusArea.querySelector('[data-confirm="yes"]').addEventListener("click", () => {
         const kit = encodeKitForSave();
         if (kit && state.socket && state.socket.connected) {
           state.socket.emit("saveKit", { name: kitName, kit, overwrite: true });
         }
       });
-      browserKitStatusArea.querySelector('[data-confirm="no"]').addEventListener("click", () => {
-        browserKitStatusArea.innerHTML = "";
+      previewStatusArea.querySelector('[data-confirm="no"]').addEventListener("click", () => {
+        previewStatusArea.innerHTML = "";
       });
     }
 
