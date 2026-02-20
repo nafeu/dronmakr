@@ -18,7 +18,12 @@ from utils import get_version, with_final_main_prompt, with_main_prompt as with_
 
 # Import registration and helpers from sub-apps
 from auditionr import register_auditionr
-from beatbuildr import register_beatbuildr, ensure_beat_patterns, ensure_drum_kits
+from beatbuildr import (
+    register_beatbuildr,
+    ensure_beat_patterns,
+    ensure_drum_kits,
+    ensure_all_sample_caches,
+)
 from settings import ensure_settings, get_setting, load_settings, save_settings
 
 # Helpers for unified socket connect
@@ -116,7 +121,7 @@ def _pick_folder_native():
             # Activate Finder so the folder dialog appears in front of the browser
             script = 'tell application "Finder" to activate\nreturn POSIX path of (choose folder)'
             result = subprocess.run(
-                ['osascript', '-e', script],
+                ["osascript", "-e", script],
                 capture_output=True,
                 text=True,
                 timeout=120,
@@ -132,9 +137,14 @@ def _pick_folder_native():
 
     # 3. Fallback: Linux zenity / kdialog
     if sys.platform.startswith("linux"):
-        for cmd in [["zenity", "--file-selection", "--directory"], ["kdialog", "--getexistingdirectory"]]:
+        for cmd in [
+            ["zenity", "--file-selection", "--directory"],
+            ["kdialog", "--getexistingdirectory"],
+        ]:
             try:
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                result = subprocess.run(
+                    cmd, capture_output=True, text=True, timeout=120
+                )
                 if result.returncode == 0 and result.stdout:
                     return result.stdout.strip()
                 if result.returncode != 0:
@@ -153,10 +163,15 @@ def api_settings_pick_folder():
     path = _pick_folder_native()
     if path is not None:
         return jsonify({"path": path})
-    return jsonify({
-        "path": "",
-        "error": "No folder picker available. Install python3-tk (Linux) or use a Python build with tkinter.",
-    }), 500
+    return (
+        jsonify(
+            {
+                "path": "",
+                "error": "No folder picker available. Install python3-tk (Linux) or use a Python build with tkinter.",
+            }
+        ),
+        500,
+    )
 
 
 # Register auditionr and beatbuildr routes and socket handlers on the unified app.
@@ -176,11 +191,15 @@ def run(
     if debug:
         app.config["TEMPLATES_AUTO_RELOAD"] = True
 
+    print(get_version())
     ensure_settings()
     ensure_beat_patterns()
     ensure_drum_kits()
 
-    print(get_version())
+    print(with_prompt("Building sample cache..."))
+    ensure_all_sample_caches()
+    print(with_prompt("Sample cache ready."))
+
     if debug:
         print(with_prompt(f"Open: http://localhost:{port} in your browser."))
         print(

@@ -145,14 +145,25 @@ def replace_sample_for_row(row: str) -> dict | None:
     }
 
 
-# --- Kick sample browser: cached list, recursive scan ---
-KICK_CACHE_FILE = os.path.join(TEMP_DIR, "sample-cache-kicks.json")
-_kick_samples_cache: list[dict] = []  # [{"path": str, "name": str}, ...]
-_kick_samples_paths_set: set[str] = set()  # For path validation when serving
+# --- Sample browser: cached lists, recursive scan for all drum types ---
+SAMPLE_TYPE_ENV_KEYS = {
+    "kick": "DRUM_KICK_PATHS",
+    "snare": "DRUM_SNARE_PATHS",
+    "hihat": "DRUM_HIHAT_PATHS",
+    "clap": "DRUM_CLAP_PATHS",
+    "perc": "DRUM_PERC_PATHS",
+    "tom": "DRUM_TOM_PATHS",
+    "shaker": "DRUM_SHAKER_PATHS",
+    "cymbal": "DRUM_CYMBAL_PATHS",
+}
+
+_sample_caches: dict[str, list[dict]] = {}  # type -> [{"path", "name"}, ...]
+_sample_paths_by_type: dict[str, set[str]] = {}  # type -> set of paths
+_all_sample_paths_set: set[str] = set()  # Union of all paths for validation
 
 
-def _collect_kick_samples_recursive(root: Path, results: list[dict], seen: set[str]) -> None:
-    """Recursively collect .wav and .aiff files under root. Modifies results and seen in place."""
+def _collect_samples_recursive(root: Path, results: list[dict], seen: set[str]) -> None:
+    """Recursively collect .wav and .aiff files under root."""
     if not root.exists() or not root.is_dir():
         return
     try:
@@ -163,74 +174,100 @@ def _collect_kick_samples_recursive(root: Path, results: list[dict], seen: set[s
                     seen.add(path_str)
                     results.append({"path": path_str, "name": entry.stem})
             elif entry.is_dir():
-                _collect_kick_samples_recursive(entry, results, seen)
+                _collect_samples_recursive(entry, results, seen)
     except (PermissionError, OSError):
         pass
 
 
-def _collect_kick_samples() -> list[dict]:
-    """Scan DRUM_KICK_PATHS recursively for all .wav and .aiff files. Returns list of {path, name}."""
-    paths_str = get_setting("DRUM_KICK_PATHS", "")
+def _collect_samples_for_type(sample_type: str) -> list[dict]:
+    """Scan env paths for type recursively. Returns list of {path, name}."""
+    env_key = SAMPLE_TYPE_ENV_KEYS.get(sample_type)
+    if not env_key:
+        return []
+    paths_str = get_setting(env_key, "")
     roots = [p.strip() for p in paths_str.split(",") if p.strip()]
     results: list[dict] = []
     seen: set[str] = set()
     for root_str in roots:
         root = Path(root_str).expanduser().resolve()
-        _collect_kick_samples_recursive(root, results, seen)
+        _collect_samples_recursive(root, results, seen)
     return sorted(results, key=lambda x: (x["name"].lower(), x["path"]))
 
 
-def _load_kick_cache_from_file() -> bool:
-    """Load kick samples from temp cache file. Returns True if loaded."""
-    global _kick_samples_cache, _kick_samples_paths_set
-    if not os.path.exists(KICK_CACHE_FILE):
+def _get_cache_file(sample_type: str) -> str:
+    return os.path.join(TEMP_DIR, f"sample-cache-{sample_type}s.json")
+
+
+def _load_cache_from_file(sample_type: str) -> bool:
+    """Load samples from cache file. Returns True if loaded."""
+    global _sample_caches, _sample_paths_by_type, _all_sample_paths_set
+    path = _get_cache_file(sample_type)
+    if not os.path.exists(path):
         return False
     try:
-        with open(KICK_CACHE_FILE, "r") as f:
+        with open(path, "r") as f:
             data = json.load(f)
         items = data.get("samples") if isinstance(data, dict) else []
         if isinstance(items, list):
-            _kick_samples_cache = [x for x in items if isinstance(x, dict) and "path" in x and "name" in x]
-            _kick_samples_paths_set = {x["path"] for x in _kick_samples_cache}
+            cache = [x for x in items if isinstance(x, dict) and "path" in x and "name" in x]
+            paths = {x["path"] for x in cache}
+            _sample_caches[sample_type] = cache
+            _sample_paths_by_type[sample_type] = paths
+            _all_sample_paths_set.update(paths)
             return True
     except Exception:
         pass
     return False
 
 
-def _save_kick_cache_to_file() -> None:
-    """Write kick samples cache to temp file."""
-    os.makedirs(os.path.dirname(KICK_CACHE_FILE), exist_ok=True)
+def _save_cache_to_file(sample_type: str) -> None:
+    cache = _sample_caches.get(sample_type, [])
+    path = _get_cache_file(sample_type)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
     try:
-        with open(KICK_CACHE_FILE, "w") as f:
-            json.dump({"samples": _kick_samples_cache}, f)
+        with open(path, "w") as f:
+            json.dump({"samples": cache}, f)
     except Exception:
         pass
 
 
-def get_kick_samples(force_refresh: bool = False) -> list[dict]:
-    """Return cached kick samples. Lazy-loads from file or scans on first call. Use force_refresh to rescan."""
-    global _kick_samples_cache, _kick_samples_paths_set
+def get_samples_for_type(sample_type: str, force_refresh: bool = False) -> list[dict]:
+    """Return cached samples for type. Lazy-loads from file or scans. Use force_refresh to rescan."""
+    global _sample_caches, _sample_paths_by_type, _all_sample_paths_set
+    if sample_type not in SAMPLE_TYPE_ENV_KEYS:
+        return []
     if force_refresh:
-        _kick_samples_cache = _collect_kick_samples()
-        _kick_samples_paths_set = {x["path"] for x in _kick_samples_cache}
-        _save_kick_cache_to_file()
-        return _kick_samples_cache
-    if _kick_samples_cache:
-        return _kick_samples_cache
-    if _load_kick_cache_from_file():
-        return _kick_samples_cache
-    _kick_samples_cache = _collect_kick_samples()
-    _kick_samples_paths_set = {x["path"] for x in _kick_samples_cache}
-    _save_kick_cache_to_file()
-    return _kick_samples_cache
+        cache = _collect_samples_for_type(sample_type)
+        paths = {x["path"] for x in cache}
+        _sample_caches[sample_type] = cache
+        _sample_paths_by_type[sample_type] = paths
+        _all_sample_paths_set.update(paths)
+        _save_cache_to_file(sample_type)
+        return cache
+    if sample_type in _sample_caches:
+        return _sample_caches[sample_type]
+    if _load_cache_from_file(sample_type):
+        return _sample_caches[sample_type]
+    cache = _collect_samples_for_type(sample_type)
+    paths = {x["path"] for x in cache}
+    _sample_caches[sample_type] = cache
+    _sample_paths_by_type[sample_type] = paths
+    _all_sample_paths_set.update(paths)
+    _save_cache_to_file(sample_type)
+    return cache
+
+
+def ensure_all_sample_caches() -> None:
+    """Build or load cache for all sample types. Blocks until complete."""
+    for sample_type in SAMPLE_TYPE_ENV_KEYS:
+        get_samples_for_type(sample_type, force_refresh=False)
 
 
 def serve_sample_preview():
     """Serve a sample file for preview. Query param 'p' = base64-encoded path. Path must be in allowed set."""
-    global _kick_samples_paths_set
-    if not _kick_samples_paths_set:
-        get_kick_samples(force_refresh=False)
+    global _all_sample_paths_set
+    if not _all_sample_paths_set:
+        ensure_all_sample_caches()
     enc = request.args.get("p", "")
     if not enc:
         return {"error": "Missing path", "detail": "Query param 'p' is required"}, 400
@@ -248,7 +285,7 @@ def serve_sample_preview():
     except UnicodeDecodeError as e:
         return {"error": "Invalid path encoding", "detail": str(e)}, 400
     path_str = str(Path(path_str).resolve())
-    if path_str not in _kick_samples_paths_set:
+    if path_str not in _all_sample_paths_set:
         return {"error": "Path not allowed", "detail": "Path not in allowed sample list"}, 403
     p = Path(path_str)
     if not p.exists() or not p.is_file():
@@ -259,7 +296,7 @@ def serve_sample_preview():
 
 def _is_path_in_sample_roots(path_str: str) -> bool:
     """Check if path is under any configured DRUM_* sample root."""
-    if path_str in _kick_samples_paths_set:
+    if path_str in _all_sample_paths_set:
         return True
     path_str = os.path.normpath(path_str)
     resolved = str(Path(path_str).resolve())
@@ -552,16 +589,22 @@ def _handle_save_kit(payload):
         )
 
 
-def _handle_get_kick_samples():
-    """Return cached list of kick samples to the client."""
-    samples = get_kick_samples(force_refresh=False)
-    _socketio.emit("kickSamples", {"samples": samples})
+def _handle_get_samples(payload):
+    """Return cached samples for the given type. Payload: { "type": str }."""
+    sample_type = (payload or {}).get("type", "kick")
+    if sample_type not in SAMPLE_TYPE_ENV_KEYS:
+        sample_type = "kick"
+    samples = get_samples_for_type(sample_type, force_refresh=False)
+    _socketio.emit("samples", {"type": sample_type, "samples": samples})
 
 
-def _handle_refresh_sample_paths():
-    """Rescan kick paths and emit updated list."""
-    samples = get_kick_samples(force_refresh=True)
-    _socketio.emit("kickSamples", {"samples": samples})
+def _handle_refresh_samples(payload):
+    """Rescan paths for type and emit updated list. Payload: { "type": str }."""
+    sample_type = (payload or {}).get("type", "kick")
+    if sample_type not in SAMPLE_TYPE_ENV_KEYS:
+        sample_type = "kick"
+    samples = get_samples_for_type(sample_type, force_refresh=True)
+    _socketio.emit("samples", {"type": sample_type, "samples": samples})
 
 
 def _handle_replace_sample_with_path(payload):
@@ -600,8 +643,8 @@ def register_beatbuildr(app, socketio):
     socketio.on_event("getDrumKits", _handle_get_drum_kits)
     socketio.on_event("loadKit", _handle_load_kit)
     socketio.on_event("saveKit", _handle_save_kit)
-    socketio.on_event("getKickSamples", _handle_get_kick_samples)
-    socketio.on_event("refreshSamplePaths", _handle_refresh_sample_paths)
+    socketio.on_event("getSamples", _handle_get_samples)
+    socketio.on_event("refreshSamples", _handle_refresh_samples)
     socketio.on_event("replaceSampleWithPath", _handle_replace_sample_with_path)
 
 

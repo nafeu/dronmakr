@@ -783,8 +783,22 @@
       padding: 0;
     }
 
-    #browser-kick-list:focus {
+    #browser-kick-list:focus,
+    #browser-sample-list:focus {
       outline: none;
+    }
+
+    .browser-samples-loading {
+      padding: 1rem;
+      font-size: 0.75rem;
+      color: var(--theme-a);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .browser-samples-loading[hidden] {
+      display: none;
     }
 
     .browser-list-item {
@@ -1014,13 +1028,15 @@
       padding: 0.5rem 0;
     }
 
-    .browser-kicks-header {
+    .browser-kicks-header,
+    .browser-samples-header {
       display: flex;
       gap: 0.5rem;
       margin-bottom: 0.5rem;
     }
 
-    .browser-kicks-header .browser-filter-input {
+    .browser-kicks-header .browser-filter-input,
+    .browser-samples-header .browser-filter-input {
       flex: 1;
       margin-bottom: 0;
     }
@@ -1136,20 +1152,30 @@
         <h2><i class="fa-solid fa-folder-open"></i> browser</h2>
         <div class="browser-tabs">
           <button type="button" class="browser-tab-btn active" data-tab="kits">kits</button>
-          <button type="button" class="browser-tab-btn" data-tab="kicks">kicks</button>
+          <button type="button" class="browser-tab-btn" data-tab="kick">kicks</button>
+          <button type="button" class="browser-tab-btn" data-tab="snare">snares</button>
+          <button type="button" class="browser-tab-btn" data-tab="hihat">hats</button>
+          <button type="button" class="browser-tab-btn" data-tab="clap">claps</button>
+          <button type="button" class="browser-tab-btn" data-tab="perc">percs</button>
+          <button type="button" class="browser-tab-btn" data-tab="tom">toms</button>
+          <button type="button" class="browser-tab-btn" data-tab="shaker">shakers</button>
+          <button type="button" class="browser-tab-btn" data-tab="cymbal">cymbals</button>
         </div>
         <div id="browser-tab-kits" class="browser-tab-panel">
           <input type="text" id="browser-kit-filter" class="browser-filter-input" placeholder="Filter kits…">
           <ul id="browser-kit-list" class="browser-list"></ul>
         </div>
-        <div id="browser-tab-kicks" class="browser-tab-panel" hidden>
-          <div class="browser-kicks-header">
-            <input type="text" id="browser-kick-filter" class="browser-filter-input" placeholder="Filter kicks…">
-            <button type="button" id="browser-kick-refresh-btn" class="browser-refresh-btn" title="Rescan sample paths">
+        <div id="browser-tab-samples" class="browser-tab-panel" hidden>
+          <div class="browser-samples-header">
+            <input type="text" id="browser-sample-filter" class="browser-filter-input" placeholder="Filter…">
+            <button type="button" id="browser-sample-refresh-btn" class="browser-refresh-btn" title="Rescan sample paths">
               <i class="fa-solid fa-arrow-rotate-right"></i> Refresh
             </button>
           </div>
-          <ul id="browser-kick-list" class="browser-list" tabindex="0"></ul>
+          <div class="browser-samples-loading" id="browser-samples-loading" hidden>
+            <i class="fa-solid fa-spinner fa-spin"></i> Loading…
+          </div>
+          <ul id="browser-sample-list" class="browser-list" tabindex="0"></ul>
         </div>
       </div>
       <div id="replace-sample-overlay" class="replace-overlay" hidden>
@@ -1780,9 +1806,11 @@
     });
 
     // Browser card – tab switching
+    const SAMPLE_TYPES = ["kick", "snare", "hihat", "clap", "perc", "tom", "shaker", "cymbal"];
+    const SAMPLE_TYPE_LABELS = { kick: "kicks", snare: "snares", hihat: "hats", clap: "claps", perc: "percs", tom: "toms", shaker: "shakers", cymbal: "cymbals" };
     const browserTabBtns = document.querySelectorAll(".browser-tab-btn");
     const browserTabKits = document.getElementById("browser-tab-kits");
-    const browserTabKicks = document.getElementById("browser-tab-kicks");
+    const browserTabSamples = document.getElementById("browser-tab-samples");
 
     browserTabBtns.forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -1790,12 +1818,12 @@
         browserTabBtns.forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
         browserTabKits.hidden = tab !== "kits";
-        browserTabKicks.hidden = tab !== "kicks";
+        browserTabSamples.hidden = tab === "kits";
         if (tab === "kits") {
           state.socket && state.socket.emit("getDrumKits");
-        } else if (tab === "kicks") {
-          state.socket && state.socket.emit("getKickSamples");
-          setTimeout(() => document.getElementById("browser-kick-list").focus(), 50);
+        } else if (SAMPLE_TYPES.includes(tab)) {
+          currentSampleType = tab;
+          requestSamplesForType(tab);
         }
       });
     });
@@ -1921,20 +1949,31 @@
       }
     });
 
-    // Kicks browser
-    const browserKickFilter = document.getElementById("browser-kick-filter");
-    const browserKickList = document.getElementById("browser-kick-list");
-    const browserKickRefreshBtn = document.getElementById("browser-kick-refresh-btn");
+    // Sample browser (kicks, snares, etc.)
+    let currentSampleType = "kick";
+    const browserSampleFilter = document.getElementById("browser-sample-filter");
+    const browserSampleList = document.getElementById("browser-sample-list");
+    const browserSampleRefreshBtn = document.getElementById("browser-sample-refresh-btn");
+    const browserSamplesLoading = document.getElementById("browser-samples-loading");
     const replaceOverlay = document.getElementById("replace-sample-overlay");
     const replaceOverlayButtons = document.getElementById("replace-overlay-buttons");
     const replaceOverlayCancel = document.getElementById("replace-overlay-cancel");
 
     replaceOverlay.hidden = true;
 
-    let kickSamplesList = [];
-    let filteredKickSamples = [];
-    let selectedKickIndex = -1;
+    let sampleListByType = {};
+    let filteredSamples = [];
+    let selectedSampleIndex = -1;
     let replaceSamplePendingPath = null;
+
+    function requestSamplesForType(type) {
+      browserSamplesLoading.hidden = false;
+      state.socket && state.socket.emit("getSamples", { type });
+      setTimeout(() => {
+        const listEl = document.getElementById("browser-sample-list");
+        if (listEl) listEl.focus();
+      }, 50);
+    }
 
     function getPathSnippet(fullPath) {
       const parts = fullPath.replace(/\\/g, "/").split("/").filter(Boolean);
@@ -1952,36 +1991,42 @@
       return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
     }
 
-    function renderKickList() {
-      const query = (browserKickFilter.value || "").trim().toLowerCase();
-      filteredKickSamples = query
-        ? kickSamplesList.filter(
-          (s) =>
-            s.name.toLowerCase().includes(query) ||
-            s.path.toLowerCase().includes(query)
-        )
-        : [...kickSamplesList];
+    function renderSampleList() {
+      const type = currentSampleType;
+      const list = sampleListByType[type] || [];
+      const query = (browserSampleFilter.value || "").trim().toLowerCase();
+      filteredSamples = query
+        ? list.filter(
+            (s) =>
+              s.name.toLowerCase().includes(query) ||
+              s.path.toLowerCase().includes(query)
+          )
+        : [...list];
 
-      if (selectedKickIndex >= filteredKickSamples.length) {
-        selectedKickIndex = Math.max(-1, filteredKickSamples.length - 1);
+      if (selectedSampleIndex >= filteredSamples.length) {
+        selectedSampleIndex = Math.max(-1, filteredSamples.length - 1);
       }
 
-      browserKickList.innerHTML = "";
-      if (filteredKickSamples.length === 0) {
+      const label = SAMPLE_TYPE_LABELS[type] || type + "s";
+      const envKeys = { kick: "DRUM_KICK_PATHS", snare: "DRUM_SNARE_PATHS", hihat: "DRUM_HIHAT_PATHS", clap: "DRUM_CLAP_PATHS", perc: "DRUM_PERC_PATHS", tom: "DRUM_TOM_PATHS", shaker: "DRUM_SHAKER_PATHS", cymbal: "DRUM_CYMBAL_PATHS" };
+      const envKey = envKeys[type] || "DRUM_*_PATHS";
+      const emptyMsg = list.length === 0
+        ? `No ${label} found. Set ${envKey} in settings and click Refresh.`
+        : "No matching samples";
+
+      browserSampleList.innerHTML = "";
+      if (filteredSamples.length === 0) {
         const li = document.createElement("li");
         li.className = "browser-list-empty";
-        li.textContent =
-          kickSamplesList.length === 0
-            ? "No kicks found. Set DRUM_KICK_PATHS in settings and click Refresh."
-            : "No matching kicks";
-        browserKickList.appendChild(li);
+        li.textContent = emptyMsg;
+        browserSampleList.appendChild(li);
         return;
       }
 
-      filteredKickSamples.forEach((sample, idx) => {
+      filteredSamples.forEach((sample, idx) => {
         const li = document.createElement("li");
         li.className = "browser-list-item";
-        if (idx === selectedKickIndex) li.classList.add("selected");
+        if (idx === selectedSampleIndex) li.classList.add("selected");
         li.title = sample.path;
         li.dataset.path = sample.path;
         li.dataset.index = String(idx);
@@ -2015,26 +2060,26 @@
         li.appendChild(iconSpan);
         li.addEventListener("click", (e) => {
           if (e.target.closest(".browser-list-item-swap")) return;
-          selectAndPreviewKick(idx);
+          selectAndPreviewSample(idx);
         });
-        browserKickList.appendChild(li);
+        browserSampleList.appendChild(li);
       });
     }
 
-    function selectAndPreviewKick(idx) {
-      if (idx < 0 || idx >= filteredKickSamples.length) return;
-      selectedKickIndex = idx;
-      document.querySelectorAll("#browser-kick-list .browser-list-item").forEach((el, i) => {
+    function selectAndPreviewSample(idx) {
+      if (idx < 0 || idx >= filteredSamples.length) return;
+      selectedSampleIndex = idx;
+      document.querySelectorAll("#browser-sample-list .browser-list-item").forEach((el, i) => {
         el.classList.toggle("selected", i === idx);
       });
-      const sample = filteredKickSamples[idx];
-      const li = browserKickList.querySelector(`.browser-list-item[data-index="${idx}"]`);
+      const sample = filteredSamples[idx];
+      const li = browserSampleList.querySelector(`.browser-list-item[data-index="${idx}"]`);
       if (li) {
         showPreviewIndicator(li);
         li.scrollIntoView({ block: "nearest", behavior: "smooth" });
       }
-      previewKickSample(sample.path);
-      browserKickList.focus();
+      previewSample(sample.path);
+      browserSampleList.focus();
     }
 
     function showPreviewIndicator(li) {
@@ -2045,7 +2090,7 @@
       }, 450);
     }
 
-    async function previewKickSample(path) {
+    async function previewSample(path) {
       const enc = base64UrlEncode(path);
       const url = `/api/sample-preview?p=${encodeURIComponent(enc)}`;
       try {
@@ -2092,30 +2137,33 @@
       replaceOverlay.hidden = true;
     });
 
-    browserKickFilter.addEventListener("input", renderKickList);
-    browserKickRefreshBtn.addEventListener("click", () => {
+    browserSampleFilter.addEventListener("input", renderSampleList);
+    browserSampleRefreshBtn.addEventListener("click", () => {
       if (state.socket && state.socket.connected) {
-        state.socket.emit("refreshSamplePaths");
+        browserSamplesLoading.hidden = false;
+        state.socket.emit("refreshSamples", { type: currentSampleType });
       }
     });
 
-    browserKickList.addEventListener("keydown", (e) => {
-      if (!browserTabKicks.hidden && filteredKickSamples.length > 0) {
+    browserSampleList.addEventListener("keydown", (e) => {
+      if (!browserTabSamples.hidden && filteredSamples.length > 0) {
         if (e.key === "ArrowDown") {
           e.preventDefault();
-          const next = Math.min(selectedKickIndex + 1, filteredKickSamples.length - 1);
-          selectAndPreviewKick(next);
+          const next = Math.min(selectedSampleIndex + 1, filteredSamples.length - 1);
+          selectAndPreviewSample(next);
         } else if (e.key === "ArrowUp") {
           e.preventDefault();
-          const prev = Math.max(selectedKickIndex - 1, 0);
-          selectAndPreviewKick(prev);
+          const prev = Math.max(selectedSampleIndex - 1, 0);
+          selectAndPreviewSample(prev);
         }
       }
     });
 
-    socket.on("kickSamples", (data) => {
-      kickSamplesList = (data && data.samples) ? [...data.samples] : [];
-      renderKickList();
+    socket.on("samples", (data) => {
+      browserSamplesLoading.hidden = true;
+      const type = (data && data.type) || currentSampleType;
+      sampleListByType[type] = (data && data.samples) ? [...data.samples] : [];
+      if (type === currentSampleType) renderSampleList();
     });
   </script>
 </body>
