@@ -803,11 +803,12 @@
       min-width: 0;
       overflow: hidden;
       display: flex;
-      flex-direction: column;
-      gap: 0.15rem;
+      align-items: baseline;
+      gap: 0.4rem;
     }
 
     .browser-list-item-name {
+      flex-shrink: 0;
       overflow: hidden;
       text-overflow: ellipsis;
     }
