@@ -257,12 +257,32 @@ def serve_sample_preview():
     return send_file(p, mimetype=mimetype, as_attachment=False)
 
 
+def _is_path_in_sample_roots(path_str: str) -> bool:
+    """Check if path is under any configured DRUM_* sample root."""
+    if path_str in _kick_samples_paths_set:
+        return True
+    path_str = os.path.normpath(path_str)
+    resolved = str(Path(path_str).resolve())
+    env_keys = [
+        "DRUM_KICK_PATHS", "DRUM_SNARE_PATHS", "DRUM_CLAP_PATHS",
+        "DRUM_HIHAT_PATHS", "DRUM_SHAKER_PATHS", "DRUM_PERC_PATHS",
+        "DRUM_TOM_PATHS", "DRUM_CYMBAL_PATHS",
+    ]
+    for key in env_keys:
+        paths = get_setting(key, "")
+        for root_str in [p.strip() for p in paths.split(",") if p.strip()]:
+            root = Path(root_str).expanduser().resolve()
+            if str(root) and (resolved == str(root) or resolved.startswith(str(root) + os.sep)):
+                return True
+    return False
+
+
 def replace_sample_with_path(row: str, path_str: str) -> dict | None:
     """Replace a row's sample with a file at the given path. Copies to kit temp, returns descriptor."""
     if row not in DRUM_ROW_ORDER:
         return None
     path_str = path_str.strip()
-    if not path_str or path_str not in _kick_samples_paths_set:
+    if not path_str or not _is_path_in_sample_roots(path_str):
         return None
     src_path = Path(path_str)
     if not src_path.exists() or not src_path.is_file():

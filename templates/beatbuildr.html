@@ -776,26 +776,23 @@
       padding: 0;
     }
 
+    #browser-kick-list:focus {
+      outline: none;
+    }
+
     .browser-list-item {
-      padding: 0.4rem 0.6rem;
       font-size: 0.75rem;
       color: var(--primary);
-      border: 1px solid transparent;
-      border-radius: 3px;
       cursor: pointer;
-      transition: background 0.15s ease, border-color 0.15s ease;
-    }
-
-    .browser-list-item:hover {
-      background: rgba(255, 149, 5, 0.12);
-      border-color: var(--theme-a);
-    }
-
-    .browser-list-item {
+      outline: 1px solid transparent;
+      transition: outline-color 0.15s ease;
       display: flex;
       align-items: center;
-      justify-content: space-between;
       gap: 0.5rem;
+      min-height: 1.75rem;
+      margin: 2px;
+      margin-right: 0.5rem;
+      padding-inline: 0.5rem;
     }
 
     .browser-list-item-name-wrap {
@@ -803,7 +800,7 @@
       min-width: 0;
       overflow: hidden;
       display: flex;
-      align-items: baseline;
+      align-items: center;
       gap: 0.4rem;
     }
 
@@ -823,14 +820,41 @@
 
     .browser-list-item-preview-icon {
       flex-shrink: 0;
+      width: 1.2rem;
       color: var(--primary);
       font-size: 0.7rem;
       opacity: 0;
       transition: opacity 0.1s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .browser-list-item.previewing .browser-list-item-preview-icon {
       opacity: 1;
+    }
+
+    .browser-list-item.selected {
+      outline-color: var(--primary);
+    }
+
+    .browser-list-item-swap {
+      flex-shrink: 0;
+      width: 1.2rem;
+      min-width: 1.2rem;
+      height: 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 2px;
+      cursor: pointer;
+      color: var(--theme-a);
+      font-size: 0.6rem;
+    }
+
+    .browser-list-item-swap:hover {
+      color: var(--primary);
+      background: rgba(255, 149, 5, 0.15);
     }
 
     .browser-list-empty {
@@ -1111,7 +1135,8 @@
           <ul id="browser-kit-list" class="browser-list"></ul>
           <div class="browser-save-section">
             <h3><i class="fa-solid fa-floppy-disk"></i> Save current kit</h3>
-            <input type="text" id="browser-kit-name-input" class="browser-name-input" placeholder="Enter kit name" maxlength="30">
+            <input type="text" id="browser-kit-name-input" class="browser-name-input" placeholder="Enter kit name"
+              maxlength="30">
             <button type="button" id="browser-kit-save-btn" class="browser-save-btn">
               <i class="fa-solid fa-floppy-disk"></i> Save
             </button>
@@ -1125,7 +1150,7 @@
               <i class="fa-solid fa-arrow-rotate-right"></i> Refresh
             </button>
           </div>
-          <ul id="browser-kick-list" class="browser-list"></ul>
+          <ul id="browser-kick-list" class="browser-list" tabindex="0"></ul>
         </div>
       </div>
       <div id="replace-sample-overlay" class="replace-overlay" hidden>
@@ -1203,8 +1228,8 @@
       buffers: {}, // { rowKey: AudioBuffer | null }
       bpm: 120,
       swing: 0, // 0.0 to 1.0 (0 = straight, 1 = triplet feel)
-      undoState: null,  // snapshot before last edit
-      redoState: null,  // snapshot before we undid (so we can redo)
+      undoState: null,  // { type: 'pattern', data } | { type: 'kit', data: { row, path, name, url } }
+      redoState: null,
     };
 
     const dragState = {
@@ -1250,7 +1275,14 @@
 
     function saveUndoState() {
       state.redoState = null;
-      state.undoState = deepCopyPattern();
+      state.undoState = { type: "pattern", data: deepCopyPattern() };
+      updateUndoRedoButtons();
+    }
+
+    function saveKitUndoState(row, previousDescriptor) {
+      if (!previousDescriptor || !previousDescriptor.path) return;
+      state.redoState = null;
+      state.undoState = { type: "kit", data: { row, ...previousDescriptor } };
       updateUndoRedoButtons();
     }
 
@@ -1261,10 +1293,18 @@
 
     function undo() {
       if (state.undoState === null) return;
-      state.redoState = deepCopyPattern();
-      ROWS.forEach(row => {
-        state.pattern[row] = state.undoState[row].slice();
-      });
+      const u = state.undoState;
+      if (u.type === "pattern") {
+        state.redoState = { type: "pattern", data: deepCopyPattern() };
+        ROWS.forEach(row => {
+          state.pattern[row] = u.data[row].slice();
+        });
+      } else if (u.type === "kit" && u.data && u.data.path) {
+        state.redoState = { type: "kit", data: getCurrentKitDescriptorForRow(u.data.row) };
+        if (state.socket && state.socket.connected) {
+          state.socket.emit("replaceSampleWithPath", { row: u.data.row, path: u.data.path });
+        }
+      }
       state.undoState = null;
       updateUndoRedoButtons();
       renderGrid();
@@ -1272,13 +1312,26 @@
 
     function redo() {
       if (state.redoState === null) return;
-      state.undoState = deepCopyPattern();
-      ROWS.forEach(row => {
-        state.pattern[row] = state.redoState[row].slice();
-      });
+      const r = state.redoState;
+      if (r.type === "pattern") {
+        state.undoState = { type: "pattern", data: deepCopyPattern() };
+        ROWS.forEach(row => {
+          state.pattern[row] = r.data[row].slice();
+        });
+      } else if (r.type === "kit" && r.data && r.data.path) {
+        state.undoState = { type: "kit", data: getCurrentKitDescriptorForRow(r.data.row) };
+        if (state.socket && state.socket.connected) {
+          state.socket.emit("replaceSampleWithPath", { row: r.data.row, path: r.data.path });
+        }
+      }
       state.redoState = null;
       updateUndoRedoButtons();
       renderGrid();
+    }
+
+    function getCurrentKitDescriptorForRow(row) {
+      const desc = state.kit && state.kit.kit && state.kit.kit[row];
+      return desc && desc.path ? { row, path: desc.path, name: desc.name, url: desc.url } : null;
     }
 
     function renderGrid() {
@@ -1464,6 +1517,9 @@
 
     socket.on("kit", async (data) => {
       state.kit = data;
+      state.undoState = null;
+      state.redoState = null;
+      updateUndoRedoButtons();
       await hydrateKitBuffers(data);
       renderGrid();
       console.log("Received drum kit:", data);
@@ -1728,6 +1784,7 @@
           state.socket && state.socket.emit("getDrumKits");
         } else if (tab === "kicks") {
           state.socket && state.socket.emit("getKickSamples");
+          setTimeout(() => document.getElementById("browser-kick-list").focus(), 50);
         }
       });
     });
@@ -1873,6 +1930,8 @@
     replaceOverlay.hidden = true;
 
     let kickSamplesList = [];
+    let filteredKickSamples = [];
+    let selectedKickIndex = -1;
     let replaceSamplePendingPath = null;
 
     function getPathSnippet(fullPath) {
@@ -1893,16 +1952,20 @@
 
     function renderKickList() {
       const query = (browserKickFilter.value || "").trim().toLowerCase();
-      const filtered = query
+      filteredKickSamples = query
         ? kickSamplesList.filter(
-            (s) =>
-              s.name.toLowerCase().includes(query) ||
-              s.path.toLowerCase().includes(query)
-          )
-        : kickSamplesList;
+          (s) =>
+            s.name.toLowerCase().includes(query) ||
+            s.path.toLowerCase().includes(query)
+        )
+        : [...kickSamplesList];
+
+      if (selectedKickIndex >= filteredKickSamples.length) {
+        selectedKickIndex = Math.max(-1, filteredKickSamples.length - 1);
+      }
 
       browserKickList.innerHTML = "";
-      if (filtered.length === 0) {
+      if (filteredKickSamples.length === 0) {
         const li = document.createElement("li");
         li.className = "browser-list-empty";
         li.textContent =
@@ -1913,11 +1976,23 @@
         return;
       }
 
-      filtered.forEach((sample) => {
+      filteredKickSamples.forEach((sample, idx) => {
         const li = document.createElement("li");
         li.className = "browser-list-item";
+        if (idx === selectedKickIndex) li.classList.add("selected");
         li.title = sample.path;
         li.dataset.path = sample.path;
+        li.dataset.index = String(idx);
+        const swapBtn = document.createElement("span");
+        swapBtn.className = "browser-list-item-swap";
+        swapBtn.title = "Replace sample";
+        swapBtn.innerHTML = "<i class=\"fa-solid fa-right-left\"></i>";
+        swapBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          replaceSamplePendingPath = sample.path;
+          showReplaceOverlay();
+        });
+        li.appendChild(swapBtn);
         const nameWrap = document.createElement("div");
         nameWrap.className = "browser-list-item-name-wrap";
         const nameSpan = document.createElement("span");
@@ -1937,16 +2012,27 @@
         iconSpan.innerHTML = "<i class=\"fa-solid fa-volume-high\"></i>";
         li.appendChild(iconSpan);
         li.addEventListener("click", (e) => {
-          if (e.detail === 2) {
-            replaceSamplePendingPath = sample.path;
-            showReplaceOverlay();
-          } else {
-            showPreviewIndicator(li);
-            previewKickSample(sample.path);
-          }
+          if (e.target.closest(".browser-list-item-swap")) return;
+          selectAndPreviewKick(idx);
         });
         browserKickList.appendChild(li);
       });
+    }
+
+    function selectAndPreviewKick(idx) {
+      if (idx < 0 || idx >= filteredKickSamples.length) return;
+      selectedKickIndex = idx;
+      document.querySelectorAll("#browser-kick-list .browser-list-item").forEach((el, i) => {
+        el.classList.toggle("selected", i === idx);
+      });
+      const sample = filteredKickSamples[idx];
+      const li = browserKickList.querySelector(`.browser-list-item[data-index="${idx}"]`);
+      if (li) {
+        showPreviewIndicator(li);
+        li.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      }
+      previewKickSample(sample.path);
+      browserKickList.focus();
     }
 
     function showPreviewIndicator(li) {
@@ -1984,6 +2070,8 @@
         btn.textContent = rowKey;
         btn.addEventListener("click", () => {
           if (replaceSamplePendingPath && state.socket && state.socket.connected) {
+            const prev = getCurrentKitDescriptorForRow(rowKey);
+            saveKitUndoState(rowKey, prev);
             state.socket.emit("replaceSampleWithPath", {
               row: rowKey,
               path: replaceSamplePendingPath,
@@ -2006,6 +2094,20 @@
     browserKickRefreshBtn.addEventListener("click", () => {
       if (state.socket && state.socket.connected) {
         state.socket.emit("refreshSamplePaths");
+      }
+    });
+
+    browserKickList.addEventListener("keydown", (e) => {
+      if (!browserTabKicks.hidden && filteredKickSamples.length > 0) {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          const next = Math.min(selectedKickIndex + 1, filteredKickSamples.length - 1);
+          selectAndPreviewKick(next);
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          const prev = Math.max(selectedKickIndex - 1, 0);
+          selectAndPreviewKick(prev);
+        }
       }
     });
 
