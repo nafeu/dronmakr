@@ -18,7 +18,7 @@ from utils import get_version, with_final_main_prompt, with_main_prompt as with_
 
 # Import registration and helpers from sub-apps
 from auditionr import register_auditionr
-from beatbuildr import register_beatbuildr, ensure_beat_patterns
+from beatbuildr import register_beatbuildr, ensure_beat_patterns, ensure_drum_kits
 from settings import ensure_settings, get_setting, load_settings, save_settings
 
 # Helpers for unified socket connect
@@ -178,6 +178,7 @@ def run(
 
     ensure_settings()
     ensure_beat_patterns()
+    ensure_drum_kits()
 
     print(get_version())
     if debug:

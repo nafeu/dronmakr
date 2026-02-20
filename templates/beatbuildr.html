@@ -165,6 +165,9 @@
       border-radius: 4px;
       background: #050505;
       overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
     }
 
     #sidebar-column {
@@ -678,6 +681,264 @@
       background: var(--theme-b);
       color: var(--secondary);
     }
+
+    /* Browser card */
+    .browser-card {
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      background: #050505;
+      overflow: hidden;
+    }
+
+    .browser-card h2 {
+      margin: 0;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--theme-a);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .browser-card h2 i {
+      font-size: 0.75rem;
+    }
+
+    .browser-tabs {
+      display: flex;
+      gap: 0.35rem;
+      padding: 0 0.75rem 0.5rem;
+    }
+
+    .browser-tab-btn {
+      padding: 0.35rem 0.65rem;
+      font-family: inherit;
+      font-size: 0.75rem;
+      cursor: pointer;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      background: var(--theme-a);
+      color: var(--primary);
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .browser-tab-btn:hover {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.15);
+    }
+
+    .browser-tab-btn.active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: var(--secondary);
+    }
+
+    .browser-tab-panel {
+      padding: 0.75rem;
+      border-top: 1px solid var(--theme-a);
+    }
+
+    .browser-tab-panel[hidden] {
+      display: none;
+    }
+
+    .browser-filter-input {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      font-family: inherit;
+      font-size: 0.75rem;
+      background: #0a0a0a;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      color: var(--primary);
+      box-sizing: border-box;
+      margin-bottom: 0.5rem;
+    }
+
+    .browser-filter-input::placeholder {
+      color: var(--theme-a);
+      opacity: 0.6;
+    }
+
+    .browser-filter-input:focus {
+      outline: none;
+      border-color: var(--theme-b);
+      box-shadow: 0 0 0 1px var(--theme-b);
+    }
+
+    .browser-list {
+      max-height: 180px;
+      overflow-y: auto;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    .browser-list-item {
+      padding: 0.4rem 0.6rem;
+      font-size: 0.75rem;
+      color: var(--primary);
+      border: 1px solid transparent;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .browser-list-item:hover {
+      background: rgba(255, 149, 5, 0.12);
+      border-color: var(--theme-a);
+    }
+
+    .browser-list-empty {
+      font-size: 0.75rem;
+      color: var(--theme-a);
+      padding: 0.5rem 0;
+    }
+
+    .browser-save-section {
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--theme-a);
+    }
+
+    .browser-save-section h3 {
+      margin: 0 0 0.5rem 0;
+      font-size: 0.7rem;
+      color: var(--theme-a);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .browser-name-input {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      font-family: inherit;
+      font-size: 0.75rem;
+      background: #0a0a0a;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      color: var(--primary);
+      box-sizing: border-box;
+      margin-bottom: 0.5rem;
+    }
+
+    .browser-name-input::placeholder {
+      color: var(--theme-a);
+      opacity: 0.6;
+    }
+
+    .browser-name-input:focus {
+      outline: none;
+      border-color: var(--theme-b);
+      box-shadow: 0 0 0 1px var(--theme-b);
+    }
+
+    .browser-save-btn {
+      width: 100%;
+      padding: 0.5rem;
+      font-family: inherit;
+      font-size: 0.85rem;
+      background: var(--primary);
+      color: var(--secondary);
+      border: 1px solid var(--primary);
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      font-weight: 600;
+    }
+
+    .browser-save-btn:hover {
+      background: #ff8900;
+      border-color: #ff8900;
+    }
+
+    .browser-status-area {
+      margin-top: 0.5rem;
+      min-height: 2rem;
+      font-size: 0.7rem;
+    }
+
+    .browser-status-message {
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .browser-status-message.success {
+      background: rgba(76, 175, 80, 0.15);
+      color: #4caf50;
+      border: 1px solid rgba(76, 175, 80, 0.3);
+    }
+
+    .browser-status-message.error {
+      background: rgba(244, 67, 54, 0.15);
+      color: #f44336;
+      border: 1px solid rgba(244, 67, 54, 0.3);
+    }
+
+    .browser-confirm-prompt {
+      padding: 0.4rem 0.6rem;
+      border-radius: 4px;
+      background: rgba(255, 152, 0, 0.1);
+      border: 1px solid rgba(255, 152, 0, 0.3);
+      color: var(--primary);
+    }
+
+    .browser-confirm-prompt-text {
+      font-size: 0.7rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .browser-confirm-buttons {
+      display: flex;
+      gap: 0.35rem;
+    }
+
+    .browser-confirm-btn {
+      flex: 1;
+      padding: 0.3rem;
+      font-family: inherit;
+      font-size: 0.7rem;
+      cursor: pointer;
+      border-radius: 3px;
+      border: 1px solid;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.25rem;
+    }
+
+    .browser-confirm-btn.yes {
+      background: var(--primary);
+      color: var(--secondary);
+      border-color: var(--primary);
+    }
+
+    .browser-confirm-btn.no {
+      background: transparent;
+      color: var(--primary);
+      border-color: var(--theme-a);
+    }
+
+    .browser-confirm-btn:hover {
+      opacity: 0.8;
+    }
+
+    .browser-placeholder {
+      font-size: 0.75rem;
+      color: var(--theme-a);
+      padding: 0.5rem 0;
+    }
   </style>
 </head>
 
@@ -697,6 +958,28 @@
   <main id="app-layout">
     <section id="main-column">
       <div id="sequencer-grid"></div>
+      <div class="browser-card">
+        <h2><i class="fa-solid fa-folder-open"></i> browser</h2>
+        <div class="browser-tabs">
+          <button type="button" class="browser-tab-btn active" data-tab="kits">kits</button>
+          <button type="button" class="browser-tab-btn" data-tab="kicks">kicks</button>
+        </div>
+        <div id="browser-tab-kits" class="browser-tab-panel">
+          <input type="text" id="browser-kit-filter" class="browser-filter-input" placeholder="Filter kits…">
+          <ul id="browser-kit-list" class="browser-list"></ul>
+          <div class="browser-save-section">
+            <h3><i class="fa-solid fa-floppy-disk"></i> Save current kit</h3>
+            <input type="text" id="browser-kit-name-input" class="browser-name-input" placeholder="Enter kit name" maxlength="30">
+            <button type="button" id="browser-kit-save-btn" class="browser-save-btn">
+              <i class="fa-solid fa-floppy-disk"></i> Save
+            </button>
+            <div id="browser-kit-status-area" class="browser-status-area"></div>
+          </div>
+        </div>
+        <div id="browser-tab-kicks" class="browser-tab-panel" hidden>
+          <p class="browser-placeholder">Kicks browser coming soon…</p>
+        </div>
+      </div>
     </section>
 
     <aside id="sidebar-column">
@@ -1271,6 +1554,154 @@
         patternNameInput.value = "";
       } else if (data.error) {
         showStatusMessage(data.error, "error");
+      }
+    });
+
+    // Browser card – tab switching
+    const browserTabBtns = document.querySelectorAll(".browser-tab-btn");
+    const browserTabKits = document.getElementById("browser-tab-kits");
+    const browserTabKicks = document.getElementById("browser-tab-kicks");
+
+    browserTabBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tab = btn.dataset.tab;
+        browserTabBtns.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        browserTabKits.hidden = tab !== "kits";
+        browserTabKicks.hidden = tab !== "kicks";
+        if (tab === "kits") {
+          state.socket && state.socket.emit("getDrumKits");
+        }
+      });
+    });
+
+    // Browser – kits list, filter, load, save
+    const browserKitFilter = document.getElementById("browser-kit-filter");
+    const browserKitList = document.getElementById("browser-kit-list");
+    const browserKitNameInput = document.getElementById("browser-kit-name-input");
+    const browserKitSaveBtn = document.getElementById("browser-kit-save-btn");
+    const browserKitStatusArea = document.getElementById("browser-kit-status-area");
+
+    let drumKitsList = [];
+
+    function renderKitList() {
+      const query = (browserKitFilter.value || "").trim().toLowerCase();
+      const filtered = query
+        ? drumKitsList.filter((name) => name.toLowerCase().includes(query))
+        : drumKitsList;
+
+      browserKitList.innerHTML = "";
+      if (filtered.length === 0) {
+        const li = document.createElement("li");
+        li.className = "browser-list-empty";
+        li.textContent = drumKitsList.length === 0 ? "No kits saved yet" : "No matching kits";
+        browserKitList.appendChild(li);
+        return;
+      }
+
+      filtered.forEach((kitName) => {
+        const li = document.createElement("li");
+        li.className = "browser-list-item";
+        li.textContent = kitName;
+        li.dataset.kitName = kitName;
+        li.addEventListener("click", () => {
+          if (state.socket && state.socket.connected) {
+            state.socket.emit("loadKit", { name: kitName });
+          }
+        });
+        browserKitList.appendChild(li);
+      });
+    }
+
+    browserKitFilter.addEventListener("input", renderKitList);
+
+    socket.on("drumKits", (data) => {
+      drumKitsList = (data && data.kits) ? [...data.kits] : [];
+      renderKitList();
+    });
+
+    // Request drum kits when page loads (kits tab is default visible)
+    if (socket.connected) socket.emit("getDrumKits");
+    socket.on("connect", () => socket.emit("getDrumKits"));
+
+    function encodeKitForSave() {
+      if (!state.kit || !state.kit.kit) return null;
+      const kit = state.kit.kit;
+      const encoded = {};
+      ROWS.forEach((rowKey) => {
+        const desc = kit[rowKey];
+        if (desc && desc.path) {
+          encoded[rowKey] = { path: desc.path, name: desc.name };
+        }
+      });
+      return Object.keys(encoded).length > 0 ? encoded : null;
+    }
+
+    function showKitStatusMessage(message, type = "success") {
+      browserKitStatusArea.innerHTML = `
+        <div class="browser-status-message ${type}">
+          <i class="fa-solid fa-${type === "success" ? "circle-check" : "circle-exclamation"}"></i>
+          ${message}
+        </div>
+      `;
+      if (type === "success") {
+        setTimeout(() => { browserKitStatusArea.innerHTML = ""; }, 3000);
+      }
+    }
+
+    function showKitConfirmPrompt(kitName) {
+      browserKitStatusArea.innerHTML = `
+        <div class="browser-confirm-prompt">
+          <div class="browser-confirm-prompt-text">
+            <i class="fa-solid fa-triangle-exclamation"></i> Kit "${kitName}" exists. Overwrite?
+          </div>
+          <div class="browser-confirm-buttons">
+            <button type="button" class="browser-confirm-btn yes" data-confirm="yes">Yes</button>
+            <button type="button" class="browser-confirm-btn no" data-confirm="no">No</button>
+          </div>
+        </div>
+      `;
+      browserKitStatusArea.querySelector('[data-confirm="yes"]').addEventListener("click", () => {
+        const kit = encodeKitForSave();
+        if (kit && state.socket && state.socket.connected) {
+          state.socket.emit("saveKit", { name: kitName, kit, overwrite: true });
+        }
+      });
+      browserKitStatusArea.querySelector('[data-confirm="no"]').addEventListener("click", () => {
+        browserKitStatusArea.innerHTML = "";
+      });
+    }
+
+    browserKitSaveBtn.addEventListener("click", () => {
+      const kitName = browserKitNameInput.value.trim();
+      if (!kitName) {
+        showKitStatusMessage("Please enter a kit name", "error");
+        return;
+      }
+      const kit = encodeKitForSave();
+      if (!kit) {
+        showKitStatusMessage("No kit to save. Load or generate a kit first.", "error");
+        return;
+      }
+      if (state.socket && state.socket.connected) {
+        state.socket.emit("saveKit", { name: kitName, kit, overwrite: false });
+      }
+    });
+
+    socket.on("kitSaveResult", (data) => {
+      if (data.needsConfirmation) {
+        showKitConfirmPrompt(data.name);
+      } else if (data.success) {
+        showKitStatusMessage(`Kit "${data.name}" saved successfully`, "success");
+        browserKitNameInput.value = "";
+      } else if (data.error) {
+        showKitStatusMessage(data.error, "error");
+      }
+    });
+
+    socket.on("kitLoadResult", (data) => {
+      if (data.error) {
+        showKitStatusMessage(data.error, "error");
       }
     });
   </script>
