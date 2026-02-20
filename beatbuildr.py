@@ -3,12 +3,14 @@ Beatbuildr: drum kit and pattern builder logic. Registers routes and socket
 handlers when used from the unified webui.
 """
 
+import base64
 import json
 import os
 import random
 import shutil
 from pathlib import Path
 
+from flask import request, send_file
 from flask import send_from_directory
 from settings import get_setting
 
@@ -126,6 +128,135 @@ def replace_sample_for_row(row: str) -> dict | None:
         return None
     src_path = _get_random_sample_for_env(env_key)
     if not src_path:
+        return None
+    kit_temp_root = Path(TEMP_DIR) / "beatbuildr"
+    kit_temp_root.mkdir(parents=True, exist_ok=True)
+    filename = f"{row}_{src_path.name}"
+    dest_path = kit_temp_root / filename
+    try:
+        shutil.copy2(src_path, dest_path)
+    except Exception:
+        return None
+    return {
+        "name": src_path.stem,
+        "path": str(src_path),
+        "url": f"/kit-samples/{filename}",
+    }
+
+
+# --- Kick sample browser: cached list, recursive scan ---
+KICK_CACHE_FILE = os.path.join(TEMP_DIR, "sample-cache-kicks.json")
+_kick_samples_cache: list[dict] = []  # [{"path": str, "name": str}, ...]
+_kick_samples_paths_set: set[str] = set()  # For path validation when serving
+
+
+def _collect_kick_samples_recursive(root: Path, results: list[dict], seen: set[str]) -> None:
+    """Recursively collect .wav and .aiff files under root. Modifies results and seen in place."""
+    if not root.exists() or not root.is_dir():
+        return
+    try:
+        for entry in root.iterdir():
+            if entry.is_file() and entry.suffix.lower() in (".wav", ".aiff"):
+                path_str = str(entry.resolve())
+                if path_str not in seen:
+                    seen.add(path_str)
+                    results.append({"path": path_str, "name": entry.stem})
+            elif entry.is_dir():
+                _collect_kick_samples_recursive(entry, results, seen)
+    except (PermissionError, OSError):
+        pass
+
+
+def _collect_kick_samples() -> list[dict]:
+    """Scan DRUM_KICK_PATHS recursively for all .wav and .aiff files. Returns list of {path, name}."""
+    paths_str = get_setting("DRUM_KICK_PATHS", "")
+    roots = [p.strip() for p in paths_str.split(",") if p.strip()]
+    results: list[dict] = []
+    seen: set[str] = set()
+    for root_str in roots:
+        root = Path(root_str).expanduser().resolve()
+        _collect_kick_samples_recursive(root, results, seen)
+    return sorted(results, key=lambda x: (x["name"].lower(), x["path"]))
+
+
+def _load_kick_cache_from_file() -> bool:
+    """Load kick samples from temp cache file. Returns True if loaded."""
+    global _kick_samples_cache, _kick_samples_paths_set
+    if not os.path.exists(KICK_CACHE_FILE):
+        return False
+    try:
+        with open(KICK_CACHE_FILE, "r") as f:
+            data = json.load(f)
+        items = data.get("samples") if isinstance(data, dict) else []
+        if isinstance(items, list):
+            _kick_samples_cache = [x for x in items if isinstance(x, dict) and "path" in x and "name" in x]
+            _kick_samples_paths_set = {x["path"] for x in _kick_samples_cache}
+            return True
+    except Exception:
+        pass
+    return False
+
+
+def _save_kick_cache_to_file() -> None:
+    """Write kick samples cache to temp file."""
+    os.makedirs(os.path.dirname(KICK_CACHE_FILE), exist_ok=True)
+    try:
+        with open(KICK_CACHE_FILE, "w") as f:
+            json.dump({"samples": _kick_samples_cache}, f)
+    except Exception:
+        pass
+
+
+def get_kick_samples(force_refresh: bool = False) -> list[dict]:
+    """Return cached kick samples. Lazy-loads from file or scans on first call. Use force_refresh to rescan."""
+    global _kick_samples_cache, _kick_samples_paths_set
+    if force_refresh:
+        _kick_samples_cache = _collect_kick_samples()
+        _kick_samples_paths_set = {x["path"] for x in _kick_samples_cache}
+        _save_kick_cache_to_file()
+        return _kick_samples_cache
+    if _kick_samples_cache:
+        return _kick_samples_cache
+    if _load_kick_cache_from_file():
+        return _kick_samples_cache
+    _kick_samples_cache = _collect_kick_samples()
+    _kick_samples_paths_set = {x["path"] for x in _kick_samples_cache}
+    _save_kick_cache_to_file()
+    return _kick_samples_cache
+
+
+def serve_sample_preview():
+    """Serve a sample file for preview. Query param 'p' = base64-encoded path. Path must be in allowed set."""
+    global _kick_samples_paths_set
+    if not _kick_samples_paths_set:
+        get_kick_samples(force_refresh=False)
+    enc = request.args.get("p", "")
+    if not enc:
+        return {"error": "Missing path"}, 400
+    try:
+        path_bytes = base64.urlsafe_b64decode(enc)
+        path_str = path_bytes.decode("utf-8")
+    except Exception:
+        return {"error": "Invalid path"}, 400
+    path_str = os.path.normpath(path_str)
+    if path_str not in _kick_samples_paths_set:
+        return {"error": "Path not allowed"}, 403
+    p = Path(path_str)
+    if not p.exists() or not p.is_file():
+        return {"error": "File not found"}, 404
+    mimetype = "audio/aiff" if p.suffix.lower() in (".aiff", ".aif") else "audio/wav"
+    return send_file(p, mimetype=mimetype, as_attachment=False)
+
+
+def replace_sample_with_path(row: str, path_str: str) -> dict | None:
+    """Replace a row's sample with a file at the given path. Copies to kit temp, returns descriptor."""
+    if row not in DRUM_ROW_ORDER:
+        return None
+    path_str = path_str.strip()
+    if not path_str or path_str not in _kick_samples_paths_set:
+        return None
+    src_path = Path(path_str)
+    if not src_path.exists() or not src_path.is_file():
         return None
     kit_temp_root = Path(TEMP_DIR) / "beatbuildr"
     kit_temp_root.mkdir(parents=True, exist_ok=True)
@@ -392,6 +523,31 @@ def _handle_save_kit(payload):
         )
 
 
+def _handle_get_kick_samples():
+    """Return cached list of kick samples to the client."""
+    samples = get_kick_samples(force_refresh=False)
+    _socketio.emit("kickSamples", {"samples": samples})
+
+
+def _handle_refresh_sample_paths():
+    """Rescan kick paths and emit updated list."""
+    samples = get_kick_samples(force_refresh=True)
+    _socketio.emit("kickSamples", {"samples": samples})
+
+
+def _handle_replace_sample_with_path(payload):
+    """Replace a row's sample with a specific file. Payload: { "row": str, "path": str }."""
+    row = (payload or {}).get("row")
+    path_str = (payload or {}).get("path")
+    if not row or row not in DRUM_ROW_ORDER:
+        return
+    if not path_str or not isinstance(path_str, str):
+        return
+    descriptor = replace_sample_with_path(row, path_str)
+    if descriptor:
+        _socketio.emit("sampleReplaced", {"row": row, **descriptor})
+
+
 def register_beatbuildr(app, socketio):
     """Register beatbuildr routes and socket handlers on the given app and socketio."""
     global _socketio
@@ -402,6 +558,12 @@ def register_beatbuildr(app, socketio):
         "beatbuildr_serve_kit_sample",
         serve_kit_sample,
     )
+    app.add_url_rule(
+        "/api/sample-preview",
+        "beatbuildr_serve_sample_preview",
+        serve_sample_preview,
+        methods=["GET"],
+    )
 
     socketio.on_event("requestNewKit", _handle_request_new_kit)
     socketio.on_event("replaceSample", _handle_replace_sample)
@@ -409,6 +571,9 @@ def register_beatbuildr(app, socketio):
     socketio.on_event("getDrumKits", _handle_get_drum_kits)
     socketio.on_event("loadKit", _handle_load_kit)
     socketio.on_event("saveKit", _handle_save_kit)
+    socketio.on_event("getKickSamples", _handle_get_kick_samples)
+    socketio.on_event("refreshSamplePaths", _handle_refresh_sample_paths)
+    socketio.on_event("replaceSampleWithPath", _handle_replace_sample_with_path)
 
 
 if __name__ == "__main__":

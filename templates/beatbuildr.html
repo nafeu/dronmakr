@@ -791,6 +791,32 @@
       border-color: var(--theme-a);
     }
 
+    .browser-list-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .browser-list-item-name {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .browser-list-item-preview-icon {
+      flex-shrink: 0;
+      color: var(--primary);
+      font-size: 0.7rem;
+      opacity: 0;
+      transition: opacity 0.1s ease;
+    }
+
+    .browser-list-item.previewing .browser-list-item-preview-icon {
+      opacity: 1;
+    }
+
     .browser-list-empty {
       font-size: 0.75rem;
       color: var(--theme-a);
@@ -939,6 +965,106 @@
       color: var(--theme-a);
       padding: 0.5rem 0;
     }
+
+    .browser-kicks-header {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .browser-kicks-header .browser-filter-input {
+      flex: 1;
+      margin-bottom: 0;
+    }
+
+    .browser-refresh-btn {
+      padding: 0.5rem 0.65rem;
+      font-family: inherit;
+      font-size: 0.75rem;
+      cursor: pointer;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      background: var(--theme-a);
+      color: var(--primary);
+      white-space: nowrap;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .browser-refresh-btn:hover {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.15);
+    }
+
+    /* Replace sample overlay */
+    .replace-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    .replace-overlay[hidden] {
+      display: none !important;
+    }
+
+    .replace-overlay-content {
+      background: #050505;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      padding: 1rem;
+      min-width: 200px;
+    }
+
+    .replace-overlay-title {
+      font-size: 0.8rem;
+      color: var(--primary);
+      margin-bottom: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .replace-overlay-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .replace-overlay-row-btn {
+      padding: 0.4rem 0.6rem;
+      font-family: inherit;
+      font-size: 0.7rem;
+      cursor: pointer;
+      border: 1px solid var(--theme-a);
+      border-radius: 3px;
+      background: var(--theme-a);
+      color: var(--primary);
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .replace-overlay-row-btn:hover {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.15);
+    }
+
+    .replace-overlay-cancel {
+      width: 100%;
+      padding: 0.4rem;
+      font-family: inherit;
+      font-size: 0.75rem;
+      cursor: pointer;
+      border: 1px solid var(--theme-a);
+      border-radius: 3px;
+      background: transparent;
+      color: var(--primary);
+    }
+
+    .replace-overlay-cancel:hover {
+      background: rgba(255, 149, 5, 0.1);
+    }
   </style>
 </head>
 
@@ -977,7 +1103,20 @@
           </div>
         </div>
         <div id="browser-tab-kicks" class="browser-tab-panel" hidden>
-          <p class="browser-placeholder">Kicks browser coming soon…</p>
+          <div class="browser-kicks-header">
+            <input type="text" id="browser-kick-filter" class="browser-filter-input" placeholder="Filter kicks…">
+            <button type="button" id="browser-kick-refresh-btn" class="browser-refresh-btn" title="Rescan sample paths">
+              <i class="fa-solid fa-arrow-rotate-right"></i> Refresh
+            </button>
+          </div>
+          <ul id="browser-kick-list" class="browser-list"></ul>
+        </div>
+      </div>
+      <div id="replace-sample-overlay" class="replace-overlay" hidden>
+        <div class="replace-overlay-content">
+          <div class="replace-overlay-title">Replace which sample?</div>
+          <div id="replace-overlay-buttons" class="replace-overlay-buttons"></div>
+          <button type="button" id="replace-overlay-cancel" class="replace-overlay-cancel">Cancel</button>
         </div>
       </div>
     </section>
@@ -1571,6 +1710,8 @@
         browserTabKicks.hidden = tab !== "kicks";
         if (tab === "kits") {
           state.socket && state.socket.emit("getDrumKits");
+        } else if (tab === "kicks") {
+          state.socket && state.socket.emit("getKickSamples");
         }
       });
     });
@@ -1703,6 +1844,141 @@
       if (data.error) {
         showKitStatusMessage(data.error, "error");
       }
+    });
+
+    // Kicks browser
+    const browserKickFilter = document.getElementById("browser-kick-filter");
+    const browserKickList = document.getElementById("browser-kick-list");
+    const browserKickRefreshBtn = document.getElementById("browser-kick-refresh-btn");
+    const replaceOverlay = document.getElementById("replace-sample-overlay");
+    const replaceOverlayButtons = document.getElementById("replace-overlay-buttons");
+    const replaceOverlayCancel = document.getElementById("replace-overlay-cancel");
+
+    replaceOverlay.hidden = true;
+
+    let kickSamplesList = [];
+    let replaceSamplePendingPath = null;
+
+    function base64UrlEncode(str) {
+      const bytes = new TextEncoder().encode(str);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    }
+
+    function renderKickList() {
+      const query = (browserKickFilter.value || "").trim().toLowerCase();
+      const filtered = query
+        ? kickSamplesList.filter(
+            (s) =>
+              s.name.toLowerCase().includes(query) ||
+              s.path.toLowerCase().includes(query)
+          )
+        : kickSamplesList;
+
+      browserKickList.innerHTML = "";
+      if (filtered.length === 0) {
+        const li = document.createElement("li");
+        li.className = "browser-list-empty";
+        li.textContent =
+          kickSamplesList.length === 0
+            ? "No kicks found. Set DRUM_KICK_PATHS in settings and click Refresh."
+            : "No matching kicks";
+        browserKickList.appendChild(li);
+        return;
+      }
+
+      filtered.forEach((sample) => {
+        const li = document.createElement("li");
+        li.className = "browser-list-item";
+        li.title = sample.path;
+        li.dataset.path = sample.path;
+        const nameSpan = document.createElement("span");
+        nameSpan.className = "browser-list-item-name";
+        nameSpan.textContent = sample.name;
+        li.appendChild(nameSpan);
+        const iconSpan = document.createElement("span");
+        iconSpan.className = "browser-list-item-preview-icon";
+        iconSpan.innerHTML = "<i class=\"fa-solid fa-volume-high\"></i>";
+        li.appendChild(iconSpan);
+        li.addEventListener("click", (e) => {
+          if (e.detail === 2) {
+            replaceSamplePendingPath = sample.path;
+            showReplaceOverlay();
+          } else {
+            showPreviewIndicator(li);
+            previewKickSample(sample.path);
+          }
+        });
+        browserKickList.appendChild(li);
+      });
+    }
+
+    function showPreviewIndicator(li) {
+      li.classList.add("previewing");
+      clearTimeout(li._previewIndicatorTimer);
+      li._previewIndicatorTimer = setTimeout(() => {
+        li.classList.remove("previewing");
+      }, 450);
+    }
+
+    async function previewKickSample(path) {
+      const enc = base64UrlEncode(path);
+      const url = `/api/sample-preview?p=${encodeURIComponent(enc)}`;
+      try {
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const arrayBuffer = await res.arrayBuffer();
+        const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+        if (audioCtx.state === "suspended") await audioCtx.resume();
+        const source = audioCtx.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioCtx.destination);
+        source.start(0);
+      } catch (e) {
+        console.error("Preview failed", e);
+      }
+    }
+
+    function showReplaceOverlay() {
+      replaceOverlayButtons.innerHTML = "";
+      ROWS.forEach((rowKey) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "replace-overlay-row-btn";
+        btn.textContent = rowKey;
+        btn.addEventListener("click", () => {
+          if (replaceSamplePendingPath && state.socket && state.socket.connected) {
+            state.socket.emit("replaceSampleWithPath", {
+              row: rowKey,
+              path: replaceSamplePendingPath,
+            });
+          }
+          replaceSamplePendingPath = null;
+          replaceOverlay.hidden = true;
+        });
+        replaceOverlayButtons.appendChild(btn);
+      });
+      replaceOverlay.hidden = false;
+    }
+
+    replaceOverlayCancel.addEventListener("click", () => {
+      replaceSamplePendingPath = null;
+      replaceOverlay.hidden = true;
+    });
+
+    browserKickFilter.addEventListener("input", renderKickList);
+    browserKickRefreshBtn.addEventListener("click", () => {
+      if (state.socket && state.socket.connected) {
+        state.socket.emit("refreshSamplePaths");
+      }
+    });
+
+    socket.on("kickSamples", (data) => {
+      kickSamplesList = (data && data.samples) ? [...data.samples] : [];
+      renderKickList();
     });
   </script>
 </body>
