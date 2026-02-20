@@ -4,6 +4,7 @@ handlers when used from the unified webui.
 """
 
 import base64
+import binascii
 import json
 import os
 import random
@@ -232,15 +233,23 @@ def serve_sample_preview():
         get_kick_samples(force_refresh=False)
     enc = request.args.get("p", "")
     if not enc:
-        return {"error": "Missing path"}, 400
+        return {"error": "Missing path", "detail": "Query param 'p' is required"}, 400
+    # Restore URL-safe base64 to standard: - -> +, _ -> /
+    enc_std = enc.replace("-", "+").replace("_", "/")
+    # Add padding if needed
+    pad = 4 - (len(enc_std) % 4)
+    if pad != 4:
+        enc_std += "=" * pad
     try:
-        path_bytes = base64.urlsafe_b64decode(enc)
-        path_str = path_bytes.decode("utf-8")
-    except Exception:
-        return {"error": "Invalid path"}, 400
-    path_str = os.path.normpath(path_str)
+        path_bytes = base64.b64decode(enc_std)
+        path_str = path_bytes.decode("utf-8").strip()
+    except binascii.Error as e:
+        return {"error": "Invalid base64", "detail": str(e)}, 400
+    except UnicodeDecodeError as e:
+        return {"error": "Invalid path encoding", "detail": str(e)}, 400
+    path_str = str(Path(path_str).resolve())
     if path_str not in _kick_samples_paths_set:
-        return {"error": "Path not allowed"}, 403
+        return {"error": "Path not allowed", "detail": "Path not in allowed sample list"}, 403
     p = Path(path_str)
     if not p.exists() or not p.is_file():
         return {"error": "File not found"}, 404
