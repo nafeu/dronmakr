@@ -798,9 +798,24 @@
       gap: 0.5rem;
     }
 
-    .browser-list-item-name {
+    .browser-list-item-name-wrap {
       flex: 1;
       min-width: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+
+    .browser-list-item-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .browser-list-item-path {
+      font-size: 0.6rem;
+      color: var(--theme-a);
+      letter-spacing: 0.02em;
       overflow: hidden;
       text-overflow: ellipsis;
     }
@@ -1859,6 +1874,13 @@
     let kickSamplesList = [];
     let replaceSamplePendingPath = null;
 
+    function getPathSnippet(fullPath) {
+      const parts = fullPath.replace(/\\/g, "/").split("/").filter(Boolean);
+      const dirParts = parts.slice(0, -1);
+      const last3 = dirParts.slice(-3);
+      return last3.length > 0 ? ".../" + last3.join("/") : "";
+    }
+
     function base64UrlEncode(str) {
       const bytes = new TextEncoder().encode(str);
       let binary = "";
@@ -1895,10 +1917,20 @@
         li.className = "browser-list-item";
         li.title = sample.path;
         li.dataset.path = sample.path;
+        const nameWrap = document.createElement("div");
+        nameWrap.className = "browser-list-item-name-wrap";
         const nameSpan = document.createElement("span");
         nameSpan.className = "browser-list-item-name";
         nameSpan.textContent = sample.name;
-        li.appendChild(nameSpan);
+        nameWrap.appendChild(nameSpan);
+        const pathSnippet = getPathSnippet(sample.path);
+        if (pathSnippet) {
+          const pathSpan = document.createElement("span");
+          pathSpan.className = "browser-list-item-path";
+          pathSpan.textContent = pathSnippet;
+          nameWrap.appendChild(pathSpan);
+        }
+        li.appendChild(nameWrap);
         const iconSpan = document.createElement("span");
         iconSpan.className = "browser-list-item-preview-icon";
         iconSpan.innerHTML = "<i class=\"fa-solid fa-volume-high\"></i>";
