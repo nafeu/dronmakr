@@ -127,10 +127,24 @@
       background: rgba(255, 149, 5, 0.15);
     }
 
+    .toolbar-nav a:active {
+      background: rgba(255, 149, 5, 0.25);
+    }
+
     .toolbar-nav a.active {
       border-color: var(--primary);
       background: var(--primary);
       color: var(--secondary);
+    }
+
+    .toolbar-nav a.active:hover {
+      background: #ff8900;
+      border-color: #ff8900;
+    }
+
+    .toolbar-nav a.active:active {
+      background: #e67e00;
+      border-color: #e67e00;
     }
 
     #toolbar-status {
@@ -201,6 +215,8 @@
       justify-content: center;
       border: 1px solid;
       flex-shrink: 0;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease,
+        transform 0.08s ease;
     }
 
     .transport-btn i {
@@ -213,10 +229,32 @@
       border-color: var(--primary);
     }
 
+    .transport-btn-primary:not(:disabled):hover {
+      background: #ff8900;
+      border-color: #ff8900;
+    }
+
+    .transport-btn-primary:not(:disabled):active {
+      background: #e67e00;
+      border-color: #e67e00;
+      transform: scale(0.96);
+    }
+
     .transport-btn-secondary {
       background: #050505;
       color: var(--primary);
       border-color: var(--theme-a);
+    }
+
+    .transport-btn-secondary:not(:disabled):hover {
+      background: rgba(255, 149, 5, 0.12);
+      border-color: var(--primary);
+    }
+
+    .transport-btn-secondary:not(:disabled):active {
+      background: rgba(255, 149, 5, 0.2);
+      border-color: var(--primary);
+      transform: scale(0.96);
     }
 
     .transport-btn:disabled {
@@ -682,6 +720,10 @@
             title="Load new random drum kit">
             <i class="fa-solid fa-drum"></i>
           </button>
+          <button type="button" id="clear-sequencer-btn" class="transport-btn transport-btn-secondary"
+            title="Clear entire sequencer">
+            <i class="fa-solid fa-eraser"></i>
+          </button>
         </div>
         <div class="transport-tempo">
           <label for="tempo-input">Tempo (bpm)</label>
@@ -999,6 +1041,11 @@
 
     document.getElementById("new-kit-btn").addEventListener("click", () => {
       if (socket.connected) socket.emit("requestNewKit");
+    });
+
+    document.getElementById("clear-sequencer-btn").addEventListener("click", () => {
+      initEmptyPattern();
+      renderGrid();
     });
 
     function clearPlayhead() {
