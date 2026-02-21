@@ -510,29 +510,112 @@ def transition_sweep(
         120,
         "--tempo",
         "-t",
-        help="Tempo in BPM for the sweep (default: 120).",
+        help="Tempo in BPM. With --bars, determines sweep length (default: 120).",
     ),
     bars: int = typer.Option(
         2,
         "--bars",
         "-b",
-        help="Length of the sweep in bars (default: 2).",
+        help="Length in bars (default: 2). At 120 BPM, 2 bars ≈ 4 seconds.",
+    ),
+    cutoff_low: int | None = typer.Option(
+        None,
+        "--cutoff-low",
+        "-l",
+        help="Filter cutoff (Hz) at sweep start. Lower = darker/muffled start. Random 300–700 if omitted.",
+    ),
+    cutoff_high: int | None = typer.Option(
+        None,
+        "--cutoff-high",
+        "-H",
+        help="Filter cutoff (Hz) at peak. Higher = brighter sweep. Random 10k–18k if omitted.",
+    ),
+    decay: float | None = typer.Option(
+        None,
+        "--decay",
+        "-d",
+        help="Decay rate after peak (1–10). Higher = faster fade-out. Random 2–6 if omitted.",
+    ),
+    peak_pos: float | None = typer.Option(
+        None,
+        "--peak-pos",
+        "-P",
+        help="Where the peak lands, 0.0–1.0 (0.5 = middle). Random 0.4–0.6 if omitted.",
+    ),
+    noise_level: float | None = typer.Option(
+        None,
+        "--noise-level",
+        "-n",
+        help="Noise amplitude (0.2–1.0). Higher = louder sweep. Random 0.45–0.8 if omitted.",
+    ),
+    noise_type: str | None = typer.Option(
+        None,
+        "--noise-type",
+        "-N",
+        help="Noise spectrum: white (flat), pink (1/f, warmer), brown (1/f², rumbly), blue (bright/hissy). Random if omitted.",
+    ),
+    filter_order: int | None = typer.Option(
+        None,
+        "--filter-order",
+        "-f",
+        help="Lowpass filter order: 2, 4, or 6. Higher = steeper rolloff. Random if omitted.",
+    ),
+    build_shape: str | None = typer.Option(
+        None,
+        "--build-shape",
+        "-s",
+        help="Build curve: ease_in (slow start), linear, ease_out (slow end). Random if omitted.",
     ),
     play: bool = typer.Option(
         False,
         "--play",
         "-p",
-        help="Open the exported file with the system's default WAV player",
+        help="Open the exported file with the system's default WAV player.",
     ),
 ):
-    """Generate a white noise sweep with LFO-modulated filter cutoff (techno/trance style)."""
+    """Generate a noise riser with LFO-modulated filter cutoff (techno/trance/house).
+
+    Use --noise-type to choose white, pink, brown, or blue noise. Builds from
+    muffled to bright, peaks, then smooth decay. Omit sound-design options to
+    randomize them for variation.
+    """
     start_time = time.time()
+
+    # Resolve build_shape for DSP
+    valid_shapes = ("ease_in", "linear", "ease_out")
+    build_shape_typed = None
+    if build_shape is not None:
+        if build_shape not in valid_shapes:
+            print(with_prompt(f"Error: --build-shape must be one of {valid_shapes}"))
+            raise typer.Exit(1)
+        build_shape_typed = build_shape
+
+    # Resolve noise_type for DSP
+    valid_noise = ("white", "pink", "brown", "blue")
+    noise_type_typed = None
+    if noise_type is not None:
+        nt = noise_type.lower()
+        if nt not in valid_noise:
+            print(with_prompt(f"Error: --noise-type must be one of {valid_noise}"))
+            raise typer.Exit(1)
+        noise_type_typed = nt
 
     print(get_version())
     print(generate_transition_header())
     print(with_prompt(f"sweep"))
     print(with_prompt(f"  tempo               {tempo}"))
     print(with_prompt(f"  bars                {bars}"))
+    for label, val in [
+        ("cutoff_low", cutoff_low),
+        ("cutoff_high", cutoff_high),
+        ("decay", decay),
+        ("peak_pos", peak_pos),
+        ("noise_level", noise_level),
+        ("noise_type", noise_type),
+        ("filter_order", filter_order),
+        ("build_shape", build_shape),
+    ]:
+        print(with_prompt(f"  {label:<18} {val if val is not None else GENERATED_LABEL}"))
     print(with_prompt(f"  play when done      {play}"))
     print(f"{RED}│{RESET}")
 
@@ -541,12 +624,25 @@ def transition_sweep(
     sample_name = format_name("___".join(name_parts))
     output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
 
-    generate_sweep_sample(tempo=tempo, bars=bars, output=output_path)
+    output_path, params_used = generate_sweep_sample(
+        tempo=tempo,
+        bars=bars,
+        output=output_path,
+        cutoff_low=cutoff_low,
+        cutoff_high=cutoff_high,
+        decay_rate=decay,
+        peak_pos=peak_pos,
+        noise_level=noise_level,
+        noise_type=noise_type_typed,
+        filter_order=filter_order,
+        build_shape=build_shape_typed,
+    )
 
     end_time = time.time()
     time_elapsed = round(end_time - start_time)
     print(f"{RED}■ completed in {time_elapsed}s{RESET}")
     print(with_prompt(f"generated: {output_path}"))
+    print(with_prompt(f"  used: {params_used['noise_type']} noise, cutoff {params_used['cutoff_low']}–{params_used['cutoff_high']}Hz, decay={params_used['decay_rate']:.2f}, peak={params_used['peak_pos']:.2f}"))
 
     if play:
         open_files_with_default_player([output_path])
