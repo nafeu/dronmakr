@@ -14,6 +14,7 @@ from build_preset import list_presets
 from webui import run as run_webui
 from generate_midi import generate_drone_midi, get_pattern_config
 from generate_sample import generate_drone_sample, generate_beat_sample
+from generate_transition import generate_sweep_sample
 from process_sample import process_drone_sample
 from utils import (
     format_name,
@@ -21,6 +22,7 @@ from utils import (
     generate_beat_name,
     generate_drone_name,
     generate_id,
+    generate_transition_header,
     get_cli_version,
     get_version,
     RED,
@@ -493,6 +495,66 @@ def generate_beat(
         open_files_with_default_player(results)
 
     return results
+
+
+# ---------------------------------------------------------------------------
+# generate-transition (group with sub-commands)
+# ---------------------------------------------------------------------------
+
+transition_app = typer.Typer(help="Generate transition sounds (sweeps, risers, etc.).")
+
+
+@transition_app.command("sweep")
+def transition_sweep(
+    tempo: int = typer.Option(
+        120,
+        "--tempo",
+        "-t",
+        help="Tempo in BPM for the sweep (default: 120).",
+    ),
+    bars: int = typer.Option(
+        2,
+        "--bars",
+        "-b",
+        help="Length of the sweep in bars (default: 2).",
+    ),
+    play: bool = typer.Option(
+        False,
+        "--play",
+        "-p",
+        help="Open the exported file with the system's default WAV player",
+    ),
+):
+    """Generate a white noise sweep with LFO-modulated filter cutoff (techno/trance style)."""
+    start_time = time.time()
+
+    print(get_version())
+    print(generate_transition_header())
+    print(with_prompt(f"sweep"))
+    print(with_prompt(f"  tempo               {tempo}"))
+    print(with_prompt(f"  bars                {bars}"))
+    print(with_prompt(f"  play when done      {play}"))
+    print(f"{RED}│{RESET}")
+
+    beat_name = generate_beat_name()
+    name_parts = ["transition_sweep", beat_name, f"{tempo}bpm", f"{bars}bars", generate_id()]
+    sample_name = format_name("___".join(name_parts))
+    output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+
+    generate_sweep_sample(tempo=tempo, bars=bars, output=output_path)
+
+    end_time = time.time()
+    time_elapsed = round(end_time - start_time)
+    print(f"{RED}■ completed in {time_elapsed}s{RESET}")
+    print(with_prompt(f"generated: {output_path}"))
+
+    if play:
+        open_files_with_default_player([output_path])
+
+    return [output_path]
+
+
+cli.add_typer(transition_app, name="generate-transition")
 
 
 @cli.command()

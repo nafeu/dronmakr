@@ -90,6 +90,10 @@ def generate_beat_header():
     return f"{CYAN}■ generating beat{RESET}"
 
 
+def generate_transition_header():
+    return f"{MAGENTA}■ generating transition{RESET}"
+
+
 def generate_id():
     return str(uuid.uuid4())[:8]
 
