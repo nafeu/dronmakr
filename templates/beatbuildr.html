@@ -1837,7 +1837,15 @@
 
     function encodePatternForSave() {
       const [num, den] = state.timeSignature.split("/").map(Number);
-      const encoded = { _meta: { gridSize: state.gridSize, timeSignature: [num || 4, den || 4], length: state.patternLength } };
+      const encoded = {
+        _meta: {
+          gridSize: state.gridSize,
+          timeSignature: [num || 4, den || 4],
+          length: state.patternLength,
+          tempo: state.bpm,
+          swing: state.swing,
+        },
+      };
       ROWS.forEach(rowKey => {
         encoded[rowKey] = state.pattern[rowKey] ? state.pattern[rowKey].slice() : [];
       });

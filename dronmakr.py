@@ -294,6 +294,12 @@ def generate_beat(
         "-p",
         help="Drum pattern style (random from config if not specified)",
     ),
+    randomize_tempo: bool = typer.Option(
+        False,
+        "--randomize-tempo",
+        "-r",
+        help="Ignore pattern's saved tempo and use random BPM (ignored if --bpm is set)",
+    ),
     swing: float = typer.Option(
         0.0,
         "--swing",
@@ -361,6 +367,7 @@ def generate_beat(
     print(get_version())
     print(with_prompt(f"tempo"))
     print(with_prompt(f"  bpm                 {bpm if bpm else GENERATED_LABEL}"))
+    print(with_prompt(f"  randomize-tempo     {randomize_tempo}"))
     print(with_prompt(f"  loops               {loops}"))
     print(
         with_prompt(f"pattern               {pattern if pattern else GENERATED_LABEL}")
@@ -383,14 +390,33 @@ def generate_beat(
             print(f"{RED}│{RESET}   iteration {iteration + 1} of {iterations}")
             print(f"{RED}│{RESET}")
 
-        # Determine BPM for this iteration
-        current_bpm = bpm if bpm else random.randint(80, 180)
-
         # Determine pattern for this iteration
         if matching_patterns is not None:
             current_pattern = random.choice(matching_patterns)
         else:
             current_pattern = random.choice(available_patterns)
+
+        raw = beat_patterns_data.get(current_pattern, {})
+        gs, ts, ln, meta_tempo, meta_swing = (None, None, None, None, None)
+        if isinstance(raw, dict) and raw:
+            gs, ts, ln, meta_tempo, meta_swing = get_pattern_config(raw)
+
+        pattern_config = None
+        if gs is not None:
+            pattern_config = {"gridSize": gs, "timeSignature": ts, "length": ln}
+
+        # Determine BPM: --bpm overrides all; else --randomize-tempo ignores _meta tempo; else use _meta tempo or random
+        if bpm is not None:
+            current_bpm = bpm
+        elif randomize_tempo:
+            current_bpm = random.randint(80, 180)
+        elif meta_tempo is not None:
+            current_bpm = int(meta_tempo)
+        else:
+            current_bpm = random.randint(80, 180)
+
+        # Use pattern's swing from _meta when available, otherwise CLI swing
+        current_swing = meta_swing if meta_swing is not None else swing
 
         # Generate beat name
         beat_name = generate_beat_name()
@@ -404,11 +430,6 @@ def generate_beat(
         print(generate_beat_header())
         print(with_generate_beat_prompt(f"bpm: {current_bpm}"))
         print(with_generate_beat_prompt(f"pattern: {current_pattern}"))
-        raw = beat_patterns_data.get(current_pattern, {})
-        pattern_config = None
-        if isinstance(raw, dict) and raw:
-            gs, ts, ln = get_pattern_config(raw)
-            pattern_config = {"gridSize": gs, "timeSignature": ts, "length": ln}
 
         generate_beat_sample(
             bpm=current_bpm,
@@ -416,7 +437,7 @@ def generate_beat(
             output=output_path,
             humanize=humanize,
             style=current_pattern,
-            swing=swing,
+            swing=current_swing,
             play=False,  # Never play during generation
             pattern_config=pattern_config,
         )

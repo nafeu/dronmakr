@@ -91,7 +91,7 @@ def compute_steps(grid_size: str, time_signature: list, length: int) -> int:
 
 
 def get_pattern_config(style_patterns: dict) -> tuple:
-    """Extract config from pattern data. Returns (grid_size, time_signature, length)."""
+    """Extract config from pattern data. Returns (grid_size, time_signature, length, tempo, swing)."""
     meta = style_patterns.get("_meta") if isinstance(style_patterns.get("_meta"), dict) else {}
     grid_size = meta.get("gridSize") or meta.get("grid_size") or DEFAULT_GRID_SIZE
     if grid_size not in GRID_STEPS_PER_BEAT:
@@ -102,7 +102,13 @@ def get_pattern_config(style_patterns: dict) -> tuple:
     length = meta.get("length", DEFAULT_PATTERN_LENGTH)
     if not isinstance(length, (int, float)) or length < 1:
         length = DEFAULT_PATTERN_LENGTH
-    return (grid_size, ts, int(length))
+    tempo = meta.get("tempo")
+    if tempo is not None and (not isinstance(tempo, (int, float)) or tempo < 1):
+        tempo = None
+    swing = meta.get("swing")
+    if swing is not None and (not isinstance(swing, (int, float)) or swing < 0 or swing > 1):
+        swing = None
+    return (grid_size, ts, int(length), tempo, swing)
 
 
 def get_beat_patterns(
@@ -139,7 +145,7 @@ def get_beat_patterns(
 
     style_patterns = {k: v for k, v in raw.items() if k in DRUM_ROW_ORDER}
     if "_meta" in raw:
-        gs, ts, ln = get_pattern_config(raw)
+        gs, ts, ln, _, _ = get_pattern_config(raw)
     else:
         gs, ts, ln = DEFAULT_GRID_SIZE, DEFAULT_TIME_SIGNATURE, DEFAULT_PATTERN_LENGTH
 
