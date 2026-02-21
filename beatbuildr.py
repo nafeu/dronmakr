@@ -430,6 +430,45 @@ def _handle_save_pattern(payload):
         )
 
 
+BEAT_PATTERNS_FILE = "config/beat-patterns.json"
+
+
+def _load_beat_patterns_config() -> dict:
+    """Load beat patterns from config/beat-patterns.json."""
+    ensure_beat_patterns()
+    if not os.path.exists(BEAT_PATTERNS_FILE):
+        return {}
+    try:
+        with open(BEAT_PATTERNS_FILE, "r") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def _handle_get_patterns():
+    """Return list of saved pattern names to the client."""
+    patterns_data = _load_beat_patterns_config()
+    names = [k for k in patterns_data.keys() if isinstance(patterns_data.get(k), dict)]
+    _socketio.emit("patterns", {"patterns": names})
+
+
+def _handle_load_pattern(payload):
+    """Load a pattern by name. Payload: { "name": str }. Emits patternLoaded with full pattern data."""
+    name = (payload or {}).get("name", "").strip()
+    if not name:
+        _socketio.emit("patternLoadResult", {"error": "Pattern name is required"})
+        return
+
+    patterns_data = _load_beat_patterns_config()
+    pattern_data = patterns_data.get(name)
+    if not pattern_data or not isinstance(pattern_data, dict):
+        _socketio.emit("patternLoadResult", {"error": f"Pattern '{name}' not found"})
+        return
+
+    _socketio.emit("patternLoaded", {"name": name, "pattern": pattern_data})
+    _socketio.emit("patternLoadResult", {"success": True, "name": name})
+
+
 def serve_kit_sample(filename: str):
     """Serve the currently selected drum kit samples to the browser."""
     kit_temp_root = Path(TEMP_DIR) / "beatbuildr"
@@ -649,6 +688,8 @@ def register_beatbuildr(app, socketio):
     socketio.on_event("requestNewKit", _handle_request_new_kit)
     socketio.on_event("replaceSample", _handle_replace_sample)
     socketio.on_event("savePattern", _handle_save_pattern)
+    socketio.on_event("getPatterns", _handle_get_patterns)
+    socketio.on_event("loadPattern", _handle_load_pattern)
     socketio.on_event("getDrumKits", _handle_get_drum_kits)
     socketio.on_event("loadKit", _handle_load_kit)
     socketio.on_event("saveKit", _handle_save_kit)

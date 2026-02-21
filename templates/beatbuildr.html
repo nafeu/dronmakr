@@ -755,8 +755,10 @@
 
     .browser-tabs {
       display: flex;
-      gap: 0.35rem;
+      align-items: center;
+      gap: 0.5rem;
       padding: 0 0.75rem 0.5rem;
+      flex-wrap: wrap;
     }
 
     .browser-tab-btn {
@@ -769,6 +771,9 @@
       background: var(--theme-a);
       color: var(--primary);
       transition: background 0.15s ease, border-color 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
     }
 
     .browser-tab-btn:hover {
@@ -780,6 +785,36 @@
       border-color: var(--primary);
       background: var(--primary);
       color: var(--secondary);
+    }
+
+    .browser-tab-divider {
+      width: 1px;
+      height: 1.25rem;
+      background: var(--theme-a);
+      flex-shrink: 0;
+    }
+
+    .browser-samples-row {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .browser-sample-type-select {
+      padding: 0.35rem 0.5rem;
+      font-family: inherit;
+      font-size: 0.75rem;
+      background: #0a0a0a;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      color: var(--primary);
+      cursor: pointer;
+      min-width: 6rem;
+    }
+
+    .browser-sample-type-select:focus {
+      outline: none;
+      border-color: var(--theme-b);
     }
 
     .browser-tab-panel {
@@ -846,7 +881,7 @@
       color: var(--primary);
       cursor: pointer;
       outline: 1px solid transparent;
-      transition: outline-color 0.15s ease;
+      transition: outline-color 0.15s ease, background 0.15s ease;
       display: flex;
       align-items: center;
       gap: 0.5rem;
@@ -855,6 +890,14 @@
       margin-right: 0.5rem;
       padding-inline: 0.5rem;
       border-radius: 3px;
+    }
+
+    .browser-list-item:hover {
+      background: rgba(255, 149, 5, 0.12);
+    }
+
+    .browser-list-item:active {
+      background: rgba(255, 149, 5, 0.22);
     }
 
     .browser-list-item-name-wrap {
@@ -1193,17 +1236,34 @@
       <div class="browser-card">
         <h2><i class="fa-solid fa-folder-open"></i> browser</h2>
         <div class="browser-tabs">
-          <button type="button" class="browser-tab-btn active" data-tab="kits">kits</button>
-          <button type="button" class="browser-tab-btn" data-tab="kick">kicks</button>
-          <button type="button" class="browser-tab-btn" data-tab="snare">snares</button>
-          <button type="button" class="browser-tab-btn" data-tab="hihat">hats</button>
-          <button type="button" class="browser-tab-btn" data-tab="clap">claps</button>
-          <button type="button" class="browser-tab-btn" data-tab="perc">percs</button>
-          <button type="button" class="browser-tab-btn" data-tab="tom">toms</button>
-          <button type="button" class="browser-tab-btn" data-tab="shaker">shakers</button>
-          <button type="button" class="browser-tab-btn" data-tab="cymbal">cymbals</button>
+          <button type="button" class="browser-tab-btn active" data-tab="patterns" title="Load saved patterns">
+            <i class="fa-solid fa-music"></i> patterns
+          </button>
+          <button type="button" class="browser-tab-btn" data-tab="kits" title="Load saved drum kits">
+            <i class="fa-solid fa-drum"></i> kits
+          </button>
+          <span class="browser-tab-divider"></span>
+          <div class="browser-samples-row">
+            <button type="button" class="browser-tab-btn" data-tab="samples" title="Browse samples by type">
+              <i class="fa-solid fa-headphones"></i> samples
+            </button>
+            <select id="browser-sample-type-select" class="browser-sample-type-select" title="Sample type">
+              <option value="kick">kicks</option>
+              <option value="snare">snares</option>
+              <option value="hihat">hats</option>
+              <option value="clap">claps</option>
+              <option value="perc">percs</option>
+              <option value="tom">toms</option>
+              <option value="shaker">shakers</option>
+              <option value="cymbal">cymbals</option>
+            </select>
+          </div>
         </div>
-        <div id="browser-tab-kits" class="browser-tab-panel">
+        <div id="browser-tab-patterns" class="browser-tab-panel">
+          <input type="text" id="browser-pattern-filter" class="browser-filter-input" placeholder="Filter patterns…">
+          <ul id="browser-pattern-list" class="browser-list"></ul>
+        </div>
+        <div id="browser-tab-kits" class="browser-tab-panel" hidden>
           <input type="text" id="browser-kit-filter" class="browser-filter-input" placeholder="Filter kits…">
           <ul id="browser-kit-list" class="browser-list"></ul>
         </div>
@@ -1917,6 +1977,7 @@
       } else if (data.success) {
         showStatusMessage(`Pattern "${data.name}" saved successfully`, "success");
         patternNameInput.value = "";
+        state.socket && state.socket.emit("getPatterns");
       } else if (data.error) {
         showStatusMessage(data.error, "error");
       }
@@ -1925,24 +1986,125 @@
     // Browser card – tab switching
     const SAMPLE_TYPES = ["kick", "snare", "hihat", "clap", "perc", "tom", "shaker", "cymbal"];
     const SAMPLE_TYPE_LABELS = { kick: "kicks", snare: "snares", hihat: "hats", clap: "claps", perc: "percs", tom: "toms", shaker: "shakers", cymbal: "cymbals" };
-    const browserTabBtns = document.querySelectorAll(".browser-tab-btn");
+    const browserTabBtns = document.querySelectorAll(".browser-tab-btn[data-tab]");
+    const browserTabPatterns = document.getElementById("browser-tab-patterns");
     const browserTabKits = document.getElementById("browser-tab-kits");
     const browserTabSamples = document.getElementById("browser-tab-samples");
+    const browserSampleTypeSelect = document.getElementById("browser-sample-type-select");
 
     browserTabBtns.forEach((btn) => {
       btn.addEventListener("click", () => {
         const tab = btn.dataset.tab;
         browserTabBtns.forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
+        browserTabPatterns.hidden = tab !== "patterns";
         browserTabKits.hidden = tab !== "kits";
-        browserTabSamples.hidden = tab === "kits";
-        if (tab === "kits") {
+        browserTabSamples.hidden = tab !== "samples";
+        if (tab === "patterns") {
+          state.socket && state.socket.emit("getPatterns");
+        } else if (tab === "kits") {
           state.socket && state.socket.emit("getDrumKits");
-        } else if (SAMPLE_TYPES.includes(tab)) {
-          currentSampleType = tab;
-          requestSamplesForType(tab);
+        } else if (tab === "samples") {
+          currentSampleType = browserSampleTypeSelect.value;
+          requestSamplesForType(currentSampleType);
         }
       });
+    });
+
+    browserSampleTypeSelect.addEventListener("change", () => {
+      currentSampleType = browserSampleTypeSelect.value;
+      if (!browserTabSamples.hidden) {
+        requestSamplesForType(currentSampleType);
+      }
+    });
+
+    // Browser – patterns list, filter, load
+    const browserPatternFilter = document.getElementById("browser-pattern-filter");
+    const browserPatternList = document.getElementById("browser-pattern-list");
+
+    let patternList = [];
+
+    function renderPatternList() {
+      const query = (browserPatternFilter.value || "").trim().toLowerCase();
+      const filtered = query
+        ? patternList.filter((name) => name.toLowerCase().includes(query))
+        : patternList;
+
+      browserPatternList.innerHTML = "";
+      if (filtered.length === 0) {
+        const li = document.createElement("li");
+        li.className = "browser-list-empty";
+        li.textContent = patternList.length === 0 ? "No patterns saved yet" : "No matching patterns";
+        browserPatternList.appendChild(li);
+        return;
+      }
+
+      filtered.forEach((patternName) => {
+        const li = document.createElement("li");
+        li.className = "browser-list-item";
+        li.innerHTML = "<i class=\"fa-solid fa-music\"></i> " + patternName;
+        li.dataset.patternName = patternName;
+        li.addEventListener("click", () => {
+          if (state.socket && state.socket.connected) {
+            state.socket.emit("loadPattern", { name: patternName });
+          }
+        });
+        browserPatternList.appendChild(li);
+      });
+    }
+
+    browserPatternFilter.addEventListener("input", renderPatternList);
+
+    socket.on("patterns", (data) => {
+      patternList = (data && data.patterns) ? [...data.patterns] : [];
+      renderPatternList();
+    });
+
+    function applyLoadedPattern(data) {
+      if (!data || !data.pattern) return;
+      const pattern = data.pattern;
+      const meta = (pattern._meta && typeof pattern._meta === "object") ? pattern._meta : {};
+
+      state.gridSize = (meta.gridSize === "1/16" || meta.gridSize === "1/16t") ? meta.gridSize : "1/16";
+      gridSizeSelect.value = state.gridSize;
+
+      const ts = (meta.timeSignature && Array.isArray(meta.timeSignature) && meta.timeSignature.length >= 2)
+        ? `${meta.timeSignature[0]}/${meta.timeSignature[1]}`
+        : "4/4";
+      state.timeSignature = ["4/4", "3/4"].includes(ts) ? ts : "4/4";
+      timeSignatureSelect.value = state.timeSignature;
+
+      state.patternLength = (typeof meta.length === "number" && meta.length >= 1 && meta.length <= 16)
+        ? Math.round(meta.length) : 1;
+      patternLengthInput.value = state.patternLength;
+
+      state.bpm = (typeof meta.tempo === "number" && meta.tempo >= 40 && meta.tempo <= 240)
+        ? Math.round(meta.tempo) : 120;
+      tempoInput.value = state.bpm;
+
+      state.swing = (typeof meta.swing === "number" && meta.swing >= 0 && meta.swing <= 1)
+        ? meta.swing : 0;
+      swingInput.value = Math.round(state.swing * 100);
+      swingDisplay.textContent = Math.round(state.swing * 100) + "%";
+
+      ROWS.forEach((rowKey) => {
+        const rowData = pattern[rowKey];
+        if (Array.isArray(rowData)) {
+          state.pattern[rowKey] = rowData.slice();
+        }
+      });
+
+      resizePatternToConfig();
+    }
+
+    socket.on("patternLoaded", (data) => {
+      applyLoadedPattern(data);
+    });
+
+    socket.on("patternLoadResult", (data) => {
+      if (data.error) {
+        showStatusMessage(data.error, "error");
+      }
     });
 
     // Browser – kits list, filter, load, save
@@ -1989,9 +2151,11 @@
       renderKitList();
     });
 
-    // Request drum kits when page loads (kits tab is default visible)
-    if (socket.connected) socket.emit("getDrumKits");
-    socket.on("connect", () => socket.emit("getDrumKits"));
+    // Request patterns when page loads (patterns tab is default visible)
+    if (socket.connected) socket.emit("getPatterns");
+    socket.on("connect", () => {
+      socket.emit("getPatterns");
+    });
 
     function encodeKitForSave() {
       if (!state.kit || !state.kit.kit) return null;
