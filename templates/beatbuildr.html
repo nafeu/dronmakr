@@ -864,16 +864,16 @@
     }
 
     .browser-samples-loading {
-      padding: 1rem;
       font-size: 0.75rem;
       color: var(--theme-a);
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.35rem;
+      padding-left: 0.25rem;
     }
 
     .browser-samples-loading[hidden] {
-      display: none;
+      display: none !important;
     }
 
     .browser-list-item {
@@ -1212,6 +1212,80 @@
     .replace-overlay-cancel:hover {
       background: rgba(255, 149, 5, 0.1);
     }
+
+    /* Confirm modal overlay */
+    .confirm-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    .confirm-modal-overlay[hidden] {
+      display: none !important;
+    }
+
+    .confirm-modal-content {
+      background: #050505;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      padding: 1rem;
+      min-width: 280px;
+    }
+
+    .confirm-modal-text {
+      font-size: 0.8rem;
+      color: var(--primary);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    .confirm-modal-text i {
+      color: var(--theme-c);
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+
+    .confirm-modal-buttons {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+    }
+
+    .confirm-modal-btn {
+      padding: 0.4rem 0.8rem;
+      font-family: inherit;
+      font-size: 0.75rem;
+      cursor: pointer;
+      border: 1px solid var(--theme-a);
+      border-radius: 3px;
+      background: var(--theme-a);
+      color: var(--primary);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .confirm-modal-btn:hover {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.15);
+    }
+
+    .confirm-modal-btn.primary {
+      background: var(--primary);
+      color: var(--secondary);
+      border-color: var(--primary);
+    }
+
+    .confirm-modal-btn.primary:hover {
+      background: #ff8900;
+      border-color: #ff8900;
+    }
   </style>
 </head>
 
@@ -1257,6 +1331,9 @@
               <option value="shaker">shakers</option>
               <option value="cymbal">cymbals</option>
             </select>
+            <div class="browser-samples-loading" id="browser-samples-loading" hidden>
+              <i class="fa-solid fa-spinner fa-spin"></i> Loading…
+            </div>
           </div>
         </div>
         <div id="browser-tab-patterns" class="browser-tab-panel">
@@ -1274,9 +1351,6 @@
               <i class="fa-solid fa-arrow-rotate-right"></i> Refresh
             </button>
           </div>
-          <div class="browser-samples-loading" id="browser-samples-loading" hidden>
-            <i class="fa-solid fa-spinner fa-spin"></i> Loading…
-          </div>
           <ul id="browser-sample-list" class="browser-list" tabindex="0"></ul>
         </div>
       </div>
@@ -1287,12 +1361,25 @@
           <button type="button" id="replace-overlay-cancel" class="replace-overlay-cancel">Cancel</button>
         </div>
       </div>
+      <div id="confirm-modal-overlay" class="confirm-modal-overlay" hidden>
+        <div class="confirm-modal-content">
+          <div id="confirm-modal-text" class="confirm-modal-text"></div>
+          <div class="confirm-modal-buttons">
+            <button type="button" id="confirm-modal-yes" class="confirm-modal-btn primary"><i class="fa-solid fa-check"></i> Yes</button>
+            <button type="button" id="confirm-modal-no" class="confirm-modal-btn"><i class="fa-solid fa-xmark"></i> No</button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <aside id="sidebar-column">
       <h2><i class="fa-solid fa-sliders"></i> preview settings</h2>
       <div id="transport">
         <div class="transport-actions">
+          <button type="button" id="new-pattern-btn" class="transport-btn transport-btn-secondary"
+            title="Start new pattern (reset all, load random kit)">
+            <i class="fa-solid fa-plus"></i>
+          </button>
           <button type="button" id="undo-btn" class="transport-btn transport-btn-secondary" title="Undo last edit"
             disabled>
             <i class="fa-solid fa-undo"></i>
@@ -1308,7 +1395,7 @@
           </button>
           <button type="button" id="new-kit-btn" class="transport-btn transport-btn-secondary"
             title="Load new random drum kit">
-            <i class="fa-solid fa-drum"></i>
+            <i class="fa-solid fa-dice-five"></i>
           </button>
           <button type="button" id="clear-sequencer-btn" class="transport-btn transport-btn-secondary"
             title="Clear entire sequencer">
@@ -1710,7 +1797,29 @@
     });
 
     document.getElementById("new-kit-btn").addEventListener("click", () => {
-      if (socket.connected) socket.emit("requestNewKit");
+      if (state.socket && state.socket.connected) state.socket.emit("requestNewKit");
+    });
+
+    document.getElementById("new-pattern-btn").addEventListener("click", () => {
+      showConfirmModal("Start new pattern? This will reset all settings, clear the sequencer, and load a random kit.", () => {
+        state.bpm = 120;
+        state.swing = 0;
+        state.gridSize = "1/16";
+        state.timeSignature = "4/4";
+        state.patternLength = 1;
+        tempoInput.value = state.bpm;
+        swingInput.value = 0;
+        swingDisplay.textContent = "0%";
+        gridSizeSelect.value = state.gridSize;
+        timeSignatureSelect.value = state.timeSignature;
+        patternLengthInput.value = state.patternLength;
+        patternNameInput.value = "";
+        browserKitNameInput.value = "";
+        initEmptyPattern();
+        if (state.socket && state.socket.connected) state.socket.emit("requestNewKit");
+        renderGrid();
+        updateUndoRedoButtons();
+      });
     });
 
     document.getElementById("clear-sequencer-btn").addEventListener("click", () => {
@@ -1926,35 +2035,25 @@
       }
     }
 
+    const confirmModalOverlay = document.getElementById("confirm-modal-overlay");
+    const confirmModalText = document.getElementById("confirm-modal-text");
+    const confirmModalYes = document.getElementById("confirm-modal-yes");
+    const confirmModalNo = document.getElementById("confirm-modal-no");
+
+    function showConfirmModal(message, onYes, onNo) {
+      confirmModalText.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i><span>${message}</span>`;
+      confirmModalOverlay.hidden = false;
+      const hide = () => { confirmModalOverlay.hidden = true; };
+      confirmModalYes.onclick = () => { hide(); onYes && onYes(); confirmModalYes.onclick = null; confirmModalNo.onclick = null; };
+      confirmModalNo.onclick = () => { hide(); onNo && onNo(); confirmModalYes.onclick = null; confirmModalNo.onclick = null; };
+    }
+
     function showConfirmPrompt(patternName) {
-      previewStatusArea.innerHTML = `
-        <div class="pattern-confirm-prompt">
-          <div class="pattern-confirm-prompt-text">
-            <i class="fa-solid fa-triangle-exclamation"></i> Pattern "${patternName}" exists. Overwrite?
-          </div>
-          <div class="pattern-confirm-buttons">
-            <button type="button" class="pattern-confirm-btn yes" data-confirm="yes">
-              <i class="fa-solid fa-check"></i> Yes
-            </button>
-            <button type="button" class="pattern-confirm-btn no" data-confirm="no">
-              <i class="fa-solid fa-xmark"></i> No
-            </button>
-          </div>
-        </div>
-      `;
-
-      const yesBtn = previewStatusArea.querySelector('[data-confirm="yes"]');
-      const noBtn = previewStatusArea.querySelector('[data-confirm="no"]');
-
-      yesBtn.addEventListener("click", () => {
+      showConfirmModal(`Are you sure you want to overwrite "${patternName}"?`, () => {
         const pattern = encodePatternForSave();
         if (state.socket && state.socket.connected) {
           state.socket.emit("savePattern", { name: patternName, pattern, overwrite: true });
         }
-      });
-
-      noBtn.addEventListener("click", () => {
-        previewStatusArea.innerHTML = "";
       });
     }
 
@@ -1976,7 +2075,6 @@
         showConfirmPrompt(data.name);
       } else if (data.success) {
         showStatusMessage(`Pattern "${data.name}" saved successfully`, "success");
-        patternNameInput.value = "";
         state.socket && state.socket.emit("getPatterns");
       } else if (data.error) {
         showStatusMessage(data.error, "error");
@@ -2045,6 +2143,7 @@
         li.innerHTML = "<i class=\"fa-solid fa-music\"></i> " + patternName;
         li.dataset.patternName = patternName;
         li.addEventListener("click", () => {
+          patternNameInput.value = patternName;
           if (state.socket && state.socket.connected) {
             state.socket.emit("loadPattern", { name: patternName });
           }
@@ -2086,6 +2185,8 @@
         ? meta.swing : 0;
       swingInput.value = Math.round(state.swing * 100);
       swingDisplay.textContent = Math.round(state.swing * 100) + "%";
+
+      if (data.name) patternNameInput.value = data.name;
 
       ROWS.forEach((rowKey) => {
         const rowData = pattern[rowKey];
@@ -2136,6 +2237,7 @@
         li.textContent = kitName;
         li.dataset.kitName = kitName;
         li.addEventListener("click", () => {
+          browserKitNameInput.value = kitName;
           if (state.socket && state.socket.connected) {
             state.socket.emit("loadKit", { name: kitName });
           }
@@ -2175,25 +2277,11 @@
     }
 
     function showKitConfirmPrompt(kitName) {
-      previewStatusArea.innerHTML = `
-        <div class="browser-confirm-prompt">
-          <div class="browser-confirm-prompt-text">
-            <i class="fa-solid fa-triangle-exclamation"></i> Kit "${kitName}" exists. Overwrite?
-          </div>
-          <div class="browser-confirm-buttons">
-            <button type="button" class="browser-confirm-btn yes" data-confirm="yes">Yes</button>
-            <button type="button" class="browser-confirm-btn no" data-confirm="no">No</button>
-          </div>
-        </div>
-      `;
-      previewStatusArea.querySelector('[data-confirm="yes"]').addEventListener("click", () => {
+      showConfirmModal(`Are you sure you want to overwrite "${kitName}"?`, () => {
         const kit = encodeKitForSave();
         if (kit && state.socket && state.socket.connected) {
           state.socket.emit("saveKit", { name: kitName, kit, overwrite: true });
         }
-      });
-      previewStatusArea.querySelector('[data-confirm="no"]').addEventListener("click", () => {
-        previewStatusArea.innerHTML = "";
       });
     }
 
@@ -2218,7 +2306,6 @@
         showKitConfirmPrompt(data.name);
       } else if (data.success) {
         showKitStatusMessage(`Kit "${data.name}" saved successfully`, "success");
-        browserKitNameInput.value = "";
       } else if (data.error) {
         showKitStatusMessage(data.error, "error");
       }
