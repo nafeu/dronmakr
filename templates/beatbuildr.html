@@ -382,6 +382,39 @@
       outline: none;
     }
 
+    .transport-setting {
+      margin-bottom: 0.5rem;
+    }
+
+    .transport-setting label {
+      display: block;
+      font-size: 0.7rem;
+      color: var(--theme-a);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.35rem;
+    }
+
+    .transport-setting select,
+    .transport-setting input[type="number"] {
+      width: 100%;
+      min-height: 2.5rem;
+      padding: 0.5rem 0.75rem;
+      font-family: inherit;
+      font-size: 0.95rem;
+      background: #0a0a0a;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      color: var(--primary);
+      box-sizing: border-box;
+    }
+
+    .transport-setting select:focus,
+    .transport-setting input[type="number"]:focus {
+      outline: none;
+      border-color: var(--theme-b);
+    }
+
     .pattern-save-section {
       margin-top: 1rem;
       padding-top: 1rem;
@@ -531,19 +564,26 @@
       opacity: 0.8;
     }
 
+    .sequencer-scroll-wrapper {
+      overflow: auto;
+      max-height: 420px;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+    }
+
     #sequencer-grid {
       border-left: 1px solid var(--theme-a);
       font-size: 0.7rem;
-      overflow: auto;
       display: flex;
       flex-direction: column;
       align-items: flex-start;
+      min-width: fit-content;
     }
 
     .grid-row {
       display: grid;
-      grid-template-columns: var(--grid-label-width) repeat(16, var(--grid-cell-size));
       align-items: stretch;
+      min-width: fit-content;
     }
 
     .grid-row-label {
@@ -644,13 +684,13 @@
 
     .grid-header {
       display: grid;
-      grid-template-columns: var(--grid-label-width) repeat(16, var(--grid-cell-size));
       border-top: 1px solid var(--theme-a);
       border-bottom: 1px solid var(--theme-a);
       background: #050505;
       position: sticky;
       top: 0;
       z-index: 5;
+      min-width: fit-content;
     }
 
     .grid-header-label {
@@ -1147,7 +1187,9 @@
 
   <main id="app-layout">
     <section id="main-column">
-      <div id="sequencer-grid"></div>
+      <div class="sequencer-scroll-wrapper">
+        <div id="sequencer-grid"></div>
+      </div>
       <div class="browser-card">
         <h2><i class="fa-solid fa-folder-open"></i> browser</h2>
         <div class="browser-tabs">
@@ -1228,6 +1270,24 @@
               title="Swing amount (0 = straight, 100 = triplet feel)">
           </div>
         </div>
+        <div class="transport-setting transport-grid-size">
+          <label for="grid-size-select">Grid size</label>
+          <select id="grid-size-select" title="Note grid resolution">
+            <option value="1/16">1/16</option>
+            <option value="1/16t">1/16 triplet</option>
+          </select>
+        </div>
+        <div class="transport-setting transport-time-signature">
+          <label for="time-signature-select">Time signature</label>
+          <select id="time-signature-select" title="Beats per bar">
+            <option value="4/4">4/4</option>
+            <option value="3/4">3/4</option>
+          </select>
+        </div>
+        <div class="transport-setting transport-pattern-length">
+          <label for="pattern-length-input">Pattern length (bars)</label>
+          <input type="number" id="pattern-length-input" min="1" max="16" value="1" title="Number of bars">
+        </div>
         <div class="pattern-save-section">
           <h3><i class="fa-solid fa-floppy-disk"></i> Save Pattern</h3>
           <div class="pattern-save-row">
@@ -1255,9 +1315,16 @@
 
   <script>
     const ROWS = ["kick", "snar", "ghos", "clap", "hhat", "halt", "shkr", "prca", "prcb", "prcc", "tomm", "cymb"];
-    const STEPS = 16;
     const BPM_MIN = 40;
     const BPM_MAX = 240;
+    const GRID_STEPS_PER_BEAT = { "1/16": 4, "1/16t": 6 };
+    const TIME_SIG_BEATS = { "4/4": 4, "3/4": 3 };
+
+    function getSteps() {
+      const spb = GRID_STEPS_PER_BEAT[state.gridSize] || 4;
+      const bpb = TIME_SIG_BEATS[state.timeSignature] || 4;
+      return spb * bpb * state.patternLength;
+    }
 
     const state = {
       kit: null,
@@ -1265,6 +1332,9 @@
       buffers: {}, // { rowKey: AudioBuffer | null }
       bpm: 120,
       swing: 0, // 0.0 to 1.0 (0 = straight, 1 = triplet feel)
+      gridSize: "1/16",
+      timeSignature: "4/4",
+      patternLength: 1,
       undoState: null,  // { type: 'pattern', data } | { type: 'kit', data: { row, path, name, url } }
       redoState: null,
     };
@@ -1285,7 +1355,8 @@
     const redoBtn = document.getElementById("redo-btn");
 
     function getStepDurationSec() {
-      return 60 / state.bpm / 4; // 16th-note
+      const spb = GRID_STEPS_PER_BEAT[state.gridSize] || 4;
+      return 60 / state.bpm / spb;
     }
 
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -1294,8 +1365,9 @@
     let playIntervalId = null;
 
     function initEmptyPattern() {
+      const steps = getSteps();
       ROWS.forEach(row => {
-        state.pattern[row] = new Array(STEPS).fill(0);
+        state.pattern[row] = new Array(steps).fill(0);
         state.buffers[row] = null;
       });
       state.undoState = null;
@@ -1374,19 +1446,24 @@
     function renderGrid() {
       gridContainer.innerHTML = "";
 
+      const steps = getSteps();
+      const gridCols = `var(--grid-label-width) repeat(${steps}, var(--grid-cell-size))`;
+
       const header = document.createElement("div");
       header.className = "grid-header";
+      header.style.gridTemplateColumns = gridCols;
 
       const headerLabel = document.createElement("div");
       headerLabel.className = "grid-header-label";
       headerLabel.innerHTML = "<i class=\"fa-solid fa-table-cells\"></i> sample";
       header.appendChild(headerLabel);
 
-      for (let step = 0; step < STEPS; step++) {
+      const spb = GRID_STEPS_PER_BEAT[state.gridSize] || 4;
+      for (let step = 0; step < steps; step++) {
         const stepEl = document.createElement("div");
         stepEl.className = "grid-header-step";
-        const isQuarter = step % 4 === 0;
-        if (isQuarter) {
+        const isBeat = step % spb === 0;
+        if (isBeat) {
           stepEl.classList.add("beat");
         }
         stepEl.textContent = step + 1;
@@ -1398,6 +1475,7 @@
       ROWS.forEach((rowKey) => {
         const rowWrapper = document.createElement("div");
         rowWrapper.className = "grid-row";
+        rowWrapper.style.gridTemplateColumns = gridCols;
 
         const rowLabel = document.createElement("div");
         rowLabel.className = "grid-row-label";
@@ -1445,10 +1523,11 @@
         rowLabel.appendChild(sampleWrap);
         rowWrapper.appendChild(rowLabel);
 
-        for (let step = 0; step < STEPS; step++) {
+        for (let step = 0; step < steps; step++) {
           const cell = document.createElement("div");
           cell.className = "grid-cell";
-          if (state.pattern[rowKey][step] === 1) {
+          const val = state.pattern[rowKey] && state.pattern[rowKey][step];
+          if (val === 1) {
             cell.classList.add("active");
           }
 
@@ -1607,18 +1686,13 @@
     }
 
     function getSwingOffsetForStep(stepIndex) {
-      /**
-       * Calculate swing timing offset for a given step.
-       * Swing delays off-beat 8th notes (positions 2, 6, 10, 14 in 16-step grid).
-       * Returns offset in seconds.
-       */
       if (state.swing <= 0) return 0;
-
-      const posInBeat = stepIndex % 4;
-      // Apply swing to off-beat 8th notes (3rd 16th in each group of 4)
-      if (posInBeat === 2) {
-        const beatDurationSec = 60 / state.bpm; // quarter note
-        const swingTripletOffsetSec = beatDurationSec / 6.0; // 1/6 of beat
+      const spb = GRID_STEPS_PER_BEAT[state.gridSize] || 4;
+      const posInBeat = stepIndex % spb;
+      const offBeatStep = Math.floor(spb / 2);
+      if (posInBeat === offBeatStep) {
+        const beatDurationSec = 60 / state.bpm;
+        const swingTripletOffsetSec = beatDurationSec / 6.0;
         return state.swing * swingTripletOffsetSec;
       }
       return 0;
@@ -1645,7 +1719,7 @@
     function advanceStep() {
       updatePlayhead(currentStep);
       scheduleStep(currentStep);
-      currentStep = (currentStep + 1) % STEPS;
+      currentStep = (currentStep + 1) % getSteps();
     }
 
     async function startPlayback() {
@@ -1719,6 +1793,40 @@
       swingDisplay.textContent = `${val}%`;
     });
 
+    function resizePatternToConfig() {
+      const steps = getSteps();
+      ROWS.forEach(rowKey => {
+        const current = state.pattern[rowKey] || [];
+        const next = new Array(steps).fill(0);
+        const copyLen = Math.min(current.length, steps);
+        for (let i = 0; i < copyLen; i++) next[i] = current[i];
+        state.pattern[rowKey] = next;
+      });
+      renderGrid();
+      if (isPlaying) restartPlaybackInterval();
+    }
+
+    const gridSizeSelect = document.getElementById("grid-size-select");
+    const timeSignatureSelect = document.getElementById("time-signature-select");
+    const patternLengthInput = document.getElementById("pattern-length-input");
+
+    gridSizeSelect.addEventListener("change", () => {
+      state.gridSize = gridSizeSelect.value;
+      resizePatternToConfig();
+    });
+    timeSignatureSelect.addEventListener("change", () => {
+      state.timeSignature = timeSignatureSelect.value;
+      resizePatternToConfig();
+    });
+    patternLengthInput.addEventListener("change", () => {
+      let val = parseInt(patternLengthInput.value, 10);
+      if (Number.isNaN(val) || val < 1) val = 1;
+      val = Math.min(16, val);
+      state.patternLength = val;
+      patternLengthInput.value = state.patternLength;
+      resizePatternToConfig();
+    });
+
     undoBtn.addEventListener("click", undo);
     redoBtn.addEventListener("click", redo);
 
@@ -1728,9 +1836,10 @@
     const previewStatusArea = document.getElementById("preview-status-area");
 
     function encodePatternForSave() {
-      const encoded = {};
+      const [num, den] = state.timeSignature.split("/").map(Number);
+      const encoded = { _meta: { gridSize: state.gridSize, timeSignature: [num || 4, den || 4], length: state.patternLength } };
       ROWS.forEach(rowKey => {
-        encoded[rowKey] = state.pattern[rowKey].slice();
+        encoded[rowKey] = state.pattern[rowKey] ? state.pattern[rowKey].slice() : [];
       });
       return encoded;
     }

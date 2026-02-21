@@ -67,14 +67,55 @@ SUPPORTED_PATTERNS = [item[0] for item in SUPPORTED_PATTERNS_INFO]
 
 
 def get_patterns():
-    return {"patterns": SUPPORTED_PATTERNS}
+    """Return list of MIDI pattern names for drone generation (used by webui/auditionr)."""
+    return sorted(SUPPORTED_PATTERNS)
 
 
-def get_beat_patterns(style: str, steps: int) -> Tuple[List[int], ...]:
+DRUM_ROW_ORDER = [
+    "kick", "snar", "ghos", "clap", "hhat", "halt",
+    "shkr", "prca", "prcb", "prcc", "tomm", "cymb",
+]
+
+# Beat pattern configuration
+GRID_STEPS_PER_BEAT = {"1/16": 4, "1/16t": 6}
+DEFAULT_GRID_SIZE = "1/16"
+DEFAULT_TIME_SIGNATURE = [4, 4]
+DEFAULT_PATTERN_LENGTH = 1
+
+
+def compute_steps(grid_size: str, time_signature: list, length: int) -> int:
+    """Compute total steps from pattern config."""
+    steps_per_beat = GRID_STEPS_PER_BEAT.get(grid_size, 4)
+    beats_per_bar = time_signature[0] if time_signature and len(time_signature) >= 1 else 4
+    return steps_per_beat * beats_per_bar * length
+
+
+def get_pattern_config(style_patterns: dict) -> tuple:
+    """Extract config from pattern data. Returns (grid_size, time_signature, length)."""
+    meta = style_patterns.get("_meta") if isinstance(style_patterns.get("_meta"), dict) else {}
+    grid_size = meta.get("gridSize") or meta.get("grid_size") or DEFAULT_GRID_SIZE
+    if grid_size not in GRID_STEPS_PER_BEAT:
+        grid_size = DEFAULT_GRID_SIZE
+    ts = meta.get("timeSignature") or meta.get("time_signature") or DEFAULT_TIME_SIGNATURE
+    if not isinstance(ts, list) or len(ts) < 2:
+        ts = DEFAULT_TIME_SIGNATURE
+    length = meta.get("length", DEFAULT_PATTERN_LENGTH)
+    if not isinstance(length, (int, float)) or length < 1:
+        length = DEFAULT_PATTERN_LENGTH
+    return (grid_size, ts, int(length))
+
+
+def get_beat_patterns(
+    style: str,
+    steps: int | None = None,
+    grid_size: str | None = None,
+    time_signature: list | None = None,
+    length: int | None = None,
+) -> Tuple[Tuple[List[int], ...], dict]:
     """
-    Returns drum patterns (kick, snare, ghost_snare, clap, hihat, hihat_alt,
-    shaker, perc_a, perc_b, perc_c, tom, cymbal) for a given style and step count.
-    Patterns are stored in JSON and loaded on first use.
+    Returns (drum_patterns_tuple, config_dict) for a given style.
+    config_dict has gridSize, timeSignature, length, steps.
+    Patterns are stored in JSON. Legacy patterns (no _meta) get defaults.
     """
     base = 16
 
@@ -89,37 +130,45 @@ def get_beat_patterns(style: str, steps: int) -> Tuple[List[int], ...]:
 
     patterns = load_beat_patterns()
 
-    # Fallback to "default" style if the requested style is not defined
     if style not in patterns:
         style = "default"
 
-    style_patterns = patterns[style]
+    raw = patterns[style]
+    if not isinstance(raw, dict):
+        raw = {}
 
-    # Ensure consistent instrument ordering
+    style_patterns = {k: v for k, v in raw.items() if k in DRUM_ROW_ORDER}
+    if "_meta" in raw:
+        gs, ts, ln = get_pattern_config(raw)
+    else:
+        gs, ts, ln = DEFAULT_GRID_SIZE, DEFAULT_TIME_SIGNATURE, DEFAULT_PATTERN_LENGTH
 
-    drum_sample_order = [
-        "kick",
-        "snar",
-        "ghos",
-        "clap",
-        "hhat",
-        "halt",
-        "shkr",
-        "prca",
-        "prcb",
-        "prcc",
-        "tomm",
-        "cymb",
-    ]
+    if grid_size is not None:
+        gs = grid_size
+    if time_signature is not None:
+        ts = time_signature
+    if length is not None:
+        ln = length
+
+    computed_steps = steps if steps is not None else compute_steps(gs, ts, ln)
+    drum_sample_order = DRUM_ROW_ORDER
 
     def pad(pattern):
-        return (pattern * ((steps // len(pattern)) + 1))[:steps]
+        return (list(pattern) * ((computed_steps // len(pattern)) + 1))[:computed_steps]
 
-    # Provide a sensible default for any missing instrument in the JSON
     def get_drum_sample_pattern(name):
-        return style_patterns.get(name, [0] * base)
+        p = style_patterns.get(name)
+        if p is None:
+            return [0] * base
+        return list(p) if hasattr(p, "__iter__") and not isinstance(p, str) else [0] * base
 
-    return tuple(pad(get_drum_sample_pattern(name)) for name in drum_sample_order)
+    config = {
+        "gridSize": gs,
+        "timeSignature": ts,
+        "length": ln,
+        "steps": computed_steps,
+    }
+    return tuple(pad(get_drum_sample_pattern(name)) for name in drum_sample_order), config
 
 
 def filter_chords(chords, filters):

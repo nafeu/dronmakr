@@ -359,6 +359,7 @@ def _handle_save_pattern(payload):
     """
     Save a beat pattern to config/beat-patterns.json.
     Payload: { "name": str, "pattern": dict, "overwrite": bool }
+    pattern: { rowKey: [0/1,...], "_meta"?: { gridSize, timeSignature, length } }
     """
     name = (payload or {}).get("name", "").strip()
     pattern = (payload or {}).get("pattern")
@@ -373,7 +374,8 @@ def _handle_save_pattern(payload):
         return
 
     expected_rows = set(DRUM_ROW_ORDER)
-    if set(pattern.keys()) != expected_rows:
+    pattern_rows = {k for k in pattern.keys() if k != "_meta"}
+    if pattern_rows != expected_rows:
         _socketio.emit("patternSaveResult", {"error": "Invalid pattern structure"})
         return
 
@@ -402,12 +404,19 @@ def _handle_save_pattern(payload):
                 is_last_pattern = i == len(pattern_items) - 1
                 f.write(f'  "{pattern_name}": {{\n')
 
-                row_items = list(pattern_data.items())
+                meta = pattern_data.get("_meta")
+                row_items = [(k, v) for k, v in pattern_data.items() if k != "_meta"]
+                written = 0
+                if meta and isinstance(meta, dict):
+                    meta_str = json.dumps(meta)
+                    f.write(f'    "_meta": {meta_str},\n')
+                    written += 1
                 for j, (row_key, row_values) in enumerate(row_items):
                     is_last_row = j == len(row_items) - 1
                     values_str = json.dumps(row_values)
                     comma = "" if is_last_row else ","
                     f.write(f'    "{row_key}": {values_str}{comma}\n')
+                    written += 1
 
                 comma = "" if is_last_pattern else ","
                 f.write(f"  }}{comma}\n")

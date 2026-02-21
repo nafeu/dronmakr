@@ -12,7 +12,7 @@ import typer
 from settings import ensure_settings
 from build_preset import list_presets
 from webui import run as run_webui
-from generate_midi import generate_drone_midi
+from generate_midi import generate_drone_midi, get_pattern_config
 from generate_sample import generate_drone_sample, generate_beat_sample
 from process_sample import process_drone_sample
 from utils import (
@@ -404,6 +404,12 @@ def generate_beat(
         print(generate_beat_header())
         print(with_generate_beat_prompt(f"bpm: {current_bpm}"))
         print(with_generate_beat_prompt(f"pattern: {current_pattern}"))
+        raw = beat_patterns_data.get(current_pattern, {})
+        pattern_config = None
+        if isinstance(raw, dict) and raw:
+            gs, ts, ln = get_pattern_config(raw)
+            pattern_config = {"gridSize": gs, "timeSignature": ts, "length": ln}
+
         generate_beat_sample(
             bpm=current_bpm,
             bars=loops,
@@ -412,6 +418,7 @@ def generate_beat(
             style=current_pattern,
             swing=swing,
             play=False,  # Never play during generation
+            pattern_config=pattern_config,
         )
 
         results.append(output_path)
