@@ -437,6 +437,93 @@
       border-color: var(--theme-b);
     }
 
+    .transport-export-actions {
+      margin: 0.5rem 0;
+    }
+
+    .export-btn {
+      width: 100%;
+      min-height: 2.5rem;
+      padding: 0.5rem 1rem;
+      font-family: inherit;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      border: 1px solid var(--primary);
+      border-radius: 4px;
+      background: var(--primary);
+      color: var(--secondary);
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+    }
+
+    .export-btn:hover:not(:disabled) {
+      background: #ff8900;
+      border-color: #ff8900;
+    }
+
+    .export-btn:active:not(:disabled) {
+      background: #e67e00;
+      border-color: #e67e00;
+    }
+
+    .export-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .export-info-status {
+      margin-top: 0.75rem;
+      padding: 0.6rem 0.75rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      border: 1px solid var(--theme-a);
+      background: rgba(1, 111, 185, 0.08);
+    }
+
+    .export-info-status.success {
+      border-color: rgba(76, 175, 80, 0.4);
+      background: rgba(76, 175, 80, 0.12);
+      overflow-wrap: break-word;
+      word-break: break-word;
+    }
+
+    .export-success-label {
+      font-size: 0.7rem;
+      color: rgba(76, 175, 80, 0.9);
+      margin-bottom: 0.35rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .export-info-status.success #export-result-link,
+    .export-info-status.success #export-result-link:link,
+    .export-info-status.success #export-result-link:visited {
+      color: rgba(76, 175, 80, 0.95);
+      text-decoration: none;
+      word-break: break-all;
+      overflow-wrap: anywhere;
+      display: block;
+      line-height: 1.4;
+    }
+
+    .export-info-status.success #export-result-link:hover,
+    .export-info-status.success #export-result-link:focus {
+      color: rgba(76, 175, 80, 1);
+      text-decoration: underline;
+    }
+
+    .export-info-status.error {
+      border-color: rgba(244, 67, 54, 0.4);
+      background: rgba(244, 67, 54, 0.12);
+      color: #f44336;
+    }
+
     .pattern-save-section {
       margin-top: 1rem;
       padding-top: 1rem;
@@ -1538,6 +1625,22 @@
           <label for="pattern-length-input">Pattern length (bars)</label>
           <input type="number" id="pattern-length-input" min="1" max="16" value="1" title="Number of bars">
         </div>
+        <div class="sidebar-section-divider"></div>
+        <h3 class="sidebar-section-label"><i class="fa-solid fa-file-export"></i> Export</h3>
+        <div class="transport-setting transport-export">
+          <label for="export-loops-input">Loops</label>
+          <input type="number" id="export-loops-input" min="1" max="64" value="1" title="Number of times to repeat the pattern on export">
+        </div>
+        <div class="transport-export-actions">
+          <button type="button" id="export-btn" class="export-btn" title="Export as WAV">
+            <i class="fa-solid fa-download"></i> Export WAV
+          </button>
+        </div>
+        <div id="export-status" class="export-info-status" hidden>
+          <span class="export-success-label" id="export-success-label">Export successful</span>
+          <a id="export-result-link" href="#" target="_blank" rel="noopener"></a>
+          <span id="export-error"></span>
+        </div>
       </div>
     </aside>
   </main>
@@ -2080,6 +2183,85 @@
 
     undoBtn.addEventListener("click", undo);
     redoBtn.addEventListener("click", redo);
+
+    // Export
+    const exportLoopsInput = document.getElementById("export-loops-input");
+    const exportBtn = document.getElementById("export-btn");
+    const exportStatusEl = document.getElementById("export-status");
+    const exportResultLink = document.getElementById("export-result-link");
+    const exportErrorEl = document.getElementById("export-error");
+
+    function isPatternEmpty() {
+      return ROWS.every((row) => {
+        const arr = state.pattern[row] || [];
+        return !arr.some((v) => v === 1);
+      });
+    }
+
+    exportBtn.addEventListener("click", () => {
+      if (!state.socket || !state.socket.connected) return;
+      const kit = encodeKitForSave ? encodeKitForSave() : null;
+      if (!kit) {
+        showErrorModal("No drum kit loaded. Load or generate a kit first.");
+        return;
+      }
+      if (isPatternEmpty()) {
+        showErrorModal("Sequencer is empty. Add at least one step before exporting.");
+        return;
+      }
+      const pattern = encodePatternForSave();
+      const loops = Math.max(1, parseInt(exportLoopsInput.value, 10) || 1);
+      exportLoopsInput.value = String(loops);
+      exportStatusEl.hidden = true;
+      exportStatusEl.classList.remove("success", "error");
+      const exportSuccessLabel = document.getElementById("export-success-label");
+      if (exportSuccessLabel) exportSuccessLabel.hidden = true;
+      exportResultLink.href = "#";
+      exportResultLink.textContent = "";
+      exportResultLink.hidden = true;
+      exportErrorEl.textContent = "";
+      exportErrorEl.hidden = true;
+      exportBtn.disabled = true;
+      exportBtn.querySelector("i").className = "fa-solid fa-spinner fa-spin";
+      state.socket.emit("exportBeat", {
+        bpm: state.bpm,
+        swing: state.swing,
+        gridSize: state.gridSize,
+        timeSignature: state.timeSignature.split("/").map(Number),
+        length: state.patternLength,
+        loops,
+        humanize: true,
+        pattern,
+        kit,
+        patternName: (document.getElementById("pattern-name-input")?.value || "").trim(),
+        kitName: (document.getElementById("browser-kit-name-input")?.value || "").trim(),
+      });
+    });
+
+    socket.on("exportBeatResult", (data) => {
+      exportBtn.disabled = false;
+      exportBtn.querySelector("i").className = "fa-solid fa-download";
+      exportStatusEl.hidden = false;
+      if (data.success && data.filename) {
+        exportStatusEl.classList.remove("error");
+        exportStatusEl.classList.add("success");
+        const exportSuccessLabel = document.getElementById("export-success-label");
+        if (exportSuccessLabel) exportSuccessLabel.hidden = false;
+        exportResultLink.href = "/exports/" + data.filename;
+        exportResultLink.textContent = data.filename;
+        exportResultLink.hidden = false;
+        exportErrorEl.textContent = "";
+        exportErrorEl.hidden = true;
+      } else if (data.error) {
+        exportStatusEl.classList.remove("success");
+        exportStatusEl.classList.add("error");
+        const exportSuccessLabel = document.getElementById("export-success-label");
+        if (exportSuccessLabel) exportSuccessLabel.hidden = true;
+        exportResultLink.hidden = true;
+        exportErrorEl.textContent = data.error;
+        exportErrorEl.hidden = false;
+      }
+    });
 
     // Pattern save functionality
     const patternNameInput = document.getElementById("pattern-name-input");

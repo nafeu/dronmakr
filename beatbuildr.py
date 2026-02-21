@@ -16,9 +16,14 @@ from flask import send_from_directory
 from settings import get_setting
 
 from utils import (
+    EXPORTS_DIR,
     TEMP_DIR,
     delete_all_files,
+    format_name,
+    generate_beat_name,
+    generate_id,
 )
+from generate_sample import generate_beat_sample
 
 # Injected by register_beatbuildr(app, socketio); used by socket handlers for emits.
 _socketio = None
@@ -668,6 +673,100 @@ def _handle_replace_sample_with_path(payload):
         _socketio.emit("sampleReplaced", {"row": row, **descriptor})
 
 
+def _resolve_kit_path(row: str, path_str: str) -> str | None:
+    """Resolve a kit path to a filesystem path. Handles /kit-samples/ URLs and temp copies."""
+    if not path_str or not isinstance(path_str, str):
+        return None
+    s = path_str.strip()
+    if "/kit-samples/" in s:
+        filename = s.split("/kit-samples/")[-1].split("?")[0]
+        if filename:
+            resolved = Path(TEMP_DIR) / "beatbuildr" / filename
+            if resolved.exists():
+                return str(resolved)
+    p = Path(s)
+    if p.exists() and p.is_file():
+        return str(p)
+    # Fallback: temp copy from load_kit (row_originalname)
+    temp_path = Path(TEMP_DIR) / "beatbuildr" / f"{row}_{p.name}"
+    if temp_path.exists():
+        return str(temp_path)
+    return None
+
+
+def _handle_export_beat(payload):
+    """
+    Export current beat as WAV using page state (kit + pattern).
+    Payload: bpm, swing, gridSize, timeSignature, length, loops, humanize,
+             pattern (full with _meta), kit (row->{path}), patternName?, kitName?
+    """
+    p = payload or {}
+    bpm = int(p.get("bpm", 120))
+    swing = float(p.get("swing", 0.0))
+    grid_size = p.get("gridSize", "1/16")
+    time_sig = p.get("timeSignature", [4, 4])
+    length = int(p.get("length", 1))
+    loops = max(1, int(p.get("loops", 1)))
+    humanize = p.get("humanize", True)
+    pattern = p.get("pattern")
+    kit = p.get("kit")
+    pattern_name = (p.get("patternName") or "").strip()
+    kit_name = (p.get("kitName") or "").strip()
+
+    if not kit or not isinstance(kit, dict):
+        _socketio.emit("exportBeatResult", {"error": "No drum kit loaded"})
+        return
+
+    # Build kit_paths from kit
+    kit_paths = {}
+    for row in DRUM_ROW_ORDER:
+        desc = kit.get(row)
+        if desc and isinstance(desc, dict):
+            path_str = desc.get("path")
+            resolved = _resolve_kit_path(row, path_str)
+            if resolved:
+                kit_paths[row] = resolved
+
+    if not kit_paths:
+        _socketio.emit("exportBeatResult", {"error": "No valid samples in kit"})
+        return
+
+    if not pattern or not isinstance(pattern, dict):
+        _socketio.emit("exportBeatResult", {"error": "Invalid pattern data"})
+        return
+
+    # Build output filename: drumpattern___beatname___pattern___kit___bpm___id
+    beat_name = generate_beat_name()
+    name_parts = ["drumpattern", beat_name]
+    name_parts.append(format_name(pattern_name) if pattern_name else "pattern")
+    name_parts.append(format_name(kit_name) if kit_name else "kit")
+    name_parts.append(f"{bpm}bpm")
+    name_parts.append(generate_id())
+    sample_name = format_name("___".join(name_parts))
+    output_path = os.path.join(EXPORTS_DIR, f"{sample_name}.wav")
+
+    os.makedirs(EXPORTS_DIR, exist_ok=True)
+
+    try:
+        generate_beat_sample(
+            bpm=bpm,
+            bars=length,
+            output=output_path,
+            humanize=humanize,
+            style="",
+            swing=swing,
+            play=False,
+            pattern_config={"gridSize": grid_size, "timeSignature": time_sig, "length": length},
+            kit_paths=kit_paths,
+            pattern_data=pattern,
+            loops=loops,
+        )
+        filename = os.path.basename(output_path)
+        _socketio.emit("exportBeatResult", {"success": True, "filename": filename})
+    except Exception as e:
+        _socketio.emit("exportBeatResult", {"error": str(e)})
+
+
 def register_beatbuildr(app, socketio):
     """Register beatbuildr routes and socket handlers on the given app and socketio."""
     global _socketio
@@ -696,6 +795,7 @@ def register_beatbuildr(app, socketio):
     socketio.on_event("getSamples", _handle_get_samples)
     socketio.on_event("refreshSamples", _handle_refresh_samples)
     socketio.on_event("replaceSampleWithPath", _handle_replace_sample_with_path)
+    socketio.on_event("exportBeat", _handle_export_beat)
 
 
 if __name__ == "__main__":

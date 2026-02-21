@@ -282,17 +282,33 @@ def generate_drone(
     return results
 
 
+def _load_drum_kits_for_cli():
+    """Load drum kits from config/drum-kits.json for CLI use."""
+    path = "config/drum-kits.json"
+    if not os.path.exists(path):
+        return {}
+    with open(path, "r") as f:
+        data = json.load(f)
+    return data if isinstance(data, dict) else {}
+
+
 @cli.command(name="generate-beat")
 def generate_beat(
     bpm: int = typer.Option(
         None, "--bpm", "-t", help="Beats per minute (random 80-180 if not specified)"
     ),
-    loops: int = typer.Option(1, "--loops", "-l", help="Number of bars to generate"),
+    loops: int = typer.Option(1, "--loops", "-l", help="Number of bars per pattern loop"),
     pattern: str = typer.Option(
         None,
         "--pattern",
         "-p",
         help="Drum pattern style (random from config if not specified)",
+    ),
+    kit: str = typer.Option(
+        None,
+        "--kit",
+        "-k",
+        help="Drum kit name from config/drum-kits.json (uses env sample folders if not specified)",
     ),
     randomize_tempo: bool = typer.Option(
         False,
@@ -364,6 +380,19 @@ def generate_beat(
                 sys.exit(1)
             matching_patterns = [pattern]
 
+    # Resolve kit if --kit specified
+    kit_paths = None
+    kit_name_for_file = ""
+    if kit is not None and kit:
+        drum_kits = _load_drum_kits_for_cli()
+        if kit not in drum_kits:
+            print(with_prompt(f"Error: Kit '{kit}' not found in config/drum-kits.json"))
+            sys.exit(1)
+        kit_paths = drum_kits[kit]
+        if not isinstance(kit_paths, dict):
+            kit_paths = {}
+        kit_name_for_file = format_name(kit)
+
     print(get_version())
     print(with_prompt(f"tempo"))
     print(with_prompt(f"  bpm                 {bpm if bpm else GENERATED_LABEL}"))
@@ -372,6 +401,7 @@ def generate_beat(
     print(
         with_prompt(f"pattern               {pattern if pattern else GENERATED_LABEL}")
     )
+    print(with_prompt(f"kit                   {kit if kit else GENERATED_LABEL}"))
     print(with_prompt(f"swing                 {swing}"))
     print(with_prompt(f"humanize              {humanize}"))
     print(with_prompt(f"play when done        {play}"))
@@ -421,10 +451,13 @@ def generate_beat(
         # Generate beat name
         beat_name = generate_beat_name()
 
-        # Generate output filename (metadata separated by ___ like generate-drone)
-        sample_name = format_name(
-            f"drumpattern___{beat_name}___{current_pattern}___{current_bpm}bpm___{generate_id()}"
-        )
+        # Generate output filename: drumpattern___beatname___pattern___kit?___bpm___id
+        name_parts = ["drumpattern", beat_name, current_pattern]
+        if kit_name_for_file:
+            name_parts.append(kit_name_for_file)
+        name_parts.append(f"{current_bpm}bpm")
+        name_parts.append(generate_id())
+        sample_name = format_name("___".join(name_parts))
         output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
 
         print(generate_beat_header())
@@ -440,6 +473,7 @@ def generate_beat(
             swing=current_swing,
             play=False,  # Never play during generation
             pattern_config=pattern_config,
+            kit_paths=kit_paths,
         )
 
         results.append(output_path)

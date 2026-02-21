@@ -311,6 +311,14 @@ def get_random_sample(folder: Path) -> AudioSegment:
     return AudioSegment.from_wav(str(random.choice(files)))
 
 
+def load_sample_from_path(path: str | Path) -> AudioSegment:
+    """Load a single WAV file from the given path."""
+    p = Path(path)
+    if not p.exists() or not p.is_file():
+        raise ValueError(f"Sample file not found: {path}")
+    return AudioSegment.from_wav(str(p))
+
+
 def adjust_velocity(segment: AudioSegment, db_change: int) -> AudioSegment:
     """Adjust segment level by db_change decibels."""
     return segment + db_change
@@ -349,34 +357,41 @@ def generate_beat_sample(
     swing: float = 0.0,
     play: bool = False,
     pattern_config: dict | None = None,
+    kit_paths: dict[str, str] | None = None,
+    pattern_data: dict | None = None,
+    loops: int = 1,
 ) -> str:
     """
-    Generate a drum loop from settings-configured sample folders and export to WAV.
-    Uses get_beat_patterns from generate_midi for pattern data.
-    pattern_config can provide gridSize, timeSignature, length (bars).
+    Generate a drum loop and export to WAV.
+    - When kit_paths is provided: load samples from those paths (row -> path).
+    - When pattern_data is provided: use pattern arrays + _meta instead of beat-patterns.json.
+    - Otherwise: use settings-configured sample folders and get_beat_patterns.
     """
-    print(with_generate_beat_prompt("loading samples from settings"))
+    if kit_paths:
+        print(with_generate_beat_prompt("loading samples from kit"))
+    else:
+        print(with_generate_beat_prompt("loading samples from settings"))
 
     cfg = pattern_config or {}
-    grid_size = cfg.get("gridSize", "1/16")
-    time_sig = cfg.get("timeSignature", [4, 4])
-    length = int(cfg.get("length", 1))
+    if pattern_data and isinstance(pattern_data.get("_meta"), dict):
+        meta = pattern_data["_meta"]
+        cfg = {**cfg, "gridSize": meta.get("gridSize"), "timeSignature": meta.get("timeSignature"), "length": meta.get("length")}
+    grid_size = cfg.get("gridSize") or "1/16"
+    time_sig = cfg.get("timeSignature") or [4, 4]
+    length = int(cfg.get("length") or 1)
     if bars is not None:
         length = bars
 
-    steps_per_beat = 4 if grid_size == "1/16" else 6  # 1/16t
+    steps_per_beat = 4 if grid_size == "1/16" else 6
     beats_per_bar = time_sig[0] if time_sig else 4
     steps = steps_per_beat * beats_per_bar * length
 
-    # Step duration in ms: 1 step = (60/bpm) / steps_per_beat seconds
     step_duration_ms = (60.0 / bpm) * 1000.0 / steps_per_beat
-
     swing_clamped = max(0.0, min(1.0, float(swing)))
     beat_ms = (60.0 / bpm) * 1000.0
     swing_triplet_offset_ms = beat_ms / 6.0
 
     def swing_offset_for_step(step_index: int) -> float:
-        """Apply swing to 8th-note offbeats."""
         if swing_clamped <= 0.0:
             return 0.0
         pos_in_beat = step_index % steps_per_beat
@@ -385,43 +400,83 @@ def generate_beat_sample(
             return swing_clamped * swing_triplet_offset_ms
         return 0.0
 
-    drum_path = lambda key: random.choice([p.strip() for p in get_setting(key, "").split(",") if p.strip()] or [""])
-    kicks = Path(drum_path("DRUM_KICK_PATHS") or ".")
-    hihats = Path(drum_path("DRUM_HIHAT_PATHS") or ".")
-    percs = Path(drum_path("DRUM_PERC_PATHS") or ".")
-    toms = Path(drum_path("DRUM_TOM_PATHS") or ".")
-    snares = Path(drum_path("DRUM_SNARE_PATHS") or ".")
-    shakers = Path(drum_path("DRUM_SHAKER_PATHS") or ".")
-    claps = Path(drum_path("DRUM_CLAP_PATHS") or ".")
-    cymbals = Path(drum_path("DRUM_CYMBAL_PATHS") or ".")
+    # Load samples: from kit_paths or from settings
+    def _pad(arr, n):
+        return (list(arr) * ((n // len(arr)) + 1))[:n] if arr else [0] * n
 
-    kick = get_random_sample(kicks)
-    snare = get_random_sample(snares)
-    ghost_snare = get_random_sample(snares)
-    hihat = get_random_sample(hihats)
-    hihat_alt = get_random_sample(hihats)
-    perc_a = get_random_sample(percs)
-    perc_b = get_random_sample(percs)
-    perc_c = get_random_sample(percs)
-    clap = get_random_sample(claps)
-    tom = get_random_sample(toms)
-    shaker = get_random_sample(shakers)
-    cymbal = get_random_sample(cymbals)
+    if kit_paths:
+        def _load(row: str, fallback_row: str | None = None) -> AudioSegment:
+            path = kit_paths.get(row) or (kit_paths.get(fallback_row) if fallback_row else None)
+            if not path:
+                raise ValueError(f"No sample path for row {row}")
+            return load_sample_from_path(path)
+        kick = _load("kick")
+        snare = _load("snar")
+        ghost_snare = _load("ghos", "snar")
+        hihat = _load("hhat")
+        hihat_alt = _load("halt", "hhat")
+        perc_a = _load("prca")
+        perc_b = _load("prcb")
+        perc_c = _load("prcc")
+        clap = _load("clap")
+        tom = _load("tomm")
+        shaker = _load("shkr")
+        cymbal = _load("cymb")
+    else:
+        drum_path = lambda key: random.choice([p.strip() for p in get_setting(key, "").split(",") if p.strip()] or [""])
+        kicks = Path(drum_path("DRUM_KICK_PATHS") or ".")
+        hihats = Path(drum_path("DRUM_HIHAT_PATHS") or ".")
+        percs = Path(drum_path("DRUM_PERC_PATHS") or ".")
+        toms = Path(drum_path("DRUM_TOM_PATHS") or ".")
+        snares = Path(drum_path("DRUM_SNARE_PATHS") or ".")
+        shakers = Path(drum_path("DRUM_SHAKER_PATHS") or ".")
+        claps = Path(drum_path("DRUM_CLAP_PATHS") or ".")
+        cymbals = Path(drum_path("DRUM_CYMBAL_PATHS") or ".")
+        kick = get_random_sample(kicks)
+        snare = get_random_sample(snares)
+        ghost_snare = get_random_sample(snares)
+        hihat = get_random_sample(hihats)
+        hihat_alt = get_random_sample(hihats)
+        perc_a = get_random_sample(percs)
+        perc_b = get_random_sample(percs)
+        perc_c = get_random_sample(percs)
+        clap = get_random_sample(claps)
+        tom = get_random_sample(toms)
+        shaker = get_random_sample(shakers)
+        cymbal = get_random_sample(cymbals)
 
-    (
-        kick_pattern,
-        snare_pattern,
-        ghost_snare_pattern,
-        clap_pattern,
-        hihat_pattern,
-        hihat_alt_pattern,
-        shaker_pattern,
-        perc_a_pattern,
-        perc_b_pattern,
-        perc_c_pattern,
-        tom_pattern,
-        cymbal_pattern,
-    ) = get_beat_patterns(style, steps=steps, grid_size=grid_size, time_signature=time_sig, length=length)[0]
+    # Pattern arrays: from pattern_data or get_beat_patterns
+    if pattern_data and isinstance(pattern_data, dict):
+        def get_row_pattern(name: str):
+            p = pattern_data.get(name)
+            return _pad(p, steps) if p is not None and hasattr(p, "__iter__") and not isinstance(p, str) else [0] * steps
+        kick_pattern = get_row_pattern("kick")
+        snare_pattern = get_row_pattern("snar")
+        ghost_snare_pattern = get_row_pattern("ghos")
+        clap_pattern = get_row_pattern("clap")
+        hihat_pattern = get_row_pattern("hhat")
+        hihat_alt_pattern = get_row_pattern("halt")
+        shaker_pattern = get_row_pattern("shkr")
+        perc_a_pattern = get_row_pattern("prca")
+        perc_b_pattern = get_row_pattern("prcb")
+        perc_c_pattern = get_row_pattern("prcc")
+        tom_pattern = get_row_pattern("tomm")
+        cymbal_pattern = get_row_pattern("cymb")
+    else:
+        (
+            kick_pattern,
+            snare_pattern,
+            ghost_snare_pattern,
+            clap_pattern,
+            hihat_pattern,
+            hihat_alt_pattern,
+            shaker_pattern,
+            perc_a_pattern,
+            perc_b_pattern,
+            perc_c_pattern,
+            tom_pattern,
+            cymbal_pattern,
+        ) = get_beat_patterns(style, steps=steps, grid_size=grid_size, time_signature=time_sig, length=length)[0]
 
     approx_loop_ms = steps * step_duration_ms + swing_triplet_offset_ms * swing_clamped + 100
     track = AudioSegment.silent(duration=int(round(approx_loop_ms))).set_frame_rate(BEAT_EXPORT_SAMPLE_RATE)
@@ -528,7 +583,14 @@ def generate_beat_sample(
     exact_loop_sec = length * beats_per_bar * 60.0 / bpm
     exact_sample_count = round(exact_loop_sec * BEAT_EXPORT_SAMPLE_RATE)
     exact_loop_ms = exact_sample_count * 1000.0 / BEAT_EXPORT_SAMPLE_RATE
-    track = track[: int(round(exact_loop_ms))]
+    one_loop = track[: int(round(exact_loop_ms))]
+
+    # Repeat loop N times when loops > 1
+    loops_clamped = max(1, int(loops))
+    if loops_clamped > 1:
+        track = one_loop * loops_clamped
+    else:
+        track = one_loop
 
     # Export as 16-bit, 44.1 kHz for DAW compatibility (Ableton, etc.). Ableton rejects
     # 32-bit and non-standard WAV formats. Normalize to this format so tempo analysis works.
