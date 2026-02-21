@@ -5,6 +5,7 @@ from typing import Literal
 
 import numpy as np
 import soundfile as sf
+from pedalboard import Chorus, Pedalboard, Phaser
 from scipy.signal import butter, lfilter, lfilter_zi
 
 SAMPLE_RATE = 44100
@@ -31,6 +32,22 @@ NOISE_TYPES: tuple[Literal["white", "pink", "brown", "blue"], ...] = (
 TREMOLO_DEPTH_RANGE = (0.4, 0.9)
 TREMOLO_RATE_MIN_RANGE = (1.0, 4.0)
 TREMOLO_RATE_MAX_RANGE = (10.0, 25.0)
+
+# Modulation effect ranges (phaser, chorus, flanger) for randomization
+PHASER_RATE_RANGE = (0.2, 2.0)
+PHASER_DEPTH_RANGE = (0.4, 0.9)
+PHASER_CENTRE_RANGE = (500, 2500)
+PHASER_FEEDBACK_RANGE = (0.2, 0.6)
+PHASER_MIX_RANGE = (0.3, 0.7)
+CHORUS_RATE_RANGE = (0.3, 1.5)
+CHORUS_DEPTH_RANGE = (0.15, 0.4)
+CHORUS_DELAY_RANGE = (5.0, 10.0)
+CHORUS_MIX_RANGE = (0.3, 0.6)
+FLANGER_RATE_RANGE = (0.2, 0.8)
+FLANGER_DEPTH_RANGE = (0.3, 0.5)
+FLANGER_DELAY_RANGE = (1.0, 3.0)
+FLANGER_FEEDBACK_RANGE = (0.2, 0.5)
+FLANGER_MIX_RANGE = (0.4, 0.6)
 
 
 def _generate_noise(
@@ -118,6 +135,50 @@ def _riser_build_curve(
     return cutoff_frac, envelope, lfo_rate_frac
 
 
+def _build_modulation_board(
+    phaser: bool,
+    chorus: bool,
+    flanger: bool,
+    rng: random.Random,
+) -> tuple[Pedalboard | None, dict]:
+    """Build a Pedalboard with phaser, chorus, and/or flanger. Returns (board, params_used)."""
+    plugins = []
+    mod_params: dict = {}
+    if phaser:
+        p = {
+            "rate_hz": rng.uniform(*PHASER_RATE_RANGE),
+            "depth": rng.uniform(*PHASER_DEPTH_RANGE),
+            "centre_frequency_hz": rng.uniform(*PHASER_CENTRE_RANGE),
+            "feedback": rng.uniform(*PHASER_FEEDBACK_RANGE),
+            "mix": rng.uniform(*PHASER_MIX_RANGE),
+        }
+        mod_params["phaser"] = p
+        plugins.append(Phaser(**p))
+    if chorus:
+        c = {
+            "rate_hz": rng.uniform(*CHORUS_RATE_RANGE),
+            "depth": rng.uniform(*CHORUS_DEPTH_RANGE),
+            "centre_delay_ms": rng.uniform(*CHORUS_DELAY_RANGE),
+            "feedback": 0.0,
+            "mix": rng.uniform(*CHORUS_MIX_RANGE),
+        }
+        mod_params["chorus"] = c
+        plugins.append(Chorus(**c))
+    if flanger:
+        f = {
+            "rate_hz": rng.uniform(*FLANGER_RATE_RANGE),
+            "depth": rng.uniform(*FLANGER_DEPTH_RANGE),
+            "centre_delay_ms": rng.uniform(*FLANGER_DELAY_RANGE),
+            "feedback": rng.uniform(*FLANGER_FEEDBACK_RANGE),
+            "mix": rng.uniform(*FLANGER_MIX_RANGE),
+        }
+        mod_params["flanger"] = f
+        plugins.append(Chorus(**f))
+    if not plugins:
+        return None, {}
+    return Pedalboard(plugins), mod_params
+
+
 def _compute_tremolo_gain(
     num_samples: int,
     lfo_rate_frac: np.ndarray,
@@ -152,6 +213,9 @@ def generate_sweep_sample(
     tremolo_depth: float | None = None,
     tremolo_rate_min: float | None = None,
     tremolo_rate_max: float | None = None,
+    phaser: bool | None = None,
+    chorus: bool | None = None,
+    flanger: bool | None = None,
 ) -> str:
     """
     Generate a noise riser with LFO-modulated filter cutoff.
@@ -177,6 +241,12 @@ def generate_sweep_sample(
     tremolo_rate_min = max(0.5, min(8.0, tremolo_rate_min))
     tremolo_rate_max = tremolo_rate_max if tremolo_rate_max is not None else random.uniform(*TREMOLO_RATE_MAX_RANGE)
     tremolo_rate_max = max(tremolo_rate_min + 2.0, min(40.0, tremolo_rate_max))
+    if phaser is None:
+        phaser = random.random() < 0.5
+    if chorus is None:
+        chorus = random.random() < 0.5
+    if flanger is None:
+        flanger = random.random() < 0.5
 
     beats_per_bar = 4
     total_beats = bars * beats_per_bar
@@ -218,6 +288,19 @@ def generate_sweep_sample(
     if peak > 0.9:
         out = out * (0.9 / peak)
 
+    # Apply modulation effects (phaser, chorus, flanger) via pedalboard
+    mod_board, mod_params = _build_modulation_board(phaser, chorus, flanger, random)
+    if mod_board is not None:
+        audio_2d = out.reshape(1, -1).astype(np.float32)
+        processed = mod_board(audio_2d, SAMPLE_RATE)
+        if processed.shape[0] == 2:
+            out = np.mean(processed, axis=0).astype(np.float32)
+        else:
+            out = processed[0].astype(np.float32)
+        peak = np.max(np.abs(out))
+        if peak > 0.9:
+            out = out * (0.9 / peak)
+
     sf.write(output, out, SAMPLE_RATE, subtype="PCM_16")
 
     params_used = {
@@ -232,5 +315,9 @@ def generate_sweep_sample(
         "tremolo_depth": tremolo_depth,
         "tremolo_rate_min": tremolo_rate_min,
         "tremolo_rate_max": tremolo_rate_max,
+        "phaser": phaser,
+        "chorus": chorus,
+        "flanger": flanger,
+        "modulation_params": mod_params,
     }
     return output, params_used

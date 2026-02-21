@@ -581,6 +581,21 @@ def transition_sweep(
         "--tremolo-rate-max",
         help="Tremolo LFO rate (Hz) at peak. Random 10–25 if omitted.",
     ),
+    phaser: bool | None = typer.Option(
+        None,
+        "--phaser/--no-phaser",
+        help="Add phaser effect. Random if neither specified.",
+    ),
+    chorus: bool | None = typer.Option(
+        None,
+        "--chorus/--no-chorus",
+        help="Add chorus effect. Random if neither specified.",
+    ),
+    flanger: bool | None = typer.Option(
+        None,
+        "--flanger/--no-flanger",
+        help="Add flanger effect (Chorus with short delay + feedback). Random if neither specified.",
+    ),
     play: bool = typer.Option(
         False,
         "--play",
@@ -632,6 +647,9 @@ def transition_sweep(
         ("tremolo_depth", tremolo_depth),
         ("tremolo_rate_min", tremolo_rate_min),
         ("tremolo_rate_max", tremolo_rate_max),
+        ("phaser", phaser),
+        ("chorus", chorus),
+        ("flanger", flanger),
     ]:
         print(with_prompt(f"  {label:<18} {val if val is not None else GENERATED_LABEL}"))
     print(with_prompt(f"  play when done      {play}"))
@@ -657,6 +675,9 @@ def transition_sweep(
         tremolo_depth=tremolo_depth,
         tremolo_rate_min=tremolo_rate_min,
         tremolo_rate_max=tremolo_rate_max,
+        phaser=phaser,
+        chorus=chorus,
+        flanger=flanger,
     )
 
     end_time = time.time()
@@ -664,7 +685,9 @@ def transition_sweep(
     print(f"{RED}■ completed in {time_elapsed}s{RESET}")
     print(with_prompt(f"generated: {output_path}"))
     t = params_used
-    print(with_prompt(f"  used: {t['noise_type']} noise, cutoff {t['cutoff_low']}–{t['cutoff_high']}Hz, tremolo depth={t['tremolo_depth']:.2f} rate={t['tremolo_rate_min']:.1f}–{t['tremolo_rate_max']:.1f}Hz"))
+    mod_str = ", ".join(m for m in ["phaser", "chorus", "flanger"] if t.get(m))
+    fx_str = f", fx=[{mod_str}]" if mod_str else ""
+    print(with_prompt(f"  used: {t['noise_type']} noise, cutoff {t['cutoff_low']}–{t['cutoff_high']}Hz, tremolo depth={t['tremolo_depth']:.2f} rate={t['tremolo_rate_min']:.1f}–{t['tremolo_rate_max']:.1f}Hz{fx_str}"))
 
     if play:
         open_files_with_default_player([output_path])
