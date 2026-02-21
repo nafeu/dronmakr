@@ -566,6 +566,21 @@ def transition_sweep(
         "-s",
         help="Build curve: ease_in (slow start), linear, ease_out (slow end). Random if omitted.",
     ),
+    tremolo_depth: float | None = typer.Option(
+        None,
+        "--tremolo-depth",
+        help="Gain LFO depth (0–1). 0=off, 0.9=volume dips to 10% at trough. Random 0.4–0.9 if omitted.",
+    ),
+    tremolo_rate_min: float | None = typer.Option(
+        None,
+        "--tremolo-rate-min",
+        help="Tremolo LFO rate (Hz) at sweep start. Oscillations speed up toward peak. Random 1–4 if omitted.",
+    ),
+    tremolo_rate_max: float | None = typer.Option(
+        None,
+        "--tremolo-rate-max",
+        help="Tremolo LFO rate (Hz) at peak. Random 10–25 if omitted.",
+    ),
     play: bool = typer.Option(
         False,
         "--play",
@@ -614,6 +629,9 @@ def transition_sweep(
         ("noise_type", noise_type),
         ("filter_order", filter_order),
         ("build_shape", build_shape),
+        ("tremolo_depth", tremolo_depth),
+        ("tremolo_rate_min", tremolo_rate_min),
+        ("tremolo_rate_max", tremolo_rate_max),
     ]:
         print(with_prompt(f"  {label:<18} {val if val is not None else GENERATED_LABEL}"))
     print(with_prompt(f"  play when done      {play}"))
@@ -636,13 +654,17 @@ def transition_sweep(
         noise_type=noise_type_typed,
         filter_order=filter_order,
         build_shape=build_shape_typed,
+        tremolo_depth=tremolo_depth,
+        tremolo_rate_min=tremolo_rate_min,
+        tremolo_rate_max=tremolo_rate_max,
     )
 
     end_time = time.time()
     time_elapsed = round(end_time - start_time)
     print(f"{RED}■ completed in {time_elapsed}s{RESET}")
     print(with_prompt(f"generated: {output_path}"))
-    print(with_prompt(f"  used: {params_used['noise_type']} noise, cutoff {params_used['cutoff_low']}–{params_used['cutoff_high']}Hz, decay={params_used['decay_rate']:.2f}, peak={params_used['peak_pos']:.2f}"))
+    t = params_used
+    print(with_prompt(f"  used: {t['noise_type']} noise, cutoff {t['cutoff_low']}–{t['cutoff_high']}Hz, tremolo depth={t['tremolo_depth']:.2f} rate={t['tremolo_rate_min']:.1f}–{t['tremolo_rate_max']:.1f}Hz"))
 
     if play:
         open_files_with_default_player([output_path])

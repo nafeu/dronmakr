@@ -28,6 +28,9 @@ NOISE_TYPES: tuple[Literal["white", "pink", "brown", "blue"], ...] = (
     "brown",
     "blue",
 )
+TREMOLO_DEPTH_RANGE = (0.4, 0.9)
+TREMOLO_RATE_MIN_RANGE = (1.0, 4.0)
+TREMOLO_RATE_MAX_RANGE = (10.0, 25.0)
 
 
 def _generate_noise(
@@ -83,10 +86,11 @@ def _riser_build_curve(
     peak_pos: float,
     decay_rate: float,
     build_shape: Literal["ease_in", "linear", "ease_out"],
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Riser curves: cutoff and envelope build from 0 to 1 by peak_pos,
     then cutoff stays open while envelope does a smooth exponential decay.
+    Also returns lfo_rate_frac (0->1 during build, 1->0 during release) for tremolo.
     """
     x = np.clip(normalized_t, 0, 1)
     build = x <= peak_pos
@@ -106,7 +110,31 @@ def _riser_build_curve(
     envelope[build] = build_val
     envelope[release] = decay_val
 
-    return cutoff_frac, envelope
+    # LFO rate curve: increases during build, decreases during release (for tremolo)
+    lfo_rate_frac = np.empty_like(x)
+    lfo_rate_frac[build] = build_val
+    lfo_rate_frac[release] = decay_val
+
+    return cutoff_frac, envelope, lfo_rate_frac
+
+
+def _compute_tremolo_gain(
+    num_samples: int,
+    lfo_rate_frac: np.ndarray,
+    rate_min_hz: float,
+    rate_max_hz: float,
+    depth: float,
+) -> np.ndarray:
+    """Gain modulation: sine LFO, rate follows lfo_rate_frac. depth=0 disables."""
+    if depth <= 0:
+        return np.ones(num_samples, dtype=np.float64)
+
+    rate_hz = rate_min_hz + (rate_max_hz - rate_min_hz) * lfo_rate_frac
+    phase_inc = 2 * np.pi * rate_hz / SAMPLE_RATE
+    phase = np.cumsum(phase_inc)
+    # Gain: 1 at peak of sine, 1-depth at trough. (1 + sin) / 2 gives 0..1, so gain = 1 - depth * (1 + sin) / 2
+    gain = 1.0 - depth * (1.0 + np.sin(phase)) / 2.0
+    return np.clip(gain, 0.01, 1.0)
 
 
 def generate_sweep_sample(
@@ -121,6 +149,9 @@ def generate_sweep_sample(
     noise_type: Literal["white", "pink", "brown", "blue"] | None = None,
     filter_order: int | None = None,
     build_shape: Literal["ease_in", "linear", "ease_out"] | None = None,
+    tremolo_depth: float | None = None,
+    tremolo_rate_min: float | None = None,
+    tremolo_rate_max: float | None = None,
 ) -> str:
     """
     Generate a noise riser with LFO-modulated filter cutoff.
@@ -140,6 +171,12 @@ def generate_sweep_sample(
     filter_order = filter_order if filter_order is not None else random.choice(FILTER_ORDERS)
     filter_order = 2 if filter_order == 2 else (4 if filter_order == 4 else 6)
     build_shape = build_shape if build_shape is not None else random.choice(BUILD_SHAPES)
+    tremolo_depth = tremolo_depth if tremolo_depth is not None else random.uniform(*TREMOLO_DEPTH_RANGE)
+    tremolo_depth = max(0.0, min(1.0, tremolo_depth))
+    tremolo_rate_min = tremolo_rate_min if tremolo_rate_min is not None else random.uniform(*TREMOLO_RATE_MIN_RANGE)
+    tremolo_rate_min = max(0.5, min(8.0, tremolo_rate_min))
+    tremolo_rate_max = tremolo_rate_max if tremolo_rate_max is not None else random.uniform(*TREMOLO_RATE_MAX_RANGE)
+    tremolo_rate_max = max(tremolo_rate_min + 2.0, min(40.0, tremolo_rate_max))
 
     beats_per_bar = 4
     total_beats = bars * beats_per_bar
@@ -151,8 +188,11 @@ def generate_sweep_sample(
 
     t = np.arange(num_samples, dtype=np.float64) / num_samples
 
-    cutoff_frac, envelope = _riser_build_curve(t, peak_pos, decay_rate, build_shape)
+    cutoff_frac, envelope, lfo_rate_frac = _riser_build_curve(t, peak_pos, decay_rate, build_shape)
     cutoffs_hz = cutoff_low + cutoff_frac * (cutoff_high - cutoff_low)
+    tremolo_gain = _compute_tremolo_gain(
+        num_samples, lfo_rate_frac, tremolo_rate_min, tremolo_rate_max, tremolo_depth
+    )
 
     out = np.zeros(num_samples, dtype=np.float32)
     nyq = 0.5 * SAMPLE_RATE
@@ -170,7 +210,8 @@ def generate_sweep_sample(
         filtered, zi = lfilter(b, a, block, zi=zi_use)
 
         env_block = envelope[start:end]
-        out[start:end] = (filtered * env_block).astype(np.float32)
+        trem_block = tremolo_gain[start:end]
+        out[start:end] = (filtered * env_block * trem_block).astype(np.float32)
 
     # Normalize
     peak = np.max(np.abs(out))
@@ -188,5 +229,8 @@ def generate_sweep_sample(
         "noise_type": noise_type,
         "filter_order": filter_order,
         "build_shape": build_shape,
+        "tremolo_depth": tremolo_depth,
+        "tremolo_rate_min": tremolo_rate_min,
+        "tremolo_rate_max": tremolo_rate_max,
     }
     return output, params_used
