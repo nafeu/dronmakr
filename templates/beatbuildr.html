@@ -194,6 +194,28 @@
       font-size: 0.75rem;
     }
 
+    .sidebar-section-divider {
+      height: 1px;
+      background: var(--theme-a);
+      margin: 0.75rem 0;
+    }
+
+    .sidebar-section-label {
+      margin: 0;
+      margin-bottom: 0.5rem;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--theme-a);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .sidebar-section-label i {
+      font-size: 0.65rem;
+    }
+
     #sidebar-empty-note {
       font-size: 0.75rem;
       color: var(--theme-a);
@@ -489,33 +511,6 @@
       cursor: not-allowed;
     }
 
-    .preview-status-area {
-      margin-top: 1rem;
-      padding-top: 1rem;
-      border-top: 1px solid var(--theme-a);
-      font-size: 0.7rem;
-    }
-
-    .pattern-status-message {
-      padding: 0.4rem 0.6rem;
-      border-radius: 4px;
-      display: flex;
-      align-items: center;
-      gap: 0.35rem;
-    }
-
-    .pattern-status-message.success {
-      background: rgba(76, 175, 80, 0.15);
-      color: #4caf50;
-      border: 1px solid rgba(76, 175, 80, 0.3);
-    }
-
-    .pattern-status-message.error {
-      background: rgba(244, 67, 54, 0.15);
-      color: #f44336;
-      border: 1px solid rgba(244, 67, 54, 0.3);
-    }
-
     .pattern-confirm-prompt {
       padding: 0.4rem 0.6rem;
       border-radius: 4px;
@@ -565,10 +560,17 @@
     }
 
     .sequencer-scroll-wrapper {
-      overflow: auto;
+      display: flex;
+      flex-direction: column;
       max-height: 420px;
       border: 1px solid var(--theme-a);
       border-radius: 4px;
+    }
+
+    .sequencer-grid-scroll {
+      overflow: auto;
+      flex: 1;
+      min-height: 0;
     }
 
     #sequencer-grid {
@@ -680,6 +682,71 @@
     .grid-cell.active {
       background: var(--primary);
       box-shadow: inset 0 0 0 1px #000000;
+    }
+
+    .grid-footer {
+      display: grid;
+      grid-template-columns: var(--grid-label-width) minmax(0, 1fr);
+      border-top: 1px solid var(--theme-a);
+      background: #050505;
+      flex-shrink: 0;
+    }
+
+    .grid-footer-kit,
+    .grid-footer-pattern {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.5rem;
+      max-width: 280px;
+    }
+
+    .grid-footer-pattern {
+      border-right: none;
+      border-left: 1px solid var(--theme-a);
+    }
+
+    .grid-footer input {
+      flex: 1;
+      min-width: 0;
+      padding: 0.4rem 0.5rem;
+      font-family: inherit;
+      font-size: 0.7rem;
+      background: #0a0a0a;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      color: var(--primary);
+    }
+
+    .grid-footer input:focus {
+      outline: none;
+      border-color: var(--theme-b);
+    }
+
+    .grid-footer .save-btn {
+      flex-shrink: 0;
+      width: 2rem;
+      height: 1.75rem;
+      padding: 0;
+      font-size: 0.8rem;
+      background: var(--primary);
+      color: var(--secondary);
+      border: 1px solid var(--primary);
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .grid-footer .save-btn:hover:not(:disabled) {
+      background: #ff8900;
+      border-color: #ff8900;
+    }
+
+    .grid-footer .save-btn:disabled {
+      opacity: 0.7;
+      cursor: wait;
     }
 
     .grid-header {
@@ -1286,6 +1353,10 @@
       background: #ff8900;
       border-color: #ff8900;
     }
+
+    .error-modal-content .confirm-modal-text i {
+      color: var(--theme-c);
+    }
   </style>
 </head>
 
@@ -1305,7 +1376,25 @@
   <main id="app-layout">
     <section id="main-column">
       <div class="sequencer-scroll-wrapper">
-        <div id="sequencer-grid"></div>
+        <div class="sequencer-grid-scroll">
+          <div id="sequencer-grid"></div>
+        </div>
+        <div class="grid-footer">
+          <div class="grid-footer-kit">
+            <input type="text" id="browser-kit-name-input" class="grid-footer-input" placeholder="Enter kit name"
+              maxlength="30">
+            <button type="button" id="browser-kit-save-btn" class="save-btn" title="Save current drum kit">
+              <i class="fa-solid fa-floppy-disk"></i>
+            </button>
+          </div>
+          <div class="grid-footer-pattern">
+            <input type="text" id="pattern-name-input" class="grid-footer-input" placeholder="Enter pattern name"
+              maxlength="30">
+            <button type="button" id="pattern-save-btn" class="save-btn" title="Save current pattern">
+              <i class="fa-solid fa-floppy-disk"></i>
+            </button>
+          </div>
+        </div>
       </div>
       <div class="browser-card">
         <h2><i class="fa-solid fa-folder-open"></i> browser</h2>
@@ -1347,7 +1436,8 @@
         <div id="browser-tab-samples" class="browser-tab-panel" hidden>
           <div class="browser-samples-header">
             <input type="text" id="browser-sample-filter" class="browser-filter-input" placeholder="Filter…">
-            <button type="button" id="browser-sample-refresh-btn" class="browser-refresh-btn" title="Rescan sample paths">
+            <button type="button" id="browser-sample-refresh-btn" class="browser-refresh-btn"
+              title="Rescan sample paths">
               <i class="fa-solid fa-arrow-rotate-right"></i> Refresh
             </button>
           </div>
@@ -1365,15 +1455,26 @@
         <div class="confirm-modal-content">
           <div id="confirm-modal-text" class="confirm-modal-text"></div>
           <div class="confirm-modal-buttons">
-            <button type="button" id="confirm-modal-yes" class="confirm-modal-btn primary"><i class="fa-solid fa-check"></i> Yes</button>
-            <button type="button" id="confirm-modal-no" class="confirm-modal-btn"><i class="fa-solid fa-xmark"></i> No</button>
+            <button type="button" id="confirm-modal-yes" class="confirm-modal-btn primary"><i
+                class="fa-solid fa-check"></i> Yes</button>
+            <button type="button" id="confirm-modal-no" class="confirm-modal-btn"><i class="fa-solid fa-xmark"></i>
+              No</button>
+          </div>
+        </div>
+      </div>
+      <div id="error-modal-overlay" class="confirm-modal-overlay" hidden>
+        <div class="confirm-modal-content error-modal-content">
+          <div id="error-modal-text" class="confirm-modal-text"></div>
+          <div class="confirm-modal-buttons">
+            <button type="button" id="error-modal-close" class="confirm-modal-btn primary"><i
+                class="fa-solid fa-xmark"></i> Close</button>
           </div>
         </div>
       </div>
     </section>
 
     <aside id="sidebar-column">
-      <h2><i class="fa-solid fa-sliders"></i> preview settings</h2>
+      <h2><i class="fa-solid fa-sliders"></i> Controls</h2>
       <div id="transport">
         <div class="transport-actions">
           <button type="button" id="new-pattern-btn" class="transport-btn transport-btn-secondary"
@@ -1402,6 +1503,8 @@
             <i class="fa-solid fa-eraser"></i>
           </button>
         </div>
+        <div class="sidebar-section-divider"></div>
+        <h3 class="sidebar-section-label"><i class="fa-solid fa-music"></i> Pattern Settings</h3>
         <div class="transport-tempo">
           <label for="tempo-input">Tempo (bpm)</label>
           <input type="number" id="tempo-input" min="40" max="240" value="120" title="Beats per minute">
@@ -1435,27 +1538,6 @@
           <label for="pattern-length-input">Pattern length (bars)</label>
           <input type="number" id="pattern-length-input" min="1" max="16" value="1" title="Number of bars">
         </div>
-        <div class="pattern-save-section">
-          <h3><i class="fa-solid fa-floppy-disk"></i> Save Pattern</h3>
-          <div class="pattern-save-row">
-            <input type="text" id="pattern-name-input" class="pattern-name-input" placeholder="Enter pattern name"
-              maxlength="30">
-            <button type="button" id="pattern-save-btn" class="pattern-save-btn" title="Save current pattern">
-              <i class="fa-solid fa-floppy-disk"></i>
-            </button>
-          </div>
-        </div>
-        <div class="pattern-save-section kit-save-section">
-          <h3><i class="fa-solid fa-drum"></i> Save current kit</h3>
-          <div class="pattern-save-row">
-            <input type="text" id="browser-kit-name-input" class="pattern-name-input" placeholder="Enter kit name"
-              maxlength="30">
-            <button type="button" id="browser-kit-save-btn" class="pattern-save-btn" title="Save current drum kit">
-              <i class="fa-solid fa-floppy-disk"></i>
-            </button>
-          </div>
-        </div>
-        <div id="preview-status-area" class="preview-status-area"></div>
       </div>
     </aside>
   </main>
@@ -2002,7 +2084,9 @@
     // Pattern save functionality
     const patternNameInput = document.getElementById("pattern-name-input");
     const patternSaveBtn = document.getElementById("pattern-save-btn");
-    const previewStatusArea = document.getElementById("preview-status-area");
+    const errorModalOverlay = document.getElementById("error-modal-overlay");
+    const errorModalText = document.getElementById("error-modal-text");
+    const errorModalClose = document.getElementById("error-modal-close");
 
     function encodePatternForSave() {
       const [num, den] = state.timeSignature.split("/").map(Number);
@@ -2021,24 +2105,19 @@
       return encoded;
     }
 
-    function showStatusMessage(message, type = "success") {
-      previewStatusArea.innerHTML = `
-        <div class="pattern-status-message ${type}">
-          <i class="fa-solid fa-${type === 'success' ? 'circle-check' : 'circle-exclamation'}"></i>
-          ${message}
-        </div>
-      `;
-      if (type === "success") {
-        setTimeout(() => {
-          previewStatusArea.innerHTML = "";
-        }, 3000);
-      }
-    }
-
     const confirmModalOverlay = document.getElementById("confirm-modal-overlay");
     const confirmModalText = document.getElementById("confirm-modal-text");
     const confirmModalYes = document.getElementById("confirm-modal-yes");
     const confirmModalNo = document.getElementById("confirm-modal-no");
+
+    function showErrorModal(message) {
+      errorModalText.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i><span>${message}</span>`;
+      errorModalOverlay.hidden = false;
+      errorModalClose.onclick = () => {
+        errorModalOverlay.hidden = true;
+        errorModalClose.onclick = null;
+      };
+    }
 
     function showConfirmModal(message, onYes, onNo) {
       confirmModalText.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i><span>${message}</span>`;
@@ -2052,32 +2131,47 @@
       showConfirmModal(`Are you sure you want to overwrite "${patternName}"?`, () => {
         const pattern = encodePatternForSave();
         if (state.socket && state.socket.connected) {
+          setPatternSaveBtnState("loading");
           state.socket.emit("savePattern", { name: patternName, pattern, overwrite: true });
         }
       });
     }
 
+    function setPatternSaveBtnState(btnState) {
+      const icon = patternSaveBtn.querySelector("i");
+      patternSaveBtn.disabled = btnState === "loading";
+      icon.className = btnState === "loading" ? "fa-solid fa-spinner fa-spin" : btnState === "success" ? "fa-solid fa-check" : "fa-solid fa-floppy-disk";
+      if (btnState === "success") {
+        setTimeout(() => {
+          patternSaveBtn.querySelector("i").className = "fa-solid fa-floppy-disk";
+        }, 1500);
+      }
+    }
+
     patternSaveBtn.addEventListener("click", () => {
       const patternName = patternNameInput.value.trim();
       if (!patternName) {
-        showStatusMessage("Please enter a pattern name", "error");
+        showErrorModal("Please enter a pattern name.");
         return;
       }
 
       const pattern = encodePatternForSave();
       if (state.socket && state.socket.connected) {
+        setPatternSaveBtnState("loading");
         state.socket.emit("savePattern", { name: patternName, pattern, overwrite: false });
       }
     });
 
     socket.on("patternSaveResult", (data) => {
       if (data.needsConfirmation) {
+        setPatternSaveBtnState("idle");
         showConfirmPrompt(data.name);
       } else if (data.success) {
-        showStatusMessage(`Pattern "${data.name}" saved successfully`, "success");
+        setPatternSaveBtnState("success");
         state.socket && state.socket.emit("getPatterns");
       } else if (data.error) {
-        showStatusMessage(data.error, "error");
+        setPatternSaveBtnState("idle");
+        showErrorModal(data.error);
       }
     });
 
@@ -2204,7 +2298,7 @@
 
     socket.on("patternLoadResult", (data) => {
       if (data.error) {
-        showStatusMessage(data.error, "error");
+        showErrorModal(data.error);
       }
     });
 
@@ -2234,7 +2328,7 @@
       filtered.forEach((kitName) => {
         const li = document.createElement("li");
         li.className = "browser-list-item";
-        li.textContent = kitName;
+        li.innerHTML = "<i class=\"fa-solid fa-drum\"></i> " + kitName;
         li.dataset.kitName = kitName;
         li.addEventListener("click", () => {
           browserKitNameInput.value = kitName;
@@ -2272,14 +2366,22 @@
       return Object.keys(encoded).length > 0 ? encoded : null;
     }
 
-    function showKitStatusMessage(message, type = "success") {
-      showStatusMessage(message, type);
+    function setKitSaveBtnState(btnState) {
+      const icon = browserKitSaveBtn.querySelector("i");
+      browserKitSaveBtn.disabled = btnState === "loading";
+      icon.className = btnState === "loading" ? "fa-solid fa-spinner fa-spin" : btnState === "success" ? "fa-solid fa-check" : "fa-solid fa-floppy-disk";
+      if (btnState === "success") {
+        setTimeout(() => {
+          browserKitSaveBtn.querySelector("i").className = "fa-solid fa-floppy-disk";
+        }, 1500);
+      }
     }
 
     function showKitConfirmPrompt(kitName) {
       showConfirmModal(`Are you sure you want to overwrite "${kitName}"?`, () => {
         const kit = encodeKitForSave();
         if (kit && state.socket && state.socket.connected) {
+          setKitSaveBtnState("loading");
           state.socket.emit("saveKit", { name: kitName, kit, overwrite: true });
         }
       });
@@ -2288,32 +2390,35 @@
     browserKitSaveBtn.addEventListener("click", () => {
       const kitName = browserKitNameInput.value.trim();
       if (!kitName) {
-        showKitStatusMessage("Please enter a kit name", "error");
+        showErrorModal("Please enter a kit name.");
         return;
       }
       const kit = encodeKitForSave();
       if (!kit) {
-        showKitStatusMessage("No kit to save. Load or generate a kit first.", "error");
+        showErrorModal("No kit to save. Load or generate a kit first.");
         return;
       }
       if (state.socket && state.socket.connected) {
+        setKitSaveBtnState("loading");
         state.socket.emit("saveKit", { name: kitName, kit, overwrite: false });
       }
     });
 
     socket.on("kitSaveResult", (data) => {
       if (data.needsConfirmation) {
+        setKitSaveBtnState("idle");
         showKitConfirmPrompt(data.name);
       } else if (data.success) {
-        showKitStatusMessage(`Kit "${data.name}" saved successfully`, "success");
+        setKitSaveBtnState("success");
       } else if (data.error) {
-        showKitStatusMessage(data.error, "error");
+        setKitSaveBtnState("idle");
+        showErrorModal(data.error);
       }
     });
 
     socket.on("kitLoadResult", (data) => {
       if (data.error) {
-        showKitStatusMessage(data.error, "error");
+        showErrorModal(data.error);
       }
     });
 
@@ -2365,10 +2470,10 @@
       const query = (browserSampleFilter.value || "").trim().toLowerCase();
       filteredSamples = query
         ? list.filter(
-            (s) =>
-              s.name.toLowerCase().includes(query) ||
-              s.path.toLowerCase().includes(query)
-          )
+          (s) =>
+            s.name.toLowerCase().includes(query) ||
+            s.path.toLowerCase().includes(query)
+        )
         : [...list];
 
       if (selectedSampleIndex >= filteredSamples.length) {
