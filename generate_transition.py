@@ -386,9 +386,9 @@ def _riser_build_curve(
     build_shape: Literal["ease_in", "linear", "ease_out"],
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
-    Riser curves: cutoff and envelope build from 0 to 1 by peak_pos,
-    then cutoff stays open while envelope does a smooth exponential decay.
-    Also returns lfo_rate_frac (0->1 during build, 1->0 during release) for tremolo.
+    Sweep curves: build from 0 to 1 by peak_pos, then sweep back down to 0 over the
+    remaining time. Cutoff, envelope, and LFO rate all follow this up-then-down shape
+    so the sweep returns to its initial state by the end.
     """
     x = np.clip(normalized_t, 0, 1)
     build = x <= peak_pos
@@ -397,21 +397,23 @@ def _riser_build_curve(
     t_build = x[build] / peak_pos if peak_pos > 0 else np.ones(np.sum(build))
     build_val = _apply_build_shape(t_build, build_shape)
 
+    # Release: use remaining time (1 - peak_pos) to sweep back down to 0
     t_release = (x[release] - peak_pos) / (1 - peak_pos) if peak_pos < 1 else np.zeros(np.sum(release))
-    decay_val = np.exp(-decay_rate * t_release)
+    # Mirror the build shape for symmetric sweep-down
+    release_val = 1.0 - _apply_build_shape(t_release, build_shape)
 
     cutoff_frac = np.empty_like(x)
     cutoff_frac[build] = build_val
-    cutoff_frac[release] = 1.0
+    cutoff_frac[release] = release_val
 
     envelope = np.empty_like(x)
     envelope[build] = build_val
-    envelope[release] = decay_val
+    envelope[release] = release_val
 
-    # LFO rate curve: increases during build, decreases during release (for tremolo)
+    # LFO rate for tremolo: same up-then-down shape
     lfo_rate_frac = np.empty_like(x)
     lfo_rate_frac[build] = build_val
-    lfo_rate_frac[release] = decay_val
+    lfo_rate_frac[release] = release_val
 
     return cutoff_frac, envelope, lfo_rate_frac
 
