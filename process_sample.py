@@ -3,7 +3,9 @@ import numpy as np
 import soundfile as sf
 import librosa
 import pedalboard
-from scipy.signal import butter, fftconvolve, filtfilt
+from scipy.signal import butter, fftconvolve
+
+import dsp
 from pedalboard import (
     Chorus,
     Compressor,
@@ -229,53 +231,6 @@ def reverse_sample(input_path):
     print(f"Reversed sample saved to: {input_path}")
 
 
-def _highpass_ir(ir: np.ndarray, sample_rate: float, cutoff_hz: float, order: int = 2) -> np.ndarray:
-    """Apply highpass to an IR so reverb has no energy below cutoff_hz (avoids low-end phase clash)."""
-    if cutoff_hz <= 0 or cutoff_hz >= sample_rate / 2.1:
-        return ir
-    nyq = 0.5 * sample_rate
-    low = cutoff_hz / nyq
-    b, a = butter(order, low, btype="high")
-    return filtfilt(b, a, ir).astype(ir.dtype)
-
-
-def _make_reverb_ir(
-    sample_rate,
-    length_sec=0.7,
-    decay_sec=0.5,
-    early_reflections=5,
-    highpass_cutoff_hz=0.0,
-):
-    """
-    Build a high-quality reverb impulse response for offline convolution.
-    Early reflections (discrete echoes) + dense tail (exponential decay of
-    filtered noise). Optional highpass on the IR so reverb doesn't reflect
-    low-end (set highpass_cutoff_hz > 0, e.g. 80–120 for drums).
-    """
-    n = int(sample_rate * length_sec)
-    ir = np.zeros(n, dtype=np.float64)
-    # Early reflections: sparse delays, smaller time window for small room
-    rng = np.random.default_rng(42)
-    for _ in range(early_reflections):
-        idx = int(rng.uniform(0.002 * sample_rate, 0.04 * sample_rate))
-        if idx < n:
-            ir[idx] += rng.uniform(0.12, 0.35)
-    # Dense tail: exponential decay of lowpassed noise
-    tail_start = int(0.03 * sample_rate)
-    tail_len = n - tail_start
-    noise = rng.standard_normal(tail_len)
-    alpha = 0.3
-    for i in range(1, tail_len):
-        noise[i] = alpha * noise[i - 1] + (1 - alpha) * noise[i]
-    t = np.arange(tail_len, dtype=np.float64) / sample_rate
-    decay = np.exp(-t * (3.0 / decay_sec))
-    ir[tail_start:] = ir[tail_start:] + noise * decay
-    if highpass_cutoff_hz > 0:
-        ir = _highpass_ir(ir, sample_rate, highpass_cutoff_hz)
-    ir = ir / (np.max(np.abs(ir)) + 1e-12)
-    return ir.astype(np.float32)
-
-
 def apply_reverb_to_sample(
     input_path,
     wet_level=0.35,
@@ -293,7 +248,7 @@ def apply_reverb_to_sample(
         audio = f.read(f.frames)
         sample_rate = f.samplerate
     n_channels, n_samples = audio.shape
-    ir = _make_reverb_ir(
+    ir = dsp.make_reverb_ir(
         sample_rate,
         length_sec=reverb_length_sec,
         decay_sec=decay_sec,
@@ -464,14 +419,6 @@ def apply_phaser_to_sample(input_path):
     print(f"Applied phaser to: {input_path}")
 
 
-def _apply_iir_per_channel(audio: np.ndarray, sample_rate: float, b: np.ndarray, a: np.ndarray) -> np.ndarray:
-    """Apply IIR filter (b, a) to each channel. audio shape (channels, samples)."""
-    out = np.zeros_like(audio)
-    for ch in range(audio.shape[0]):
-        out[ch] = filtfilt(b, a, audio[ch])
-    return out
-
-
 def apply_lowpass_to_sample(input_path, cutoff_hz=6000, order=6):
     """Apply steep low-pass filter and overwrite the file. High-order Butterworth for a clean cutoff."""
     with AudioFile(input_path) as f:
@@ -479,7 +426,7 @@ def apply_lowpass_to_sample(input_path, cutoff_hz=6000, order=6):
         sample_rate = f.samplerate
     nyq = 0.5 * sample_rate
     b, a = butter(order, cutoff_hz / nyq, btype="low")
-    processed = _apply_iir_per_channel(audio, sample_rate, b, a)
+    processed = dsp.apply_iir_per_channel(audio, sample_rate, b, a)
     with AudioFile(
         input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
     ) as out:
@@ -494,7 +441,7 @@ def apply_highpass_to_sample(input_path, cutoff_hz=100, order=6):
         sample_rate = f.samplerate
     nyq = 0.5 * sample_rate
     b, a = butter(order, cutoff_hz / nyq, btype="high")
-    processed = _apply_iir_per_channel(audio, sample_rate, b, a)
+    processed = dsp.apply_iir_per_channel(audio, sample_rate, b, a)
     with AudioFile(
         input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
     ) as out:

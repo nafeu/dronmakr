@@ -14,7 +14,12 @@ from build_preset import list_presets
 from webui import run as run_webui
 from generate_midi import generate_drone_midi, get_pattern_config
 from generate_sample import generate_drone_sample, generate_beat_sample
-from generate_transition import generate_sweep_sample, parse_sweep_config
+from generate_transition import (
+    generate_closh_sample,
+    generate_sweep_sample,
+    parse_closh_config,
+    parse_sweep_config,
+)
 from process_sample import process_drone_sample
 from utils import (
     format_name,
@@ -601,6 +606,66 @@ def transition_sweep(
     mod_str = ", ".join(m for m in ["phaser", "chorus", "flanger"] if t.get(m))
     fx_str = f", fx=[{mod_str}]" if mod_str else ""
     print(with_prompt(f"  used: {voice_desc}, cutoff {t['cutoff_low']}–{t['cutoff_high']}Hz, tremolo depth={t['tremolo_depth']:.2f} rate={t['tremolo_rate_min']:.1f}–{t['tremolo_rate_max']:.1f}Hz{fx_str}"))
+
+    if play:
+        open_files_with_default_player([output_path])
+
+    return [output_path]
+
+
+@transition_app.command("closh")
+def transition_closh(
+    tempo: int = typer.Option(120, "--tempo", "-t", help="Tempo in BPM (default: 120)."),
+    bars: int = typer.Option(2, "--bars", "-b", help="Length in bars (default: 2)."),
+    reverb: str | None = typer.Option(
+        None,
+        "--reverb",
+        "-r",
+        help="Reverb: room_size, damping, wet_level, dry_level, width. Use _ for random.",
+    ),
+    delay: str | None = typer.Option(
+        None,
+        "--delay",
+        "-d",
+        help="Tempo-synced delay: division (1/4|1/8|1/8d|1/16|1/16d|1/32), feedback, mix. Omit or 'off' to disable.",
+    ),
+    play: bool = typer.Option(False, "--play", "-p", help="Open output with default WAV player."),
+):
+    """Generate washed clap transition: random clap from DRUM_CLAP_PATHS with long reverb.
+
+    Params use key:value;key2:value2. Use _ for random. E.g. --reverb "room_size:0.95;wet_level:0.9"
+    """
+    start_time = time.time()
+
+    config = parse_closh_config(reverb=reverb, delay=delay)
+
+    print(get_version())
+    print(generate_transition_header())
+    print(with_prompt(f"closh"))
+    print(with_prompt(f"  tempo               {tempo}"))
+    print(with_prompt(f"  bars                {bars}"))
+    print(with_prompt(f"  delay               {'on' if config['delay_enabled'] else 'off'}"))
+    print(f"{RED}│{RESET}")
+
+    beat_name = generate_beat_name()
+    name_parts = ["transition_closh", beat_name, f"{tempo}bpm", f"{bars}bars", generate_id()]
+    sample_name = format_name("___".join(name_parts))
+    output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+
+    output_path, params_used = generate_closh_sample(
+        tempo=tempo, bars=bars, output=output_path, config=config
+    )
+
+    end_time = time.time()
+    time_elapsed = round(end_time - start_time)
+    print(f"{RED}■ completed in {time_elapsed}s{RESET}")
+    print(with_prompt(f"generated: {output_path}"))
+    p = params_used
+    rev_str = f"room={p['reverb_room_size']:.2f} damp={p['reverb_damping']:.2f} wet={p['reverb_wet_level']:.2f}"
+    dl_str = ""
+    if p["delay_enabled"]:
+        dl_str = f" delay={p['delay_division']} fb={p['delay_feedback']:.2f} mix={p['delay_mix']:.2f}"
+    print(with_prompt(f"  used: {rev_str}{dl_str}"))
 
     if play:
         open_files_with_default_player([output_path])

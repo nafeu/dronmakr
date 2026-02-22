@@ -2,30 +2,18 @@
 
 import random
 import re
+from pathlib import Path
 from typing import Any, Literal
 
 import numpy as np
 import soundfile as sf
-from pedalboard import Chorus, Pedalboard, Phaser
+from pedalboard import Chorus, Delay, Pedalboard, Phaser, Reverb
 from scipy.signal import butter, lfilter, lfilter_zi
 
+import dsp
+from settings import get_setting
 
-def _resonant_lowpass_biquad_coeffs(cutoff_hz: float, q: float) -> tuple[np.ndarray, np.ndarray]:
-    """RBJ lowpass biquad. Q controls resonance (0.5=flat, higher=peaky)."""
-    w0 = 2 * np.pi * cutoff_hz / SAMPLE_RATE
-    cos_w0 = np.cos(w0)
-    alpha = np.sin(w0) / (2 * max(q, 0.5))
-    b0 = (1 - cos_w0) / 2
-    b1 = 1 - cos_w0
-    b2 = (1 - cos_w0) / 2
-    a0 = 1 + alpha
-    a1 = -2 * cos_w0
-    a2 = 1 - alpha
-    b = np.array([b0 / a0, b1 / a0, b2 / a0])
-    a = np.array([1.0, a1 / a0, a2 / a0])
-    return b, a
-
-SAMPLE_RATE = 44100
+SAMPLE_RATE = dsp.SAMPLE_RATE
 BLOCK_SIZE = 256
 
 # Default ranges for randomization (when params not passed)
@@ -555,7 +543,7 @@ def generate_sweep_sample(
         q_val = 0.5 + resonance * float(cutoff_frac[mid_idx]) * (RESONANCE_Q_RANGE[1] - 0.5) if use_resonant else 0.707
 
         if use_resonant:
-            b, a = _resonant_lowpass_biquad_coeffs(cutoff, q_val)
+            b, a = dsp.resonant_lowpass_biquad_coeffs(cutoff, q_val)
         else:
             b, a = butter(filter_order, cutoff / nyq, btype="low")
         zi_use = lfilter_zi(b, a) * block[0] if zi is None else zi
@@ -613,5 +601,192 @@ def generate_sweep_sample(
         "chorus": chorus_enabled,
         "flanger": flanger_enabled,
         "modulation_params": mod_params,
+    }
+    return output, params_used
+
+
+# --- Closh: washed clap with long reverb (and optional tempo-synced delay) ---
+
+# Reverb param ranges for randomization (long, washed, cathedral-like)
+CLOSH_REVERB_ROOM_SIZE_RANGE = (0.88, 0.99)
+CLOSH_REVERB_DAMPING_RANGE = (0.05, 0.25)  # lower = longer decay
+CLOSH_REVERB_WET_RANGE = (0.75, 0.95)
+CLOSH_REVERB_DRY_RANGE = (0.02, 0.15)
+CLOSH_REVERB_WIDTH_RANGE = (0.7, 1.0)
+
+# Delay param ranges (tempo-synced when enabled)
+CLOSH_DELAY_DIVISIONS: tuple[str, ...] = ("1/4", "1/8", "1/8d", "1/16", "1/16d", "1/32")
+CLOSH_DELAY_FEEDBACK_RANGE = (0.2, 0.55)
+CLOSH_DELAY_MIX_RANGE = (0.15, 0.5)
+
+# Output tail length (seconds) so reverb tail is not truncated
+CLOSH_TAIL_SEC = 12.0
+
+
+def _get_random_clap_path() -> Path:
+    """Pick a random .wav from DRUM_CLAP_PATHS. Supports comma-separated roots."""
+    paths_str = get_setting("DRUM_CLAP_PATHS", "")
+    roots = [p.strip() for p in paths_str.split(",") if p.strip()]
+    if not roots:
+        raise ValueError(
+            "DRUM_CLAP_PATHS is not configured. Add paths to clap samples in settings."
+        )
+    root = Path(random.choice(roots)).expanduser().resolve()
+    if not root.exists() or not root.is_dir():
+        raise ValueError(f"DRUM_CLAP_PATHS root does not exist or is not a dir: {root}")
+    candidates = [
+        f for f in root.iterdir()
+        if f.is_file() and f.suffix.lower() == ".wav"
+    ]
+    if not candidates:
+        raise ValueError(f"No .wav files found in {root}")
+    return random.choice(candidates)
+
+
+def parse_closh_config(
+    reverb: str | None = None,
+    delay: str | None = None,
+) -> dict[str, Any]:
+    """
+    Parse closh param strings into resolved config.
+    --reverb: room_size, damping, wet_level, dry_level, width (use _ for random)
+    --delay: division (1/4|1/8|1/8d|1/16|1/16d|1/32), feedback, mix. Omit or 'off' to disable.
+    """
+    r = _parse_param_string(reverb)
+    d = _parse_param_string(delay)
+    use_delay = delay is not None and delay.strip().lower() not in ("", "off", "0", "false")
+    return {
+        "reverb_room_size": _resolve_float(r, "room_size", CLOSH_REVERB_ROOM_SIZE_RANGE, 0.5, 0.99),
+        "reverb_damping": _resolve_float(r, "damping", CLOSH_REVERB_DAMPING_RANGE, 0, 0.6),
+        "reverb_wet_level": _resolve_float(r, "wet_level", CLOSH_REVERB_WET_RANGE, 0.5, 1.0),
+        "reverb_dry_level": _resolve_float(r, "dry_level", CLOSH_REVERB_DRY_RANGE, 0, 0.3),
+        "reverb_width": _resolve_float(r, "width", CLOSH_REVERB_WIDTH_RANGE, 0.3, 1.0),
+        "delay_enabled": use_delay,
+        "delay_division": _resolve_choice(d, "division", CLOSH_DELAY_DIVISIONS),
+        "delay_feedback": _resolve_float(d, "feedback", CLOSH_DELAY_FEEDBACK_RANGE, 0, 0.8),
+        "delay_mix": _resolve_float(d, "mix", CLOSH_DELAY_MIX_RANGE, 0, 0.8),
+    }
+
+
+def _delay_division_to_seconds(division: str, tempo: int) -> float:
+    """Convert musical division to delay time in seconds. 1/8d = dotted 1/8."""
+    beat_sec = 60.0 / tempo
+    if division == "1/4":
+        return beat_sec
+    if division == "1/8":
+        return beat_sec / 2
+    if division == "1/8d":
+        return beat_sec * 0.75
+    if division == "1/16":
+        return beat_sec / 4
+    if division == "1/16d":
+        return beat_sec * 0.375
+    if division == "1/32":
+        return beat_sec / 8
+    return beat_sec / 2
+
+
+def generate_closh_sample(
+    tempo: int = 120,
+    bars: int = 2,
+    output: str = "closh.wav",
+    config: dict[str, Any] | None = None,
+) -> tuple[str, dict[str, Any]]:
+    """
+    Generate a washed clap transition: random clap from DRUM_CLAP_PATHS with
+    long reverb and optional tempo-synced delay.
+    """
+    if config is None:
+        config = parse_closh_config()
+
+    clap_path = _get_random_clap_path()
+    audio, sr = sf.read(str(clap_path), dtype="float32")
+
+    # Pedalboard expects (channels, samples); soundfile returns (samples, channels)
+    if audio.ndim == 1:
+        audio = audio[np.newaxis, :]
+    else:
+        audio = np.ascontiguousarray(audio.T)
+
+    # Resample if needed; librosa expects (samples, channels)
+    if sr != SAMPLE_RATE:
+        import librosa
+
+        audio_lr = audio.T
+        resampled = librosa.resample(audio_lr, orig_sr=sr, target_sr=SAMPLE_RATE)
+        if resampled.ndim == 1:
+            audio = resampled[np.newaxis, :]
+        else:
+            audio = np.ascontiguousarray(resampled.T)
+
+    n_samples = audio.shape[1]
+    tail_samples = int(CLOSH_TAIL_SEC * SAMPLE_RATE)
+    total_len = n_samples + tail_samples
+    padded = np.zeros((audio.shape[0], total_len), dtype=np.float32)
+    padded[:, :n_samples] = audio
+
+    # Validate input has signal
+    input_peak = np.max(np.abs(audio))
+    if input_peak < 1e-6:
+        raise ValueError(f"Clap sample is effectively silent: {clap_path}")
+
+    # Build reverb
+    reverb = Reverb(
+        room_size=config["reverb_room_size"],
+        damping=config["reverb_damping"],
+        wet_level=config["reverb_wet_level"],
+        dry_level=config["reverb_dry_level"],
+        width=config["reverb_width"],
+        freeze_mode=0.0,
+    )
+    plugins: list = [reverb]
+
+    if config["delay_enabled"]:
+        delay_sec = _delay_division_to_seconds(config["delay_division"], tempo)
+        delay_plugin = Delay(
+            delay_seconds=delay_sec,
+            feedback=config["delay_feedback"],
+            mix=config["delay_mix"],
+        )
+        plugins.append(delay_plugin)
+
+    board = Pedalboard(plugins)
+
+    # Process in chunks to avoid long UI freezes; reverb state preserved with reset=False
+    chunk_samples = 44100
+    n_chunks = (total_len + chunk_samples - 1) // chunk_samples
+    processed_chunks = []
+    for i in range(n_chunks):
+        start = i * chunk_samples
+        end = min(start + chunk_samples, total_len)
+        chunk = padded[:, start:end]
+        out_chunk = board(chunk, SAMPLE_RATE, buffer_size=4096, reset=(i == 0))
+        processed_chunks.append(out_chunk)
+    processed = np.concatenate(processed_chunks, axis=1)
+
+    # Trim to desired length (bars)
+    duration_sec = bars * 4 * (60.0 / tempo)
+    max_samples = int(duration_sec * SAMPLE_RATE)
+    out = processed[:, :max_samples]
+    if out.shape[0] == 2:
+        out_mono = np.mean(out, axis=0)
+    else:
+        out_mono = out[0]
+    peak = np.max(np.abs(out_mono)) + 1e-9
+    if peak > 0.9:
+        out_mono = out_mono * (0.9 / peak)
+    sf.write(output, out_mono.astype(np.float32), SAMPLE_RATE, subtype="PCM_16")
+
+    params_used = {
+        "clap_path": str(clap_path),
+        "reverb_room_size": config["reverb_room_size"],
+        "reverb_damping": config["reverb_damping"],
+        "reverb_wet_level": config["reverb_wet_level"],
+        "reverb_dry_level": config["reverb_dry_level"],
+        "reverb_width": config["reverb_width"],
+        "delay_enabled": config["delay_enabled"],
+        "delay_division": config["delay_division"],
+        "delay_feedback": config["delay_feedback"],
+        "delay_mix": config["delay_mix"],
     }
     return output, params_used
