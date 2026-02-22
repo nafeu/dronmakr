@@ -9,6 +9,22 @@ import soundfile as sf
 from pedalboard import Chorus, Pedalboard, Phaser
 from scipy.signal import butter, lfilter, lfilter_zi
 
+
+def _resonant_lowpass_biquad_coeffs(cutoff_hz: float, q: float) -> tuple[np.ndarray, np.ndarray]:
+    """RBJ lowpass biquad. Q controls resonance (0.5=flat, higher=peaky)."""
+    w0 = 2 * np.pi * cutoff_hz / SAMPLE_RATE
+    cos_w0 = np.cos(w0)
+    alpha = np.sin(w0) / (2 * max(q, 0.5))
+    b0 = (1 - cos_w0) / 2
+    b1 = 1 - cos_w0
+    b2 = (1 - cos_w0) / 2
+    a0 = 1 + alpha
+    a1 = -2 * cos_w0
+    a2 = 1 - alpha
+    b = np.array([b0 / a0, b1 / a0, b2 / a0])
+    a = np.array([1.0, a1 / a0, a2 / a0])
+    return b, a
+
 SAMPLE_RATE = 44100
 BLOCK_SIZE = 256
 
@@ -30,6 +46,21 @@ NOISE_TYPES: tuple[Literal["white", "pink", "brown", "blue"], ...] = (
     "brown",
     "blue",
 )
+VOICE_TYPES: tuple[Literal["noise", "sine", "saw", "tri", "square"], ...] = (
+    "noise",
+    "sine",
+    "saw",
+    "tri",
+    "square",
+)
+OSC_FREQ_LOW_RANGE = (55, 220)   # A1 to A3
+OSC_FREQ_HIGH_RANGE = (880, 4000)  # A5 to ~B7
+OSC_LEVEL_RANGE = (0.3, 0.8)
+PULSE_WIDTH_RANGE = (0.2, 0.8)
+PWM_SWEEP_RANGE = (0.0, 0.35)      # how much pulse width modulates (0=static)
+DETUNE_CENTS_RANGE = (5, 25)       # cents for unison detune
+DETUNE_MIX_RANGE = (0.2, 0.6)      # max mix of detuned layer (follows build curve)
+RESONANCE_Q_RANGE = (0.5, 8.0)     # filter Q at peak (0.5=flat, 8=acid scream)
 TREMOLO_DEPTH_RANGE = (0.4, 0.9)
 TREMOLO_RATE_MIN_RANGE = (1.0, 4.0)
 TREMOLO_RATE_MAX_RANGE = (10.0, 25.0)
@@ -152,8 +183,34 @@ def _resolve_flanger_params(parsed: dict[str, str]) -> dict[str, float]:
     }
 
 
+def _resolve_sound_params(parsed: dict[str, str]) -> dict[str, Any]:
+    """Resolve voice-specific params from parsed --sound string."""
+    voice = _resolve_choice(parsed, "voice", VOICE_TYPES)
+
+    result: dict[str, Any] = {"voice": voice}
+
+    if voice == "noise":
+        result["noise_type"] = _resolve_choice(parsed, "type", NOISE_TYPES)
+        result["noise_level"] = _resolve_float(parsed, "noise_level", NOISE_LEVEL_RANGE, 0.2, 1.0)
+    else:
+        # Oscillator: sine, saw, tri, square
+        freq_low = _resolve_float(parsed, "freq_low", OSC_FREQ_LOW_RANGE, 20, 2000)
+        freq_high = _resolve_float(parsed, "freq_high", OSC_FREQ_HIGH_RANGE, 200, 12000)
+        freq_high = max(freq_high, freq_low + 50)
+        result["osc_freq_low"] = freq_low
+        result["osc_freq_high"] = freq_high
+        result["osc_level"] = _resolve_float(parsed, "level", OSC_LEVEL_RANGE, 0.1, 1.0)
+        result["pulse_width"] = _resolve_float(parsed, "pulse_width", PULSE_WIDTH_RANGE, 0.1, 0.9)
+        result["pwm_sweep"] = _resolve_float(parsed, "pwm_sweep", PWM_SWEEP_RANGE, 0, 0.5)
+        result["detune_cents"] = _resolve_float(parsed, "detune_cents", DETUNE_CENTS_RANGE, 1, 50)
+        result["detune_mix"] = _resolve_float(parsed, "detune_mix", DETUNE_MIX_RANGE, 0, 1)
+        result["resonance"] = _resolve_float(parsed, "resonance", (0, 1), 0, 1)
+
+    return result
+
+
 def parse_sweep_config(
-    noise: str | None = None,
+    sound: str | None = None,
     curve: str | None = None,
     filter_str: str | None = None,
     tremolo: str | None = None,
@@ -164,7 +221,8 @@ def parse_sweep_config(
 ) -> dict[str, Any]:
     """
     Parse encoded param strings into a resolved config dict.
-    Syntax: key:value;key2:value2. Use _ or empty for random. E.g. --noise type:white;noise_level:0.6
+    --sound: voice (noise|sine|saw|tri|square), then voice-specific params.
+    E.g. --sound "voice:noise;type:white;noise_level:0.6" or --sound "voice:square;freq_low:110;freq_high:2000"
     """
     disabled = set()
     if disable:
@@ -175,7 +233,7 @@ def parse_sweep_config(
             elif d in ("tremolo", "phaser", "chorus", "flanger"):
                 disabled.add(d)
 
-    n = _parse_param_string(noise)
+    s = _parse_param_string(sound)
     c = _parse_param_string(curve)
     f = _parse_param_string(filter_str)
     t = _parse_param_string(tremolo)
@@ -187,9 +245,10 @@ def parse_sweep_config(
     tremolo_rate_max = _resolve_float(t, "rate_max_hz", TREMOLO_RATE_MAX_RANGE, 2, 50)
     tremolo_rate_max = max(tremolo_rate_max, tremolo_rate_min + 1.0)
 
+    sound_params = _resolve_sound_params(s)
+
     return {
-        "noise_type": _resolve_choice(n, "type", NOISE_TYPES),
-        "noise_level": _resolve_float(n, "noise_level", NOISE_LEVEL_RANGE, 0.2, 1.0),
+        **sound_params,
         "build_shape": _resolve_choice(c, "shape", BUILD_SHAPES),
         "decay_rate": _resolve_float(c, "decay_rate", DECAY_RATE_RANGE, 0.5, 15.0),
         "peak_pos": _resolve_float(c, "peak_pos", PEAK_POS_RANGE, 0.15, 0.85),
@@ -241,6 +300,71 @@ def _generate_noise(
         return blue / (np.std(blue) + 1e-9) * (np.std(white) or 1.0)
 
     return white
+
+
+def _oscillator_sample(
+    phase: np.ndarray,
+    voice: Literal["sine", "saw", "tri", "square"],
+    pulse_width: np.ndarray | float,
+) -> np.ndarray:
+    """Single oscillator output. pulse_width: scalar or per-sample array."""
+    if np.isscalar(pulse_width):
+        pw = np.full(phase.shape, float(pulse_width))
+    else:
+        pw = np.asarray(pulse_width, dtype=np.float64)
+        if pw.size != phase.size:
+            pw = np.broadcast_to(pw.flat[0], phase.shape)
+
+    if voice == "sine":
+        return np.sin(phase)
+    if voice == "saw":
+        return 1.0 - 2.0 * np.mod(phase, 2 * np.pi) / (2 * np.pi)
+    if voice == "tri":
+        p = np.mod(phase, 2 * np.pi)
+        tri = np.where(p < np.pi, p / np.pi, 2 - p / np.pi)
+        return 2.0 * tri - 1.0
+    if voice == "square":
+        p = np.mod(phase, 2 * np.pi)
+        thresh = np.clip(pw, 0.05, 0.95) * 2 * np.pi
+        return np.where(p < thresh, 1.0, -1.0)
+    return np.sin(phase)
+
+
+def _generate_oscillator_sweep(
+    num_samples: int,
+    freq_sweep_hz: np.ndarray,
+    voice: Literal["sine", "saw", "tri", "square"],
+    level: float = 0.5,
+    pulse_width: float = 0.5,
+    pwm_sweep: float = 0.0,
+    detune_cents: float = 0.0,
+    detune_mix: float = 0.0,
+    cutoff_frac: np.ndarray | None = None,
+) -> np.ndarray:
+    """
+    Generate oscillator output with pitch sweep. Optional: pwm_sweep (pulse width modulation),
+    detune (unison layer), both following cutoff_frac (build curve) for accelerating modulation.
+    """
+    phase_inc = 2 * np.pi * freq_sweep_hz / SAMPLE_RATE
+    phase = np.cumsum(phase_inc)
+
+    # PWM sweep: pulse width varies with build curve (only for square)
+    if voice == "square" and pwm_sweep > 0 and cutoff_frac is not None:
+        pw = np.clip(pulse_width + pwm_sweep * (cutoff_frac - 0.5) * 2, 0.1, 0.9)
+    else:
+        pw = pulse_width
+
+    main = _oscillator_sample(phase, voice, pw)
+
+    # Detune: second oscillator, mix amount follows build curve (thicker toward peak)
+    if detune_cents > 0 and detune_mix > 0 and cutoff_frac is not None:
+        detune_ratio = 2 ** (detune_cents / 1200)
+        phase_det = np.cumsum(phase_inc * detune_ratio)
+        detuned = _oscillator_sample(phase_det, voice, pw)
+        mix = detune_mix * np.clip(cutoff_frac, 0, 1)
+        main = main * (1 - mix) + detuned * mix
+
+    return (main * level).astype(np.float64)
 
 
 def _apply_build_shape(t_norm: np.ndarray, shape: Literal["ease_in", "linear", "ease_out"]) -> np.ndarray:
@@ -350,6 +474,7 @@ def generate_sweep_sample(
         config = parse_sweep_config()
 
     cfg = config
+    voice = cfg.get("voice") or random.choice(VOICE_TYPES)
     cutoff_low = cfg.get("cutoff_low") or random.randint(*CUTOFF_LOW_RANGE)
     cutoff_high = cfg.get("cutoff_high") or random.randint(*CUTOFF_HIGH_RANGE)
     cutoff_high = max(cutoff_high, cutoff_low + 500)
@@ -359,6 +484,15 @@ def generate_sweep_sample(
     noise_level = cfg.get("noise_level") or random.uniform(*NOISE_LEVEL_RANGE)
     noise_level = max(0.2, min(1.0, noise_level))
     noise_type = cfg.get("noise_type") or random.choice(NOISE_TYPES)
+    osc_freq_low = cfg.get("osc_freq_low") or random.uniform(*OSC_FREQ_LOW_RANGE)
+    osc_freq_high = cfg.get("osc_freq_high") or random.uniform(*OSC_FREQ_HIGH_RANGE)
+    osc_freq_high = max(osc_freq_high, osc_freq_low + 50)
+    osc_level = cfg.get("osc_level") or random.uniform(*OSC_LEVEL_RANGE)
+    pulse_width = cfg.get("pulse_width") or random.uniform(*PULSE_WIDTH_RANGE)
+    pwm_sweep = cfg.get("pwm_sweep", 0.0)
+    detune_cents = cfg.get("detune_cents", 0.0)
+    detune_mix = cfg.get("detune_mix", 0.0)
+    resonance = cfg.get("resonance", 0.0)
     filter_order = cfg.get("filter_order") or random.choice(FILTER_ORDERS)
     filter_order = 2 if filter_order == 2 else (4 if filter_order == 4 else 6)
     build_shape = cfg.get("build_shape") or random.choice(BUILD_SHAPES)
@@ -381,13 +515,26 @@ def generate_sweep_sample(
     duration_sec = (60.0 / tempo) * total_beats
     num_samples = int(duration_sec * SAMPLE_RATE)
 
-    rng = np.random.default_rng()
-    noise = _generate_noise(num_samples, noise_type, rng) * noise_level
-
     t = np.arange(num_samples, dtype=np.float64) / num_samples
-
     cutoff_frac, envelope, lfo_rate_frac = _riser_build_curve(t, peak_pos, decay_rate, build_shape)
     cutoffs_hz = cutoff_low + cutoff_frac * (cutoff_high - cutoff_low)
+
+    rng = np.random.default_rng()
+    if voice == "noise":
+        source = _generate_noise(num_samples, noise_type, rng) * noise_level
+    else:
+        freq_sweep = osc_freq_low + cutoff_frac * (osc_freq_high - osc_freq_low)
+        source = _generate_oscillator_sweep(
+            num_samples,
+            freq_sweep,
+            voice,
+            level=osc_level,
+            pulse_width=pulse_width,
+            pwm_sweep=pwm_sweep,
+            detune_cents=detune_cents,
+            detune_mix=detune_mix,
+            cutoff_frac=cutoff_frac,
+        )
     tremolo_gain = _compute_tremolo_gain(
         num_samples, lfo_rate_frac, tremolo_rate_min, tremolo_rate_max, tremolo_depth
     )
@@ -396,14 +543,19 @@ def generate_sweep_sample(
     nyq = 0.5 * SAMPLE_RATE
     zi = None
 
+    use_resonant = (voice != "noise" and resonance > 0)
     for start in range(0, num_samples, BLOCK_SIZE):
         end = min(start + BLOCK_SIZE, num_samples)
-        block = noise[start:end].copy()
+        block = source[start:end].copy()
 
         mid_idx = start + (end - start) // 2
         cutoff = float(np.clip(cutoffs_hz[mid_idx], 20, nyq - 1))
+        q_val = 0.5 + resonance * float(cutoff_frac[mid_idx]) * (RESONANCE_Q_RANGE[1] - 0.5) if use_resonant else 0.707
 
-        b, a = butter(filter_order, cutoff / nyq, btype="low")
+        if use_resonant:
+            b, a = _resonant_lowpass_biquad_coeffs(cutoff, q_val)
+        else:
+            b, a = butter(filter_order, cutoff / nyq, btype="low")
         zi_use = lfilter_zi(b, a) * block[0] if zi is None else zi
         filtered, zi = lfilter(b, a, block, zi=zi_use)
 
@@ -435,12 +587,21 @@ def generate_sweep_sample(
     sf.write(output, out, SAMPLE_RATE, subtype="PCM_16")
 
     params_used = {
+        "voice": voice,
         "cutoff_low": cutoff_low,
         "cutoff_high": cutoff_high,
         "decay_rate": decay_rate,
         "peak_pos": peak_pos,
         "noise_level": noise_level,
         "noise_type": noise_type,
+        "osc_freq_low": osc_freq_low,
+        "osc_freq_high": osc_freq_high,
+        "osc_level": osc_level,
+        "pulse_width": pulse_width,
+        "pwm_sweep": pwm_sweep,
+        "detune_cents": detune_cents,
+        "detune_mix": detune_mix,
+        "resonance": resonance,
         "filter_order": filter_order,
         "build_shape": build_shape,
         "tremolo_depth": tremolo_depth,

@@ -508,11 +508,11 @@ transition_app = typer.Typer(help="Generate transition sounds (sweeps, risers, e
 def transition_sweep(
     tempo: int = typer.Option(120, "--tempo", "-t", help="Tempo in BPM (default: 120)."),
     bars: int = typer.Option(2, "--bars", "-b", help="Length in bars (default: 2)."),
-    noise: str | None = typer.Option(
+    sound: str | None = typer.Option(
         None,
-        "--noise",
-        "-n",
-        help="Noise params: type, noise_level. E.g. type:white;noise_level:0.6 (use _ for random).",
+        "--sound",
+        "-s",
+        help="Sound: voice (noise|sine|saw|tri|square). Oscillator params: freq_low, freq_high, level, pulse_width, pwm_sweep, detune_cents, detune_mix, resonance.",
     ),
     curve: str | None = typer.Option(
         None,
@@ -558,12 +558,12 @@ def transition_sweep(
     """Generate a noise riser (techno/trance/house).
 
     Params use key:value;key2:value2 syntax. Use _ or empty for random.
-    Quote values with semicolons in shell: --noise "type:white" --phaser "rate_hz:1;depth:0.7"
+    Quote values: --sound "voice:noise;type:white" --sound "voice:square;freq_low:110"
     """
     start_time = time.time()
 
     config = parse_sweep_config(
-        noise=noise,
+        sound=sound,
         curve=curve,
         filter_str=filter_str,
         tremolo=tremolo,
@@ -593,9 +593,14 @@ def transition_sweep(
     print(f"{RED}■ completed in {time_elapsed}s{RESET}")
     print(with_prompt(f"generated: {output_path}"))
     t = params_used
+    voice = t.get("voice", "noise")
+    if voice == "noise":
+        voice_desc = f"{t.get('noise_type', 'white')} noise"
+    else:
+        voice_desc = f"{voice} {t.get('osc_freq_low', 0):.0f}–{t.get('osc_freq_high', 0):.0f}Hz"
     mod_str = ", ".join(m for m in ["phaser", "chorus", "flanger"] if t.get(m))
     fx_str = f", fx=[{mod_str}]" if mod_str else ""
-    print(with_prompt(f"  used: {t['noise_type']} noise, cutoff {t['cutoff_low']}–{t['cutoff_high']}Hz, tremolo depth={t['tremolo_depth']:.2f} rate={t['tremolo_rate_min']:.1f}–{t['tremolo_rate_max']:.1f}Hz{fx_str}"))
+    print(with_prompt(f"  used: {voice_desc}, cutoff {t['cutoff_low']}–{t['cutoff_high']}Hz, tremolo depth={t['tremolo_depth']:.2f} rate={t['tremolo_rate_min']:.1f}–{t['tremolo_rate_max']:.1f}Hz{fx_str}"))
 
     if play:
         open_files_with_default_player([output_path])
