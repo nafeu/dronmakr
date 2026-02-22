@@ -14,7 +14,7 @@ from build_preset import list_presets
 from webui import run as run_webui
 from generate_midi import generate_drone_midi, get_pattern_config
 from generate_sample import generate_drone_sample, generate_beat_sample
-from generate_transition import generate_sweep_sample
+from generate_transition import generate_sweep_sample, parse_sweep_config
 from process_sample import process_drone_sample
 from utils import (
     format_name,
@@ -506,152 +506,78 @@ transition_app = typer.Typer(help="Generate transition sounds (sweeps, risers, e
 
 @transition_app.command("sweep")
 def transition_sweep(
-    tempo: int = typer.Option(
-        120,
-        "--tempo",
-        "-t",
-        help="Tempo in BPM. With --bars, determines sweep length (default: 120).",
-    ),
-    bars: int = typer.Option(
-        2,
-        "--bars",
-        "-b",
-        help="Length in bars (default: 2). At 120 BPM, 2 bars ≈ 4 seconds.",
-    ),
-    cutoff_low: int | None = typer.Option(
+    tempo: int = typer.Option(120, "--tempo", "-t", help="Tempo in BPM (default: 120)."),
+    bars: int = typer.Option(2, "--bars", "-b", help="Length in bars (default: 2)."),
+    noise: str | None = typer.Option(
         None,
-        "--cutoff-low",
-        "-l",
-        help="Filter cutoff (Hz) at sweep start. Lower = darker/muffled start. Random 300–700 if omitted.",
-    ),
-    cutoff_high: int | None = typer.Option(
-        None,
-        "--cutoff-high",
-        "-H",
-        help="Filter cutoff (Hz) at peak. Higher = brighter sweep. Random 10k–18k if omitted.",
-    ),
-    decay: float | None = typer.Option(
-        None,
-        "--decay",
-        "-d",
-        help="Decay rate after peak (1–10). Higher = faster fade-out. Random 2–6 if omitted.",
-    ),
-    peak_pos: float | None = typer.Option(
-        None,
-        "--peak-pos",
-        "-P",
-        help="Where the peak lands, 0.0–1.0 (0.5 = middle). Random 0.4–0.6 if omitted.",
-    ),
-    noise_level: float | None = typer.Option(
-        None,
-        "--noise-level",
+        "--noise",
         "-n",
-        help="Noise amplitude (0.2–1.0). Higher = louder sweep. Random 0.45–0.8 if omitted.",
+        help="Noise params: type, noise_level. E.g. type:white;noise_level:0.6 (use _ for random).",
     ),
-    noise_type: str | None = typer.Option(
+    curve: str | None = typer.Option(
         None,
-        "--noise-type",
-        "-N",
-        help="Noise spectrum: white (flat), pink (1/f, warmer), brown (1/f², rumbly), blue (bright/hissy). Random if omitted.",
+        "--curve",
+        "-c",
+        help="Build curve: shape, decay_rate, peak_pos. E.g. shape:ease_in;decay_rate:4;peak_pos:0.5.",
     ),
-    filter_order: int | None = typer.Option(
+    filter_str: str | None = typer.Option(
         None,
-        "--filter-order",
+        "--filter",
         "-f",
-        help="Lowpass filter order: 2, 4, or 6. Higher = steeper rolloff. Random if omitted.",
+        help="Filter: cutoff_low, cutoff_high. E.g. cutoff_low:200;cutoff_high:12000.",
     ),
-    build_shape: str | None = typer.Option(
+    tremolo: str | None = typer.Option(
         None,
-        "--build-shape",
-        "-s",
-        help="Build curve: ease_in (slow start), linear, ease_out (slow end). Random if omitted.",
+        "--tremolo",
+        "-T",
+        help="Tremolo: rate_min_hz, rate_max_hz, depth. E.g. depth:0.8;rate_min_hz:2;rate_max_hz:20.",
     ),
-    tremolo_depth: float | None = typer.Option(
+    phaser: str | None = typer.Option(
         None,
-        "--tremolo-depth",
-        help="Gain LFO depth (0–1). 0=off, 0.9=volume dips to 10% at trough. Random 0.4–0.9 if omitted.",
+        "--phaser",
+        help="Phaser: rate_hz, depth, centre_frequency_hz, feedback, mix. Use _ for random. Omit to randomize enable.",
     ),
-    tremolo_rate_min: float | None = typer.Option(
+    chorus: str | None = typer.Option(
         None,
-        "--tremolo-rate-min",
-        help="Tremolo LFO rate (Hz) at sweep start. Oscillations speed up toward peak. Random 1–4 if omitted.",
+        "--chorus",
+        help="Chorus: rate_hz, depth, centre_delay_ms, feedback, mix.",
     ),
-    tremolo_rate_max: float | None = typer.Option(
+    flanger: str | None = typer.Option(
         None,
-        "--tremolo-rate-max",
-        help="Tremolo LFO rate (Hz) at peak. Random 10–25 if omitted.",
+        "--flanger",
+        help="Flanger: rate_hz, depth, centre_delay_ms, feedback, mix.",
     ),
-    phaser: bool | None = typer.Option(
+    disable: str | None = typer.Option(
         None,
-        "--phaser/--no-phaser",
-        help="Add phaser effect. Random if neither specified.",
+        "--disable",
+        "-d",
+        help="Disable effects: comma-separated list of tremolo,phaser,chorus,flanger or fx (disables all).",
     ),
-    chorus: bool | None = typer.Option(
-        None,
-        "--chorus/--no-chorus",
-        help="Add chorus effect. Random if neither specified.",
-    ),
-    flanger: bool | None = typer.Option(
-        None,
-        "--flanger/--no-flanger",
-        help="Add flanger effect (Chorus with short delay + feedback). Random if neither specified.",
-    ),
-    play: bool = typer.Option(
-        False,
-        "--play",
-        "-p",
-        help="Open the exported file with the system's default WAV player.",
-    ),
+    play: bool = typer.Option(False, "--play", "-p", help="Open output with default WAV player."),
 ):
-    """Generate a noise riser with LFO-modulated filter cutoff (techno/trance/house).
+    """Generate a noise riser (techno/trance/house).
 
-    Use --noise-type to choose white, pink, brown, or blue noise. Builds from
-    muffled to bright, peaks, then smooth decay. Omit sound-design options to
-    randomize them for variation.
+    Params use key:value;key2:value2 syntax. Use _ or empty for random.
+    Quote values with semicolons in shell: --noise "type:white" --phaser "rate_hz:1;depth:0.7"
     """
     start_time = time.time()
 
-    # Resolve build_shape for DSP
-    valid_shapes = ("ease_in", "linear", "ease_out")
-    build_shape_typed = None
-    if build_shape is not None:
-        if build_shape not in valid_shapes:
-            print(with_prompt(f"Error: --build-shape must be one of {valid_shapes}"))
-            raise typer.Exit(1)
-        build_shape_typed = build_shape
-
-    # Resolve noise_type for DSP
-    valid_noise = ("white", "pink", "brown", "blue")
-    noise_type_typed = None
-    if noise_type is not None:
-        nt = noise_type.lower()
-        if nt not in valid_noise:
-            print(with_prompt(f"Error: --noise-type must be one of {valid_noise}"))
-            raise typer.Exit(1)
-        noise_type_typed = nt
+    config = parse_sweep_config(
+        noise=noise,
+        curve=curve,
+        filter_str=filter_str,
+        tremolo=tremolo,
+        phaser=phaser,
+        chorus=chorus,
+        flanger=flanger,
+        disable=disable,
+    )
 
     print(get_version())
     print(generate_transition_header())
     print(with_prompt(f"sweep"))
     print(with_prompt(f"  tempo               {tempo}"))
     print(with_prompt(f"  bars                {bars}"))
-    for label, val in [
-        ("cutoff_low", cutoff_low),
-        ("cutoff_high", cutoff_high),
-        ("decay", decay),
-        ("peak_pos", peak_pos),
-        ("noise_level", noise_level),
-        ("noise_type", noise_type),
-        ("filter_order", filter_order),
-        ("build_shape", build_shape),
-        ("tremolo_depth", tremolo_depth),
-        ("tremolo_rate_min", tremolo_rate_min),
-        ("tremolo_rate_max", tremolo_rate_max),
-        ("phaser", phaser),
-        ("chorus", chorus),
-        ("flanger", flanger),
-    ]:
-        print(with_prompt(f"  {label:<18} {val if val is not None else GENERATED_LABEL}"))
     print(with_prompt(f"  play when done      {play}"))
     print(f"{RED}│{RESET}")
 
@@ -660,25 +586,7 @@ def transition_sweep(
     sample_name = format_name("___".join(name_parts))
     output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
 
-    output_path, params_used = generate_sweep_sample(
-        tempo=tempo,
-        bars=bars,
-        output=output_path,
-        cutoff_low=cutoff_low,
-        cutoff_high=cutoff_high,
-        decay_rate=decay,
-        peak_pos=peak_pos,
-        noise_level=noise_level,
-        noise_type=noise_type_typed,
-        filter_order=filter_order,
-        build_shape=build_shape_typed,
-        tremolo_depth=tremolo_depth,
-        tremolo_rate_min=tremolo_rate_min,
-        tremolo_rate_max=tremolo_rate_max,
-        phaser=phaser,
-        chorus=chorus,
-        flanger=flanger,
-    )
+    output_path, params_used = generate_sweep_sample(tempo=tempo, bars=bars, output=output_path, config=config)
 
     end_time = time.time()
     time_elapsed = round(end_time - start_time)

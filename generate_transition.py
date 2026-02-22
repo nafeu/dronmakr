@@ -1,7 +1,8 @@
 """Transition sound generation (sweeps, risers, etc.) using offline DSP."""
 
 import random
-from typing import Literal
+import re
+from typing import Any, Literal
 
 import numpy as np
 import soundfile as sf
@@ -48,6 +49,162 @@ FLANGER_DEPTH_RANGE = (0.3, 0.5)
 FLANGER_DELAY_RANGE = (1.0, 3.0)
 FLANGER_FEEDBACK_RANGE = (0.2, 0.5)
 FLANGER_MIX_RANGE = (0.4, 0.6)
+
+
+def _parse_param_string(s: str | None) -> dict[str, str]:
+    """Parse 'key1:val1;key2:val2' into dict. Empty or None returns {}."""
+    if not s or not s.strip():
+        return {}
+    out: dict[str, str] = {}
+    for part in s.split(";"):
+        part = part.strip()
+        if ":" in part:
+            k, v = part.split(":", 1)
+            out[k.strip().lower()] = v.strip()
+        elif part:
+            out[part.lower()] = ""
+    return out
+
+
+def _is_random(val: str | None) -> bool:
+    """Value is _ or empty means use random."""
+    return val is None or val == "" or val.lower() == "_"
+
+
+def _resolve_float(
+    parsed: dict[str, str],
+    key: str,
+    default_range: tuple[float, float],
+    min_val: float | None = None,
+    max_val: float | None = None,
+) -> float:
+    val = parsed.get(key)
+    if _is_random(val):
+        v = random.uniform(*default_range)
+    else:
+        try:
+            v = float(val)
+        except (TypeError, ValueError):
+            v = random.uniform(*default_range)
+    if min_val is not None:
+        v = max(min_val, v)
+    if max_val is not None:
+        v = min(max_val, v)
+    return v
+
+
+def _resolve_int(
+    parsed: dict[str, str],
+    key: str,
+    default_range: tuple[int, int],
+    min_val: int | None = None,
+    max_val: int | None = None,
+) -> int:
+    val = parsed.get(key)
+    if _is_random(val):
+        v = random.randint(*default_range)
+    else:
+        try:
+            v = int(float(val))
+        except (TypeError, ValueError):
+            v = random.randint(*default_range)
+    if min_val is not None:
+        v = max(min_val, v)
+    if max_val is not None:
+        v = min(max_val, v)
+    return v
+
+
+def _resolve_choice(parsed: dict[str, str], key: str, choices: tuple[str, ...]) -> str:
+    val = parsed.get(key)
+    if _is_random(val) or (val and val.lower() not in {c.lower() for c in choices}):
+        return random.choice(choices)
+    return next(c for c in choices if c.lower() == val.lower())
+
+
+def _resolve_phaser_params(parsed: dict[str, str]) -> dict[str, float]:
+    return {
+        "rate_hz": _resolve_float(parsed, "rate_hz", PHASER_RATE_RANGE, 0.1, 10),
+        "depth": _resolve_float(parsed, "depth", PHASER_DEPTH_RANGE, 0, 1),
+        "centre_frequency_hz": _resolve_float(parsed, "centre_frequency_hz", PHASER_CENTRE_RANGE, 100, 10000),
+        "feedback": _resolve_float(parsed, "feedback", PHASER_FEEDBACK_RANGE, 0, 1),
+        "mix": _resolve_float(parsed, "mix", PHASER_MIX_RANGE, 0, 1),
+    }
+
+
+def _resolve_chorus_params(parsed: dict[str, str]) -> dict[str, float]:
+    return {
+        "rate_hz": _resolve_float(parsed, "rate_hz", CHORUS_RATE_RANGE, 0.1, 10),
+        "depth": _resolve_float(parsed, "depth", CHORUS_DEPTH_RANGE, 0, 1),
+        "centre_delay_ms": _resolve_float(parsed, "centre_delay_ms", CHORUS_DELAY_RANGE, 1, 20),
+        "feedback": _resolve_float(parsed, "feedback", (0, 0.5), 0, 0.5),
+        "mix": _resolve_float(parsed, "mix", CHORUS_MIX_RANGE, 0, 1),
+    }
+
+
+def _resolve_flanger_params(parsed: dict[str, str]) -> dict[str, float]:
+    return {
+        "rate_hz": _resolve_float(parsed, "rate_hz", FLANGER_RATE_RANGE, 0.1, 5),
+        "depth": _resolve_float(parsed, "depth", FLANGER_DEPTH_RANGE, 0, 1),
+        "centre_delay_ms": _resolve_float(parsed, "centre_delay_ms", FLANGER_DELAY_RANGE, 0.5, 10),
+        "feedback": _resolve_float(parsed, "feedback", FLANGER_FEEDBACK_RANGE, 0, 0.8),
+        "mix": _resolve_float(parsed, "mix", FLANGER_MIX_RANGE, 0, 1),
+    }
+
+
+def parse_sweep_config(
+    noise: str | None = None,
+    curve: str | None = None,
+    filter_str: str | None = None,
+    tremolo: str | None = None,
+    phaser: str | None = None,
+    chorus: str | None = None,
+    flanger: str | None = None,
+    disable: str | None = None,
+) -> dict[str, Any]:
+    """
+    Parse encoded param strings into a resolved config dict.
+    Syntax: key:value;key2:value2. Use _ or empty for random. E.g. --noise type:white;noise_level:0.6
+    """
+    disabled = set()
+    if disable:
+        for d in re.split(r"[\s,]+", disable.strip().lower()):
+            d = d.strip()
+            if d == "fx":
+                disabled.update(("tremolo", "phaser", "chorus", "flanger"))
+            elif d in ("tremolo", "phaser", "chorus", "flanger"):
+                disabled.add(d)
+
+    n = _parse_param_string(noise)
+    c = _parse_param_string(curve)
+    f = _parse_param_string(filter_str)
+    t = _parse_param_string(tremolo)
+    ph = _parse_param_string(phaser)
+    ch = _parse_param_string(chorus)
+    fl = _parse_param_string(flanger)
+
+    tremolo_rate_min = _resolve_float(t, "rate_min_hz", TREMOLO_RATE_MIN_RANGE, 0.5, 20)
+    tremolo_rate_max = _resolve_float(t, "rate_max_hz", TREMOLO_RATE_MAX_RANGE, 2, 50)
+    tremolo_rate_max = max(tremolo_rate_max, tremolo_rate_min + 1.0)
+
+    return {
+        "noise_type": _resolve_choice(n, "type", NOISE_TYPES),
+        "noise_level": _resolve_float(n, "noise_level", NOISE_LEVEL_RANGE, 0.2, 1.0),
+        "build_shape": _resolve_choice(c, "shape", BUILD_SHAPES),
+        "decay_rate": _resolve_float(c, "decay_rate", DECAY_RATE_RANGE, 0.5, 15.0),
+        "peak_pos": _resolve_float(c, "peak_pos", PEAK_POS_RANGE, 0.15, 0.85),
+        "cutoff_low": _resolve_int(f, "cutoff_low", CUTOFF_LOW_RANGE, 50, 5000),
+        "cutoff_high": _resolve_int(f, "cutoff_high", CUTOFF_HIGH_RANGE, 1000, 20000),
+        "tremolo_depth": 0.0 if "tremolo" in disabled else _resolve_float(t, "depth", TREMOLO_DEPTH_RANGE, 0, 1),
+        "tremolo_rate_min": tremolo_rate_min,
+        "tremolo_rate_max": tremolo_rate_max,
+        "phaser_enabled": "phaser" not in disabled and (phaser is not None or random.random() < 0.5),
+        "phaser_params": _resolve_phaser_params(ph) if "phaser" not in disabled else {},
+        "chorus_enabled": "chorus" not in disabled and (chorus is not None or random.random() < 0.5),
+        "chorus_params": _resolve_chorus_params(ch) if "chorus" not in disabled else {},
+        "flanger_enabled": "flanger" not in disabled and (flanger is not None or random.random() < 0.5),
+        "flanger_params": _resolve_flanger_params(fl) if "flanger" not in disabled else {},
+    }
 
 
 def _generate_noise(
@@ -135,45 +292,26 @@ def _riser_build_curve(
     return cutoff_frac, envelope, lfo_rate_frac
 
 
-def _build_modulation_board(
-    phaser: bool,
-    chorus: bool,
-    flanger: bool,
-    rng: random.Random,
+def _build_modulation_board_from_config(
+    phaser_enabled: bool,
+    chorus_enabled: bool,
+    flanger_enabled: bool,
+    phaser_params: dict,
+    chorus_params: dict,
+    flanger_params: dict,
 ) -> tuple[Pedalboard | None, dict]:
-    """Build a Pedalboard with phaser, chorus, and/or flanger. Returns (board, params_used)."""
+    """Build a Pedalboard from config. Params dicts already have resolved values."""
     plugins = []
     mod_params: dict = {}
-    if phaser:
-        p = {
-            "rate_hz": rng.uniform(*PHASER_RATE_RANGE),
-            "depth": rng.uniform(*PHASER_DEPTH_RANGE),
-            "centre_frequency_hz": rng.uniform(*PHASER_CENTRE_RANGE),
-            "feedback": rng.uniform(*PHASER_FEEDBACK_RANGE),
-            "mix": rng.uniform(*PHASER_MIX_RANGE),
-        }
-        mod_params["phaser"] = p
-        plugins.append(Phaser(**p))
-    if chorus:
-        c = {
-            "rate_hz": rng.uniform(*CHORUS_RATE_RANGE),
-            "depth": rng.uniform(*CHORUS_DEPTH_RANGE),
-            "centre_delay_ms": rng.uniform(*CHORUS_DELAY_RANGE),
-            "feedback": 0.0,
-            "mix": rng.uniform(*CHORUS_MIX_RANGE),
-        }
-        mod_params["chorus"] = c
-        plugins.append(Chorus(**c))
-    if flanger:
-        f = {
-            "rate_hz": rng.uniform(*FLANGER_RATE_RANGE),
-            "depth": rng.uniform(*FLANGER_DEPTH_RANGE),
-            "centre_delay_ms": rng.uniform(*FLANGER_DELAY_RANGE),
-            "feedback": rng.uniform(*FLANGER_FEEDBACK_RANGE),
-            "mix": rng.uniform(*FLANGER_MIX_RANGE),
-        }
-        mod_params["flanger"] = f
-        plugins.append(Chorus(**f))
+    if phaser_enabled and phaser_params:
+        mod_params["phaser"] = phaser_params
+        plugins.append(Phaser(**phaser_params))
+    if chorus_enabled and chorus_params:
+        mod_params["chorus"] = chorus_params
+        plugins.append(Chorus(**chorus_params))
+    if flanger_enabled and flanger_params:
+        mod_params["flanger"] = flanger_params
+        plugins.append(Chorus(**flanger_params))
     if not plugins:
         return None, {}
     return Pedalboard(plugins), mod_params
@@ -202,51 +340,41 @@ def generate_sweep_sample(
     tempo: int = 120,
     bars: int = 2,
     output: str = "sweep.wav",
-    cutoff_low: int | None = None,
-    cutoff_high: int | None = None,
-    decay_rate: float | None = None,
-    peak_pos: float | None = None,
-    noise_level: float | None = None,
-    noise_type: Literal["white", "pink", "brown", "blue"] | None = None,
-    filter_order: int | None = None,
-    build_shape: Literal["ease_in", "linear", "ease_out"] | None = None,
-    tremolo_depth: float | None = None,
-    tremolo_rate_min: float | None = None,
-    tremolo_rate_max: float | None = None,
-    phaser: bool | None = None,
-    chorus: bool | None = None,
-    flanger: bool | None = None,
-) -> str:
+    config: dict[str, Any] | None = None,
+) -> tuple[str, dict[str, Any]]:
     """
     Generate a noise riser with LFO-modulated filter cutoff.
-    Builds from muffled/quiet to bright/loud, then smooth decay.
-    Trance/house style - high-end sweeping noise, no low thump.
+    Pass config from parse_sweep_config().
     """
-    # Randomize params when not provided
-    cutoff_low = cutoff_low if cutoff_low is not None else random.randint(*CUTOFF_LOW_RANGE)
-    cutoff_high = cutoff_high if cutoff_high is not None else random.randint(*CUTOFF_HIGH_RANGE)
-    cutoff_high = max(cutoff_high, cutoff_low + 500)  # ensure valid sweep range
-    decay_rate = decay_rate if decay_rate is not None else random.uniform(*DECAY_RATE_RANGE)
-    peak_pos = peak_pos if peak_pos is not None else random.uniform(*PEAK_POS_RANGE)
-    peak_pos = max(0.15, min(0.85, peak_pos))  # avoid edge cases
-    noise_level = noise_level if noise_level is not None else random.uniform(*NOISE_LEVEL_RANGE)
+    if config is None:
+        config = parse_sweep_config()
+
+    cfg = config
+    cutoff_low = cfg.get("cutoff_low") or random.randint(*CUTOFF_LOW_RANGE)
+    cutoff_high = cfg.get("cutoff_high") or random.randint(*CUTOFF_HIGH_RANGE)
+    cutoff_high = max(cutoff_high, cutoff_low + 500)
+    decay_rate = cfg.get("decay_rate") or random.uniform(*DECAY_RATE_RANGE)
+    peak_pos = cfg.get("peak_pos") or random.uniform(*PEAK_POS_RANGE)
+    peak_pos = max(0.15, min(0.85, peak_pos))
+    noise_level = cfg.get("noise_level") or random.uniform(*NOISE_LEVEL_RANGE)
     noise_level = max(0.2, min(1.0, noise_level))
-    noise_type = noise_type if noise_type is not None else random.choice(NOISE_TYPES)
-    filter_order = filter_order if filter_order is not None else random.choice(FILTER_ORDERS)
+    noise_type = cfg.get("noise_type") or random.choice(NOISE_TYPES)
+    filter_order = cfg.get("filter_order") or random.choice(FILTER_ORDERS)
     filter_order = 2 if filter_order == 2 else (4 if filter_order == 4 else 6)
-    build_shape = build_shape if build_shape is not None else random.choice(BUILD_SHAPES)
-    tremolo_depth = tremolo_depth if tremolo_depth is not None else random.uniform(*TREMOLO_DEPTH_RANGE)
+    build_shape = cfg.get("build_shape") or random.choice(BUILD_SHAPES)
+    tremolo_depth = cfg.get("tremolo_depth")
+    if tremolo_depth is None:
+        tremolo_depth = random.uniform(*TREMOLO_DEPTH_RANGE)
     tremolo_depth = max(0.0, min(1.0, tremolo_depth))
-    tremolo_rate_min = tremolo_rate_min if tremolo_rate_min is not None else random.uniform(*TREMOLO_RATE_MIN_RANGE)
-    tremolo_rate_min = max(0.5, min(8.0, tremolo_rate_min))
-    tremolo_rate_max = tremolo_rate_max if tremolo_rate_max is not None else random.uniform(*TREMOLO_RATE_MAX_RANGE)
-    tremolo_rate_max = max(tremolo_rate_min + 2.0, min(40.0, tremolo_rate_max))
-    if phaser is None:
-        phaser = random.random() < 0.5
-    if chorus is None:
-        chorus = random.random() < 0.5
-    if flanger is None:
-        flanger = random.random() < 0.5
+    tremolo_rate_min = cfg.get("tremolo_rate_min") or random.uniform(*TREMOLO_RATE_MIN_RANGE)
+    tremolo_rate_max = cfg.get("tremolo_rate_max") or random.uniform(*TREMOLO_RATE_MAX_RANGE)
+    tremolo_rate_max = max(tremolo_rate_max, tremolo_rate_min + 1.0)
+    phaser_enabled = cfg.get("phaser_enabled", random.random() < 0.5)
+    chorus_enabled = cfg.get("chorus_enabled", random.random() < 0.5)
+    flanger_enabled = cfg.get("flanger_enabled", random.random() < 0.5)
+    phaser_params = cfg.get("phaser_params", _resolve_phaser_params({}))
+    chorus_params = cfg.get("chorus_params", _resolve_chorus_params({}))
+    flanger_params = cfg.get("flanger_params", _resolve_flanger_params({}))
 
     beats_per_bar = 4
     total_beats = bars * beats_per_bar
@@ -289,7 +417,10 @@ def generate_sweep_sample(
         out = out * (0.9 / peak)
 
     # Apply modulation effects (phaser, chorus, flanger) via pedalboard
-    mod_board, mod_params = _build_modulation_board(phaser, chorus, flanger, random)
+    mod_board, mod_params = _build_modulation_board_from_config(
+        phaser_enabled, chorus_enabled, flanger_enabled,
+        phaser_params, chorus_params, flanger_params,
+    )
     if mod_board is not None:
         audio_2d = out.reshape(1, -1).astype(np.float32)
         processed = mod_board(audio_2d, SAMPLE_RATE)
@@ -315,9 +446,9 @@ def generate_sweep_sample(
         "tremolo_depth": tremolo_depth,
         "tremolo_rate_min": tremolo_rate_min,
         "tremolo_rate_max": tremolo_rate_max,
-        "phaser": phaser,
-        "chorus": chorus,
-        "flanger": flanger,
+        "phaser": phaser_enabled,
+        "chorus": chorus_enabled,
+        "flanger": flanger_enabled,
         "modulation_params": mod_params,
     }
     return output, params_used
