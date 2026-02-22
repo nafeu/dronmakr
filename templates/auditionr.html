@@ -289,6 +289,25 @@
       border-bottom-color: var(--theme-b);
     }
 
+    /* Transition sample: orange theme */
+    .transition-sample .waveform-title {
+      color: var(--theme-c);
+    }
+
+    .transition-sample .waveform-actions .button {
+      color: var(--theme-c);
+    }
+
+    .transition-sample .waveform-actions .fixed-button {
+      background-color: var(--theme-c);
+      border-bottom-color: var(--theme-c);
+      color: var(--secondary);
+    }
+
+    .transition-sample .waveform-actions .button:hover {
+      border-bottom-color: var(--theme-c);
+    }
+
     #logs {
       background-color: var(--theme-a);
     }
@@ -497,10 +516,12 @@
         var filePath = "/exports/" + file.split('/').pop(); // Ensure relative path
         var displayName = filePath.replace("/exports/", "").replace(".wav", "");
         var isDrumpattern = displayName.startsWith("drumpattern___");
+        var isTransition = displayName.startsWith("transition");
 
         var wrapper = document.createElement("div");
         wrapper.className = "waveform-wrapper";
         if (isDrumpattern) wrapper.classList.add("drumpattern-sample");
+        if (isTransition) wrapper.classList.add("transition-sample");
 
         var titleContainer = document.createElement("div");
         titleContainer.classList.add("title-container");
@@ -802,7 +823,7 @@
         var wavesurfer = WaveSurfer.create({
           container: "#waveform-" + index,
           waveColor: "#353531",
-          progressColor: isDrumpattern ? "#016fb9" : "#ff9505",
+          progressColor: isDrumpattern ? "#016fb9" : (isTransition ? "#ec4e20" : "#ff9505"),
           backend: "MediaElement",
           height: 80
         });
