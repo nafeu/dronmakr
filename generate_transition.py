@@ -7,8 +7,9 @@ from typing import Any, Literal
 
 import numpy as np
 import soundfile as sf
-from pedalboard import Chorus, Delay, Pedalboard, Phaser, Reverb
-from scipy.signal import butter, lfilter, lfilter_zi
+from scipy.signal import butter, fftconvolve, lfilter, lfilter_zi
+
+from pedalboard import Chorus, Delay, Pedalboard, Phaser
 
 import dsp
 from settings import get_setting
@@ -607,12 +608,12 @@ def generate_sweep_sample(
 
 # --- Closh: washed clap with long reverb (and optional tempo-synced delay) ---
 
-# Reverb param ranges for randomization (long, washed, cathedral-like)
-CLOSH_REVERB_ROOM_SIZE_RANGE = (0.88, 0.99)
-CLOSH_REVERB_DAMPING_RANGE = (0.05, 0.25)  # lower = longer decay
-CLOSH_REVERB_WET_RANGE = (0.75, 0.95)
-CLOSH_REVERB_DRY_RANGE = (0.02, 0.15)
-CLOSH_REVERB_WIDTH_RANGE = (0.7, 1.0)
+# Convolution reverb: higher quality than algorithmic. Param ranges for randomization.
+CLOSH_REVERB_WET_RANGE = (0.4, 0.6)  # 40–60% wet (dry/wet 0.0–1.0)
+CLOSH_REVERB_LENGTH_SEC_RANGE = (3.0, 5.0)  # long IR for washed tail
+CLOSH_REVERB_DECAY_SEC_RANGE = (2.0, 4.0)  # slow decay
+CLOSH_REVERB_EARLY_REFLECTIONS_RANGE = (8, 16)  # denser early reflections
+CLOSH_REVERB_HIGHPASS_RANGE = (80.0, 140.0)  # avoid low-end mud on claps
 
 # Delay param ranges (tempo-synced when enabled)
 CLOSH_DELAY_DIVISIONS: tuple[str, ...] = ("1/4", "1/8", "1/8d", "1/16", "1/16d", "1/32")
@@ -649,18 +650,18 @@ def parse_closh_config(
 ) -> dict[str, Any]:
     """
     Parse closh param strings into resolved config.
-    --reverb: room_size, damping, wet_level, dry_level, width (use _ for random)
+    --reverb: wet_level, length_sec, decay_sec, early_reflections, highpass_hz (use _ for random)
     --delay: division (1/4|1/8|1/8d|1/16|1/16d|1/32), feedback, mix. Omit or 'off' to disable.
     """
     r = _parse_param_string(reverb)
     d = _parse_param_string(delay)
     use_delay = delay is not None and delay.strip().lower() not in ("", "off", "0", "false")
     return {
-        "reverb_room_size": _resolve_float(r, "room_size", CLOSH_REVERB_ROOM_SIZE_RANGE, 0.5, 0.99),
-        "reverb_damping": _resolve_float(r, "damping", CLOSH_REVERB_DAMPING_RANGE, 0, 0.6),
-        "reverb_wet_level": _resolve_float(r, "wet_level", CLOSH_REVERB_WET_RANGE, 0.5, 1.0),
-        "reverb_dry_level": _resolve_float(r, "dry_level", CLOSH_REVERB_DRY_RANGE, 0, 0.3),
-        "reverb_width": _resolve_float(r, "width", CLOSH_REVERB_WIDTH_RANGE, 0.3, 1.0),
+        "reverb_wet_level": _resolve_float(r, "wet_level", CLOSH_REVERB_WET_RANGE, 0.0, 1.0),
+        "reverb_length_sec": _resolve_float(r, "length_sec", CLOSH_REVERB_LENGTH_SEC_RANGE, 1.5, 8.0),
+        "reverb_decay_sec": _resolve_float(r, "decay_sec", CLOSH_REVERB_DECAY_SEC_RANGE, 1.0, 6.0),
+        "reverb_early_reflections": _resolve_int(r, "early_reflections", CLOSH_REVERB_EARLY_REFLECTIONS_RANGE, 3, 25),
+        "reverb_highpass_hz": _resolve_float(r, "highpass_hz", CLOSH_REVERB_HIGHPASS_RANGE, 40, 200),
         "delay_enabled": use_delay,
         "delay_division": _resolve_choice(d, "division", CLOSH_DELAY_DIVISIONS),
         "delay_feedback": _resolve_float(d, "feedback", CLOSH_DELAY_FEEDBACK_RANGE, 0, 0.8),
@@ -730,17 +731,28 @@ def generate_closh_sample(
     if input_peak < 1e-6:
         raise ValueError(f"Clap sample is effectively silent: {clap_path}")
 
-    # Build reverb
-    reverb = Reverb(
-        room_size=config["reverb_room_size"],
-        damping=config["reverb_damping"],
-        wet_level=config["reverb_wet_level"],
-        dry_level=config["reverb_dry_level"],
-        width=config["reverb_width"],
-        freeze_mode=0.0,
+    # High-quality convolution reverb (natural, non-synthetic)
+    ir = dsp.make_reverb_ir(
+        SAMPLE_RATE,
+        length_sec=config["reverb_length_sec"],
+        decay_sec=config["reverb_decay_sec"],
+        early_reflections=config["reverb_early_reflections"],
+        highpass_cutoff_hz=config["reverb_highpass_hz"],
+        seed=random.randint(0, 2**31 - 1),
     )
-    plugins: list = [reverb]
+    wet_level = config["reverb_wet_level"]
+    n_channels = padded.shape[0]
+    wet = np.zeros((n_channels, padded.shape[1] + len(ir) - 1), dtype=np.float32)
+    for ch in range(n_channels):
+        wet[ch] = fftconvolve(padded[ch], ir, mode="full")
+    dry_extended = np.zeros_like(wet, dtype=np.float32)
+    dry_extended[:, :padded.shape[1]] = padded
+    wet_peak = np.max(np.abs(wet)) + 1e-12
+    dry_peak = np.max(np.abs(padded)) + 1e-12
+    wet = wet * (dry_peak / wet_peak)
+    processed = wet_level * wet + (1.0 - wet_level) * dry_extended
 
+    # Optionally apply tempo-synced delay
     if config["delay_enabled"]:
         delay_sec = _delay_division_to_seconds(config["delay_division"], tempo)
         delay_plugin = Delay(
@@ -748,21 +760,18 @@ def generate_closh_sample(
             feedback=config["delay_feedback"],
             mix=config["delay_mix"],
         )
-        plugins.append(delay_plugin)
-
-    board = Pedalboard(plugins)
-
-    # Process in chunks to avoid long UI freezes; reverb state preserved with reset=False
-    chunk_samples = 44100
-    n_chunks = (total_len + chunk_samples - 1) // chunk_samples
-    processed_chunks = []
-    for i in range(n_chunks):
-        start = i * chunk_samples
-        end = min(start + chunk_samples, total_len)
-        chunk = padded[:, start:end]
-        out_chunk = board(chunk, SAMPLE_RATE, buffer_size=4096, reset=(i == 0))
-        processed_chunks.append(out_chunk)
-    processed = np.concatenate(processed_chunks, axis=1)
+        board = Pedalboard([delay_plugin])
+        chunk_samples = 44100
+        proc_len = processed.shape[1]
+        n_chunks = (proc_len + chunk_samples - 1) // chunk_samples
+        delay_chunks = []
+        for i in range(n_chunks):
+            start = i * chunk_samples
+            end = min(start + chunk_samples, proc_len)
+            chunk = processed[:, start:end]
+            out_chunk = board(chunk, SAMPLE_RATE, buffer_size=4096, reset=(i == 0))
+            delay_chunks.append(out_chunk)
+        processed = np.concatenate(delay_chunks, axis=1)
 
     # Trim to desired length (bars)
     duration_sec = bars * 4 * (60.0 / tempo)
@@ -779,11 +788,11 @@ def generate_closh_sample(
 
     params_used = {
         "clap_path": str(clap_path),
-        "reverb_room_size": config["reverb_room_size"],
-        "reverb_damping": config["reverb_damping"],
         "reverb_wet_level": config["reverb_wet_level"],
-        "reverb_dry_level": config["reverb_dry_level"],
-        "reverb_width": config["reverb_width"],
+        "reverb_length_sec": config["reverb_length_sec"],
+        "reverb_decay_sec": config["reverb_decay_sec"],
+        "reverb_early_reflections": config["reverb_early_reflections"],
+        "reverb_highpass_hz": config["reverb_highpass_hz"],
         "delay_enabled": config["delay_enabled"],
         "delay_division": config["delay_division"],
         "delay_feedback": config["delay_feedback"],

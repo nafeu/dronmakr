@@ -44,16 +44,18 @@ def make_reverb_ir(
     decay_sec: float = 0.5,
     early_reflections: int = 5,
     highpass_cutoff_hz: float = 0.0,
+    seed: int | None = 42,
 ) -> np.ndarray:
     """
     Build a high-quality reverb impulse response for offline convolution.
     Early reflections (discrete echoes) + dense tail (exponential decay of
     filtered noise). Optional highpass on the IR so reverb doesn't reflect
     low-end (set highpass_cutoff_hz > 0, e.g. 80–120 for drums).
+    seed: RNG seed for IR variation (None = deterministic default).
     """
     n = int(sample_rate * length_sec)
     ir = np.zeros(n, dtype=np.float64)
-    rng = np.random.default_rng(42)
+    rng = np.random.default_rng(seed if seed is not None else 42)
     for _ in range(early_reflections):
         idx = int(rng.uniform(0.002 * sample_rate, 0.04 * sample_rate))
         if idx < n:
