@@ -3,7 +3,7 @@ import numpy as np
 import soundfile as sf
 import librosa
 import pedalboard
-from scipy.signal import butter, fftconvolve
+from scipy.signal import fftconvolve
 
 import dsp
 from pedalboard import (
@@ -420,33 +420,46 @@ def apply_phaser_to_sample(input_path):
 
 
 def apply_lowpass_to_sample(input_path, cutoff_hz=6000, order=6):
-    """Apply steep low-pass filter and overwrite the file. High-order Butterworth for a clean cutoff."""
+    """Apply aggressive low-pass with steep cutoff. Truly cuts high frequencies."""
     with AudioFile(input_path) as f:
         audio = f.read(f.frames)
         sample_rate = f.samplerate
-    nyq = 0.5 * sample_rate
-    b, a = butter(order, cutoff_hz / nyq, btype="low")
-    processed = dsp.apply_iir_per_channel(audio, sample_rate, b, a)
+    processed = dsp.apply_steep_lowpass(audio, sample_rate, cutoff_hz)
     with AudioFile(
         input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
     ) as out:
         out.write(processed)
-    print(f"Applied LPF ({cutoff_hz} Hz, order {order}) to: {input_path}")
+    print(f"Applied LPF ({cutoff_hz} Hz) to: {input_path}")
 
 
 def apply_highpass_to_sample(input_path, cutoff_hz=100, order=6):
-    """Apply steep high-pass filter and overwrite the file. High-order Butterworth for a clean cutoff."""
+    """Apply aggressive high-pass with steep cutoff. Truly cuts low frequencies."""
     with AudioFile(input_path) as f:
         audio = f.read(f.frames)
         sample_rate = f.samplerate
-    nyq = 0.5 * sample_rate
-    b, a = butter(order, cutoff_hz / nyq, btype="high")
-    processed = dsp.apply_iir_per_channel(audio, sample_rate, b, a)
+    processed = dsp.apply_steep_highpass(audio, sample_rate, cutoff_hz)
     with AudioFile(
         input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
     ) as out:
         out.write(processed)
-    print(f"Applied HPF ({cutoff_hz} Hz, order {order}) to: {input_path}")
+    print(f"Applied HPF ({cutoff_hz} Hz) to: {input_path}")
+
+
+def apply_bandpass_to_sample(
+    input_path, low_hz=300, high_hz=6000, order=4
+):
+    """Apply Butterworth bandpass filter and overwrite the file."""
+    with AudioFile(input_path) as f:
+        audio = f.read(f.frames)
+        sample_rate = f.samplerate
+    processed = dsp.apply_butter_filter(
+        audio, sample_rate, "band", (low_hz, high_hz), order
+    )
+    with AudioFile(
+        input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
+    ) as out:
+        out.write(processed)
+    print(f"Applied BPF ({low_hz}–{high_hz} Hz, order {order}) to: {input_path}")
 
 
 def apply_eq_lows_to_sample(input_path, gain_db, cutoff_hz=250):

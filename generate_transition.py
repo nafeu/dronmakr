@@ -610,10 +610,11 @@ def generate_sweep_sample(
 
 # Convolution reverb: higher quality than algorithmic. Param ranges for randomization.
 CLOSH_REVERB_WET_RANGE = (0.4, 0.6)  # 40–60% wet (dry/wet 0.0–1.0)
-CLOSH_REVERB_LENGTH_SEC_RANGE = (3.0, 5.0)  # long IR for washed tail
-CLOSH_REVERB_DECAY_SEC_RANGE = (2.0, 4.0)  # slow decay
-CLOSH_REVERB_EARLY_REFLECTIONS_RANGE = (8, 16)  # denser early reflections
-CLOSH_REVERB_HIGHPASS_RANGE = (80.0, 140.0)  # avoid low-end mud on claps
+CLOSH_REVERB_LENGTH_SEC_RANGE = (4.0, 6.0)  # long IR for stadium-style tail
+CLOSH_REVERB_DECAY_SEC_RANGE = (2.5, 5.0)  # slow, smooth decay
+CLOSH_REVERB_EARLY_REFLECTIONS_RANGE = (20, 40)  # dense early field
+CLOSH_REVERB_HIGHPASS_RANGE = (70.0, 120.0)  # avoid low-end mud
+CLOSH_REVERB_TAIL_DIFFUSION_RANGE = (0.65, 0.9)  # high = smoother, stadium-like
 
 # Delay param ranges (tempo-synced when enabled)
 CLOSH_DELAY_DIVISIONS: tuple[str, ...] = ("1/4", "1/8", "1/8d", "1/16", "1/16d", "1/32")
@@ -658,10 +659,11 @@ def parse_closh_config(
     use_delay = delay is not None and delay.strip().lower() not in ("", "off", "0", "false")
     return {
         "reverb_wet_level": _resolve_float(r, "wet_level", CLOSH_REVERB_WET_RANGE, 0.0, 1.0),
-        "reverb_length_sec": _resolve_float(r, "length_sec", CLOSH_REVERB_LENGTH_SEC_RANGE, 1.5, 8.0),
-        "reverb_decay_sec": _resolve_float(r, "decay_sec", CLOSH_REVERB_DECAY_SEC_RANGE, 1.0, 6.0),
-        "reverb_early_reflections": _resolve_int(r, "early_reflections", CLOSH_REVERB_EARLY_REFLECTIONS_RANGE, 3, 25),
-        "reverb_highpass_hz": _resolve_float(r, "highpass_hz", CLOSH_REVERB_HIGHPASS_RANGE, 40, 200),
+        "reverb_length_sec": _resolve_float(r, "length_sec", CLOSH_REVERB_LENGTH_SEC_RANGE, 2.0, 10.0),
+        "reverb_decay_sec": _resolve_float(r, "decay_sec", CLOSH_REVERB_DECAY_SEC_RANGE, 1.5, 8.0),
+        "reverb_early_reflections": _resolve_int(r, "early_reflections", CLOSH_REVERB_EARLY_REFLECTIONS_RANGE, 10, 60),
+        "reverb_highpass_hz": _resolve_float(r, "highpass_hz", CLOSH_REVERB_HIGHPASS_RANGE, 40, 180),
+        "reverb_tail_diffusion": _resolve_float(r, "tail_diffusion", CLOSH_REVERB_TAIL_DIFFUSION_RANGE, 0.3, 0.95),
         "delay_enabled": use_delay,
         "delay_division": _resolve_choice(d, "division", CLOSH_DELAY_DIVISIONS),
         "delay_feedback": _resolve_float(d, "feedback", CLOSH_DELAY_FEEDBACK_RANGE, 0, 0.8),
@@ -731,7 +733,7 @@ def generate_closh_sample(
     if input_peak < 1e-6:
         raise ValueError(f"Clap sample is effectively silent: {clap_path}")
 
-    # High-quality convolution reverb (natural, non-synthetic)
+    # High-quality convolution reverb (stadium-style: diffuse early field, smooth tail)
     ir = dsp.make_reverb_ir(
         SAMPLE_RATE,
         length_sec=config["reverb_length_sec"],
@@ -739,6 +741,8 @@ def generate_closh_sample(
         early_reflections=config["reverb_early_reflections"],
         highpass_cutoff_hz=config["reverb_highpass_hz"],
         seed=random.randint(0, 2**31 - 1),
+        tail_diffusion=config["reverb_tail_diffusion"],
+        early_diffuse=True,
     )
     wet_level = config["reverb_wet_level"]
     n_channels = padded.shape[0]
@@ -793,6 +797,7 @@ def generate_closh_sample(
         "reverb_decay_sec": config["reverb_decay_sec"],
         "reverb_early_reflections": config["reverb_early_reflections"],
         "reverb_highpass_hz": config["reverb_highpass_hz"],
+        "reverb_tail_diffusion": config["reverb_tail_diffusion"],
         "delay_enabled": config["delay_enabled"],
         "delay_division": config["delay_division"],
         "delay_feedback": config["delay_feedback"],

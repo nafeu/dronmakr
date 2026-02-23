@@ -40,6 +40,7 @@ from process_sample import (
     apply_phaser_to_sample,
     apply_lowpass_to_sample,
     apply_highpass_to_sample,
+    apply_bandpass_to_sample,
     apply_eq_lows_to_sample,
     apply_eq_mids_to_sample,
     apply_eq_highs_to_sample,
@@ -235,9 +236,13 @@ def process_file():
         case "phaser_sample":
             apply_phaser_to_sample(file_path)
         case "lpf_sample":
-            apply_lowpass_to_sample(file_path)
+            apply_lowpass_to_sample(file_path, cutoff_hz=params.get("cutoff_hz", 6000))
         case "hpf_sample":
-            apply_highpass_to_sample(file_path)
+            apply_highpass_to_sample(file_path, cutoff_hz=params.get("cutoff_hz", 100))
+        case "bpf_sample":
+            low = params.get("low_hz", 300)
+            high = params.get("high_hz", 6000)
+            apply_bandpass_to_sample(file_path, low_hz=low, high_hz=high)
         case "eq_lows_sample":
             apply_eq_lows_to_sample(file_path, params.get("db", 0))
         case "eq_mids_sample":

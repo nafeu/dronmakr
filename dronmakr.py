@@ -629,7 +629,7 @@ def transition_closh(
         None,
         "--reverb",
         "-r",
-        help="Reverb: wet_level (0.4-0.8), length_sec, decay_sec, early_reflections, highpass_hz. Use _ for random.",
+        help="Reverb: wet_level, length_sec, decay_sec, early_reflections, highpass_hz, tail_diffusion (0.65-0.9). Use _ for random.",
     ),
     delay: str | None = typer.Option(
         None,

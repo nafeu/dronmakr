@@ -634,11 +634,65 @@
           lpfBtn.addEventListener("click", () => processSample({ path: filePath, command: "lpf_sample", files }));
           actions.appendChild(lpfBtn);
 
+          var lpfMinusBtn = document.createElement("div");
+          lpfMinusBtn.innerText = "LPF-";
+          lpfMinusBtn.classList.add("button");
+          lpfMinusBtn.addEventListener("click", () => processSample({ path: filePath, command: "lpf_sample", cutoff_hz: 2500, files }));
+          actions.appendChild(lpfMinusBtn);
+
+          var lpfMinusMinusBtn = document.createElement("div");
+          lpfMinusMinusBtn.innerText = "LPF--";
+          lpfMinusMinusBtn.classList.add("button");
+          lpfMinusMinusBtn.addEventListener("click", () => processSample({ path: filePath, command: "lpf_sample", cutoff_hz: 800, files }));
+          actions.appendChild(lpfMinusMinusBtn);
+
           var hpfBtn = document.createElement("div");
           hpfBtn.innerText = "HPF";
           hpfBtn.classList.add("button");
           hpfBtn.addEventListener("click", () => processSample({ path: filePath, command: "hpf_sample", files }));
           actions.appendChild(hpfBtn);
+
+          var hpfPlusBtn = document.createElement("div");
+          hpfPlusBtn.innerText = "HPF+";
+          hpfPlusBtn.classList.add("button");
+          hpfPlusBtn.addEventListener("click", () => processSample({ path: filePath, command: "hpf_sample", cutoff_hz: 350, files }));
+          actions.appendChild(hpfPlusBtn);
+
+          var hpfPlusPlusBtn = document.createElement("div");
+          hpfPlusPlusBtn.innerText = "HPF++";
+          hpfPlusPlusBtn.classList.add("button");
+          hpfPlusPlusBtn.addEventListener("click", () => processSample({ path: filePath, command: "hpf_sample", cutoff_hz: 800, files }));
+          actions.appendChild(hpfPlusPlusBtn);
+
+          var bpfBtn = document.createElement("div");
+          bpfBtn.innerText = "BPF";
+          bpfBtn.classList.add("button");
+          bpfBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", files }));
+          actions.appendChild(bpfBtn);
+
+          var bpfMinusBtn = document.createElement("div");
+          bpfMinusBtn.innerText = "BPF-";
+          bpfMinusBtn.classList.add("button");
+          bpfMinusBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", low_hz: 180, high_hz: 3200, files }));
+          actions.appendChild(bpfMinusBtn);
+
+          var bpfMinusMinusBtn = document.createElement("div");
+          bpfMinusMinusBtn.innerText = "BPF--";
+          bpfMinusMinusBtn.classList.add("button");
+          bpfMinusMinusBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", low_hz: 100, high_hz: 1000, files }));
+          actions.appendChild(bpfMinusMinusBtn);
+
+          var bpfPlusBtn = document.createElement("div");
+          bpfPlusBtn.innerText = "BPF+";
+          bpfPlusBtn.classList.add("button");
+          bpfPlusBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", low_hz: 500, high_hz: 10000, files }));
+          actions.appendChild(bpfPlusBtn);
+
+          var bpfPlusPlusBtn = document.createElement("div");
+          bpfPlusPlusBtn.innerText = "BPF++";
+          bpfPlusPlusBtn.classList.add("button");
+          bpfPlusPlusBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", low_hz: 1200, high_hz: 16000, files }));
+          actions.appendChild(bpfPlusPlusBtn);
 
           var lowsPlus5Btn = document.createElement("div");
           lowsPlus5Btn.innerText = "Lows +5dB";
@@ -694,12 +748,133 @@
           reverseDrumpatternBtn.title = "Reverse";
           reverseDrumpatternBtn.addEventListener("click", () => processSample({ path: filePath, command: "reverse_sample", files }));
           actions.appendChild(reverseDrumpatternBtn);
+        } else if (isTransition) {
+          var lpfBtn = document.createElement("div");
+          lpfBtn.innerText = "LPF";
+          lpfBtn.classList.add("button");
+          lpfBtn.addEventListener("click", () => processSample({ path: filePath, command: "lpf_sample", files }));
+          actions.appendChild(lpfBtn);
+
+          var lpfMinusBtn = document.createElement("div");
+          lpfMinusBtn.innerText = "LPF-";
+          lpfMinusBtn.classList.add("button");
+          lpfMinusBtn.addEventListener("click", () => processSample({ path: filePath, command: "lpf_sample", cutoff_hz: 2500, files }));
+          actions.appendChild(lpfMinusBtn);
+
+          var lpfMinusMinusBtn = document.createElement("div");
+          lpfMinusMinusBtn.innerText = "LPF--";
+          lpfMinusMinusBtn.classList.add("button");
+          lpfMinusMinusBtn.addEventListener("click", () => processSample({ path: filePath, command: "lpf_sample", cutoff_hz: 800, files }));
+          actions.appendChild(lpfMinusMinusBtn);
+
+          var hpfBtn = document.createElement("div");
+          hpfBtn.innerText = "HPF";
+          hpfBtn.classList.add("button");
+          hpfBtn.addEventListener("click", () => processSample({ path: filePath, command: "hpf_sample", files }));
+          actions.appendChild(hpfBtn);
+
+          var hpfPlusBtn = document.createElement("div");
+          hpfPlusBtn.innerText = "HPF+";
+          hpfPlusBtn.classList.add("button");
+          hpfPlusBtn.addEventListener("click", () => processSample({ path: filePath, command: "hpf_sample", cutoff_hz: 350, files }));
+          actions.appendChild(hpfPlusBtn);
+
+          var hpfPlusPlusBtn = document.createElement("div");
+          hpfPlusPlusBtn.innerText = "HPF++";
+          hpfPlusPlusBtn.classList.add("button");
+          hpfPlusPlusBtn.addEventListener("click", () => processSample({ path: filePath, command: "hpf_sample", cutoff_hz: 800, files }));
+          actions.appendChild(hpfPlusPlusBtn);
+
+          var bpfBtn = document.createElement("div");
+          bpfBtn.innerText = "BPF";
+          bpfBtn.classList.add("button");
+          bpfBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", files }));
+          actions.appendChild(bpfBtn);
+
+          var bpfMinusBtn = document.createElement("div");
+          bpfMinusBtn.innerText = "BPF-";
+          bpfMinusBtn.classList.add("button");
+          bpfMinusBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", low_hz: 180, high_hz: 3200, files }));
+          actions.appendChild(bpfMinusBtn);
+
+          var bpfMinusMinusBtn = document.createElement("div");
+          bpfMinusMinusBtn.innerText = "BPF--";
+          bpfMinusMinusBtn.classList.add("button");
+          bpfMinusMinusBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", low_hz: 100, high_hz: 1000, files }));
+          actions.appendChild(bpfMinusMinusBtn);
+
+          var bpfPlusBtn = document.createElement("div");
+          bpfPlusBtn.innerText = "BPF+";
+          bpfPlusBtn.classList.add("button");
+          bpfPlusBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", low_hz: 500, high_hz: 10000, files }));
+          actions.appendChild(bpfPlusBtn);
+
+          var bpfPlusPlusBtn = document.createElement("div");
+          bpfPlusPlusBtn.innerText = "BPF++";
+          bpfPlusPlusBtn.classList.add("button");
+          bpfPlusPlusBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", low_hz: 1200, high_hz: 16000, files }));
+          actions.appendChild(bpfPlusPlusBtn);
+
+          var lowsPlus5Btn = document.createElement("div");
+          lowsPlus5Btn.innerText = "Lows +5dB";
+          lowsPlus5Btn.classList.add("button");
+          lowsPlus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_lows_sample", db: 5, files }));
+          actions.appendChild(lowsPlus5Btn);
+
+          var lowsMinus5Btn = document.createElement("div");
+          lowsMinus5Btn.innerText = "Lows -5dB";
+          lowsMinus5Btn.classList.add("button");
+          lowsMinus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_lows_sample", db: -5, files }));
+          actions.appendChild(lowsMinus5Btn);
+
+          var midsPlus5Btn = document.createElement("div");
+          midsPlus5Btn.innerText = "Mids +5dB";
+          midsPlus5Btn.classList.add("button");
+          midsPlus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_mids_sample", db: 5, files }));
+          actions.appendChild(midsPlus5Btn);
+
+          var midsMinus5Btn = document.createElement("div");
+          midsMinus5Btn.innerText = "Mids -5dB";
+          midsMinus5Btn.classList.add("button");
+          midsMinus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_mids_sample", db: -5, files }));
+          actions.appendChild(midsMinus5Btn);
+
+          var highsPlus5Btn = document.createElement("div");
+          highsPlus5Btn.innerText = "Highs +5dB";
+          highsPlus5Btn.classList.add("button");
+          highsPlus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_highs_sample", db: 5, files }));
+          actions.appendChild(highsPlus5Btn);
+
+          var highsMinus5Btn = document.createElement("div");
+          highsMinus5Btn.innerText = "Highs -5dB";
+          highsMinus5Btn.classList.add("button");
+          highsMinus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_highs_sample", db: -5, files }));
+          actions.appendChild(highsMinus5Btn);
+
+          var gainPlus2Btn = document.createElement("div");
+          gainPlus2Btn.innerText = "Gain +2dB";
+          gainPlus2Btn.classList.add("button");
+          gainPlus2Btn.addEventListener("click", () => processSample({ path: filePath, command: "increase_sample_gain", db: 2, files }));
+          actions.appendChild(gainPlus2Btn);
+
+          var gainMinus2Btn = document.createElement("div");
+          gainMinus2Btn.innerText = "Gain -2dB";
+          gainMinus2Btn.classList.add("button");
+          gainMinus2Btn.addEventListener("click", () => processSample({ path: filePath, command: "decrease_sample_gain", db: 2, files }));
+          actions.appendChild(gainMinus2Btn);
+
+          var reverseTransitionBtn = document.createElement("div");
+          reverseTransitionBtn.innerHTML = "<i class=\"fa-solid fa-rotate-left\"></i>";
+          reverseTransitionBtn.classList.add("button", "icon-btn");
+          reverseTransitionBtn.title = "Reverse";
+          reverseTransitionBtn.addEventListener("click", () => processSample({ path: filePath, command: "reverse_sample", files }));
+          actions.appendChild(reverseTransitionBtn);
         }
 
         var trimStartButton = null;
         var trimEndButton = null;
 
-        if (!isDrumpattern) {
+        if (!isDrumpattern && !isTransition) {
           trimStartButton = document.createElement("div");
           trimStartButton.innerText = `Start At ${formatTimestamp(selectedWaveformTimestamps[index])}`;
           trimStartButton.classList.add("button")
