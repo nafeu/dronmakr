@@ -16,6 +16,13 @@ from settings import get_setting
 
 SAMPLE_RATE = dsp.SAMPLE_RATE
 BLOCK_SIZE = 256
+OUTPUT_TARGET_PEAK = 0.9  # normalize generated outputs to this peak for consistent levels
+
+
+def _normalize_audio(audio: np.ndarray, target_peak: float = OUTPUT_TARGET_PEAK) -> np.ndarray:
+    """Scale audio so peak equals target_peak (0.9 by default for headroom)."""
+    peak = np.max(np.abs(audio)) + 1e-12
+    return (audio * (target_peak / peak)).astype(np.float32)
 
 # Default ranges for randomization (when params not passed)
 CUTOFF_LOW_RANGE = (300, 700)
@@ -624,11 +631,6 @@ def generate_sweep_sample(
             trem_block = tremolo_gain[start:end]
             out[start:end] = (filtered * env_block * trem_block).astype(np.float32)
 
-    # Normalize
-    peak = np.max(np.abs(out))
-    if peak > 0.9:
-        out = out * (0.9 / peak)
-
     # Apply modulation effects (phaser, chorus, flanger) via pedalboard
     mod_board, mod_params = _build_modulation_board_from_config(
         phaser_enabled, chorus_enabled, flanger_enabled,
@@ -641,11 +643,8 @@ def generate_sweep_sample(
             out = np.mean(processed, axis=0).astype(np.float32)
         else:
             out = processed[0].astype(np.float32)
-        peak = np.max(np.abs(out))
-        if peak > 0.9:
-            out = out * (0.9 / peak)
 
-    sf.write(output, out, SAMPLE_RATE, subtype="PCM_16")
+    sf.write(output, _normalize_audio(out), SAMPLE_RATE, subtype="PCM_16")
 
     params_used = {
         "voice": voice,
@@ -859,10 +858,7 @@ def generate_closh_sample(
         out_mono = np.mean(out, axis=0)
     else:
         out_mono = out[0]
-    peak = np.max(np.abs(out_mono)) + 1e-9
-    if peak > 0.9:
-        out_mono = out_mono * (0.9 / peak)
-    sf.write(output, out_mono.astype(np.float32), SAMPLE_RATE, subtype="PCM_16")
+    sf.write(output, _normalize_audio(out_mono), SAMPLE_RATE, subtype="PCM_16")
 
     params_used = {
         "clap_path": str(clap_path),
