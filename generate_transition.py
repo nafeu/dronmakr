@@ -24,6 +24,10 @@ DECAY_RATE_RANGE = (2.0, 6.0)
 PEAK_POS_RANGE = (0.4, 0.6)
 NOISE_LEVEL_RANGE = (0.45, 0.8)
 FILTER_ORDERS = (2, 4, 6)
+FILTER_SWEEP_TYPES: tuple[str, ...] = ("lpf", "hpf", "bpf", "bsf", "none")
+FILTER_LFO_WIDTH_RANGE = (0.0, 0.25)
+FILTER_LFO_RATE_MIN_RANGE = (0.5, 3.0)
+FILTER_LFO_RATE_PEAK_RANGE = (5.0, 25.0)
 BUILD_SHAPES: tuple[Literal["ease_in", "linear", "ease_out"], ...] = (
     "ease_in",
     "linear",
@@ -43,7 +47,8 @@ VOICE_TYPES: tuple[Literal["noise", "sine", "saw", "tri", "square"], ...] = (
     "square",
 )
 OSC_FREQ_LOW_RANGE = (55, 220)   # A1 to A3
-OSC_FREQ_HIGH_RANGE = (880, 4000)  # A5 to ~B7
+OSC_FREQ_HIGH_RANGE = (880, 4000)  # A5 to ~B7 (used only when freq_high explicit)
+OSC_OCTAVE_SPAN_RANGE = (2.5, 4.5)  # octaves for sweep when randomizing (2.5–4.5 ≈ 3–4 octaves)
 OSC_LEVEL_RANGE = (0.3, 0.8)
 PULSE_WIDTH_RANGE = (0.2, 0.8)
 PWM_SWEEP_RANGE = (0.0, 0.35)      # how much pulse width modulates (0=static)
@@ -183,9 +188,17 @@ def _resolve_sound_params(parsed: dict[str, str]) -> dict[str, Any]:
         result["noise_level"] = _resolve_float(parsed, "noise_level", NOISE_LEVEL_RANGE, 0.2, 1.0)
     else:
         # Oscillator: sine, saw, tri, square
+        # Use octaves to span (default 2.5–4.5 octaves); or freq_high if user specifies it
         freq_low = _resolve_float(parsed, "freq_low", OSC_FREQ_LOW_RANGE, 20, 2000)
-        freq_high = _resolve_float(parsed, "freq_high", OSC_FREQ_HIGH_RANGE, 200, 12000)
-        freq_high = max(freq_high, freq_low + 50)
+        octaves = _resolve_float(parsed, "octaves", OSC_OCTAVE_SPAN_RANGE, 1, 6)
+        freq_high_explicit = parsed.get("freq_high") and not _is_random(parsed.get("freq_high"))
+        if freq_high_explicit:
+            freq_high = _resolve_float(parsed, "freq_high", OSC_FREQ_HIGH_RANGE, 200, 12000)
+            freq_high = max(freq_high, freq_low + 50)
+        else:
+            freq_high = freq_low * (2.0 ** octaves)
+            freq_high = min(freq_high, SAMPLE_RATE / 2 - 100)
+            freq_high = max(freq_high, freq_low + 50)
         result["osc_freq_low"] = freq_low
         result["osc_freq_high"] = freq_high
         result["osc_level"] = _resolve_float(parsed, "level", OSC_LEVEL_RANGE, 0.1, 1.0)
@@ -211,7 +224,7 @@ def parse_sweep_config(
     """
     Parse encoded param strings into a resolved config dict.
     --sound: voice (noise|sine|saw|tri|square), then voice-specific params.
-    E.g. --sound "voice:noise;type:white;noise_level:0.6" or --sound "voice:square;freq_low:110;freq_high:2000"
+    E.g. --sound "voice:noise;type:white;noise_level:0.6" or --sound "voice:square;freq_low:110;octaves:3" or --sound "voice:saw;freq_low:55;freq_high:880"
     """
     disabled = set()
     if disable:
@@ -243,6 +256,14 @@ def parse_sweep_config(
         "peak_pos": _resolve_float(c, "peak_pos", PEAK_POS_RANGE, 0.15, 0.85),
         "cutoff_low": _resolve_int(f, "cutoff_low", CUTOFF_LOW_RANGE, 50, 5000),
         "cutoff_high": _resolve_int(f, "cutoff_high", CUTOFF_HIGH_RANGE, 1000, 20000),
+        "filter_sweep_type": (
+            _resolve_choice(f, "type", FILTER_SWEEP_TYPES)
+            if f and "type" in f
+            else "lpf"
+        ),
+        "filter_lfo_width": _resolve_float(f, "lfo_width", FILTER_LFO_WIDTH_RANGE, 0, 0.5),
+        "filter_lfo_rate_min": _resolve_float(f, "lfo_rate_min", FILTER_LFO_RATE_MIN_RANGE, 0.2, 10),
+        "filter_lfo_rate_peak": _resolve_float(f, "lfo_rate_peak", FILTER_LFO_RATE_PEAK_RANGE, 2, 50),
         "tremolo_depth": 0.0 if "tremolo" in disabled else _resolve_float(t, "depth", TREMOLO_DEPTH_RANGE, 0, 1),
         "tremolo_rate_min": tremolo_rate_min,
         "tremolo_rate_max": tremolo_rate_max,
@@ -476,7 +497,11 @@ def generate_sweep_sample(
     noise_level = max(0.2, min(1.0, noise_level))
     noise_type = cfg.get("noise_type") or random.choice(NOISE_TYPES)
     osc_freq_low = cfg.get("osc_freq_low") or random.uniform(*OSC_FREQ_LOW_RANGE)
-    osc_freq_high = cfg.get("osc_freq_high") or random.uniform(*OSC_FREQ_HIGH_RANGE)
+    osc_freq_high = cfg.get("osc_freq_high")
+    if osc_freq_high is None:
+        octaves = random.uniform(*OSC_OCTAVE_SPAN_RANGE)
+        osc_freq_high = osc_freq_low * (2.0 ** octaves)
+        osc_freq_high = min(osc_freq_high, SAMPLE_RATE / 2 - 100)
     osc_freq_high = max(osc_freq_high, osc_freq_low + 50)
     osc_level = cfg.get("osc_level") or random.uniform(*OSC_LEVEL_RANGE)
     pulse_width = cfg.get("pulse_width") or random.uniform(*PULSE_WIDTH_RANGE)
@@ -508,7 +533,19 @@ def generate_sweep_sample(
 
     t = np.arange(num_samples, dtype=np.float64) / num_samples
     cutoff_frac, envelope, lfo_rate_frac = _riser_build_curve(t, peak_pos, decay_rate, build_shape)
-    cutoffs_hz = cutoff_low + cutoff_frac * (cutoff_high - cutoff_low)
+    base_cutoffs_hz = cutoff_low + cutoff_frac * (cutoff_high - cutoff_low)
+
+    filter_sweep_type = (cfg.get("filter_sweep_type") or "lpf").lower()
+    filter_lfo_width = cfg.get("filter_lfo_width", 0.0)
+    filter_lfo_rate_min = cfg.get("filter_lfo_rate_min") or 1.0
+    filter_lfo_rate_peak = cfg.get("filter_lfo_rate_peak") or 12.0
+    filter_lfo_rate_peak = max(filter_lfo_rate_peak, filter_lfo_rate_min + 0.5)
+    sweep_range = cutoff_high - cutoff_low
+    lfo_rate_hz = filter_lfo_rate_min + lfo_rate_frac * (filter_lfo_rate_peak - filter_lfo_rate_min)
+    lfo_phase_inc = 2 * np.pi * lfo_rate_hz / SAMPLE_RATE
+    lfo_phase = np.cumsum(lfo_phase_inc)
+    lfo_mod = np.sin(lfo_phase) * filter_lfo_width * 0.5 * sweep_range
+    cutoffs_hz = np.clip(base_cutoffs_hz + lfo_mod, 20, SAMPLE_RATE / 2 - 10).astype(np.float64)
 
     rng = np.random.default_rng()
     if voice == "noise":
@@ -533,26 +570,59 @@ def generate_sweep_sample(
     out = np.zeros(num_samples, dtype=np.float32)
     nyq = 0.5 * SAMPLE_RATE
     zi = None
+    use_resonant = (voice != "noise" and resonance > 0 and filter_sweep_type == "lpf")
 
-    use_resonant = (voice != "noise" and resonance > 0)
-    for start in range(0, num_samples, BLOCK_SIZE):
-        end = min(start + BLOCK_SIZE, num_samples)
-        block = source[start:end].copy()
+    if filter_sweep_type == "none":
+        for start in range(0, num_samples, BLOCK_SIZE):
+            end = min(start + BLOCK_SIZE, num_samples)
+            block = source[start:end].copy()
+            env_block = envelope[start:end]
+            trem_block = tremolo_gain[start:end]
+            out[start:end] = (block * env_block * trem_block).astype(np.float32)
+    else:
+        for start in range(0, num_samples, BLOCK_SIZE):
+            end = min(start + BLOCK_SIZE, num_samples)
+            block = source[start:end].copy()
+            mid_idx = start + (end - start) // 2
+            cutoff = float(cutoffs_hz[mid_idx])
 
-        mid_idx = start + (end - start) // 2
-        cutoff = float(np.clip(cutoffs_hz[mid_idx], 20, nyq - 1))
-        q_val = 0.5 + resonance * float(cutoff_frac[mid_idx]) * (RESONANCE_Q_RANGE[1] - 0.5) if use_resonant else 0.707
+            if filter_sweep_type == "lpf":
+                if use_resonant:
+                    q_val = 0.5 + resonance * float(cutoff_frac[mid_idx]) * (RESONANCE_Q_RANGE[1] - 0.5)
+                    b, a = dsp.resonant_lowpass_biquad_coeffs(cutoff, q_val)
+                else:
+                    b, a = butter(filter_order, cutoff / nyq, btype="low")
+                zi_use = lfilter_zi(b, a) * block[0] if zi is None else zi
+                filtered, zi = lfilter(b, a, block, zi=zi_use)
+            elif filter_sweep_type == "hpf":
+                fc = np.clip(cutoff / nyq, 0.01, 0.99)
+                b, a = butter(filter_order, fc, btype="high")
+                zi_use = lfilter_zi(b, a) * block[0] if zi is None else zi
+                filtered, zi = lfilter(b, a, block, zi=zi_use)
+            elif filter_sweep_type == "bpf":
+                bw_oct = 1.0
+                low_fc = cutoff / (2 ** (bw_oct / 2))
+                high_fc = np.clip(cutoff * (2 ** (bw_oct / 2)), low_fc + 50, nyq - 10)
+                low_n, high_n = low_fc / nyq, high_fc / nyq
+                low_n, high_n = np.clip(low_n, 0.01, 0.98), np.clip(high_n, low_n + 0.01, 0.99)
+                b, a = butter(4, [low_n, high_n], btype="band")
+                zi_use = lfilter_zi(b, a) * block[0] if zi is None else zi
+                filtered, zi = lfilter(b, a, block, zi=zi_use)
+            elif filter_sweep_type == "bsf":
+                bw_oct = 1.0
+                low_fc = cutoff / (2 ** (bw_oct / 2))
+                high_fc = np.clip(cutoff * (2 ** (bw_oct / 2)), low_fc + 50, nyq - 10)
+                low_n, high_n = low_fc / nyq, high_fc / nyq
+                low_n, high_n = np.clip(low_n, 0.01, 0.98), np.clip(high_n, low_n + 0.01, 0.99)
+                b, a = butter(4, [low_n, high_n], btype="bandstop")
+                zi_use = lfilter_zi(b, a) * block[0] if zi is None else zi
+                filtered, zi = lfilter(b, a, block, zi=zi_use)
+            else:
+                filtered = block
 
-        if use_resonant:
-            b, a = dsp.resonant_lowpass_biquad_coeffs(cutoff, q_val)
-        else:
-            b, a = butter(filter_order, cutoff / nyq, btype="low")
-        zi_use = lfilter_zi(b, a) * block[0] if zi is None else zi
-        filtered, zi = lfilter(b, a, block, zi=zi_use)
-
-        env_block = envelope[start:end]
-        trem_block = tremolo_gain[start:end]
-        out[start:end] = (filtered * env_block * trem_block).astype(np.float32)
+            env_block = envelope[start:end]
+            trem_block = tremolo_gain[start:end]
+            out[start:end] = (filtered * env_block * trem_block).astype(np.float32)
 
     # Normalize
     peak = np.max(np.abs(out))
@@ -602,6 +672,10 @@ def generate_sweep_sample(
         "chorus": chorus_enabled,
         "flanger": flanger_enabled,
         "modulation_params": mod_params,
+        "filter_sweep_type": filter_sweep_type,
+        "filter_lfo_width": filter_lfo_width,
+        "filter_lfo_rate_min": filter_lfo_rate_min,
+        "filter_lfo_rate_peak": filter_lfo_rate_peak,
     }
     return output, params_used
 

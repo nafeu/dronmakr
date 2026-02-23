@@ -517,7 +517,7 @@ def transition_sweep(
         None,
         "--sound",
         "-s",
-        help="Sound: voice (noise|sine|saw|tri|square). Oscillator params: freq_low, freq_high, level, pulse_width, pwm_sweep, detune_cents, detune_mix, resonance.",
+        help="Sound: voice (noise|sine|saw|tri|square). Oscillator params: freq_low, freq_high, octaves (2.5-4.5), level, pulse_width, pwm_sweep, detune_cents, detune_mix, resonance.",
     ),
     curve: str | None = typer.Option(
         None,
@@ -529,7 +529,7 @@ def transition_sweep(
         None,
         "--filter",
         "-f",
-        help="Filter: cutoff_low, cutoff_high. E.g. cutoff_low:200;cutoff_high:12000.",
+        help="Filter: cutoff_low, cutoff_high, type (lpf|hpf|bpf|bsf|none), lfo_width, lfo_rate_min, lfo_rate_peak.",
     ),
     tremolo: str | None = typer.Option(
         None,
