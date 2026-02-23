@@ -16,13 +16,18 @@ from settings import get_setting
 
 SAMPLE_RATE = dsp.SAMPLE_RATE
 BLOCK_SIZE = 256
-OUTPUT_TARGET_PEAK = 0.9  # normalize generated outputs to this peak for consistent levels
+OUTPUT_TARGET_PEAK = (
+    0.9  # normalize generated outputs to this peak for consistent levels
+)
 
 
-def _normalize_audio(audio: np.ndarray, target_peak: float = OUTPUT_TARGET_PEAK) -> np.ndarray:
+def _normalize_audio(
+    audio: np.ndarray, target_peak: float = OUTPUT_TARGET_PEAK
+) -> np.ndarray:
     """Scale audio so peak equals target_peak (0.9 by default for headroom)."""
     peak = np.max(np.abs(audio)) + 1e-12
     return (audio * (target_peak / peak)).astype(np.float32)
+
 
 # Default ranges for randomization (when params not passed)
 CUTOFF_LOW_RANGE = (300, 700)
@@ -53,15 +58,18 @@ VOICE_TYPES: tuple[Literal["noise", "sine", "saw", "tri", "square"], ...] = (
     "tri",
     "square",
 )
-OSC_FREQ_LOW_RANGE = (55, 220)   # A1 to A3
+OSC_FREQ_LOW_RANGE = (55, 220)  # A1 to A3
 OSC_FREQ_HIGH_RANGE = (880, 4000)  # A5 to ~B7 (used only when freq_high explicit)
-OSC_OCTAVE_SPAN_RANGE = (2.5, 4.5)  # octaves for sweep when randomizing (2.5–4.5 ≈ 3–4 octaves)
+OSC_OCTAVE_SPAN_RANGE = (
+    2.5,
+    4.5,
+)  # octaves for sweep when randomizing (2.5–4.5 ≈ 3–4 octaves)
 OSC_LEVEL_RANGE = (0.3, 0.8)
 PULSE_WIDTH_RANGE = (0.2, 0.8)
-PWM_SWEEP_RANGE = (0.0, 0.35)      # how much pulse width modulates (0=static)
-DETUNE_CENTS_RANGE = (5, 25)       # cents for unison detune
-DETUNE_MIX_RANGE = (0.2, 0.6)      # max mix of detuned layer (follows build curve)
-RESONANCE_Q_RANGE = (0.5, 8.0)     # filter Q at peak (0.5=flat, 8=acid scream)
+PWM_SWEEP_RANGE = (0.0, 0.35)  # how much pulse width modulates (0=static)
+DETUNE_CENTS_RANGE = (5, 25)  # cents for unison detune
+DETUNE_MIX_RANGE = (0.2, 0.6)  # max mix of detuned layer (follows build curve)
+RESONANCE_Q_RANGE = (0.5, 8.0)  # filter Q at peak (0.5=flat, 8=acid scream)
 TREMOLO_DEPTH_RANGE = (0.4, 0.9)
 TREMOLO_RATE_MIN_RANGE = (1.0, 4.0)
 TREMOLO_RATE_MAX_RANGE = (10.0, 25.0)
@@ -158,7 +166,9 @@ def _resolve_phaser_params(parsed: dict[str, str]) -> dict[str, float]:
     return {
         "rate_hz": _resolve_float(parsed, "rate_hz", PHASER_RATE_RANGE, 0.1, 10),
         "depth": _resolve_float(parsed, "depth", PHASER_DEPTH_RANGE, 0, 1),
-        "centre_frequency_hz": _resolve_float(parsed, "centre_frequency_hz", PHASER_CENTRE_RANGE, 100, 10000),
+        "centre_frequency_hz": _resolve_float(
+            parsed, "centre_frequency_hz", PHASER_CENTRE_RANGE, 100, 10000
+        ),
         "feedback": _resolve_float(parsed, "feedback", PHASER_FEEDBACK_RANGE, 0, 1),
         "mix": _resolve_float(parsed, "mix", PHASER_MIX_RANGE, 0, 1),
     }
@@ -168,7 +178,9 @@ def _resolve_chorus_params(parsed: dict[str, str]) -> dict[str, float]:
     return {
         "rate_hz": _resolve_float(parsed, "rate_hz", CHORUS_RATE_RANGE, 0.1, 10),
         "depth": _resolve_float(parsed, "depth", CHORUS_DEPTH_RANGE, 0, 1),
-        "centre_delay_ms": _resolve_float(parsed, "centre_delay_ms", CHORUS_DELAY_RANGE, 1, 20),
+        "centre_delay_ms": _resolve_float(
+            parsed, "centre_delay_ms", CHORUS_DELAY_RANGE, 1, 20
+        ),
         "feedback": _resolve_float(parsed, "feedback", (0, 0.5), 0, 0.5),
         "mix": _resolve_float(parsed, "mix", CHORUS_MIX_RANGE, 0, 1),
     }
@@ -178,7 +190,9 @@ def _resolve_flanger_params(parsed: dict[str, str]) -> dict[str, float]:
     return {
         "rate_hz": _resolve_float(parsed, "rate_hz", FLANGER_RATE_RANGE, 0.1, 5),
         "depth": _resolve_float(parsed, "depth", FLANGER_DEPTH_RANGE, 0, 1),
-        "centre_delay_ms": _resolve_float(parsed, "centre_delay_ms", FLANGER_DELAY_RANGE, 0.5, 10),
+        "centre_delay_ms": _resolve_float(
+            parsed, "centre_delay_ms", FLANGER_DELAY_RANGE, 0.5, 10
+        ),
         "feedback": _resolve_float(parsed, "feedback", FLANGER_FEEDBACK_RANGE, 0, 0.8),
         "mix": _resolve_float(parsed, "mix", FLANGER_MIX_RANGE, 0, 1),
     }
@@ -192,27 +206,41 @@ def _resolve_sound_params(parsed: dict[str, str]) -> dict[str, Any]:
 
     if voice == "noise":
         result["noise_type"] = _resolve_choice(parsed, "type", NOISE_TYPES)
-        result["noise_level"] = _resolve_float(parsed, "noise_level", NOISE_LEVEL_RANGE, 0.2, 1.0)
+        result["noise_level"] = _resolve_float(
+            parsed, "noise_level", NOISE_LEVEL_RANGE, 0.2, 1.0
+        )
     else:
         # Oscillator: sine, saw, tri, square
         # Use octaves to span (default 2.5–4.5 octaves); or freq_high if user specifies it
         freq_low = _resolve_float(parsed, "freq_low", OSC_FREQ_LOW_RANGE, 20, 2000)
         octaves = _resolve_float(parsed, "octaves", OSC_OCTAVE_SPAN_RANGE, 1, 6)
-        freq_high_explicit = parsed.get("freq_high") and not _is_random(parsed.get("freq_high"))
+        freq_high_explicit = parsed.get("freq_high") and not _is_random(
+            parsed.get("freq_high")
+        )
         if freq_high_explicit:
-            freq_high = _resolve_float(parsed, "freq_high", OSC_FREQ_HIGH_RANGE, 200, 12000)
+            freq_high = _resolve_float(
+                parsed, "freq_high", OSC_FREQ_HIGH_RANGE, 200, 12000
+            )
             freq_high = max(freq_high, freq_low + 50)
         else:
-            freq_high = freq_low * (2.0 ** octaves)
+            freq_high = freq_low * (2.0**octaves)
             freq_high = min(freq_high, SAMPLE_RATE / 2 - 100)
             freq_high = max(freq_high, freq_low + 50)
         result["osc_freq_low"] = freq_low
         result["osc_freq_high"] = freq_high
         result["osc_level"] = _resolve_float(parsed, "level", OSC_LEVEL_RANGE, 0.1, 1.0)
-        result["pulse_width"] = _resolve_float(parsed, "pulse_width", PULSE_WIDTH_RANGE, 0.1, 0.9)
-        result["pwm_sweep"] = _resolve_float(parsed, "pwm_sweep", PWM_SWEEP_RANGE, 0, 0.5)
-        result["detune_cents"] = _resolve_float(parsed, "detune_cents", DETUNE_CENTS_RANGE, 1, 50)
-        result["detune_mix"] = _resolve_float(parsed, "detune_mix", DETUNE_MIX_RANGE, 0, 1)
+        result["pulse_width"] = _resolve_float(
+            parsed, "pulse_width", PULSE_WIDTH_RANGE, 0.1, 0.9
+        )
+        result["pwm_sweep"] = _resolve_float(
+            parsed, "pwm_sweep", PWM_SWEEP_RANGE, 0, 0.5
+        )
+        result["detune_cents"] = _resolve_float(
+            parsed, "detune_cents", DETUNE_CENTS_RANGE, 1, 50
+        )
+        result["detune_mix"] = _resolve_float(
+            parsed, "detune_mix", DETUNE_MIX_RANGE, 0, 1
+        )
         result["resonance"] = _resolve_float(parsed, "resonance", (0, 1), 0, 1)
 
     return result
@@ -268,18 +296,33 @@ def parse_sweep_config(
             if f and "type" in f
             else "lpf"
         ),
-        "filter_lfo_width": _resolve_float(f, "lfo_width", FILTER_LFO_WIDTH_RANGE, 0, 0.5),
-        "filter_lfo_rate_min": _resolve_float(f, "lfo_rate_min", FILTER_LFO_RATE_MIN_RANGE, 0.2, 10),
-        "filter_lfo_rate_peak": _resolve_float(f, "lfo_rate_peak", FILTER_LFO_RATE_PEAK_RANGE, 2, 50),
-        "tremolo_depth": 0.0 if "tremolo" in disabled else _resolve_float(t, "depth", TREMOLO_DEPTH_RANGE, 0, 1),
+        "filter_lfo_width": _resolve_float(
+            f, "lfo_width", FILTER_LFO_WIDTH_RANGE, 0, 0.5
+        ),
+        "filter_lfo_rate_min": _resolve_float(
+            f, "lfo_rate_min", FILTER_LFO_RATE_MIN_RANGE, 0.2, 10
+        ),
+        "filter_lfo_rate_peak": _resolve_float(
+            f, "lfo_rate_peak", FILTER_LFO_RATE_PEAK_RANGE, 2, 50
+        ),
+        "tremolo_depth": (
+            0.0
+            if "tremolo" in disabled
+            else _resolve_float(t, "depth", TREMOLO_DEPTH_RANGE, 0, 1)
+        ),
         "tremolo_rate_min": tremolo_rate_min,
         "tremolo_rate_max": tremolo_rate_max,
-        "phaser_enabled": "phaser" not in disabled and (phaser is not None or random.random() < 0.5),
+        "phaser_enabled": "phaser" not in disabled
+        and (phaser is not None or random.random() < 0.5),
         "phaser_params": _resolve_phaser_params(ph) if "phaser" not in disabled else {},
-        "chorus_enabled": "chorus" not in disabled and (chorus is not None or random.random() < 0.5),
+        "chorus_enabled": "chorus" not in disabled
+        and (chorus is not None or random.random() < 0.5),
         "chorus_params": _resolve_chorus_params(ch) if "chorus" not in disabled else {},
-        "flanger_enabled": "flanger" not in disabled and (flanger is not None or random.random() < 0.5),
-        "flanger_params": _resolve_flanger_params(fl) if "flanger" not in disabled else {},
+        "flanger_enabled": "flanger" not in disabled
+        and (flanger is not None or random.random() < 0.5),
+        "flanger_params": (
+            _resolve_flanger_params(fl) if "flanger" not in disabled else {}
+        ),
     }
 
 
@@ -384,7 +427,9 @@ def _generate_oscillator_sweep(
     return (main * level).astype(np.float64)
 
 
-def _apply_build_shape(t_norm: np.ndarray, shape: Literal["ease_in", "linear", "ease_out"]) -> np.ndarray:
+def _apply_build_shape(
+    t_norm: np.ndarray, shape: Literal["ease_in", "linear", "ease_out"]
+) -> np.ndarray:
     """Map normalized 0..1 to build curve. ease_in: slow start; linear: constant; ease_out: slow end."""
     t = np.clip(t_norm, 0, 1)
     if shape == "linear":
@@ -415,7 +460,11 @@ def _riser_build_curve(
     build_val = _apply_build_shape(t_build, build_shape)
 
     # Release: use remaining time (1 - peak_pos) to sweep back down to 0
-    t_release = (x[release] - peak_pos) / (1 - peak_pos) if peak_pos < 1 else np.zeros(np.sum(release))
+    t_release = (
+        (x[release] - peak_pos) / (1 - peak_pos)
+        if peak_pos < 1
+        else np.zeros(np.sum(release))
+    )
     # Mirror the build shape for symmetric sweep-down
     release_val = 1.0 - _apply_build_shape(t_release, build_shape)
 
@@ -507,7 +556,7 @@ def generate_sweep_sample(
     osc_freq_high = cfg.get("osc_freq_high")
     if osc_freq_high is None:
         octaves = random.uniform(*OSC_OCTAVE_SPAN_RANGE)
-        osc_freq_high = osc_freq_low * (2.0 ** octaves)
+        osc_freq_high = osc_freq_low * (2.0**octaves)
         osc_freq_high = min(osc_freq_high, SAMPLE_RATE / 2 - 100)
     osc_freq_high = max(osc_freq_high, osc_freq_low + 50)
     osc_level = cfg.get("osc_level") or random.uniform(*OSC_LEVEL_RANGE)
@@ -523,8 +572,12 @@ def generate_sweep_sample(
     if tremolo_depth is None:
         tremolo_depth = random.uniform(*TREMOLO_DEPTH_RANGE)
     tremolo_depth = max(0.0, min(1.0, tremolo_depth))
-    tremolo_rate_min = cfg.get("tremolo_rate_min") or random.uniform(*TREMOLO_RATE_MIN_RANGE)
-    tremolo_rate_max = cfg.get("tremolo_rate_max") or random.uniform(*TREMOLO_RATE_MAX_RANGE)
+    tremolo_rate_min = cfg.get("tremolo_rate_min") or random.uniform(
+        *TREMOLO_RATE_MIN_RANGE
+    )
+    tremolo_rate_max = cfg.get("tremolo_rate_max") or random.uniform(
+        *TREMOLO_RATE_MAX_RANGE
+    )
     tremolo_rate_max = max(tremolo_rate_max, tremolo_rate_min + 1.0)
     phaser_enabled = cfg.get("phaser_enabled", random.random() < 0.5)
     chorus_enabled = cfg.get("chorus_enabled", random.random() < 0.5)
@@ -539,7 +592,9 @@ def generate_sweep_sample(
     num_samples = int(duration_sec * SAMPLE_RATE)
 
     t = np.arange(num_samples, dtype=np.float64) / num_samples
-    cutoff_frac, envelope, lfo_rate_frac = _riser_build_curve(t, peak_pos, decay_rate, build_shape)
+    cutoff_frac, envelope, lfo_rate_frac = _riser_build_curve(
+        t, peak_pos, decay_rate, build_shape
+    )
     base_cutoffs_hz = cutoff_low + cutoff_frac * (cutoff_high - cutoff_low)
 
     filter_sweep_type = (cfg.get("filter_sweep_type") or "lpf").lower()
@@ -548,11 +603,15 @@ def generate_sweep_sample(
     filter_lfo_rate_peak = cfg.get("filter_lfo_rate_peak") or 12.0
     filter_lfo_rate_peak = max(filter_lfo_rate_peak, filter_lfo_rate_min + 0.5)
     sweep_range = cutoff_high - cutoff_low
-    lfo_rate_hz = filter_lfo_rate_min + lfo_rate_frac * (filter_lfo_rate_peak - filter_lfo_rate_min)
+    lfo_rate_hz = filter_lfo_rate_min + lfo_rate_frac * (
+        filter_lfo_rate_peak - filter_lfo_rate_min
+    )
     lfo_phase_inc = 2 * np.pi * lfo_rate_hz / SAMPLE_RATE
     lfo_phase = np.cumsum(lfo_phase_inc)
     lfo_mod = np.sin(lfo_phase) * filter_lfo_width * 0.5 * sweep_range
-    cutoffs_hz = np.clip(base_cutoffs_hz + lfo_mod, 20, SAMPLE_RATE / 2 - 10).astype(np.float64)
+    cutoffs_hz = np.clip(base_cutoffs_hz + lfo_mod, 20, SAMPLE_RATE / 2 - 10).astype(
+        np.float64
+    )
 
     rng = np.random.default_rng()
     if voice == "noise":
@@ -577,7 +636,7 @@ def generate_sweep_sample(
     out = np.zeros(num_samples, dtype=np.float32)
     nyq = 0.5 * SAMPLE_RATE
     zi = None
-    use_resonant = (voice != "noise" and resonance > 0 and filter_sweep_type == "lpf")
+    use_resonant = voice != "noise" and resonance > 0 and filter_sweep_type == "lpf"
 
     if filter_sweep_type == "none":
         for start in range(0, num_samples, BLOCK_SIZE):
@@ -595,7 +654,9 @@ def generate_sweep_sample(
 
             if filter_sweep_type == "lpf":
                 if use_resonant:
-                    q_val = 0.5 + resonance * float(cutoff_frac[mid_idx]) * (RESONANCE_Q_RANGE[1] - 0.5)
+                    q_val = 0.5 + resonance * float(cutoff_frac[mid_idx]) * (
+                        RESONANCE_Q_RANGE[1] - 0.5
+                    )
                     b, a = dsp.resonant_lowpass_biquad_coeffs(cutoff, q_val)
                 else:
                     b, a = butter(filter_order, cutoff / nyq, btype="low")
@@ -611,7 +672,9 @@ def generate_sweep_sample(
                 low_fc = cutoff / (2 ** (bw_oct / 2))
                 high_fc = np.clip(cutoff * (2 ** (bw_oct / 2)), low_fc + 50, nyq - 10)
                 low_n, high_n = low_fc / nyq, high_fc / nyq
-                low_n, high_n = np.clip(low_n, 0.01, 0.98), np.clip(high_n, low_n + 0.01, 0.99)
+                low_n, high_n = np.clip(low_n, 0.01, 0.98), np.clip(
+                    high_n, low_n + 0.01, 0.99
+                )
                 b, a = butter(4, [low_n, high_n], btype="band")
                 zi_use = lfilter_zi(b, a) * block[0] if zi is None else zi
                 filtered, zi = lfilter(b, a, block, zi=zi_use)
@@ -620,7 +683,9 @@ def generate_sweep_sample(
                 low_fc = cutoff / (2 ** (bw_oct / 2))
                 high_fc = np.clip(cutoff * (2 ** (bw_oct / 2)), low_fc + 50, nyq - 10)
                 low_n, high_n = low_fc / nyq, high_fc / nyq
-                low_n, high_n = np.clip(low_n, 0.01, 0.98), np.clip(high_n, low_n + 0.01, 0.99)
+                low_n, high_n = np.clip(low_n, 0.01, 0.98), np.clip(
+                    high_n, low_n + 0.01, 0.99
+                )
                 b, a = butter(4, [low_n, high_n], btype="bandstop")
                 zi_use = lfilter_zi(b, a) * block[0] if zi is None else zi
                 filtered, zi = lfilter(b, a, block, zi=zi_use)
@@ -633,8 +698,12 @@ def generate_sweep_sample(
 
     # Apply modulation effects (phaser, chorus, flanger) via pedalboard
     mod_board, mod_params = _build_modulation_board_from_config(
-        phaser_enabled, chorus_enabled, flanger_enabled,
-        phaser_params, chorus_params, flanger_params,
+        phaser_enabled,
+        chorus_enabled,
+        flanger_enabled,
+        phaser_params,
+        chorus_params,
+        flanger_params,
     )
     if mod_board is not None:
         audio_2d = out.reshape(1, -1).astype(np.float32)
@@ -710,8 +779,7 @@ def _get_random_clap_path() -> Path:
     if not root.exists() or not root.is_dir():
         raise ValueError(f"DRUM_CLAP_PATHS root does not exist or is not a dir: {root}")
     candidates = [
-        f for f in root.iterdir()
-        if f.is_file() and f.suffix.lower() == ".wav"
+        f for f in root.iterdir() if f.is_file() and f.suffix.lower() == ".wav"
     ]
     if not candidates:
         raise ValueError(f"No .wav files found in {root}")
@@ -729,17 +797,36 @@ def parse_closh_config(
     """
     r = _parse_param_string(reverb)
     d = _parse_param_string(delay)
-    use_delay = delay is not None and delay.strip().lower() not in ("", "off", "0", "false")
+    use_delay = delay is not None and delay.strip().lower() not in (
+        "",
+        "off",
+        "0",
+        "false",
+    )
     return {
-        "reverb_wet_level": _resolve_float(r, "wet_level", CLOSH_REVERB_WET_RANGE, 0.0, 1.0),
-        "reverb_length_sec": _resolve_float(r, "length_sec", CLOSH_REVERB_LENGTH_SEC_RANGE, 2.0, 10.0),
-        "reverb_decay_sec": _resolve_float(r, "decay_sec", CLOSH_REVERB_DECAY_SEC_RANGE, 1.5, 8.0),
-        "reverb_early_reflections": _resolve_int(r, "early_reflections", CLOSH_REVERB_EARLY_REFLECTIONS_RANGE, 10, 60),
-        "reverb_highpass_hz": _resolve_float(r, "highpass_hz", CLOSH_REVERB_HIGHPASS_RANGE, 40, 180),
-        "reverb_tail_diffusion": _resolve_float(r, "tail_diffusion", CLOSH_REVERB_TAIL_DIFFUSION_RANGE, 0.3, 0.95),
+        "reverb_wet_level": _resolve_float(
+            r, "wet_level", CLOSH_REVERB_WET_RANGE, 0.0, 1.0
+        ),
+        "reverb_length_sec": _resolve_float(
+            r, "length_sec", CLOSH_REVERB_LENGTH_SEC_RANGE, 2.0, 10.0
+        ),
+        "reverb_decay_sec": _resolve_float(
+            r, "decay_sec", CLOSH_REVERB_DECAY_SEC_RANGE, 1.5, 8.0
+        ),
+        "reverb_early_reflections": _resolve_int(
+            r, "early_reflections", CLOSH_REVERB_EARLY_REFLECTIONS_RANGE, 10, 60
+        ),
+        "reverb_highpass_hz": _resolve_float(
+            r, "highpass_hz", CLOSH_REVERB_HIGHPASS_RANGE, 40, 180
+        ),
+        "reverb_tail_diffusion": _resolve_float(
+            r, "tail_diffusion", CLOSH_REVERB_TAIL_DIFFUSION_RANGE, 0.3, 0.95
+        ),
         "delay_enabled": use_delay,
         "delay_division": _resolve_choice(d, "division", CLOSH_DELAY_DIVISIONS),
-        "delay_feedback": _resolve_float(d, "feedback", CLOSH_DELAY_FEEDBACK_RANGE, 0, 0.8),
+        "delay_feedback": _resolve_float(
+            d, "feedback", CLOSH_DELAY_FEEDBACK_RANGE, 0, 0.8
+        ),
         "delay_mix": _resolve_float(d, "mix", CLOSH_DELAY_MIX_RANGE, 0, 0.8),
     }
 
@@ -823,7 +910,7 @@ def generate_closh_sample(
     for ch in range(n_channels):
         wet[ch] = fftconvolve(padded[ch], ir, mode="full")
     dry_extended = np.zeros_like(wet, dtype=np.float32)
-    dry_extended[:, :padded.shape[1]] = padded
+    dry_extended[:, : padded.shape[1]] = padded
     wet_peak = np.max(np.abs(wet)) + 1e-12
     dry_peak = np.max(np.abs(padded)) + 1e-12
     wet = wet * (dry_peak / wet_peak)
@@ -862,6 +949,116 @@ def generate_closh_sample(
 
     params_used = {
         "clap_path": str(clap_path),
+        "reverb_wet_level": config["reverb_wet_level"],
+        "reverb_length_sec": config["reverb_length_sec"],
+        "reverb_decay_sec": config["reverb_decay_sec"],
+        "reverb_early_reflections": config["reverb_early_reflections"],
+        "reverb_highpass_hz": config["reverb_highpass_hz"],
+        "reverb_tail_diffusion": config["reverb_tail_diffusion"],
+        "delay_enabled": config["delay_enabled"],
+        "delay_division": config["delay_division"],
+        "delay_feedback": config["delay_feedback"],
+        "delay_mix": config["delay_mix"],
+    }
+    return output, params_used
+
+
+def generate_kickboom_sample(
+    tempo: int = 120,
+    bars: int = 2,
+    output: str = "kickboom.wav",
+    config: dict[str, Any] | None = None,
+) -> tuple[str, dict[str, Any]]:
+    """
+    Generate a washed kick transition: random kick from DRUM_KICK_PATHS with
+    long reverb and optional tempo-synced delay. Same config interface as closh.
+    """
+    if config is None:
+        config = parse_closh_config()
+
+    kick_path = _get_random_kick_path()
+    audio, sr = sf.read(str(kick_path), dtype="float32")
+
+    # Pedalboard expects (channels, samples); soundfile returns (samples, channels)
+    if audio.ndim == 1:
+        audio = audio[np.newaxis, :]
+    else:
+        audio = np.ascontiguousarray(audio.T)
+
+    # Resample if needed
+    if sr != SAMPLE_RATE:
+        import librosa
+
+        audio_lr = audio.T
+        resampled = librosa.resample(audio_lr, orig_sr=sr, target_sr=SAMPLE_RATE)
+        if resampled.ndim == 1:
+            audio = resampled[np.newaxis, :]
+        else:
+            audio = np.ascontiguousarray(resampled.T)
+
+    n_samples = audio.shape[1]
+    tail_samples = int(CLOSH_TAIL_SEC * SAMPLE_RATE)
+    total_len = n_samples + tail_samples
+    padded = np.zeros((audio.shape[0], total_len), dtype=np.float32)
+    padded[:, :n_samples] = audio
+
+    input_peak = np.max(np.abs(audio))
+    if input_peak < 1e-6:
+        raise ValueError(f"Kick sample is effectively silent: {kick_path}")
+
+    ir = dsp.make_reverb_ir(
+        SAMPLE_RATE,
+        length_sec=config["reverb_length_sec"],
+        decay_sec=config["reverb_decay_sec"],
+        early_reflections=config["reverb_early_reflections"],
+        highpass_cutoff_hz=config["reverb_highpass_hz"],
+        seed=random.randint(0, 2**31 - 1),
+        tail_diffusion=config["reverb_tail_diffusion"],
+        early_diffuse=True,
+    )
+    wet_level = config["reverb_wet_level"]
+    n_channels = padded.shape[0]
+    wet = np.zeros((n_channels, padded.shape[1] + len(ir) - 1), dtype=np.float32)
+    for ch in range(n_channels):
+        wet[ch] = fftconvolve(padded[ch], ir, mode="full")
+    dry_extended = np.zeros_like(wet, dtype=np.float32)
+    dry_extended[:, : padded.shape[1]] = padded
+    wet_peak = np.max(np.abs(wet)) + 1e-12
+    dry_peak = np.max(np.abs(padded)) + 1e-12
+    wet = wet * (dry_peak / wet_peak)
+    processed = wet_level * wet + (1.0 - wet_level) * dry_extended
+
+    if config["delay_enabled"]:
+        delay_sec = _delay_division_to_seconds(config["delay_division"], tempo)
+        delay_plugin = Delay(
+            delay_seconds=delay_sec,
+            feedback=config["delay_feedback"],
+            mix=config["delay_mix"],
+        )
+        board = Pedalboard([delay_plugin])
+        chunk_samples = 44100
+        proc_len = processed.shape[1]
+        n_chunks = (proc_len + chunk_samples - 1) // chunk_samples
+        delay_chunks = []
+        for i in range(n_chunks):
+            start = i * chunk_samples
+            end = min(start + chunk_samples, proc_len)
+            chunk = processed[:, start:end]
+            out_chunk = board(chunk, SAMPLE_RATE, buffer_size=4096, reset=(i == 0))
+            delay_chunks.append(out_chunk)
+        processed = np.concatenate(delay_chunks, axis=1)
+
+    duration_sec = bars * 4 * (60.0 / tempo)
+    max_samples = int(duration_sec * SAMPLE_RATE)
+    out = processed[:, :max_samples]
+    if out.shape[0] == 2:
+        out_mono = np.mean(out, axis=0)
+    else:
+        out_mono = out[0]
+    sf.write(output, _normalize_audio(out_mono), SAMPLE_RATE, subtype="PCM_16")
+
+    params_used = {
+        "kick_path": str(kick_path),
         "reverb_wet_level": config["reverb_wet_level"],
         "reverb_length_sec": config["reverb_length_sec"],
         "reverb_decay_sec": config["reverb_decay_sec"],

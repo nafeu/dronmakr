@@ -304,7 +304,9 @@ def generate_beat(
     bpm: int = typer.Option(
         None, "--bpm", "-t", help="Beats per minute (random 80-180 if not specified)"
     ),
-    loops: int = typer.Option(1, "--loops", "-l", help="Number of bars per pattern loop"),
+    loops: int = typer.Option(
+        1, "--loops", "-l", help="Number of bars per pattern loop"
+    ),
     pattern: str = typer.Option(
         None,
         "--pattern",
@@ -511,8 +513,10 @@ transition_app = typer.Typer(help="Generate transition sounds (sweeps, risers, e
 
 @transition_app.command("sweep")
 def transition_sweep(
-    tempo: int = typer.Option(120, "--tempo", "-t", help="Tempo in BPM (default: 120)."),
-    bars: int = typer.Option(2, "--bars", "-b", help="Length in bars (default: 2)."),
+    tempo: int = typer.Option(
+        120, "--tempo", "-t", help="Tempo in BPM (default: 120)."
+    ),
+    bars: int = typer.Option(4, "--bars", "-b", help="Length in bars (default: 4)."),
     sound: str | None = typer.Option(
         None,
         "--sound",
@@ -558,8 +562,12 @@ def transition_sweep(
         "-d",
         help="Disable effects: comma-separated list of tremolo,phaser,chorus,flanger or fx (disables all).",
     ),
-    iterations: int = typer.Option(1, "--iterations", "-n", help="Number of samples to generate."),
-    play: bool = typer.Option(False, "--play", "-p", help="Open output with default WAV player."),
+    iterations: int = typer.Option(
+        1, "--iterations", "-n", help="Number of samples to generate."
+    ),
+    play: bool = typer.Option(
+        False, "--play", "-p", help="Open output with default WAV player."
+    ),
 ):
     """Generate a noise riser (techno/trance/house).
 
@@ -591,10 +599,18 @@ def transition_sweep(
             disable=disable,
         )
         beat_name = generate_beat_name()
-        name_parts = ["transition_sweep", beat_name, f"{tempo}bpm", f"{bars}bars", generate_id()]
+        name_parts = [
+            "transition_sweep",
+            beat_name,
+            f"{tempo}bpm",
+            f"{bars}bars",
+            generate_id(),
+        ]
         sample_name = format_name("___".join(name_parts))
         output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
-        output_path, params_used = generate_sweep_sample(tempo=tempo, bars=bars, output=output_path, config=config)
+        output_path, params_used = generate_sweep_sample(
+            tempo=tempo, bars=bars, output=output_path, config=config
+        )
         results.append(output_path)
         t = params_used
         voice = t.get("voice", "noise")
@@ -606,7 +622,11 @@ def transition_sweep(
         fx_str = f", fx=[{mod_str}]" if mod_str else ""
         if iterations == 1:
             print(with_prompt(f"generated: {output_path}"))
-            print(with_prompt(f"  used: {voice_desc}, cutoff {t['cutoff_low']}–{t['cutoff_high']}Hz, tremolo depth={t['tremolo_depth']:.2f} rate={t['tremolo_rate_min']:.1f}–{t['tremolo_rate_max']:.1f}Hz{fx_str}"))
+            print(
+                with_prompt(
+                    f"  used: {voice_desc}, cutoff {t['cutoff_low']}–{t['cutoff_high']}Hz, tremolo depth={t['tremolo_depth']:.2f} rate={t['tremolo_rate_min']:.1f}–{t['tremolo_rate_max']:.1f}Hz{fx_str}"
+                )
+            )
         else:
             print(with_prompt(f"  [{i + 1}/{iterations}] {output_path}"))
 
@@ -623,8 +643,10 @@ def transition_sweep(
 
 @transition_app.command("closh")
 def transition_closh(
-    tempo: int = typer.Option(120, "--tempo", "-t", help="Tempo in BPM (default: 120)."),
-    bars: int = typer.Option(2, "--bars", "-b", help="Length in bars (default: 2)."),
+    tempo: int = typer.Option(
+        120, "--tempo", "-t", help="Tempo in BPM (default: 120)."
+    ),
+    bars: int = typer.Option(4, "--bars", "-b", help="Length in bars (default: 4)."),
     reverb: str | None = typer.Option(
         None,
         "--reverb",
@@ -637,8 +659,12 @@ def transition_closh(
         "-d",
         help="Tempo-synced delay: division (1/4|1/8|1/8d|1/16|1/16d|1/32), feedback, mix. Omit or 'off' to disable.",
     ),
-    iterations: int = typer.Option(1, "--iterations", "-n", help="Number of samples to generate."),
-    play: bool = typer.Option(False, "--play", "-p", help="Open output with default WAV player."),
+    iterations: int = typer.Option(
+        1, "--iterations", "-n", help="Number of samples to generate."
+    ),
+    play: bool = typer.Option(
+        False, "--play", "-p", help="Open output with default WAV player."
+    ),
 ):
     """Generate washed clap transition: random clap from DRUM_CLAP_PATHS with long reverb.
 
@@ -655,13 +681,23 @@ def transition_closh(
     print(with_prompt(f"  tempo               {tempo}"))
     print(with_prompt(f"  bars                {bars}"))
     print(with_prompt(f"  iterations          {iterations}"))
-    print(with_prompt(f"  delay               {'on' if config['delay_enabled'] else 'off'}"))
+    print(
+        with_prompt(
+            f"  delay               {'on' if config['delay_enabled'] else 'off'}"
+        )
+    )
     print(f"{RED}│{RESET}")
 
     results = []
     for i in range(iterations):
         beat_name = generate_beat_name()
-        name_parts = ["transition_closh", beat_name, f"{tempo}bpm", f"{bars}bars", generate_id()]
+        name_parts = [
+            "transition_closh",
+            beat_name,
+            f"{tempo}bpm",
+            f"{bars}bars",
+            generate_id(),
+        ]
         sample_name = format_name("___".join(name_parts))
         output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
         output_path, params_used = generate_closh_sample(
@@ -671,7 +707,98 @@ def transition_closh(
         p = params_used
         if iterations == 1:
             rev_str = f"wet={p['reverb_wet_level']:.2f} len={p['reverb_length_sec']:.1f}s decay={p['reverb_decay_sec']:.1f}s"
-            dl_str = f" delay={p['delay_division']} fb={p['delay_feedback']:.2f} mix={p['delay_mix']:.2f}" if p["delay_enabled"] else ""
+            dl_str = (
+                f" delay={p['delay_division']} fb={p['delay_feedback']:.2f} mix={p['delay_mix']:.2f}"
+                if p["delay_enabled"]
+                else ""
+            )
+            print(with_prompt(f"generated: {output_path}"))
+            print(with_prompt(f"  used: {rev_str}{dl_str}"))
+        else:
+            print(with_prompt(f"  [{i + 1}/{iterations}] {output_path}"))
+
+    end_time = time.time()
+    time_elapsed = round(end_time - start_time)
+    print(f"{RED}■ completed in {time_elapsed}s{RESET}")
+    if iterations > 1:
+        for r in results:
+            print(with_prompt(f"generated: {r}"))
+    if play and results:
+        open_files_with_default_player(results)
+    return results
+
+
+@transition_app.command("kickboom")
+def transition_kickboom(
+    tempo: int = typer.Option(
+        120, "--tempo", "-t", help="Tempo in BPM (default: 120)."
+    ),
+    bars: int = typer.Option(4, "--bars", "-b", help="Length in bars (default: 4)."),
+    reverb: str | None = typer.Option(
+        None,
+        "--reverb",
+        "-r",
+        help="Reverb: wet_level, length_sec, decay_sec, early_reflections, highpass_hz, tail_diffusion (0.65-0.9). Use _ for random.",
+    ),
+    delay: str | None = typer.Option(
+        None,
+        "--delay",
+        "-d",
+        help="Tempo-synced delay: division (1/4|1/8|1/8d|1/16|1/16d|1/32), feedback, mix. Omit or 'off' to disable.",
+    ),
+    iterations: int = typer.Option(
+        1, "--iterations", "-n", help="Number of samples to generate."
+    ),
+    play: bool = typer.Option(
+        False, "--play", "-p", help="Open output with default WAV player."
+    ),
+):
+    """Generate washed kick transition: random kick from DRUM_KICK_PATHS with long reverb.
+
+    Same interface as closh. Params use key:value;key2:value2. Use _ for random.
+    """
+    start_time = time.time()
+    iterations = max(1, iterations)
+
+    config = parse_closh_config(reverb=reverb, delay=delay)
+
+    print(get_version())
+    print(generate_transition_header())
+    print(with_prompt(f"kickboom"))
+    print(with_prompt(f"  tempo               {tempo}"))
+    print(with_prompt(f"  bars                {bars}"))
+    print(with_prompt(f"  iterations          {iterations}"))
+    print(
+        with_prompt(
+            f"  delay               {'on' if config['delay_enabled'] else 'off'}"
+        )
+    )
+    print(f"{RED}│{RESET}")
+
+    results = []
+    for i in range(iterations):
+        beat_name = generate_beat_name()
+        name_parts = [
+            "transition_kickboom",
+            beat_name,
+            f"{tempo}bpm",
+            f"{bars}bars",
+            generate_id(),
+        ]
+        sample_name = format_name("___".join(name_parts))
+        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+        output_path, params_used = generate_kickboom_sample(
+            tempo=tempo, bars=bars, output=output_path, config=config
+        )
+        results.append(output_path)
+        p = params_used
+        if iterations == 1:
+            rev_str = f"wet={p['reverb_wet_level']:.2f} len={p['reverb_length_sec']:.1f}s decay={p['reverb_decay_sec']:.1f}s"
+            dl_str = (
+                f" delay={p['delay_division']} fb={p['delay_feedback']:.2f} mix={p['delay_mix']:.2f}"
+                if p["delay_enabled"]
+                else ""
+            )
             print(with_prompt(f"generated: {output_path}"))
             print(with_prompt(f"  used: {rev_str}{dl_str}"))
         else:
