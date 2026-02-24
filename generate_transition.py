@@ -38,7 +38,7 @@ NOISE_LEVEL_RANGE = (0.45, 0.8)
 FILTER_ORDERS = (2, 4, 6)
 FILTER_SWEEP_TYPES: tuple[str, ...] = ("lpf", "hpf", "bpf", "bsf", "none")
 FILTER_LFO_WIDTH_RANGE = (0.0, 0.25)
-FILTER_LFO_RATE_MIN_RANGE = (0.5, 3.0)
+FILTER_LFO_RATE_MIN_RANGE = (0.1, 1.5)
 FILTER_LFO_RATE_PEAK_RANGE = (5.0, 25.0)
 BUILD_SHAPES: tuple[Literal["ease_in", "linear", "ease_out"], ...] = (
     "ease_in",
@@ -61,17 +61,17 @@ VOICE_TYPES: tuple[Literal["noise", "sine", "saw", "tri", "square"], ...] = (
 OSC_FREQ_LOW_RANGE = (55, 220)  # A1 to A3
 OSC_FREQ_HIGH_RANGE = (880, 4000)  # A5 to ~B7 (used only when freq_high explicit)
 OSC_OCTAVE_SPAN_RANGE = (
-    2.5,
-    4.5,
-)  # octaves for sweep when randomizing (2.5–4.5 ≈ 3–4 octaves)
+    3.0,
+    5.0,
+)  # octaves for sweep when randomizing (3–5 octaves), capped by C4 as top
 OSC_LEVEL_RANGE = (0.3, 0.8)
 PULSE_WIDTH_RANGE = (0.2, 0.8)
-PWM_SWEEP_RANGE = (0.0, 0.35)  # how much pulse width modulates (0=static)
-DETUNE_CENTS_RANGE = (5, 25)  # cents for unison detune
-DETUNE_MIX_RANGE = (0.2, 0.6)  # max mix of detuned layer (follows build curve)
-RESONANCE_Q_RANGE = (0.5, 8.0)  # filter Q at peak (0.5=flat, 8=acid scream)
-TREMOLO_DEPTH_RANGE = (0.4, 0.9)
-TREMOLO_RATE_MIN_RANGE = (1.0, 4.0)
+PWM_SWEEP_RANGE = (0.15, 0.5)  # stronger PWM modulation by default
+DETUNE_CENTS_RANGE = (8, 35)  # more noticeable detune
+DETUNE_MIX_RANGE = (0.4, 0.9)  # detuned layer more prominent
+RESONANCE_Q_RANGE = (1.0, 10.0)  # more pronounced filter peaks
+TREMOLO_DEPTH_RANGE = (0.7, 1.0)  # tremolo is usually strong
+TREMOLO_RATE_MIN_RANGE = (0.05, 0.5)
 TREMOLO_RATE_MAX_RANGE = (10.0, 25.0)
 
 # Modulation effect ranges (phaser, chorus, flanger) for randomization
@@ -211,21 +211,36 @@ def _resolve_sound_params(parsed: dict[str, str]) -> dict[str, Any]:
         )
     else:
         # Oscillator: sine, saw, tri, square
-        # Use octaves to span (default 2.5–4.5 octaves); or freq_high if user specifies it
-        freq_low = _resolve_float(parsed, "freq_low", OSC_FREQ_LOW_RANGE, 20, 2000)
-        octaves = _resolve_float(parsed, "octaves", OSC_OCTAVE_SPAN_RANGE, 1, 6)
-        freq_high_explicit = parsed.get("freq_high") and not _is_random(
-            parsed.get("freq_high")
-        )
-        if freq_high_explicit:
+        # Constraint: peak pitch fixed at (or below) C5, start up to 5 octaves lower.
+        C5_HZ = 523.25
+
+        # Resolve requested high freq; always clamp to C5 so the peak is never above it.
+        freq_high_raw = parsed.get("freq_high")
+        if freq_high_raw and not _is_random(freq_high_raw):
             freq_high = _resolve_float(
-                parsed, "freq_high", OSC_FREQ_HIGH_RANGE, 200, 12000
+                parsed, "freq_high", OSC_FREQ_HIGH_RANGE, 40, C5_HZ
             )
-            freq_high = max(freq_high, freq_low + 50)
         else:
-            freq_high = freq_low * (2.0**octaves)
-            freq_high = min(freq_high, SAMPLE_RATE / 2 - 100)
-            freq_high = max(freq_high, freq_low + 50)
+            # Default: use C5 as the peak frequency.
+            freq_high = C5_HZ
+
+        # Resolve octave span (for randomization / when freq_low not explicitly set).
+        octaves = _resolve_float(parsed, "octaves", OSC_OCTAVE_SPAN_RANGE, 1.0, 5.0)
+
+        # Resolve low freq; if not given, derive from high and octave span.
+        freq_low_raw = parsed.get("freq_low")
+        if freq_low_raw and not _is_random(freq_low_raw):
+            freq_low = _resolve_float(parsed, "freq_low", OSC_FREQ_LOW_RANGE, 20, 2000)
+        else:
+            min_low_allowed = max(20.0, freq_high / (2.0**5))  # at most 5 octaves below
+            freq_low = max(freq_high / (2.0**octaves), min_low_allowed)
+
+        # Final safety: ensure ordering and max 5-octave span.
+        if freq_low >= freq_high:
+            freq_low = max(20.0, freq_high / 2.0)
+        max_span_low = max(freq_high / (2.0**5), 20.0)
+        if freq_low < max_span_low:
+            freq_low = max_span_low
         result["osc_freq_low"] = freq_low
         result["osc_freq_high"] = freq_high
         result["osc_level"] = _resolve_float(parsed, "level", OSC_LEVEL_RANGE, 0.1, 1.0)
@@ -278,7 +293,7 @@ def parse_sweep_config(
     ch = _parse_param_string(chorus)
     fl = _parse_param_string(flanger)
 
-    tremolo_rate_min = _resolve_float(t, "rate_min_hz", TREMOLO_RATE_MIN_RANGE, 0.5, 20)
+    tremolo_rate_min = _resolve_float(t, "rate_min_hz", TREMOLO_RATE_MIN_RANGE, 0.05, 20)
     tremolo_rate_max = _resolve_float(t, "rate_max_hz", TREMOLO_RATE_MAX_RANGE, 2, 50)
     tremolo_rate_max = max(tremolo_rate_max, tremolo_rate_min + 1.0)
 
@@ -300,7 +315,7 @@ def parse_sweep_config(
             f, "lfo_width", FILTER_LFO_WIDTH_RANGE, 0, 0.5
         ),
         "filter_lfo_rate_min": _resolve_float(
-            f, "lfo_rate_min", FILTER_LFO_RATE_MIN_RANGE, 0.2, 10
+            f, "lfo_rate_min", FILTER_LFO_RATE_MIN_RANGE, 0.05, 10
         ),
         "filter_lfo_rate_peak": _resolve_float(
             f, "lfo_rate_peak", FILTER_LFO_RATE_PEAK_RANGE, 2, 50
@@ -435,9 +450,11 @@ def _apply_build_shape(
     if shape == "linear":
         return t
     if shape == "ease_in":
-        return t**2
+        # Use a steeper exponential-style ease so modulation (filter & tremolo)
+        # stays slow at the beginning and accelerates into the peak.
+        return t**3
     if shape == "ease_out":
-        return 1 - (1 - t) ** 2
+        return 1 - (1 - t) ** 3
     return t
 
 
@@ -520,11 +537,17 @@ def _compute_tremolo_gain(
     if depth <= 0:
         return np.ones(num_samples, dtype=np.float64)
 
-    rate_hz = rate_min_hz + (rate_max_hz - rate_min_hz) * lfo_rate_frac
+    # Strongly ease-in the tremolo speed so it starts very slow and
+    # accelerates sharply into the peak.
+    shaped = np.clip(lfo_rate_frac, 0.0, 1.0) ** 3
+    rate_hz = rate_min_hz + (rate_max_hz - rate_min_hz) * shaped
     phase_inc = 2 * np.pi * rate_hz / SAMPLE_RATE
     phase = np.cumsum(phase_inc)
-    # Gain: 1 at peak of sine, 1-depth at trough. (1 + sin) / 2 gives 0..1, so gain = 1 - depth * (1 + sin) / 2
-    gain = 1.0 - depth * (1.0 + np.sin(phase)) / 2.0
+    # Also ease-in the tremolo depth so modulation is minimal at the
+    # start of the sweep and strongest near the peak.
+    depth_env = depth * shaped
+    # Gain: 1 at peak of sine, 1-depth at trough. (1 + sin) / 2 gives 0..1
+    gain = 1.0 - depth_env * (1.0 + np.sin(phase)) / 2.0
     return np.clip(gain, 0.01, 1.0)
 
 
@@ -599,11 +622,14 @@ def generate_sweep_sample(
 
     filter_sweep_type = (cfg.get("filter_sweep_type") or "lpf").lower()
     filter_lfo_width = cfg.get("filter_lfo_width", 0.0)
-    filter_lfo_rate_min = cfg.get("filter_lfo_rate_min") or 1.0
+    filter_lfo_rate_min = cfg.get("filter_lfo_rate_min") or 0.2
     filter_lfo_rate_peak = cfg.get("filter_lfo_rate_peak") or 12.0
     filter_lfo_rate_peak = max(filter_lfo_rate_peak, filter_lfo_rate_min + 0.5)
     sweep_range = cutoff_high - cutoff_low
-    lfo_rate_hz = filter_lfo_rate_min + lfo_rate_frac * (
+    # Strong ease-in for filter LFO rate so modulation is very slow at the
+    # start and accelerates into the peak.
+    lfo_shape = np.clip(lfo_rate_frac, 0.0, 1.0) ** 3
+    lfo_rate_hz = filter_lfo_rate_min + lfo_shape * (
         filter_lfo_rate_peak - filter_lfo_rate_min
     )
     lfo_phase_inc = 2 * np.pi * lfo_rate_hz / SAMPLE_RATE

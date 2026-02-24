@@ -517,7 +517,7 @@ def transition_sweep(
     tempo: int = typer.Option(
         120, "--tempo", "-t", help="Tempo in BPM (default: 120)."
     ),
-    bars: int = typer.Option(4, "--bars", "-b", help="Length in bars (default: 4)."),
+    bars: int = typer.Option(8, "--bars", "-b", help="Length in bars (default: 8)."),
     sound: str | None = typer.Option(
         None,
         "--sound",
