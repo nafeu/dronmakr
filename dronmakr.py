@@ -16,6 +16,7 @@ from generate_midi import generate_drone_midi, get_pattern_config
 from generate_sample import generate_drone_sample, generate_beat_sample
 from generate_transition import (
     generate_closh_sample,
+    generate_kickboom_sample,
     generate_sweep_sample,
     parse_closh_config,
     parse_sweep_config,

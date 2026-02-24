@@ -767,6 +767,25 @@ CLOSH_DELAY_MIX_RANGE = (0.15, 0.5)
 CLOSH_TAIL_SEC = 12.0
 
 
+def _get_random_kick_path() -> Path:
+    """Pick a random .wav from DRUM_KICK_PATHS. Supports comma-separated roots."""
+    paths_str = get_setting("DRUM_KICK_PATHS", "")
+    roots = [p.strip() for p in paths_str.split(",") if p.strip()]
+    if not roots:
+        raise ValueError(
+            "DRUM_KICK_PATHS is not configured. Add paths to kick samples in settings."
+        )
+    root = Path(random.choice(roots)).expanduser().resolve()
+    if not root.exists() or not root.is_dir():
+        raise ValueError(f"DRUM_KICK_PATHS root does not exist or is not a dir: {root}")
+    candidates = [
+        f for f in root.iterdir() if f.is_file() and f.suffix.lower() == ".wav"
+    ]
+    if not candidates:
+        raise ValueError(f"No .wav files found in {root}")
+    return random.choice(candidates)
+
+
 def _get_random_clap_path() -> Path:
     """Pick a random .wav from DRUM_CLAP_PATHS. Supports comma-separated roots."""
     paths_str = get_setting("DRUM_CLAP_PATHS", "")
