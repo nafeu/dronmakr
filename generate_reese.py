@@ -89,6 +89,13 @@ def _is_random(val: str | None) -> bool:
     return val is None or val == "" or val.lower() == "_"
 
 
+def _sound_flag(parsed: dict[str, str], key: str) -> bool:
+    """True if key is present and value is not 0/false/off (for sound string flags like sub, neuro)."""
+    if key not in parsed:
+        return False
+    return parsed[key].strip().lower() not in ("0", "false", "off")
+
+
 def _resolve_float(
     parsed: dict[str, str],
     key: str,
@@ -133,12 +140,10 @@ def parse_reese_config(
     distortion: str | None = None,
     fx: str | None = None,
     disable: str | None = None,
-    sub_enabled: bool = False,
-    neuro_eq: bool = False,
 ) -> dict[str, Any]:
     """Parse param strings. base_freq is always C1; other params randomized if _ or omitted.
-    sub_enabled: if False, no sub (default); if True, sub is on unless disabled via disable=sub.
-    neuro_eq: if True, apply neuro-style EQ/filter (highpass, LFO filter, body band, post-EQ). Default False = raw reese.
+    In --sound: use 'sub' to enable sub bass, 'neuro' to enable neuro-style EQ/filter. E.g. --sound "sub;neuro" or --sound "sub;detune_left:_".
+    Use --disable sub,fx,movement,distortion to force sections off.
     """
     disabled = set()
     if disable:
@@ -152,9 +157,12 @@ def parse_reese_config(
     d = _parse_param_string(distortion)
     f = _parse_param_string(fx)
 
-    # Sub: only when sub_enabled and not in disable
+    sub_enabled = _sound_flag(s, "sub") and "sub" not in disabled
+    neuro_eq = _sound_flag(s, "neuro")
+
+    # Sub: only when sub_enabled
     sub_level = 0.0
-    if sub_enabled and "sub" not in disabled:
+    if sub_enabled:
         sub_level = _resolve_float(
             s, "sub_level", SUB_LEVEL_RANGE, 0.0, 1.0
         ) * SUB_LEVEL_SCALE

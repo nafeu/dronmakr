@@ -90,8 +90,15 @@ def main(
         ctx.invoke(webui, debug=False, port=3766, open_browser=True)
 
 
-@cli.command(name="generate-reese")
-def generate_reese(
+# ---------------------------------------------------------------------------
+# generate-bass (group with subcommands: reese, ...)
+# ---------------------------------------------------------------------------
+
+bass_app = typer.Typer(help="Generate bass loops. Subcommands: reese (and more types later).")
+
+
+@bass_app.command("reese")
+def bass_reese(
     tempo: int = typer.Option(
         170, "--tempo", "-t", help="Tempo in BPM (default: 170)."
     ),
@@ -103,8 +110,9 @@ def generate_reese(
         "--sound",
         "-s",
         help=(
-            "Sound: sub_level, reese_level, detune_left, detune_right (root C1 fixed). "
-            'Use _ for random, e.g. "sub_level:0.45;detune_left:_;detune_right:_".'
+            "Sound: sub, neuro, sub_level, reese_level, detune_left, detune_right (root C1). "
+            "Flags: 'sub' = enable sub bass, 'neuro' = neuro-style EQ/filter. "
+            'E.g. "sub", "neuro", "sub;neuro", "sub;detune_left:_;reese_level:1.8". Use _ for random.'
         ),
     ),
     movement: str | None = typer.Option(
@@ -136,16 +144,6 @@ def generate_reese(
         "--disable",
         help="Disable sections: comma-separated list of sub,fx,movement,distortion.",
     ),
-    sub: bool = typer.Option(
-        False,
-        "--sub",
-        help="Enable sub bass (C1 sine). Off by default for a purer reese; use --sub to add low-end.",
-    ),
-    neuro: bool = typer.Option(
-        False,
-        "--neuro",
-        help="Apply neuro-style EQ and filtering (LFO filter, body band, post-EQ). Off by default for raw reese.",
-    ),
     iterations: int = typer.Option(
         1, "--iterations", "-n", help="Number of Reese loops to generate."
     ),
@@ -153,14 +151,14 @@ def generate_reese(
         False, "--play", "-p", help="Open output with default WAV player."
     ),
 ):
-    """Generate a neurofunk-style Reese bass loop."""
+    """Generate a Reese bass loop (raw by default; use --sound neuro for neuro-style, --sound sub for sub)."""
     ensure_settings()
 
     start_time = time.time()
     iterations = max(1, iterations)
 
     print(get_version())
-    print(with_prompt("generate-reese"))
+    print(with_prompt("generate-bass reese"))
     print(with_prompt(f"  tempo               {tempo}"))
     print(with_prompt(f"  bars                {bars}"))
     print(with_prompt(f"  iterations          {iterations}"))
@@ -176,8 +174,6 @@ def generate_reese(
             distortion=distortion,
             fx=fx,
             disable=disable,
-            sub_enabled=sub,
-            neuro_eq=neuro,
         )
         beat_name = generate_beat_name()
         name_parts = [
@@ -221,6 +217,9 @@ def generate_reese(
     if play and results:
         open_files_with_default_player(results)
     return results
+
+
+cli.add_typer(bass_app, name="generate-bass")
 
 
 @cli.command(name="generate-drone")
