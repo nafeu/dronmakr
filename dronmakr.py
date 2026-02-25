@@ -21,6 +21,7 @@ from generate_transition import (
     parse_closh_config,
     parse_sweep_config,
 )
+from generate_reese import generate_reese_sample, parse_reese_config
 from process_sample import process_drone_sample
 from utils import (
     format_name,
@@ -87,6 +88,127 @@ def main(
     ensure_settings()
     if ctx.invoked_subcommand is None:
         ctx.invoke(webui, debug=False, port=3766, open_browser=True)
+
+
+@cli.command(name="generate-reese")
+def generate_reese(
+    tempo: int = typer.Option(
+        172, "--tempo", "-t", help="Tempo in BPM (default: 172)."
+    ),
+    bars: int = typer.Option(
+        2, "--bars", "-b", help="Length in bars (default: 2)."
+    ),
+    sound: str | None = typer.Option(
+        None,
+        "--sound",
+        "-s",
+        help=(
+            "Sound: sub_level, reese_level, detune_left, detune_right (root C1 fixed). "
+            'Use _ for random, e.g. "sub_level:0.45;detune_left:_;detune_right:_".'
+        ),
+    ),
+    movement: str | None = typer.Option(
+        None,
+        "--movement",
+        "-m",
+        help=(
+            "Movement: filter_cutoff_low, filter_cutoff_high, filter_resonance, "
+            "lfo1_rate_hz, lfo1_depth, lfo2_rate_hz, lfo2_cents."
+        ),
+    ),
+    distortion: str | None = typer.Option(
+        None,
+        "--distortion",
+        "-d",
+        help="Distortion: drive_soft, drive_hard, hard_mix (two-stage + mix).",
+    ),
+    fx: str | None = typer.Option(
+        None,
+        "--fx",
+        "-f",
+        help=(
+            "FX: stereo_width, haas_ms, chorus_mix, phaser_mix. "
+            "E.g. \"stereo_width:0.8;haas_ms:10;chorus_mix:0.3\"."
+        ),
+    ),
+    disable: str | None = typer.Option(
+        None,
+        "--disable",
+        help="Disable sections: comma-separated list of sub,fx,movement,distortion.",
+    ),
+    iterations: int = typer.Option(
+        1, "--iterations", "-n", help="Number of Reese loops to generate."
+    ),
+    play: bool = typer.Option(
+        False, "--play", "-p", help="Open output with default WAV player."
+    ),
+):
+    """Generate a neurofunk-style Reese bass loop."""
+    ensure_settings()
+
+    start_time = time.time()
+    iterations = max(1, iterations)
+
+    print(get_version())
+    print(with_prompt("generate-reese"))
+    print(with_prompt(f"  tempo               {tempo}"))
+    print(with_prompt(f"  bars                {bars}"))
+    print(with_prompt(f"  iterations          {iterations}"))
+    print(with_prompt(f"  play when done      {play}"))
+    print(f"{RED}│{RESET}")
+
+    results: list[str] = []
+    for i in range(iterations):
+        # Re-parse config each iteration so each loop can have different random params
+        config = parse_reese_config(
+            sound=sound,
+            movement=movement,
+            distortion=distortion,
+            fx=fx,
+            disable=disable,
+        )
+        beat_name = generate_beat_name()
+        name_parts = [
+            "reese",
+            beat_name,
+            f"{tempo}bpm",
+            f"{bars}bars",
+            generate_id(),
+        ]
+        sample_name = format_name("___".join(name_parts))
+        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+        output_path, params_used = generate_reese_sample(
+            tempo=tempo,
+            bars=bars,
+            output=output_path,
+            config=config,
+        )
+        results.append(output_path)
+
+        if iterations == 1:
+            p = params_used
+            filt = "res" if p.get("use_resonant_filter") else "smooth"
+            waves = f"{p.get('wave_a', 'saw')}/{p.get('wave_b', 'saw')}"
+            desc = (
+                f"C1 sub={p['sub_level']:.2f} reese={p['reese_level']:.2f} "
+                f"osc={waves} detune=({p['detune_left']:.0f},{p['detune_right']:.0f})c "
+                f"filter={filt} {p['main_cutoff_low']:.0f}-{p['main_cutoff_high']:.0f}Hz "
+                f"dry={p.get('reese_dry_mix', 0):.2f} drive=({p['drive_soft']:.2f},{p['drive_hard']:.2f}) stereo={p['stereo_width']:.2f}"
+            )
+            print(with_prompt(f"generated: {output_path}"))
+            print(with_prompt(f"  used: {desc}"))
+        else:
+            print(with_prompt(f"  [{i + 1}/{iterations}] {output_path}"))
+
+    end_time = time.time()
+    time_elapsed = round(end_time - start_time)
+    print(f"{RED}■ completed in {time_elapsed}s{RESET}")
+    if iterations > 1:
+        for r in results:
+            print(with_prompt(f"generated: {r}"))
+    if play and results:
+        open_files_with_default_player(results)
+    return results
 
 
 @cli.command(name="generate-drone")

@@ -175,3 +175,51 @@ def apply_steep_highpass(audio: np.ndarray, sample_rate: float, cutoff_hz: float
     fc = np.clip(cutoff_hz / nyq, 0.02, 0.98)
     sos = cheby2(N=10, rs=60, Wn=fc, btype="high", output="sos")
     return _apply_sos_per_channel(audio, sos)
+
+
+def peaking_biquad_coeffs(
+    freq_hz: float, gain_db: float, q: float, sample_rate: float = SAMPLE_RATE
+) -> tuple[np.ndarray, np.ndarray]:
+    """RBJ peaking EQ biquad. gain_db: positive = boost, negative = cut."""
+    w0 = 2 * np.pi * freq_hz / sample_rate
+    cos_w0 = np.cos(w0)
+    alpha = np.sin(w0) / (2 * max(q, 0.1))
+    A = 10.0 ** (gain_db / 40.0)
+    b0 = 1.0 + alpha * A
+    b1 = -2.0 * cos_w0
+    b2 = 1.0 - alpha * A
+    a0 = 1.0 + alpha / A
+    a1 = -2.0 * cos_w0
+    a2 = 1.0 - alpha / A
+    b = np.array([b0 / a0, b1 / a0, b2 / a0])
+    a = np.array([1.0, a1 / a0, a2 / a0])
+    return b, a
+
+
+def apply_peaking_eq(
+    audio: np.ndarray, sample_rate: float, freq_hz: float, gain_db: float, q: float = 1.0
+) -> np.ndarray:
+    """Apply peaking EQ (one band). audio shape (channels, samples)."""
+    b, a = peaking_biquad_coeffs(freq_hz, gain_db, q, sample_rate)
+    return apply_iir_per_channel(audio, sample_rate, b, a)
+
+
+def apply_reese_post_eq(
+    audio: np.ndarray, sample_rate: float = SAMPLE_RATE
+) -> np.ndarray:
+    """
+    Post-EQ for Reese: highpass ~30 Hz, slight cut 200-400 Hz, boost 700-1500 Hz.
+    audio shape (channels, samples).
+    """
+    nyq = 0.5 * sample_rate
+    # Highpass 30 Hz
+    fc = np.clip(30.0 / nyq, 0.001, 0.99)
+    b, a = butter(2, fc, btype="high")
+    out = apply_iir_per_channel(audio, sample_rate, b, a)
+    # Broad cut around 300 Hz
+    b, a = peaking_biquad_coeffs(300.0, -2.5, 0.8, sample_rate)
+    out = apply_iir_per_channel(out, sample_rate, b, a)
+    # Broad boost for growl presence
+    b, a = peaking_biquad_coeffs(1100.0, 2.0, 0.7, sample_rate)
+    out = apply_iir_per_channel(out, sample_rate, b, a)
+    return out
