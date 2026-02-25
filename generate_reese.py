@@ -20,9 +20,9 @@ C1_HZ = 32.7
 
 # --- Ranges for randomization (root not randomized) ---------------------------
 
-# Osc A/B detune: wide spread so each run sounds different
-DETUNE_LEFT_RANGE = (-24.0, -4.0)   # cents
-DETUNE_RIGHT_RANGE = (4.0, 24.0)
+# Osc A/B detune: wider spread for classic full reese (less neurofunk-thin)
+DETUNE_LEFT_RANGE = (-38.0, -10.0)   # cents
+DETUNE_RIGHT_RANGE = (10.0, 38.0)
 
 # Sub: 30% lower than before so reese can dominate
 SUB_LEVEL_RANGE = (0.45, 0.75)
@@ -133,8 +133,13 @@ def parse_reese_config(
     distortion: str | None = None,
     fx: str | None = None,
     disable: str | None = None,
+    sub_enabled: bool = False,
+    neuro_eq: bool = False,
 ) -> dict[str, Any]:
-    """Parse param strings. base_freq is always C1; other params randomized if _ or omitted."""
+    """Parse param strings. base_freq is always C1; other params randomized if _ or omitted.
+    sub_enabled: if False, no sub (default); if True, sub is on unless disabled via disable=sub.
+    neuro_eq: if True, apply neuro-style EQ/filter (highpass, LFO filter, body band, post-EQ). Default False = raw reese.
+    """
     disabled = set()
     if disable:
         for d in disable.split(","):
@@ -147,13 +152,15 @@ def parse_reese_config(
     d = _parse_param_string(distortion)
     f = _parse_param_string(fx)
 
-    # Root fixed at C1; sub boosted; reese level
-    sub_level = 0.0 if "sub" in disabled else _resolve_float(
-        s, "sub_level", SUB_LEVEL_RANGE, 0.0, 1.0
-    ) * SUB_LEVEL_SCALE
+    # Sub: only when sub_enabled and not in disable
+    sub_level = 0.0
+    if sub_enabled and "sub" not in disabled:
+        sub_level = _resolve_float(
+            s, "sub_level", SUB_LEVEL_RANGE, 0.0, 1.0
+        ) * SUB_LEVEL_SCALE
     reese_level = _resolve_float(s, "reese_level", REESE_LEVEL_RANGE, 0.8, 3.0)
-    detune_left = _resolve_float(s, "detune_left", DETUNE_LEFT_RANGE, -30.0, 0.0)
-    detune_right = _resolve_float(s, "detune_right", DETUNE_RIGHT_RANGE, 0.0, 30.0)
+    detune_left = _resolve_float(s, "detune_left", DETUNE_LEFT_RANGE, -40.0, 0.0)
+    detune_right = _resolve_float(s, "detune_right", DETUNE_RIGHT_RANGE, 0.0, 40.0)
     wave_a = _resolve_choice(s, "wave_a", WAVE_TYPES)
     wave_b = _resolve_choice(s, "wave_b", WAVE_TYPES)
     pulse_width = _resolve_float(s, "pulse_width", PULSE_WIDTH_RANGE, 0.1, 0.9)
@@ -175,11 +182,11 @@ def parse_reese_config(
         else random.random() < RESONANT_FILTER_PROB
     )
 
-    highpass_hz = _resolve_float(
+    highpass_hz = 0.0 if not neuro_eq else _resolve_float(
         m, "highpass_hz", REESE_HIGHPASS_RANGE, 25.0, 90.0
     )
     reese_dry_mix = _resolve_float(m, "reese_dry_mix", REESE_DRY_MIX_RANGE, 0.2, 0.75)
-    body_mix = _resolve_float(m, "body_mix", BODY_MIX_RANGE, 0.0, 0.7)
+    body_mix = 0.0 if not neuro_eq else _resolve_float(m, "body_mix", BODY_MIX_RANGE, 0.0, 0.7)
     sub_lowpass_hz = _resolve_float(
         s, "sub_lowpass_hz", SUB_LOWPASS_RANGE, 70.0, 180.0
     )
@@ -256,6 +263,7 @@ def parse_reese_config(
         "haas_ms": haas_ms,
         "chorus_mix": chorus_mix,
         "phaser_mix": phaser_mix,
+        "neuro_eq": neuro_eq,
     }
 
 
@@ -335,8 +343,8 @@ def _generate_three_osc(
 
 
 def generate_reese_sample(
-    tempo: int = 172,
-    bars: int = 2,
+    tempo: int = 170,
+    bars: int = 4,
     output: str = "reese.wav",
     config: dict[str, Any] | None = None,
 ) -> tuple[str, dict[str, Any]]:
@@ -353,9 +361,9 @@ def generate_reese_sample(
     duration_sec = (60.0 / tempo) * bars * beats_per_bar
     num_samples = int(duration_sec * SAMPLE_RATE)
 
-    # Phase randomization (0–90 deg) for movement
+    # Phase: full range so oscillators are more out of phase (wide, full reese)
     phase_offset_a = random.uniform(0, 2 * np.pi)
-    phase_offset_b = random.uniform(0, np.pi / 2)
+    phase_offset_b = random.uniform(0, 2 * np.pi)
 
     reese_raw, sub_raw = _generate_three_osc(
         num_samples,
@@ -371,60 +379,68 @@ def generate_reese_sample(
         pulse_width=cfg["pulse_width"],
     )
 
-    # Sub: lowpass (randomized), mono, boosted level
-    sub_lp = dsp.apply_steep_lowpass(
-        (sub_raw * cfg["sub_level"])[np.newaxis, :],
-        SAMPLE_RATE,
-        cfg["sub_lowpass_hz"],
-    )[0]
+    # Sub: only when enabled (sub_level > 0); lowpass and level
+    sub_lp = np.zeros(num_samples, dtype=np.float64)
+    if cfg["sub_level"] > 0:
+        sub_lp = dsp.apply_steep_lowpass(
+            (sub_raw * cfg["sub_level"])[np.newaxis, :],
+            SAMPLE_RATE,
+            cfg["sub_lowpass_hz"],
+        )[0]
 
-    # Reese layer: highpass (randomized 55–115 Hz so sometimes more body)
-    reese_hp = dsp.apply_steep_highpass(
-        reese_raw[np.newaxis, :], SAMPLE_RATE, cfg["highpass_hz"]
-    )[0]
+    # Reese layer: highpass only when neuro_eq (otherwise keep full range for raw reese)
+    if cfg.get("neuro_eq", False) and cfg["highpass_hz"] > 0:
+        reese_hp = dsp.apply_steep_highpass(
+            reese_raw[np.newaxis, :], SAMPLE_RATE, cfg["highpass_hz"]
+        )[0]
+    else:
+        reese_hp = reese_raw.copy()
 
-    # Parallel body band: low-mids from raw reese for fullness (not resonant-filtered)
-    body_band = dsp.apply_steep_lowpass(
-        reese_raw[np.newaxis, :], SAMPLE_RATE, 280.0
-    )[0]
-    body_band = dsp.apply_steep_highpass(
-        body_band[np.newaxis, :], SAMPLE_RATE, 70.0
-    )[0]
+    # Body band and main filter only when neuro_eq (raw mode skips both)
+    body_band = np.zeros(num_samples, dtype=np.float64)
+    if cfg.get("neuro_eq", False):
+        body_band = dsp.apply_steep_lowpass(
+            reese_raw[np.newaxis, :], SAMPLE_RATE, 280.0
+        )[0]
+        body_band = dsp.apply_steep_highpass(
+            body_band[np.newaxis, :], SAMPLE_RATE, 70.0
+        )[0]
 
-    # Main filter (A+B only): LFO-modulated cutoff; often plain LPF for fuller sound
-    t = np.arange(num_samples, dtype=np.float64) / SAMPLE_RATE
-    lfo1 = 0.5 * (1.0 + np.sin(2 * np.pi * cfg["lfo1_rate_hz"] * t))
-    cutoff_curve = cfg["main_cutoff_low"] + lfo1 * cfg["lfo1_depth"] * (
-        cfg["main_cutoff_high"] - cfg["main_cutoff_low"]
-    )
+    # Main filter: LFO-modulated cutoff when neuro_eq; otherwise pass reese through
+    if cfg.get("neuro_eq", False):
+        t = np.arange(num_samples, dtype=np.float64) / SAMPLE_RATE
+        lfo1 = 0.5 * (1.0 + np.sin(2 * np.pi * cfg["lfo1_rate_hz"] * t))
+        cutoff_curve = cfg["main_cutoff_low"] + lfo1 * cfg["lfo1_depth"] * (
+            cfg["main_cutoff_high"] - cfg["main_cutoff_low"]
+        )
 
-    zi = None
-    reese_filtered = np.zeros(num_samples, dtype=np.float64)
-    use_resonant = cfg["use_resonant_filter"] and cfg["main_resonance"] > 0.02
+        zi = None
+        reese_filtered = np.zeros(num_samples, dtype=np.float64)
+        use_resonant = cfg["use_resonant_filter"] and cfg["main_resonance"] > 0.02
 
-    for start in range(0, num_samples, BLOCK_SIZE):
-        end = min(start + BLOCK_SIZE, num_samples)
-        block = reese_hp[start:end].copy()
-        mid = start + (end - start) // 2
-        cutoff = float(np.clip(cutoff_curve[mid], 60.0, SAMPLE_RATE / 2 - 100))
+        for start in range(0, num_samples, BLOCK_SIZE):
+            end = min(start + BLOCK_SIZE, num_samples)
+            block = reese_hp[start:end].copy()
+            mid = start + (end - start) // 2
+            cutoff = float(np.clip(cutoff_curve[mid], 60.0, SAMPLE_RATE / 2 - 100))
 
-        if use_resonant:
-            q = 0.5 + cfg["main_resonance"] * 3.0
-            b, a = dsp.resonant_lowpass_biquad_coeffs(cutoff, q, SAMPLE_RATE)
-        else:
-            # Plain Butterworth LPF – fuller, less nasal
-            nyq = 0.5 * SAMPLE_RATE
-            fc = np.clip(cutoff / nyq, 0.01, 0.99)
-            b, a = butter(4, fc, btype="low")
-        zi_use = lfilter_zi(b, a) * block[0] if zi is None else zi
-        block_f, zi = lfilter(b, a, block, zi=zi_use)
-        reese_filtered[start:end] = block_f
+            if use_resonant:
+                q = 0.5 + cfg["main_resonance"] * 3.0
+                b, a = dsp.resonant_lowpass_biquad_coeffs(cutoff, q, SAMPLE_RATE)
+            else:
+                nyq = 0.5 * SAMPLE_RATE
+                fc = np.clip(cutoff / nyq, 0.01, 0.99)
+                b, a = butter(4, fc, btype="low")
+            zi_use = lfilter_zi(b, a) * block[0] if zi is None else zi
+            block_f, zi = lfilter(b, a, block, zi=zi_use)
+            reese_filtered[start:end] = block_f
 
-    # Blend in body band for fullness
-    if cfg["body_mix"] > 0:
-        body_band = body_band / (np.max(np.abs(body_band)) + 1e-9)
-        reese_filtered = reese_filtered + cfg["body_mix"] * body_band
-        reese_filtered = reese_filtered / (1.0 + cfg["body_mix"])
+        if cfg["body_mix"] > 0:
+            body_band = body_band / (np.max(np.abs(body_band)) + 1e-9)
+            reese_filtered = reese_filtered + cfg["body_mix"] * body_band
+            reese_filtered = reese_filtered / (1.0 + cfg["body_mix"])
+    else:
+        reese_filtered = reese_hp.copy()
 
     # Strong saturation on the filtered reese path (so it’s present, not telephone)
     proc = reese_filtered.copy()
@@ -483,17 +499,18 @@ def generate_reese_sample(
         side = 0.5 * (mids_2ch[0] - mids_2ch[1]) * cfg["stereo_width"]
         mids_2ch = np.stack([mid + side, mid - side], axis=0)
 
-    # Post-EQ on mids only (never touch the sub) – avoids telephone/bandpass and keeps low-end
-    if cfg["post_eq_cut_db"] < -0.5:
-        mids_2ch = dsp.apply_peaking_eq(
-            mids_2ch, SAMPLE_RATE, 300.0, cfg["post_eq_cut_db"], q=0.8
-        )
-    if cfg["post_eq_boost_db"] > 0.3:
-        mids_2ch = dsp.apply_peaking_eq(
-            mids_2ch, SAMPLE_RATE, 1100.0, cfg["post_eq_boost_db"], q=0.7
-        )
+    # Post-EQ on mids only when neuro_eq (raw mode leaves reese untouched for user to shape)
+    if cfg.get("neuro_eq", False):
+        if cfg["post_eq_cut_db"] < -0.5:
+            mids_2ch = dsp.apply_peaking_eq(
+                mids_2ch, SAMPLE_RATE, 300.0, cfg["post_eq_cut_db"], q=0.8
+            )
+        if cfg["post_eq_boost_db"] > 0.3:
+            mids_2ch = dsp.apply_peaking_eq(
+                mids_2ch, SAMPLE_RATE, 1100.0, cfg["post_eq_boost_db"], q=0.7
+            )
 
-    # Mix: sub (unchanged, no highpass) + mids stereo. No mix-wide highpass so sub at C1 stays full.
+    # Mix: sub (when enabled) + mids stereo
     sub_stereo = np.stack([sub_lp, sub_lp], axis=0)
     mix = sub_stereo + mids_2ch
 
@@ -532,5 +549,6 @@ def generate_reese_sample(
         "haas_ms": cfg["haas_ms"],
         "chorus_mix": cfg["chorus_mix"],
         "phaser_mix": cfg["phaser_mix"],
+        "neuro_eq": cfg.get("neuro_eq", False),
     }
     return output, params_used

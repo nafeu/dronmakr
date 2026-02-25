@@ -93,10 +93,10 @@ def main(
 @cli.command(name="generate-reese")
 def generate_reese(
     tempo: int = typer.Option(
-        172, "--tempo", "-t", help="Tempo in BPM (default: 172)."
+        170, "--tempo", "-t", help="Tempo in BPM (default: 170)."
     ),
     bars: int = typer.Option(
-        2, "--bars", "-b", help="Length in bars (default: 2)."
+        4, "--bars", "-b", help="Length in bars (default: 4)."
     ),
     sound: str | None = typer.Option(
         None,
@@ -136,6 +136,16 @@ def generate_reese(
         "--disable",
         help="Disable sections: comma-separated list of sub,fx,movement,distortion.",
     ),
+    sub: bool = typer.Option(
+        False,
+        "--sub",
+        help="Enable sub bass (C1 sine). Off by default for a purer reese; use --sub to add low-end.",
+    ),
+    neuro: bool = typer.Option(
+        False,
+        "--neuro",
+        help="Apply neuro-style EQ and filtering (LFO filter, body band, post-EQ). Off by default for raw reese.",
+    ),
     iterations: int = typer.Option(
         1, "--iterations", "-n", help="Number of Reese loops to generate."
     ),
@@ -166,6 +176,8 @@ def generate_reese(
             distortion=distortion,
             fx=fx,
             disable=disable,
+            sub_enabled=sub,
+            neuro_eq=neuro,
         )
         beat_name = generate_beat_name()
         name_parts = [

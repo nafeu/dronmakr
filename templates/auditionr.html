@@ -459,6 +459,15 @@
       return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
     }
 
+    function revealSample(path) {
+      fetch("/reveal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path })
+      }).then(response => response.json())
+        .then(data => { if (data.error) alert(data.error); });
+    }
+
     function saveSample(path) {
       fetch("/save", {
         method: "POST",
@@ -566,6 +575,13 @@
         saveButton.title = "Save";
         saveButton.addEventListener("click", () => saveSample(filePath));
         actions.appendChild(saveButton);
+
+        var revealButton = document.createElement("div");
+        revealButton.innerHTML = "<i class=\"fa-solid fa-folder-open\"></i>";
+        revealButton.classList.add("button", "icon-btn");
+        revealButton.title = "Reveal in folder";
+        revealButton.addEventListener("click", () => revealSample(filePath));
+        actions.appendChild(revealButton);
 
         if (isDrumpattern) {
           var reverbBtn = document.createElement("div");
