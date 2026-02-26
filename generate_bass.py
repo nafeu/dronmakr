@@ -1,4 +1,4 @@
-"""High-quality Reese bass generator for dronmakr. Root C1, 3-osc design, neuro movement."""
+"""Bass generator for dronmakr. Currently: reese (C1, 3-osc, optional sub/neuro)."""
 
 from __future__ import annotations
 
@@ -20,9 +20,9 @@ C1_HZ = 32.7
 
 # --- Ranges for randomization (root not randomized) ---------------------------
 
-# Osc A/B detune: wider spread for classic full reese (less neurofunk-thin)
-DETUNE_LEFT_RANGE = (-38.0, -10.0)   # cents
-DETUNE_RIGHT_RANGE = (10.0, 38.0)
+# Osc A/B detune: tighter spread to avoid phase issues while keeping width
+DETUNE_LEFT_RANGE = (-24.0, -8.0)   # cents
+DETUNE_RIGHT_RANGE = (8.0, 24.0)
 
 # Sub: 30% lower than before so reese can dominate
 SUB_LEVEL_RANGE = (0.45, 0.75)
@@ -142,8 +142,8 @@ def parse_reese_config(
     disable: str | None = None,
 ) -> dict[str, Any]:
     """Parse param strings. base_freq is always C1; other params randomized if _ or omitted.
-    In --sound: use 'sub' to enable sub bass, 'neuro' to enable neuro-style EQ/filter. E.g. --sound "sub;neuro" or --sound "sub;detune_left:_".
-    Use --disable sub,fx,movement,distortion to force sections off.
+    In --sound: 'sub' = sub bass, 'neuro' = neuro EQ/filter. wave_a, wave_b = saw|tri|square|pulse (random if omitted).
+    E.g. --sound "sub;neuro", --sound "wave_a:saw;wave_b:tri". Use --disable sub,fx,movement,distortion to force off.
     """
     disabled = set()
     if disable:
@@ -167,8 +167,8 @@ def parse_reese_config(
             s, "sub_level", SUB_LEVEL_RANGE, 0.0, 1.0
         ) * SUB_LEVEL_SCALE
     reese_level = _resolve_float(s, "reese_level", REESE_LEVEL_RANGE, 0.8, 3.0)
-    detune_left = _resolve_float(s, "detune_left", DETUNE_LEFT_RANGE, -40.0, 0.0)
-    detune_right = _resolve_float(s, "detune_right", DETUNE_RIGHT_RANGE, 0.0, 40.0)
+    detune_left = _resolve_float(s, "detune_left", DETUNE_LEFT_RANGE, -30.0, 0.0)
+    detune_right = _resolve_float(s, "detune_right", DETUNE_RIGHT_RANGE, 0.0, 30.0)
     wave_a = _resolve_choice(s, "wave_a", WAVE_TYPES)
     wave_b = _resolve_choice(s, "wave_b", WAVE_TYPES)
     pulse_width = _resolve_float(s, "pulse_width", PULSE_WIDTH_RANGE, 0.1, 0.9)
@@ -242,7 +242,7 @@ def parse_reese_config(
 
     return {
         "base_freq_hz": C1_HZ,
-        "sub_freq_hz": C1_HZ,
+        "sub_freq_hz": C1_HZ / 2.0,
         "sub_level": sub_level,
         "reese_level": reese_level,
         "detune_left": detune_left,
@@ -326,7 +326,7 @@ def _generate_three_osc(
     """
     Osc A: C1, detune_left, wave_a (saw/tri/square/pulse).
     Osc B: C1, detune_right, wave_b.
-    LFO2: fine pitch modulation. Returns (reese_mono, sub_mono).
+    Sub: one octave below C1 (C0). LFO2: fine pitch on reese. Returns (reese_mono, sub_mono).
     """
     t = np.arange(num_samples, dtype=np.float64) / SAMPLE_RATE
 
@@ -346,7 +346,9 @@ def _generate_three_osc(
     reese = (osc_a + osc_b) * 0.5
     reese /= np.max(np.abs(reese) + 1e-9)
 
-    sub = np.sin(2 * np.pi * c1_hz * t)
+    # Sub one octave below root (reese oscillators at c1_hz)
+    sub_freq_hz = c1_hz / 2.0
+    sub = np.sin(2 * np.pi * sub_freq_hz * t)
     return reese.astype(np.float64), sub.astype(np.float64)
 
 
@@ -357,7 +359,7 @@ def generate_reese_sample(
     config: dict[str, Any] | None = None,
 ) -> tuple[str, dict[str, Any]]:
     """
-    Generate neuro Reese at C1: 3 oscillators (A/B detuned saws + sub at C1),
+    Generate Reese at C1: 3 oscillators (A/B detuned + sub one octave down),
     phase randomization, main filter on mids only; sub kept clean and never EQ'd.
     Post-EQ applied only to mids bus so sub and low-end stay present. Normalize at end.
     """
@@ -528,7 +530,7 @@ def generate_reese_sample(
 
     params_used = {
         "base_freq_hz": C1_HZ,
-        "sub_freq_hz": C1_HZ,
+        "sub_freq_hz": C1_HZ / 2.0,
         "sub_level": cfg["sub_level"],
         "reese_level": cfg["reese_level"],
         "detune_left": cfg["detune_left"],

@@ -21,7 +21,7 @@ from generate_transition import (
     parse_closh_config,
     parse_sweep_config,
 )
-from generate_reese import generate_reese_sample, parse_reese_config
+from generate_bass import generate_reese_sample, parse_reese_config
 from process_sample import process_drone_sample
 from utils import (
     format_name,
@@ -110,9 +110,9 @@ def bass_reese(
         "--sound",
         "-s",
         help=(
-            "Sound: sub, neuro, sub_level, reese_level, detune_left, detune_right (root C1). "
-            "Flags: 'sub' = enable sub bass, 'neuro' = neuro-style EQ/filter. "
-            'E.g. "sub", "neuro", "sub;neuro", "sub;detune_left:_;reese_level:1.8". Use _ for random.'
+            "Sound: sub, neuro, wave_a, wave_b, sub_level, reese_level, detune_left, detune_right (root C1). "
+            "Flags: sub, neuro. Oscillators: wave_a, wave_b = saw|tri|square|pulse (random if omitted). "
+            'E.g. "sub;neuro", "wave_a:saw;wave_b:tri", "wave_a:square;wave_b:pulse;reese_level:1.8". Use _ for random.'
         ),
     ),
     movement: str | None = typer.Option(
