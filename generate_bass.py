@@ -1,4 +1,4 @@
-"""Bass generator for dronmakr. Currently: reese (C1, 3-osc, optional sub/neuro)."""
+"""Bass generator for dronmakr. Reese (C1, 3-osc, optional sub/neuro). Donk (percussive pitch-drop bass)."""
 
 from __future__ import annotations
 
@@ -69,6 +69,22 @@ CHORUS_MIX_RANGE = (0.0, 0.55)
 PHASER_MIX_RANGE = (0.0, 0.5)
 
 BLOCK_SIZE = 512  # for LFO-modulated filter
+
+# --- Donk (percussive pitch-drop bass) ---------------------------------------
+DONK_BASE_FREQ_RANGE = (40.0, 80.0)
+DONK_WAVE_TYPES = ("sine", "tri")
+DONK_PITCH_START_SEMITONES_RANGE = (12.0, 24.0)
+DONK_PITCH_DECAY_MS_RANGE = (5.0, 30.0)
+DONK_AMP_ATTACK_MS_RANGE = (0.0, 5.0)
+DONK_AMP_DECAY_MS_RANGE = (80.0, 200.0)
+DONK_AMP_SUSTAIN_RANGE = (0.0, 0.2)
+DONK_AMP_RELEASE_MS_RANGE = (30.0, 100.0)
+DONK_CLICK_LEVEL_RANGE = (0.05, 0.1)
+DONK_CLICK_DURATION_MS_RANGE = (1.0, 5.0)
+DONK_SAT_DRIVE_RANGE = (1.2, 2.5)
+DONK_SAT_MIX_RANGE = (0.2, 0.4)
+DONK_LPF_CUTOFF_RANGE = (800.0, 3000.0)
+DONK_LPF_RESONANCE_RANGE = (0.0, 0.15)
 
 
 def _parse_param_string(s: str | None) -> dict[str, str]:
@@ -272,6 +288,69 @@ def parse_reese_config(
         "chorus_mix": chorus_mix,
         "phaser_mix": phaser_mix,
         "neuro_eq": neuro_eq,
+    }
+
+
+def parse_donk_config(sound: str | None = None) -> dict[str, Any]:
+    """Parse --sound for donk: base_freq, wave, pitch/amp envelope, click, sat, lpf. Use _ for random."""
+    s = _parse_param_string(sound)
+    base_freq = _resolve_float(
+        s, "base_freq", DONK_BASE_FREQ_RANGE, 30.0, 100.0
+    )
+    wave = _resolve_choice(s, "wave", DONK_WAVE_TYPES)
+    pitch_start_semitones = _resolve_float(
+        s, "pitch_start_semitones", DONK_PITCH_START_SEMITONES_RANGE, 6.0, 30.0
+    )
+    pitch_decay_ms = _resolve_float(
+        s, "pitch_decay_ms", DONK_PITCH_DECAY_MS_RANGE, 3.0, 50.0
+    )
+    amp_attack_ms = _resolve_float(
+        s, "amp_attack_ms", DONK_AMP_ATTACK_MS_RANGE, 0.0, 10.0
+    )
+    amp_decay_ms = _resolve_float(
+        s, "amp_decay_ms", DONK_AMP_DECAY_MS_RANGE, 50.0, 250.0
+    )
+    amp_sustain = _resolve_float(
+        s, "amp_sustain", DONK_AMP_SUSTAIN_RANGE, 0.0, 0.4
+    )
+    amp_release_ms = _resolve_float(
+        s, "amp_release_ms", DONK_AMP_RELEASE_MS_RANGE, 20.0, 120.0
+    )
+    click_enabled = _sound_flag(s, "click")
+    click_level = _resolve_float(
+        s, "click_level", DONK_CLICK_LEVEL_RANGE, 0.0, 0.2
+    ) if click_enabled else 0.0
+    click_duration_ms = _resolve_float(
+        s, "click_duration_ms", DONK_CLICK_DURATION_MS_RANGE, 0.5, 8.0
+    ) if click_enabled else 3.0
+    sat_drive = _resolve_float(
+        s, "sat_drive", DONK_SAT_DRIVE_RANGE, 1.0, 4.0
+    )
+    sat_mix = _resolve_float(
+        s, "sat_mix", DONK_SAT_MIX_RANGE, 0.0, 0.6
+    )
+    lpf_cutoff = _resolve_float(
+        s, "lpf_cutoff", DONK_LPF_CUTOFF_RANGE, 400.0, 5000.0
+    )
+    lpf_resonance = _resolve_float(
+        s, "lpf_resonance", DONK_LPF_RESONANCE_RANGE, 0.0, 0.3
+    )
+    return {
+        "base_freq": base_freq,
+        "wave": wave,
+        "pitch_start_semitones": pitch_start_semitones,
+        "pitch_decay_ms": pitch_decay_ms,
+        "amp_attack_ms": amp_attack_ms,
+        "amp_decay_ms": amp_decay_ms,
+        "amp_sustain": amp_sustain,
+        "amp_release_ms": amp_release_ms,
+        "click_enabled": click_enabled,
+        "click_level": click_level,
+        "click_duration_ms": click_duration_ms,
+        "sat_drive": sat_drive,
+        "sat_mix": sat_mix,
+        "lpf_cutoff": lpf_cutoff,
+        "lpf_resonance": lpf_resonance,
     }
 
 
@@ -561,4 +640,132 @@ def generate_reese_sample(
         "phaser_mix": cfg["phaser_mix"],
         "neuro_eq": cfg.get("neuro_eq", False),
     }
+    return output, params_used
+
+
+# --- Donk synthesis -----------------------------------------------------------
+
+
+def _donk_osc(phase: np.ndarray, wave: str) -> np.ndarray:
+    if wave == "tri":
+        p = np.mod(phase, 2 * np.pi)
+        return np.where(p < np.pi, 2.0 * p / np.pi - 1.0, 3.0 - 2.0 * p / np.pi)
+    return np.sin(phase)
+
+
+def _generate_donk_hit(cfg: dict[str, Any], num_samples: int) -> np.ndarray:
+    """Single donk hit: pitch envelope (fast drop), amp envelope, optional click, saturation, LPF. Mono."""
+    t = np.arange(num_samples, dtype=np.float64) / SAMPLE_RATE
+
+    # Pitch envelope: start at +N semitones, exponential decay to 0 (base pitch)
+    pitch_decay_sec = cfg["pitch_decay_ms"] / 1000.0
+    tau = pitch_decay_sec / 4.6  # so exp(-decay_sec/tau) ≈ 0.01
+    pitch_env = (cfg["pitch_start_semitones"] / 12.0) * np.exp(-t / tau)
+    freq_hz = cfg["base_freq"] * (2.0 ** pitch_env)
+
+    # Phase (reset at 0 each hit)
+    phase_inc = 2.0 * np.pi * freq_hz / SAMPLE_RATE
+    phase = np.cumsum(phase_inc)
+    osc = _donk_osc(phase, cfg["wave"])
+
+    # Amplitude envelope: attack -> decay -> sustain -> release
+    attack_ms = cfg["amp_attack_ms"]
+    decay_ms = cfg["amp_decay_ms"]
+    sustain = cfg["amp_sustain"]
+    release_ms = cfg["amp_release_ms"]
+    attack_n = int(SAMPLE_RATE * attack_ms / 1000.0)
+    decay_n = int(SAMPLE_RATE * decay_ms / 1000.0)
+    release_n = int(SAMPLE_RATE * release_ms / 1000.0)
+
+    amp_env = np.zeros(num_samples, dtype=np.float64)
+    n = 0
+    if attack_n > 0 and n < num_samples:
+        end = min(n + attack_n, num_samples)
+        amp_env[n:end] = np.linspace(0, 1, end - n)
+        n = end
+    if decay_n > 0 and n < num_samples:
+        end = min(n + decay_n, num_samples)
+        decay_len = end - n
+        amp_env[n:end] = sustain + (1.0 - sustain) * np.exp(-np.arange(decay_len) * 5.0 / max(decay_len, 1))
+        n = end
+    if n < num_samples:
+        release_len = min(release_n, num_samples - n)
+        start_val = amp_env[n - 1] if n > 0 else sustain
+        amp_env[n : n + release_len] = start_val * np.exp(-np.arange(release_len) * 5.0 / max(release_len, 1))
+        if n + release_len < num_samples:
+            amp_env[n + release_len :] = 0.0
+
+    out = osc * amp_env
+
+    # Optional click: short noise burst, highpass > 1 kHz, 5–10% level
+    if cfg["click_enabled"] and cfg["click_level"] > 0:
+        click_n = int(SAMPLE_RATE * cfg["click_duration_ms"] / 1000.0)
+        click_n = min(click_n, num_samples)
+        rng = np.random.default_rng()
+        click = rng.standard_normal(click_n).astype(np.float64)
+        click *= np.exp(-np.linspace(0, 5, click_n))  # short decay
+        click = dsp.apply_steep_highpass(
+            click[np.newaxis, :], SAMPLE_RATE, 1000.0
+        )[0]
+        peak = np.max(np.abs(click)) + 1e-9
+        click = click / peak * cfg["click_level"]
+        out[:click_n] = out[:click_n] + click
+
+    # Mild saturation (tanh), mix 20–40%
+    if cfg["sat_mix"] > 0 and cfg["sat_drive"] > 0:
+        saturated = np.tanh(out * cfg["sat_drive"])
+        out = out * (1.0 - cfg["sat_mix"]) + saturated * cfg["sat_mix"]
+
+    # Lowpass 800 Hz – 3 kHz, low resonance
+    if cfg["lpf_cutoff"] > 0:
+        q = 0.5 + cfg["lpf_resonance"] * 2.0
+        b, a = dsp.resonant_lowpass_biquad_coeffs(
+            cfg["lpf_cutoff"], q, SAMPLE_RATE
+        )
+        out = lfilter(b, a, out)
+
+    return out.astype(np.float64)
+
+
+def generate_donk_sample(
+    tempo: int = 120,
+    bars: int = 4,
+    output: str = "donk.wav",
+    config: dict[str, Any] | None = None,
+) -> tuple[str, dict[str, Any]]:
+    """Generate a donk bass loop: percussive hits on the beat, pitch-drop, mono. No detune/LFO/sterero."""
+    if config is None:
+        config = parse_donk_config()
+    cfg = config
+
+    beats_per_bar = 4
+    duration_sec = (60.0 / tempo) * bars * beats_per_bar
+    num_samples_total = int(duration_sec * SAMPLE_RATE)
+    beat_sec = 60.0 / tempo
+    beat_samples = int(beat_sec * SAMPLE_RATE)
+
+    # Hit length: attack + decay + release (enough for envelope to finish)
+    hit_duration_sec = (
+        (cfg["amp_attack_ms"] + cfg["amp_decay_ms"] + cfg["amp_release_ms"]) / 1000.0
+    )
+    hit_samples = min(int(hit_duration_sec * SAMPLE_RATE), beat_samples - 1)
+    hit_samples = max(hit_samples, 1)
+
+    out = np.zeros(num_samples_total, dtype=np.float64)
+    num_hits = bars * beats_per_bar
+    for i in range(num_hits):
+        start = i * beat_samples
+        if start + hit_samples > num_samples_total:
+            break
+        hit = _generate_donk_hit(cfg, hit_samples)
+        out[start : start + hit_samples] += hit
+
+    # Mono, normalize
+    peak = np.max(np.abs(out)) + 1e-12
+    out = (out / peak * 0.9).astype(np.float32)
+    sf.write(output, out, SAMPLE_RATE, subtype="PCM_16")
+
+    params_used = {**cfg}
+    params_used["tempo"] = tempo
+    params_used["bars"] = bars
     return output, params_used

@@ -21,7 +21,12 @@ from generate_transition import (
     parse_closh_config,
     parse_sweep_config,
 )
-from generate_bass import generate_reese_sample, parse_reese_config
+from generate_bass import (
+    generate_donk_sample,
+    generate_reese_sample,
+    parse_donk_config,
+    parse_reese_config,
+)
 from process_sample import process_drone_sample
 from utils import (
     format_name,
@@ -94,7 +99,7 @@ def main(
 # generate-bass (group with subcommands: reese, ...)
 # ---------------------------------------------------------------------------
 
-bass_app = typer.Typer(help="Generate bass loops. Subcommands: reese (and more types later).")
+bass_app = typer.Typer(help="Generate bass loops. Subcommands: reese, donk.")
 
 
 @bass_app.command("reese")
@@ -202,6 +207,89 @@ def bass_reese(
                 f"osc={waves} detune=({p['detune_left']:.0f},{p['detune_right']:.0f})c "
                 f"filter={filt} {p['main_cutoff_low']:.0f}-{p['main_cutoff_high']:.0f}Hz "
                 f"dry={p.get('reese_dry_mix', 0):.2f} drive=({p['drive_soft']:.2f},{p['drive_hard']:.2f}) stereo={p['stereo_width']:.2f}"
+            )
+            print(with_prompt(f"generated: {output_path}"))
+            print(with_prompt(f"  used: {desc}"))
+        else:
+            print(with_prompt(f"  [{i + 1}/{iterations}] {output_path}"))
+
+    end_time = time.time()
+    time_elapsed = round(end_time - start_time)
+    print(f"{RED}■ completed in {time_elapsed}s{RESET}")
+    if iterations > 1:
+        for r in results:
+            print(with_prompt(f"generated: {r}"))
+    if play and results:
+        open_files_with_default_player(results)
+    return results
+
+
+@bass_app.command("donk")
+def bass_donk(
+    tempo: int = typer.Option(
+        120, "--tempo", "-t", help="Tempo in BPM (default: 120)."
+    ),
+    bars: int = typer.Option(
+        4, "--bars", "-b", help="Length in bars (default: 4)."
+    ),
+    sound: str | None = typer.Option(
+        None,
+        "--sound",
+        "-s",
+        help=(
+            "Sound: base_freq (40-80), wave (sine|tri), pitch_start_semitones (12-24), "
+            "pitch_decay_ms (5-30), amp_attack_ms, amp_decay_ms, amp_sustain, amp_release_ms, "
+            "click (flag), click_level, sat_drive, sat_mix, lpf_cutoff (800-3000), lpf_resonance. Use _ for random."
+        ),
+    ),
+    iterations: int = typer.Option(
+        1, "--iterations", "-n", help="Number of donk loops to generate."
+    ),
+    play: bool = typer.Option(
+        False, "--play", "-p", help="Open output with default WAV player."
+    ),
+):
+    """Generate a donk bass loop: short percussive hits with pitch-drop, mono. UK donk / hard bounce."""
+    ensure_settings()
+
+    start_time = time.time()
+    iterations = max(1, iterations)
+
+    print(get_version())
+    print(with_prompt("generate-bass donk"))
+    print(with_prompt(f"  tempo               {tempo}"))
+    print(with_prompt(f"  bars                {bars}"))
+    print(with_prompt(f"  iterations          {iterations}"))
+    print(with_prompt(f"  play when done      {play}"))
+    print(f"{RED}│{RESET}")
+
+    results: list[str] = []
+    for i in range(iterations):
+        config = parse_donk_config(sound=sound)
+        beat_name = generate_beat_name()
+        name_parts = [
+            "donk",
+            beat_name,
+            f"{tempo}bpm",
+            f"{bars}bars",
+            generate_id(),
+        ]
+        sample_name = format_name("___".join(name_parts))
+        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+        output_path, params_used = generate_donk_sample(
+            tempo=tempo,
+            bars=bars,
+            output=output_path,
+            config=config,
+        )
+        results.append(output_path)
+
+        if iterations == 1:
+            p = params_used
+            desc = (
+                f"base={p['base_freq']:.0f}Hz wave={p['wave']} "
+                f"pitch={p['pitch_start_semitones']:.0f}st decay={p['pitch_decay_ms']:.0f}ms "
+                f"amp_d={p['amp_decay_ms']:.0f}ms sat_mix={p['sat_mix']:.2f} lpf={p['lpf_cutoff']:.0f}Hz"
             )
             print(with_prompt(f"generated: {output_path}"))
             print(with_prompt(f"  used: {desc}"))
