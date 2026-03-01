@@ -729,11 +729,11 @@ def _generate_donk_hit(cfg: dict[str, Any], num_samples: int) -> np.ndarray:
 
 def generate_donk_sample(
     tempo: int = 120,
-    bars: int = 4,
+    bars: int = 1,
     output: str = "donk.wav",
     config: dict[str, Any] | None = None,
 ) -> tuple[str, dict[str, Any]]:
-    """Generate a donk bass loop: percussive hits on the beat, pitch-drop, mono. No detune/LFO/sterero."""
+    """Generate a single donk bass hit in a 1-bar buffer: percussive pitch-drop, mono. No detune/LFO/stereo."""
     if config is None:
         config = parse_donk_config()
     cfg = config
@@ -741,24 +741,20 @@ def generate_donk_sample(
     beats_per_bar = 4
     duration_sec = (60.0 / tempo) * bars * beats_per_bar
     num_samples_total = int(duration_sec * SAMPLE_RATE)
-    beat_sec = 60.0 / tempo
-    beat_samples = int(beat_sec * SAMPLE_RATE)
 
     # Hit length: attack + decay + release (enough for envelope to finish)
     hit_duration_sec = (
         (cfg["amp_attack_ms"] + cfg["amp_decay_ms"] + cfg["amp_release_ms"]) / 1000.0
     )
-    hit_samples = min(int(hit_duration_sec * SAMPLE_RATE), beat_samples - 1)
+    hit_samples = min(
+        int(hit_duration_sec * SAMPLE_RATE), num_samples_total
+    )
     hit_samples = max(hit_samples, 1)
 
     out = np.zeros(num_samples_total, dtype=np.float64)
-    num_hits = bars * beats_per_bar
-    for i in range(num_hits):
-        start = i * beat_samples
-        if start + hit_samples > num_samples_total:
-            break
-        hit = _generate_donk_hit(cfg, hit_samples)
-        out[start : start + hit_samples] += hit
+    # Single donk hit at the start
+    hit = _generate_donk_hit(cfg, hit_samples)
+    out[: len(hit)] = hit
 
     # Mono, normalize
     peak = np.max(np.abs(out)) + 1e-12

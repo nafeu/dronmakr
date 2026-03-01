@@ -230,7 +230,7 @@ def bass_donk(
         120, "--tempo", "-t", help="Tempo in BPM (default: 120)."
     ),
     bars: int = typer.Option(
-        4, "--bars", "-b", help="Length in bars (default: 4)."
+        1, "--bars", "-b", help="Length in bars (default: 1)."
     ),
     sound: str | None = typer.Option(
         None,
