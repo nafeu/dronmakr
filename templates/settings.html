@@ -22,6 +22,10 @@
       --toolbar-height: 48px;
     }
 
+    html {
+      scrollbar-gutter: stable;
+    }
+
     body {
       background-color: var(--secondary);
       color: var(--primary);
@@ -63,6 +67,7 @@
       align-items: center;
       justify-content: space-between;
       padding: 0 1rem;
+      padding-right: 0.5rem;
       background-color: var(--secondary);
       border-bottom: 1px solid var(--theme-a);
       z-index: 1000;
@@ -108,6 +113,30 @@
     }
 
     .toolbar-nav a.active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: var(--secondary);
+    }
+
+    .toolbar-settings {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      text-decoration: none;
+      padding: 0.35rem 0.65rem;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      background: var(--theme-a);
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .toolbar-settings:hover {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.15);
+    }
+
+    .toolbar-settings.active {
       border-color: var(--primary);
       background: var(--primary);
       color: var(--secondary);
@@ -318,16 +347,16 @@
 </head>
 
 <body>
+  {% include '_loading_overlay.html' %}
   <header id="toolbar">
     <div class="toolbar-left">
       <a href="/" id="toolbar-brand">┌ dronmakr v{{ version }} ┐</a>
       <nav class="toolbar-nav">
         <a href="/auditionr"><i class="fa-solid fa-wave-square"></i> auditionr</a>
         <a href="/beatbuildr"><i class="fa-solid fa-drum"></i> beatbuildr</a>
-        <a href="/settings" class="active"><i class="fa-solid fa-gear"></i> settings</a>
       </nav>
     </div>
-    <span></span>
+    <a href="/settings" class="toolbar-settings active" title="settings"><i class="fa-solid fa-gear"></i></a>
   </header>
 
   <main>
@@ -530,6 +559,7 @@
       }
       btn.disabled = false;
     });
+    document.addEventListener('DOMContentLoaded', function() { if (window.__pageReady) window.__pageReady(); });
   </script>
 </body>
 

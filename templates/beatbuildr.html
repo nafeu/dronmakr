@@ -26,6 +26,10 @@
       --grid-label-width: 280px;
     }
 
+    html {
+      scrollbar-gutter: stable;
+    }
+
     body {
       background-color: var(--secondary);
       color: var(--primary);
@@ -76,6 +80,7 @@
       align-items: center;
       justify-content: space-between;
       padding: 0 1rem;
+      padding-right: 0.5rem;
       background-color: var(--secondary);
       border-bottom: 1px solid var(--theme-a);
       z-index: 1000;
@@ -147,9 +152,28 @@
       border-color: #e67e00;
     }
 
-    #toolbar-status {
-      font-size: 0.75rem;
-      color: var(--theme-b);
+    .toolbar-settings {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      text-decoration: none;
+      padding: 0.35rem 0.65rem;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      background: var(--theme-a);
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .toolbar-settings:hover {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.15);
+    }
+
+    .toolbar-settings.active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: var(--secondary);
     }
 
     #app-layout {
@@ -1448,16 +1472,16 @@
 </head>
 
 <body>
+  {% include '_loading_overlay.html' %}
   <header id="toolbar">
     <div class="toolbar-left">
       <a href="/" id="toolbar-brand">┌ dronmakr v{{ version }} ┐</a>
       <nav class="toolbar-nav">
         <a href="/auditionr"><i class="fa-solid fa-wave-square"></i> auditionr</a>
         <a href="/beatbuildr" class="active"><i class="fa-solid fa-drum"></i> beatbuildr</a>
-        <a href="/settings"><i class="fa-solid fa-gear"></i> settings</a>
       </nav>
     </div>
-    <span id="toolbar-status"><i class="fa-solid fa-spinner fa-spin"></i> connecting…</span>
+    <a href="/settings" class="toolbar-settings" title="settings"><i class="fa-solid fa-gear"></i></a>
   </header>
 
   <main id="app-layout">
@@ -1629,7 +1653,8 @@
         <h3 class="sidebar-section-label"><i class="fa-solid fa-file-export"></i> Export</h3>
         <div class="transport-setting transport-export">
           <label for="export-loops-input">Loops</label>
-          <input type="number" id="export-loops-input" min="1" max="64" value="1" title="Number of times to repeat the pattern on export">
+          <input type="number" id="export-loops-input" min="1" max="64" value="1"
+            title="Number of times to repeat the pattern on export">
         </div>
         <div class="transport-export-actions">
           <button type="button" id="export-btn" class="export-btn" title="Export as WAV">
@@ -1676,7 +1701,6 @@
       flippedKeys: null, // Set of "rowKey-step"
     };
 
-    const toolbarStatusEl = document.getElementById("toolbar-status");
     const gridContainer = document.getElementById("sequencer-grid");
     const playToggleBtn = document.getElementById("play-toggle");
     const stopButton = document.getElementById("stop-button");
@@ -1929,14 +1953,6 @@
     const socket = io();
     state.socket = socket;
 
-    socket.on("connect", () => {
-      toolbarStatusEl.innerHTML = "<i class=\"fa-solid fa-link\"></i> connected";
-    });
-
-    socket.on("disconnect", () => {
-      toolbarStatusEl.innerHTML = "<i class=\"fa-solid fa-unlink\"></i> disconnected";
-    });
-
     async function loadBufferForRow(rowKey, url) {
       try {
         const res = await fetch(url);
@@ -1970,6 +1986,7 @@
       updateUndoRedoButtons();
       await hydrateKitBuffers(data);
       renderGrid();
+      if (window.__pageReady) window.__pageReady();
       console.log("Received drum kit:", data);
     });
 

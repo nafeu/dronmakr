@@ -1,0 +1,42 @@
+{# Loading overlay: full-screen spinner, centered. Include at start of <body>.
+   When the page is ready, call window.__pageReady(). A minimum 250ms is enforced. #}
+<style>
+  #loading-overlay {
+    position: fixed;
+    top: var(--toolbar-height, 48px);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--secondary);
+    z-index: 999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.2s ease;
+  }
+  #loading-overlay.loaded {
+    opacity: 0;
+    pointer-events: none;
+  }
+  #loading-overlay i {
+    font-size: 2rem;
+    color: var(--primary);
+  }
+</style>
+<div id="loading-overlay" aria-hidden="true">
+  <i class="fa-solid fa-spinner fa-spin" aria-label="Loading"></i>
+</div>
+<script>
+  (function() {
+    var start = Date.now();
+    window.__pageReady = function() {
+      var elapsed = Date.now() - start;
+      var remaining = Math.max(0, 250 - elapsed);
+      setTimeout(function() {
+        var el = document.getElementById('loading-overlay');
+        if (el) el.classList.add('loaded');
+        setTimeout(function() { if (el && el.parentNode) el.parentNode.removeChild(el); }, 220);
+      }, remaining);
+    };
+  })();
+</script>
