@@ -1,0 +1,5 @@
+Python environment setup:
+- The project uses .venv as the virtual environment.
+- Always execute commands using .venv/bin/python instead of system python.
+- For tests, use: .venv/bin/python -m pytest
+- Never assume the venv is already activated.
