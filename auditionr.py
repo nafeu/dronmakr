@@ -254,8 +254,10 @@ def process_file():
         case _:
             return jsonify({"error": "Command not recognized"}), 400
 
+    files = get_latest_exports(sort_override=params["files"])
     _socketio.emit(
-        "exports", {"files": get_latest_exports(sort_override=params["files"])}
+        "exports",
+        {"files": files, "updated_path": params["path"].lstrip("./")},
     )
     _emit_folder_counts()
     return jsonify({"success": f"File processed with {command}"}), 200

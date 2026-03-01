@@ -366,7 +366,9 @@
   <script>
     var socket = io();
     var lastFolderCounts = { archive: 0, trash: 0, exports: 0, saved: 0 };
-    var selectedWaveformTimestamps = [];
+    var selectedWaveformTimestamps = {};
+    var currentDisplayedFiles = [];
+    var waveformInstances = {};
     var db = 2;
     var lastEdited = "";
     var sharedAudioContext = null;
@@ -490,7 +492,7 @@
 
     socket.on("exports", function (data) {
       if (data.files) {
-        displayWaveforms(data.files);
+        applyExportsUpdate(data.files, data.updated_path || null);
       }
     });
 
@@ -511,18 +513,74 @@
       if (trashCountEl) trashCountEl.textContent = "(" + (counts.trash || 0) + ")";
     }
 
-    function displayWaveforms(files) {
+    function getCurrentFiles() {
+      return currentDisplayedFiles.slice();
+    }
+
+    function removeWaveform(file) {
+      var inst = waveformInstances[file];
+      if (!inst) return;
+      if (currentDrumpatternStop === inst.stopDrumpatternPlayback) {
+        inst.stopDrumpatternPlayback();
+        currentDrumpatternStop = null;
+      }
+      if (inst.wavesurfer) {
+        try { inst.wavesurfer.destroy(); } catch (e) {}
+      }
+      if (inst.wrapper && inst.wrapper.parentNode) {
+        inst.wrapper.parentNode.removeChild(inst.wrapper);
+      }
+      delete waveformInstances[file];
+      delete selectedWaveformTimestamps[file];
+    }
+
+    function refreshWaveform(file) {
+      var inst = waveformInstances[file];
+      if (!inst || !inst.wavesurfer) return;
+      var filePath = "/exports/" + file.split("/").pop();
+      inst.durationEl.textContent = "loading...";
+      inst.wavesurfer.load(filePath);
+    }
+
+    function applyExportsUpdate(newFiles, updatedPath) {
       if (currentDrumpatternStop) {
         currentDrumpatternStop();
         currentDrumpatternStop = null;
       }
+      var removed = currentDisplayedFiles.filter(function (f) { return newFiles.indexOf(f) === -1; });
+      removed.forEach(removeWaveform);
+
+      currentDisplayedFiles = newFiles;
       var container = document.getElementById("waveform-container");
-      container.innerHTML = ""; // Clear existing waveforms
 
-      selectedWaveformTimestamps = files.map(() => 0);
+      newFiles.forEach(function (file) {
+        if (!selectedWaveformTimestamps.hasOwnProperty(file)) selectedWaveformTimestamps[file] = 0;
+      });
 
-      files.forEach((file, index) => {
-        var filePath = "/exports/" + file.split('/').pop(); // Ensure relative path
+      var orderedWrappers = [];
+      newFiles.forEach(function (file) {
+        var inst = waveformInstances[file];
+        if (inst && inst.wrapper) {
+          orderedWrappers.push(inst.wrapper);
+        } else {
+          var created = createSingleWaveform(file);
+          if (created) {
+            waveformInstances[file] = created;
+            orderedWrappers.push(created.wrapper);
+          }
+        }
+      });
+
+      container.innerHTML = "";
+      orderedWrappers.forEach(function (w) { container.appendChild(w); });
+
+      if (updatedPath && newFiles.indexOf(updatedPath) !== -1) {
+        refreshWaveform(updatedPath);
+      }
+    }
+
+    function createSingleWaveform(file) {
+        var filePath = "/exports/" + file.split("/").pop();
         var displayName = filePath.replace("/exports/", "").replace(".wav", "");
         var isDrumpattern = displayName.startsWith("drumpattern___");
         var isTransition = displayName.startsWith("transition");
@@ -548,7 +606,7 @@
         wrapper.appendChild(titleContainer);
 
         var waveformDiv = document.createElement("div");
-        waveformDiv.id = "waveform-" + index;
+        waveformDiv.id = "waveform-" + file.replace(/[/.]/g, "-");
         waveformDiv.classList.add("waveform")
         wrapper.appendChild(waveformDiv);
 
@@ -587,303 +645,303 @@
           var reverbBtn = document.createElement("div");
           reverbBtn.innerText = "Reverberate";
           reverbBtn.classList.add("button");
-          reverbBtn.addEventListener("click", () => processSample({ path: filePath, command: "reverb_sample", files }));
+          reverbBtn.addEventListener("click", () => processSample({ path: filePath, command: "reverb_sample", files: getCurrentFiles() }));
           actions.appendChild(reverbBtn);
 
           var reverbRoomBtn = document.createElement("div");
           reverbRoomBtn.innerText = "Room";
           reverbRoomBtn.classList.add("button");
-          reverbRoomBtn.addEventListener("click", () => processSample({ path: filePath, command: "reverb_room_sample", files }));
+          reverbRoomBtn.addEventListener("click", () => processSample({ path: filePath, command: "reverb_room_sample", files: getCurrentFiles() }));
           actions.appendChild(reverbRoomBtn);
 
           var reverbHallBtn = document.createElement("div");
           reverbHallBtn.innerText = "Hall";
           reverbHallBtn.classList.add("button");
-          reverbHallBtn.addEventListener("click", () => processSample({ path: filePath, command: "reverb_hall_sample", files }));
+          reverbHallBtn.addEventListener("click", () => processSample({ path: filePath, command: "reverb_hall_sample", files: getCurrentFiles() }));
           actions.appendChild(reverbHallBtn);
 
           var reverbLargeBtn = document.createElement("div");
           reverbLargeBtn.innerText = "Large";
           reverbLargeBtn.classList.add("button");
-          reverbLargeBtn.addEventListener("click", () => processSample({ path: filePath, command: "reverb_large_sample", files }));
+          reverbLargeBtn.addEventListener("click", () => processSample({ path: filePath, command: "reverb_large_sample", files: getCurrentFiles() }));
           actions.appendChild(reverbLargeBtn);
 
           var compressBtn = document.createElement("div");
           compressBtn.innerText = "Compress";
           compressBtn.classList.add("button");
-          compressBtn.addEventListener("click", () => processSample({ path: filePath, command: "compress_sample", files }));
+          compressBtn.addEventListener("click", () => processSample({ path: filePath, command: "compress_sample", files: getCurrentFiles() }));
           actions.appendChild(compressBtn);
 
           var overdriveMidsBtn = document.createElement("div");
           overdriveMidsBtn.innerText = "Overdrive";
           overdriveMidsBtn.classList.add("button");
-          overdriveMidsBtn.addEventListener("click", () => processSample({ path: filePath, command: "overdrive_mids_sample", files }));
+          overdriveMidsBtn.addEventListener("click", () => processSample({ path: filePath, command: "overdrive_mids_sample", files: getCurrentFiles() }));
           actions.appendChild(overdriveMidsBtn);
 
           var distortBtn = document.createElement("div");
           distortBtn.innerText = "Distort";
           distortBtn.classList.add("button");
-          distortBtn.addEventListener("click", () => processSample({ path: filePath, command: "distort_sample", files }));
+          distortBtn.addEventListener("click", () => processSample({ path: filePath, command: "distort_sample", files: getCurrentFiles() }));
           actions.appendChild(distortBtn);
 
           var chorusBtn = document.createElement("div");
           chorusBtn.innerText = "Chorus";
           chorusBtn.classList.add("button");
-          chorusBtn.addEventListener("click", () => processSample({ path: filePath, command: "chorus_sample", files }));
+          chorusBtn.addEventListener("click", () => processSample({ path: filePath, command: "chorus_sample", files: getCurrentFiles() }));
           actions.appendChild(chorusBtn);
 
           var flangerBtn = document.createElement("div");
           flangerBtn.innerText = "Flanger";
           flangerBtn.classList.add("button");
-          flangerBtn.addEventListener("click", () => processSample({ path: filePath, command: "flanger_sample", files }));
+          flangerBtn.addEventListener("click", () => processSample({ path: filePath, command: "flanger_sample", files: getCurrentFiles() }));
           actions.appendChild(flangerBtn);
 
           var phaserBtn = document.createElement("div");
           phaserBtn.innerText = "Phaser";
           phaserBtn.classList.add("button");
-          phaserBtn.addEventListener("click", () => processSample({ path: filePath, command: "phaser_sample", files }));
+          phaserBtn.addEventListener("click", () => processSample({ path: filePath, command: "phaser_sample", files: getCurrentFiles() }));
           actions.appendChild(phaserBtn);
 
           var lpfBtn = document.createElement("div");
           lpfBtn.innerText = "LPF";
           lpfBtn.classList.add("button");
-          lpfBtn.addEventListener("click", () => processSample({ path: filePath, command: "lpf_sample", files }));
+          lpfBtn.addEventListener("click", () => processSample({ path: filePath, command: "lpf_sample", files: getCurrentFiles() }));
           actions.appendChild(lpfBtn);
 
           var lpfMinusBtn = document.createElement("div");
           lpfMinusBtn.innerText = "LPF-";
           lpfMinusBtn.classList.add("button");
-          lpfMinusBtn.addEventListener("click", () => processSample({ path: filePath, command: "lpf_sample", cutoff_hz: 2500, files }));
+          lpfMinusBtn.addEventListener("click", () => processSample({ path: filePath, command: "lpf_sample", cutoff_hz: 2500, files: getCurrentFiles() }));
           actions.appendChild(lpfMinusBtn);
 
           var lpfMinusMinusBtn = document.createElement("div");
           lpfMinusMinusBtn.innerText = "LPF--";
           lpfMinusMinusBtn.classList.add("button");
-          lpfMinusMinusBtn.addEventListener("click", () => processSample({ path: filePath, command: "lpf_sample", cutoff_hz: 800, files }));
+          lpfMinusMinusBtn.addEventListener("click", () => processSample({ path: filePath, command: "lpf_sample", cutoff_hz: 800, files: getCurrentFiles() }));
           actions.appendChild(lpfMinusMinusBtn);
 
           var hpfBtn = document.createElement("div");
           hpfBtn.innerText = "HPF";
           hpfBtn.classList.add("button");
-          hpfBtn.addEventListener("click", () => processSample({ path: filePath, command: "hpf_sample", files }));
+          hpfBtn.addEventListener("click", () => processSample({ path: filePath, command: "hpf_sample", files: getCurrentFiles() }));
           actions.appendChild(hpfBtn);
 
           var hpfPlusBtn = document.createElement("div");
           hpfPlusBtn.innerText = "HPF+";
           hpfPlusBtn.classList.add("button");
-          hpfPlusBtn.addEventListener("click", () => processSample({ path: filePath, command: "hpf_sample", cutoff_hz: 350, files }));
+          hpfPlusBtn.addEventListener("click", () => processSample({ path: filePath, command: "hpf_sample", cutoff_hz: 350, files: getCurrentFiles() }));
           actions.appendChild(hpfPlusBtn);
 
           var hpfPlusPlusBtn = document.createElement("div");
           hpfPlusPlusBtn.innerText = "HPF++";
           hpfPlusPlusBtn.classList.add("button");
-          hpfPlusPlusBtn.addEventListener("click", () => processSample({ path: filePath, command: "hpf_sample", cutoff_hz: 800, files }));
+          hpfPlusPlusBtn.addEventListener("click", () => processSample({ path: filePath, command: "hpf_sample", cutoff_hz: 800, files: getCurrentFiles() }));
           actions.appendChild(hpfPlusPlusBtn);
 
           var bpfBtn = document.createElement("div");
           bpfBtn.innerText = "BPF";
           bpfBtn.classList.add("button");
-          bpfBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", files }));
+          bpfBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", files: getCurrentFiles() }));
           actions.appendChild(bpfBtn);
 
           var bpfMinusBtn = document.createElement("div");
           bpfMinusBtn.innerText = "BPF-";
           bpfMinusBtn.classList.add("button");
-          bpfMinusBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", low_hz: 180, high_hz: 3200, files }));
+          bpfMinusBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", low_hz: 180, high_hz: 3200, files: getCurrentFiles() }));
           actions.appendChild(bpfMinusBtn);
 
           var bpfMinusMinusBtn = document.createElement("div");
           bpfMinusMinusBtn.innerText = "BPF--";
           bpfMinusMinusBtn.classList.add("button");
-          bpfMinusMinusBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", low_hz: 100, high_hz: 1000, files }));
+          bpfMinusMinusBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", low_hz: 100, high_hz: 1000, files: getCurrentFiles() }));
           actions.appendChild(bpfMinusMinusBtn);
 
           var bpfPlusBtn = document.createElement("div");
           bpfPlusBtn.innerText = "BPF+";
           bpfPlusBtn.classList.add("button");
-          bpfPlusBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", low_hz: 500, high_hz: 10000, files }));
+          bpfPlusBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", low_hz: 500, high_hz: 10000, files: getCurrentFiles() }));
           actions.appendChild(bpfPlusBtn);
 
           var bpfPlusPlusBtn = document.createElement("div");
           bpfPlusPlusBtn.innerText = "BPF++";
           bpfPlusPlusBtn.classList.add("button");
-          bpfPlusPlusBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", low_hz: 1200, high_hz: 16000, files }));
+          bpfPlusPlusBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", low_hz: 1200, high_hz: 16000, files: getCurrentFiles() }));
           actions.appendChild(bpfPlusPlusBtn);
 
           var lowsPlus5Btn = document.createElement("div");
           lowsPlus5Btn.innerText = "Lows +5dB";
           lowsPlus5Btn.classList.add("button");
-          lowsPlus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_lows_sample", db: 5, files }));
+          lowsPlus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_lows_sample", db: 5, files: getCurrentFiles() }));
           actions.appendChild(lowsPlus5Btn);
 
           var lowsMinus5Btn = document.createElement("div");
           lowsMinus5Btn.innerText = "Lows -5dB";
           lowsMinus5Btn.classList.add("button");
-          lowsMinus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_lows_sample", db: -5, files }));
+          lowsMinus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_lows_sample", db: -5, files: getCurrentFiles() }));
           actions.appendChild(lowsMinus5Btn);
 
           var midsPlus5Btn = document.createElement("div");
           midsPlus5Btn.innerText = "Mids +5dB";
           midsPlus5Btn.classList.add("button");
-          midsPlus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_mids_sample", db: 5, files }));
+          midsPlus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_mids_sample", db: 5, files: getCurrentFiles() }));
           actions.appendChild(midsPlus5Btn);
 
           var midsMinus5Btn = document.createElement("div");
           midsMinus5Btn.innerText = "Mids -5dB";
           midsMinus5Btn.classList.add("button");
-          midsMinus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_mids_sample", db: -5, files }));
+          midsMinus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_mids_sample", db: -5, files: getCurrentFiles() }));
           actions.appendChild(midsMinus5Btn);
 
           var highsPlus5Btn = document.createElement("div");
           highsPlus5Btn.innerText = "Highs +5dB";
           highsPlus5Btn.classList.add("button");
-          highsPlus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_highs_sample", db: 5, files }));
+          highsPlus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_highs_sample", db: 5, files: getCurrentFiles() }));
           actions.appendChild(highsPlus5Btn);
 
           var highsMinus5Btn = document.createElement("div");
           highsMinus5Btn.innerText = "Highs -5dB";
           highsMinus5Btn.classList.add("button");
-          highsMinus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_highs_sample", db: -5, files }));
+          highsMinus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_highs_sample", db: -5, files: getCurrentFiles() }));
           actions.appendChild(highsMinus5Btn);
 
           var gainPlus2Btn = document.createElement("div");
           gainPlus2Btn.innerText = "Gain +2dB";
           gainPlus2Btn.classList.add("button");
-          gainPlus2Btn.addEventListener("click", () => processSample({ path: filePath, command: "increase_sample_gain", db: 2, files }));
+          gainPlus2Btn.addEventListener("click", () => processSample({ path: filePath, command: "increase_sample_gain", db: 2, files: getCurrentFiles() }));
           actions.appendChild(gainPlus2Btn);
 
           var gainMinus2Btn = document.createElement("div");
           gainMinus2Btn.innerText = "Gain -2dB";
           gainMinus2Btn.classList.add("button");
-          gainMinus2Btn.addEventListener("click", () => processSample({ path: filePath, command: "decrease_sample_gain", db: 2, files }));
+          gainMinus2Btn.addEventListener("click", () => processSample({ path: filePath, command: "decrease_sample_gain", db: 2, files: getCurrentFiles() }));
           actions.appendChild(gainMinus2Btn);
 
           var reverseDrumpatternBtn = document.createElement("div");
           reverseDrumpatternBtn.innerHTML = "<i class=\"fa-solid fa-rotate-left\"></i>";
           reverseDrumpatternBtn.classList.add("button", "icon-btn");
           reverseDrumpatternBtn.title = "Reverse";
-          reverseDrumpatternBtn.addEventListener("click", () => processSample({ path: filePath, command: "reverse_sample", files }));
+          reverseDrumpatternBtn.addEventListener("click", () => processSample({ path: filePath, command: "reverse_sample", files: getCurrentFiles() }));
           actions.appendChild(reverseDrumpatternBtn);
         } else if (isTransition) {
           var lpfBtn = document.createElement("div");
           lpfBtn.innerText = "LPF";
           lpfBtn.classList.add("button");
-          lpfBtn.addEventListener("click", () => processSample({ path: filePath, command: "lpf_sample", files }));
+          lpfBtn.addEventListener("click", () => processSample({ path: filePath, command: "lpf_sample", files: getCurrentFiles() }));
           actions.appendChild(lpfBtn);
 
           var lpfMinusBtn = document.createElement("div");
           lpfMinusBtn.innerText = "LPF-";
           lpfMinusBtn.classList.add("button");
-          lpfMinusBtn.addEventListener("click", () => processSample({ path: filePath, command: "lpf_sample", cutoff_hz: 2500, files }));
+          lpfMinusBtn.addEventListener("click", () => processSample({ path: filePath, command: "lpf_sample", cutoff_hz: 2500, files: getCurrentFiles() }));
           actions.appendChild(lpfMinusBtn);
 
           var lpfMinusMinusBtn = document.createElement("div");
           lpfMinusMinusBtn.innerText = "LPF--";
           lpfMinusMinusBtn.classList.add("button");
-          lpfMinusMinusBtn.addEventListener("click", () => processSample({ path: filePath, command: "lpf_sample", cutoff_hz: 800, files }));
+          lpfMinusMinusBtn.addEventListener("click", () => processSample({ path: filePath, command: "lpf_sample", cutoff_hz: 800, files: getCurrentFiles() }));
           actions.appendChild(lpfMinusMinusBtn);
 
           var hpfBtn = document.createElement("div");
           hpfBtn.innerText = "HPF";
           hpfBtn.classList.add("button");
-          hpfBtn.addEventListener("click", () => processSample({ path: filePath, command: "hpf_sample", files }));
+          hpfBtn.addEventListener("click", () => processSample({ path: filePath, command: "hpf_sample", files: getCurrentFiles() }));
           actions.appendChild(hpfBtn);
 
           var hpfPlusBtn = document.createElement("div");
           hpfPlusBtn.innerText = "HPF+";
           hpfPlusBtn.classList.add("button");
-          hpfPlusBtn.addEventListener("click", () => processSample({ path: filePath, command: "hpf_sample", cutoff_hz: 350, files }));
+          hpfPlusBtn.addEventListener("click", () => processSample({ path: filePath, command: "hpf_sample", cutoff_hz: 350, files: getCurrentFiles() }));
           actions.appendChild(hpfPlusBtn);
 
           var hpfPlusPlusBtn = document.createElement("div");
           hpfPlusPlusBtn.innerText = "HPF++";
           hpfPlusPlusBtn.classList.add("button");
-          hpfPlusPlusBtn.addEventListener("click", () => processSample({ path: filePath, command: "hpf_sample", cutoff_hz: 800, files }));
+          hpfPlusPlusBtn.addEventListener("click", () => processSample({ path: filePath, command: "hpf_sample", cutoff_hz: 800, files: getCurrentFiles() }));
           actions.appendChild(hpfPlusPlusBtn);
 
           var bpfBtn = document.createElement("div");
           bpfBtn.innerText = "BPF";
           bpfBtn.classList.add("button");
-          bpfBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", files }));
+          bpfBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", files: getCurrentFiles() }));
           actions.appendChild(bpfBtn);
 
           var bpfMinusBtn = document.createElement("div");
           bpfMinusBtn.innerText = "BPF-";
           bpfMinusBtn.classList.add("button");
-          bpfMinusBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", low_hz: 180, high_hz: 3200, files }));
+          bpfMinusBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", low_hz: 180, high_hz: 3200, files: getCurrentFiles() }));
           actions.appendChild(bpfMinusBtn);
 
           var bpfMinusMinusBtn = document.createElement("div");
           bpfMinusMinusBtn.innerText = "BPF--";
           bpfMinusMinusBtn.classList.add("button");
-          bpfMinusMinusBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", low_hz: 100, high_hz: 1000, files }));
+          bpfMinusMinusBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", low_hz: 100, high_hz: 1000, files: getCurrentFiles() }));
           actions.appendChild(bpfMinusMinusBtn);
 
           var bpfPlusBtn = document.createElement("div");
           bpfPlusBtn.innerText = "BPF+";
           bpfPlusBtn.classList.add("button");
-          bpfPlusBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", low_hz: 500, high_hz: 10000, files }));
+          bpfPlusBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", low_hz: 500, high_hz: 10000, files: getCurrentFiles() }));
           actions.appendChild(bpfPlusBtn);
 
           var bpfPlusPlusBtn = document.createElement("div");
           bpfPlusPlusBtn.innerText = "BPF++";
           bpfPlusPlusBtn.classList.add("button");
-          bpfPlusPlusBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", low_hz: 1200, high_hz: 16000, files }));
+          bpfPlusPlusBtn.addEventListener("click", () => processSample({ path: filePath, command: "bpf_sample", low_hz: 1200, high_hz: 16000, files: getCurrentFiles() }));
           actions.appendChild(bpfPlusPlusBtn);
 
           var lowsPlus5Btn = document.createElement("div");
           lowsPlus5Btn.innerText = "Lows +5dB";
           lowsPlus5Btn.classList.add("button");
-          lowsPlus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_lows_sample", db: 5, files }));
+          lowsPlus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_lows_sample", db: 5, files: getCurrentFiles() }));
           actions.appendChild(lowsPlus5Btn);
 
           var lowsMinus5Btn = document.createElement("div");
           lowsMinus5Btn.innerText = "Lows -5dB";
           lowsMinus5Btn.classList.add("button");
-          lowsMinus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_lows_sample", db: -5, files }));
+          lowsMinus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_lows_sample", db: -5, files: getCurrentFiles() }));
           actions.appendChild(lowsMinus5Btn);
 
           var midsPlus5Btn = document.createElement("div");
           midsPlus5Btn.innerText = "Mids +5dB";
           midsPlus5Btn.classList.add("button");
-          midsPlus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_mids_sample", db: 5, files }));
+          midsPlus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_mids_sample", db: 5, files: getCurrentFiles() }));
           actions.appendChild(midsPlus5Btn);
 
           var midsMinus5Btn = document.createElement("div");
           midsMinus5Btn.innerText = "Mids -5dB";
           midsMinus5Btn.classList.add("button");
-          midsMinus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_mids_sample", db: -5, files }));
+          midsMinus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_mids_sample", db: -5, files: getCurrentFiles() }));
           actions.appendChild(midsMinus5Btn);
 
           var highsPlus5Btn = document.createElement("div");
           highsPlus5Btn.innerText = "Highs +5dB";
           highsPlus5Btn.classList.add("button");
-          highsPlus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_highs_sample", db: 5, files }));
+          highsPlus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_highs_sample", db: 5, files: getCurrentFiles() }));
           actions.appendChild(highsPlus5Btn);
 
           var highsMinus5Btn = document.createElement("div");
           highsMinus5Btn.innerText = "Highs -5dB";
           highsMinus5Btn.classList.add("button");
-          highsMinus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_highs_sample", db: -5, files }));
+          highsMinus5Btn.addEventListener("click", () => processSample({ path: filePath, command: "eq_highs_sample", db: -5, files: getCurrentFiles() }));
           actions.appendChild(highsMinus5Btn);
 
           var gainPlus2Btn = document.createElement("div");
           gainPlus2Btn.innerText = "Gain +2dB";
           gainPlus2Btn.classList.add("button");
-          gainPlus2Btn.addEventListener("click", () => processSample({ path: filePath, command: "increase_sample_gain", db: 2, files }));
+          gainPlus2Btn.addEventListener("click", () => processSample({ path: filePath, command: "increase_sample_gain", db: 2, files: getCurrentFiles() }));
           actions.appendChild(gainPlus2Btn);
 
           var gainMinus2Btn = document.createElement("div");
           gainMinus2Btn.innerText = "Gain -2dB";
           gainMinus2Btn.classList.add("button");
-          gainMinus2Btn.addEventListener("click", () => processSample({ path: filePath, command: "decrease_sample_gain", db: 2, files }));
+          gainMinus2Btn.addEventListener("click", () => processSample({ path: filePath, command: "decrease_sample_gain", db: 2, files: getCurrentFiles() }));
           actions.appendChild(gainMinus2Btn);
 
           var reverseTransitionBtn = document.createElement("div");
           reverseTransitionBtn.innerHTML = "<i class=\"fa-solid fa-rotate-left\"></i>";
           reverseTransitionBtn.classList.add("button", "icon-btn");
           reverseTransitionBtn.title = "Reverse";
-          reverseTransitionBtn.addEventListener("click", () => processSample({ path: filePath, command: "reverse_sample", files }));
+          reverseTransitionBtn.addEventListener("click", () => processSample({ path: filePath, command: "reverse_sample", files: getCurrentFiles() }));
           actions.appendChild(reverseTransitionBtn);
         }
 
@@ -892,24 +950,24 @@
 
         if (!isDrumpattern && !isTransition) {
           trimStartButton = document.createElement("div");
-          trimStartButton.innerText = `Start At ${formatTimestamp(selectedWaveformTimestamps[index])}`;
+          trimStartButton.innerText = `Start At ${formatTimestamp(selectedWaveformTimestamps[file])}`;
           trimStartButton.classList.add("button")
           trimStartButton.addEventListener("click", () => processSample({
             path: filePath,
             command: "trim_sample_start",
-            seconds: selectedWaveformTimestamps[index],
-            files
+            seconds: selectedWaveformTimestamps[file],
+            files: getCurrentFiles()
           }));
           actions.appendChild(trimStartButton);
 
           trimEndButton = document.createElement("div");
-          trimEndButton.innerText = `End At ${formatTimestamp(selectedWaveformTimestamps[index])}`;
+          trimEndButton.innerText = `End At ${formatTimestamp(selectedWaveformTimestamps[file])}`;
           trimEndButton.classList.add("button")
           trimEndButton.addEventListener("click", () => processSample({
             path: filePath,
             command: "trim_sample_end",
-            seconds: selectedWaveformTimestamps[index],
-            files
+            seconds: selectedWaveformTimestamps[file],
+            files: getCurrentFiles()
           }));
           actions.appendChild(trimEndButton);
 
@@ -920,7 +978,7 @@
             path: filePath,
             command: "fade_sample_start",
             seconds: 2,
-            files
+            files: getCurrentFiles()
           }));
           actions.appendChild(fadeStartButton);
 
@@ -931,7 +989,7 @@
             path: filePath,
             command: "fade_sample_end",
             seconds: 2,
-            files
+            files: getCurrentFiles()
           }));
           actions.appendChild(fadeEndButton);
 
@@ -942,7 +1000,7 @@
             path: filePath,
             command: "fade_sample_start",
             seconds: 5,
-            files
+            files: getCurrentFiles()
           }));
           actions.appendChild(fadeStartLongButton);
 
@@ -953,7 +1011,7 @@
             path: filePath,
             command: "fade_sample_end",
             seconds: 5,
-            files
+            files: getCurrentFiles()
           }));
           actions.appendChild(fadeEndLongButton);
 
@@ -964,7 +1022,7 @@
             path: filePath,
             command: "increase_sample_gain",
             db,
-            files
+            files: getCurrentFiles()
           }));
           actions.appendChild(increaseGainButton);
 
@@ -975,7 +1033,7 @@
             path: filePath,
             command: "decrease_sample_gain",
             db,
-            files
+            files: getCurrentFiles()
           }));
           actions.appendChild(decreaseGainButton);
 
@@ -986,7 +1044,7 @@
           reverseButton.addEventListener("click", () => processSample({
             path: filePath,
             command: "reverse_sample",
-            files
+            files: getCurrentFiles()
           }));
           actions.appendChild(reverseButton);
 
@@ -996,7 +1054,7 @@
           granularizeButton.addEventListener("click", () => processSample({
             path: filePath,
             command: "granularize_sample",
-            files
+            files: getCurrentFiles()
           }));
           actions.appendChild(granularizeButton);
         }
@@ -1009,10 +1067,12 @@
         actions.appendChild(deleteButton);
 
         wrapper.appendChild(actions);
-        container.appendChild(wrapper);
 
+        var waveformId = "waveform-" + file.replace(/[/.]/g, "-");
+        var container = document.getElementById("waveform-container");
+        container.appendChild(wrapper);
         var wavesurfer = WaveSurfer.create({
-          container: "#waveform-" + index,
+          container: "#" + waveformId,
           waveColor: "#353531",
           progressColor: isDrumpattern ? "#016fb9" : (isTransition ? "#ec4e20" : "#ff9505"),
           backend: "MediaElement",
@@ -1022,9 +1082,9 @@
         wavesurfer.load(filePath);
 
         wavesurfer.on("seeking", function (currentTime) {
-          selectedWaveformTimestamps[index] = currentTime;
-          if (trimStartButton) trimStartButton.innerText = `Start At ${formatTimestamp(selectedWaveformTimestamps[index])}`;
-          if (trimEndButton) trimEndButton.innerText = `End At ${formatTimestamp(selectedWaveformTimestamps[index])}`;
+          selectedWaveformTimestamps[file] = currentTime;
+          if (trimStartButton) trimStartButton.innerText = `Start At ${formatTimestamp(selectedWaveformTimestamps[file])}`;
+          if (trimEndButton) trimEndButton.innerText = `End At ${formatTimestamp(selectedWaveformTimestamps[file])}`;
         });
 
         var drumpatternBuffer = null;
@@ -1107,7 +1167,13 @@
             playButton.title = "Pause";
           }
         });
-      });
+
+        return {
+          wrapper: wrapper,
+          wavesurfer: wavesurfer,
+          durationEl: duration,
+          stopDrumpatternPlayback: stopDrumpatternPlayback
+        };
     }
   </script>
 </body>
