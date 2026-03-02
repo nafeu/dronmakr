@@ -10,7 +10,7 @@ import threading
 import time
 import webbrowser
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, send_from_directory
 from flask_socketio import SocketIO
 
 from version import __version__
@@ -27,7 +27,13 @@ from beatbuildr import (
 from settings import ensure_settings, get_setting, load_settings, save_settings
 
 # Helpers for unified socket connect
-from utils import get_auditionr_folder_counts, get_latest_exports, get_presets
+from utils import (
+    SAVED_DIR,
+    get_auditionr_folder_counts,
+    get_latest_exports,
+    get_presets,
+    get_saved_files,
+)
 from generate_midi import get_patterns
 from beatbuildr import generate_random_drum_kit
 
@@ -72,6 +78,30 @@ def settings_page():
     """Settings page for editing config/settings.json values."""
     settings = load_settings()
     return render_template("settings.html", version=__version__, settings=settings)
+
+
+@app.route("/collections")
+def collections_page():
+    """Collections view: saved folder as waveform grid with filters and packaging sidebar."""
+    return render_template("collections.html", version=__version__)
+
+
+@app.route("/api/collections/saved")
+def api_collections_saved():
+    """Return list of saved .wav files with name, path, and type for collections."""
+    return jsonify({"files": get_saved_files()})
+
+
+def _serve_saved_file(filename):
+    """Serve a file from the saved/ directory."""
+    return send_from_directory(SAVED_DIR, filename)
+
+
+app.add_url_rule(
+    "/saved/<path:filename>",
+    "serve_saved_file",
+    _serve_saved_file,
+)
 
 
 @app.route("/api/settings", methods=["GET"])

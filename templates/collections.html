@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>┌ dronmakr v{{ version }} ■ collections ┐</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/7.4.0/wavesurfer.min.js"></script>
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📁</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fragment+Mono:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    crossorigin="anonymous">
+  <style>
+    :root {
+      --secondary: #000000;
+      --primary: #ff9505;
+      --theme-a: #353531;
+      --theme-b: #016fb9;
+      --theme-c: #ec4e20;
+      --toolbar-height: 48px;
+    }
+
+    html {
+      scrollbar-gutter: stable;
+    }
+
+    body {
+      background-color: var(--secondary);
+      color: var(--primary);
+      font-family: "Fragment Mono", monospace;
+      padding: 1rem;
+      padding-top: calc(var(--toolbar-height) + 1rem);
+    }
+
+    /* Themed scrollbar */
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--theme-a) var(--secondary);
+    }
+
+    *::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    *::-webkit-scrollbar-track {
+      background: var(--secondary);
+    }
+
+    *::-webkit-scrollbar-thumb {
+      background: var(--theme-a);
+      border-radius: 4px;
+    }
+
+    *::-webkit-scrollbar-thumb:hover {
+      background: var(--theme-b);
+    }
+
+    #toolbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--toolbar-height);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1rem;
+      background-color: var(--secondary);
+      border-bottom: 1px solid var(--theme-a);
+      z-index: 1000;
+    }
+
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    #toolbar-brand {
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: var(--primary);
+      min-width: 20ch;
+      flex-shrink: 0;
+      text-decoration: none;
+      outline: none;
+    }
+
+    .toolbar-nav {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+    }
+
+    .toolbar-nav a {
+      color: var(--primary);
+      text-decoration: none;
+      padding: 0.35rem 0.65rem;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      background: var(--theme-a);
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .toolbar-nav a:hover {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.15);
+    }
+
+    .toolbar-nav a.active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: var(--secondary);
+    }
+
+    .toolbar-settings {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      text-decoration: none;
+      padding: 0.35rem 0.65rem;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      background: var(--theme-a);
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .toolbar-settings:hover {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.15);
+    }
+
+    #collections-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 7fr) minmax(200px, 3fr);
+      gap: 1rem;
+      align-items: start;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      max-height: 80vh;
+    }
+
+    .collections-main {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      min-width: 0;
+      overflow: hidden;
+      height: calc(100vh - var(--toolbar-height) - 2rem);
+    }
+
+    .collections-sidebar {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .collections-filters {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .collections-main .collections-filters {
+      flex-shrink: 0;
+    }
+
+    .collections-filters input[type="text"] {
+      flex: 1;
+      min-width: 160px;
+      padding: 0.5rem 0.75rem;
+      font-family: inherit;
+      font-size: 0.85rem;
+      background: #0a0a0a;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      color: var(--primary);
+      box-sizing: border-box;
+    }
+
+    .collections-filters input:focus {
+      outline: none;
+      border-color: var(--theme-b);
+    }
+
+    .collections-filters select {
+      padding: 0.5rem 0.75rem;
+      font-family: inherit;
+      font-size: 0.85rem;
+      background: #0a0a0a;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      color: var(--primary);
+      min-width: 140px;
+    }
+
+    .collections-filters select:focus {
+      outline: none;
+      border-color: var(--theme-b);
+    }
+
+    .collections-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+      min-width: 0;
+      flex: 1 1 0;
+      min-height: 0;
+      overflow-y: auto;
+      align-content: start;
+      max-height: 80vh;
+      padding-inline: 1rem;
+    }
+
+    .collection-card {
+      border-radius: 4px;
+      background: #050505;
+      padding: 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      min-width: 0;
+    }
+
+    /* Waveform box outline color by sample type */
+    .collection-card.type-drone,
+    .collection-card.type-bass,
+    .collection-card.type-other {
+      border-color: var(--primary);
+    }
+
+    .collection-card.type-drumpattern {
+      border-color: var(--theme-b);
+    }
+
+    .collection-card.type-transition,
+    .collection-card.type-closh {
+      border-color: var(--theme-c);
+    }
+
+    .collection-card .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    .collection-card .card-name {
+      font-size: 0.7rem;
+      color: var(--primary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .collection-card .card-duration {
+      font-size: 0.65rem;
+      color: var(--theme-c);
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+
+    .collection-card .card-waveform-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-height: 48px;
+    }
+
+    .collection-card .card-waveform {
+      flex: 1;
+      min-width: 0;
+      min-height: 48px;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .collection-card .card-waveform wave {
+      overflow: hidden;
+    }
+
+    .collection-card .card-play {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 4px;
+      border: 1px solid var(--theme-a);
+      background: var(--theme-a);
+      color: var(--primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .collection-card .card-play:hover {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.15);
+    }
+
+    /* Type colors: match auditionr */
+    .collection-card.type-drumpattern .card-name,
+    .collection-card.type-drumpattern .card-duration {
+      color: var(--theme-b);
+    }
+
+    .collection-card.type-drumpattern .card-play:hover {
+      border-color: var(--theme-b);
+      background: rgba(1, 111, 185, 0.15);
+    }
+
+    .collection-card.type-transition .card-name,
+    .collection-card.type-transition .card-duration {
+      color: var(--theme-c);
+    }
+
+    .collection-card.type-transition .card-play:hover {
+      border-color: var(--theme-c);
+      background: rgba(236, 78, 32, 0.15);
+    }
+
+    .collection-card.type-closh .card-name,
+    .collection-card.type-closh .card-duration {
+      color: var(--theme-c);
+    }
+
+    .collection-card.type-closh .card-play:hover {
+      border-color: var(--theme-c);
+      background: rgba(236, 78, 32, 0.15);
+    }
+
+    .collections-filters .collections-pagination {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-left: auto;
+    }
+
+    .collections-filters .collections-pagination button {
+      padding: 0.35rem 0.6rem;
+      font-family: inherit;
+      font-size: 0.8rem;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      background: var(--theme-a);
+      color: var(--primary);
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .collections-filters .collections-pagination button:hover:not(:disabled) {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.15);
+    }
+
+    .collections-filters .collections-pagination button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .collections-filters .collections-pagination .page-info {
+      font-size: 0.8rem;
+      color: var(--theme-b);
+    }
+
+    .sidebar-card {
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      background: #050505;
+      padding: 1rem;
+      position: sticky;
+      top: calc(var(--toolbar-height) + 1rem);
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .sidebar-card h2 {
+      font-size: 0.9rem;
+      margin: 0 0 0.75rem 0;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .sidebar-card .placeholder-text {
+      font-size: 0.8rem;
+      color: var(--theme-a);
+    }
+
+    .collections-empty {
+      font-size: 0.85rem;
+      color: var(--theme-b);
+      padding: 1.5rem;
+    }
+  </style>
+</head>
+
+<body>
+  {% include '_loading_overlay.html' %}
+  <header id="toolbar">
+    <div class="toolbar-left">
+      <a href="/" id="toolbar-brand">┌ dronmakr v{{ version }} ┐</a>
+      <nav class="toolbar-nav">
+        <a href="/auditionr"><i class="fa-solid fa-wave-square"></i> auditionr</a>
+        <a href="/beatbuildr"><i class="fa-solid fa-drum"></i> beatbuildr</a>
+        <a href="/collections" class="active"><i class="fa-solid fa-folder-open"></i> collections</a>
+      </nav>
+    </div>
+    <a href="/settings" class="toolbar-settings" title="settings"><i class="fa-solid fa-gear"></i></a>
+  </header>
+
+  <main id="collections-layout">
+    <section class="collections-main">
+      <div class="collections-filters">
+        <input type="text" id="filter-name" placeholder="Filter by sample name…" aria-label="Filter by name">
+        <select id="filter-type" aria-label="Sample type">
+          <option value="">All types</option>
+          <option value="drone">drone</option>
+          <option value="bass">bass</option>
+          <option value="closh">closh</option>
+          <option value="drumpattern">drumpattern</option>
+          <option value="transition">transition</option>
+          <option value="other">other</option>
+        </select>
+        <div class="collections-pagination">
+          <button type="button" id="page-prev" disabled><i class="fa-solid fa-chevron-left"></i> Prev</button>
+          <span class="page-info" id="page-info">—</span>
+          <button type="button" id="page-next" disabled>Next <i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+      </div>
+      <div id="collections-grid" class="collections-grid"></div>
+    </section>
+    <div class="collections-sidebar">
+      <aside class="sidebar-card">
+        <h2><i class="fa-solid fa-box"></i> Packaging Options</h2>
+        <p class="placeholder-text">Packaging options will appear here.</p>
+      </aside>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      var PAGE_SIZE = 24;
+      var allFiles = [];
+      var filteredFiles = [];
+      var currentPage = 0;
+      var waveSurferInstances = {};
+      var activeWsId = null;
+
+      function progressColorForType(type) {
+        if (type === "drumpattern") return "#016fb9";
+        if (type === "transition" || type === "closh") return "#ec4e20";
+        return "#ff9505";
+      }
+
+      function formatDuration(seconds) {
+        if (seconds == null || !isFinite(seconds)) return "—";
+        var m = Math.floor(seconds / 60);
+        var s = Math.floor(seconds % 60);
+        return m + ":" + (s < 10 ? "0" : "") + s;
+      }
+
+      function getFiltered() {
+        var nameQ = (document.getElementById("filter-name").value || "").trim().toLowerCase();
+        var typeQ = (document.getElementById("filter-type").value || "").trim();
+        return allFiles.filter(function (f) {
+          if (typeQ && f.type !== typeQ) return false;
+          if (nameQ && f.name.toLowerCase().indexOf(nameQ) === -1) return false;
+          return true;
+        });
+      }
+
+      function renderPage() {
+        Object.keys(waveSurferInstances).forEach(function (id) {
+          try {
+            waveSurferInstances[id].ws.destroy();
+          } catch (e) { }
+        });
+        waveSurferInstances = {};
+
+        filteredFiles = getFiltered();
+        var total = filteredFiles.length;
+        var start = currentPage * PAGE_SIZE;
+        var slice = filteredFiles.slice(start, start + PAGE_SIZE);
+        var grid = document.getElementById("collections-grid");
+        grid.innerHTML = "";
+
+        if (slice.length === 0) {
+          var empty = document.createElement("div");
+          empty.className = "collections-empty";
+          empty.textContent = total === 0 ? "No saved samples. Save files from auditionr to see them here." : "No matches for the current filters.";
+          empty.style.gridColumn = "1 / -1";
+          grid.appendChild(empty);
+        } else {
+          slice.forEach(function (item, idx) {
+            var card = document.createElement("div");
+            card.className = "collection-card type-" + item.type;
+            card.dataset.path = item.path;
+            card.dataset.name = item.name;
+            card.dataset.type = item.type;
+            card.dataset.index = String(start + idx);
+
+            var header = document.createElement("div");
+            header.className = "card-header";
+            var nameEl = document.createElement("div");
+            nameEl.className = "card-name";
+            nameEl.title = item.name;
+            nameEl.textContent = item.name;
+            var durationEl = document.createElement("div");
+            durationEl.className = "card-duration";
+            durationEl.textContent = "…";
+            header.appendChild(nameEl);
+            header.appendChild(durationEl);
+            card.appendChild(header);
+
+            var waveformRow = document.createElement("div");
+            waveformRow.className = "card-waveform-row";
+            var waveDiv = document.createElement("div");
+            waveDiv.className = "card-waveform";
+            var waveId = "wave-" + item.path.replace(/[/.]/g, "-").replace(/\s/g, "_");
+            waveDiv.id = waveId;
+            waveformRow.appendChild(waveDiv);
+            var playBtn = document.createElement("button");
+            playBtn.type = "button";
+            playBtn.className = "card-play";
+            playBtn.title = "Play / Pause";
+            playBtn.innerHTML = "<i class=\"fa-solid fa-play\"></i>";
+            waveformRow.appendChild(playBtn);
+            card.appendChild(waveformRow);
+
+            grid.appendChild(card);
+
+            var ws = WaveSurfer.create({
+              container: "#" + waveId,
+              waveColor: "#353531",
+              progressColor: progressColorForType(item.type),
+              backend: "MediaElement",
+              height: 48
+            });
+            ws.load(item.path);
+            var cardDurationEl = durationEl;
+            ws.on("ready", function () {
+              cardDurationEl.textContent = formatDuration(ws.getDuration());
+            });
+            waveSurferInstances[waveId] = { ws: ws, playBtn: playBtn, path: item.path };
+
+            playBtn.addEventListener("click", function () {
+              var id = waveId;
+              var inst = waveSurferInstances[id];
+              if (!inst) return;
+              if (inst.ws.isPlaying()) {
+                inst.ws.pause();
+                inst.playBtn.innerHTML = "<i class=\"fa-solid fa-play\"></i>";
+              } else {
+                if (activeWsId && activeWsId !== id && waveSurferInstances[activeWsId]) {
+                  waveSurferInstances[activeWsId].ws.pause();
+                  waveSurferInstances[activeWsId].playBtn.innerHTML = "<i class=\"fa-solid fa-play\"></i>";
+                }
+                activeWsId = id;
+                inst.ws.play();
+                inst.playBtn.innerHTML = "<i class=\"fa-solid fa-pause\"></i>";
+              }
+            });
+            ws.on("pause", function () {
+              playBtn.innerHTML = "<i class=\"fa-solid fa-play\"></i>";
+            });
+            ws.on("play", function () {
+              playBtn.innerHTML = "<i class=\"fa-solid fa-pause\"></i>";
+            });
+            ws.on("finish", function () {
+              playBtn.innerHTML = "<i class=\"fa-solid fa-play\"></i>";
+              if (activeWsId === waveId) activeWsId = null;
+            });
+          });
+        }
+
+        document.getElementById("page-prev").disabled = currentPage === 0;
+        document.getElementById("page-next").disabled = start + PAGE_SIZE >= total;
+        var totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+        document.getElementById("page-info").textContent = total === 0 ? "0 items" : "Page " + (currentPage + 1) + " of " + totalPages + " (" + total + " items)";
+      }
+
+      function goPrev() {
+        if (currentPage > 0) {
+          currentPage--;
+          renderPage();
+        }
+      }
+
+      function goNext() {
+        if ((currentPage + 1) * PAGE_SIZE < filteredFiles.length) {
+          currentPage++;
+          renderPage();
+        }
+      }
+
+      document.getElementById("filter-name").addEventListener("input", function () {
+        currentPage = 0;
+        renderPage();
+      });
+      document.getElementById("filter-type").addEventListener("change", function () {
+        currentPage = 0;
+        renderPage();
+      });
+      document.getElementById("page-prev").addEventListener("click", goPrev);
+      document.getElementById("page-next").addEventListener("click", goNext);
+
+      fetch("/api/collections/saved")
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          allFiles = (data && data.files) ? data.files : [];
+          currentPage = 0;
+          renderPage();
+          if (window.__pageReady) window.__pageReady();
+        })
+        .catch(function (err) {
+          console.error("Collections load error", err);
+          document.getElementById("collections-grid").innerHTML = "<div class=\"collections-empty\" style=\"grid-column:1/-1\">Failed to load saved samples.</div>";
+          if (window.__pageReady) window.__pageReady();
+        });
+    })();
+  </script>
+</body>
+
+</html>

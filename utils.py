@@ -1041,6 +1041,37 @@ def get_presets():
     }
 
 
+def _infer_saved_sample_type(filename):
+    """Infer sample type from filename for collections display. Returns one of: drone, bass, closh, drumpattern, transition, other."""
+    name = filename.replace(".wav", "").lower()
+    if name.startswith("drumpattern___"):
+        return "drumpattern"
+    if name.startswith("transition"):
+        return "transition"
+    if "closh" in name:
+        return "closh"
+    if "bass" in name or "reese" in name or "donk" in name:
+        return "bass"
+    if "drone" in name:
+        return "drone"
+    return "other"
+
+
+def get_saved_files():
+    """Return list of .wav files in the saved/ directory with name, path, and inferred type for collections."""
+    if not os.path.exists(SAVED_DIR):
+        return []
+    wav_files = sorted([f for f in os.listdir(SAVED_DIR) if f.endswith(".wav")])
+    return [
+        {
+            "name": f.replace(".wav", ""),
+            "path": f"/saved/{f}",
+            "type": _infer_saved_sample_type(f),
+        }
+        for f in wav_files
+    ]
+
+
 def rename_samples(
     pack_name, artist_name="", affix=False, dry_run=False, delimiter="^"
 ):
