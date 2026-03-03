@@ -40,6 +40,18 @@
       -webkit-user-select: none;
     }
 
+    /* Hide native select arrows globally */
+    select {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      background-image: none;
+    }
+
+    select::-ms-expand {
+      display: none;
+    }
+
     #sequencer-grid,
     #sequencer-grid * {
       user-select: none;

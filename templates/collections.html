@@ -35,6 +35,18 @@
       padding-top: calc(var(--toolbar-height) + 1rem);
     }
 
+    /* Hide native select arrows globally */
+    select {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      background-image: none;
+    }
+
+    select::-ms-expand {
+      display: none;
+    }
+
     /* Themed scrollbar */
     * {
       scrollbar-width: thin;
