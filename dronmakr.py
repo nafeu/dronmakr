@@ -471,9 +471,8 @@ def generate_drone(
             filters=filters,
             notes=notes.split(",") if notes else None,
         )
-        sample_name = format_name(
-            f"{name or generate_drone_name()}_-_{selected_chart}_-_{generate_id()}"
-        )
+        base_sample_name = f"{name or generate_drone_name()}_-_{selected_chart}_-_{generate_id()}"
+        sample_name = format_name(f"drone___{base_sample_name}")
         output_path = f"{EXPORTS_DIR}/{sample_name}"
         generated_sample = generate_drone_sample(
             input_path=midi_file,

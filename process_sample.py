@@ -33,41 +33,58 @@ from utils import (
 
 
 def apply_long_wet_reverb(input_path):
-    print(with_prompt(f"applying pedalboard reverb"))
+    """
+    Apply high-quality offline convolution reverb using our custom IR builder
+    in dsp.make_reverb_ir. Designed for long, stadium-style tails for drones.
+    """
+    from dsp import make_reverb_ir
+
+    print(with_prompt("applying HQ convolution reverb (stadium)"))
 
     # Construct output filename
     dir_name, base_name = os.path.split(input_path)
     name, ext = os.path.splitext(base_name)
     output_path = os.path.join(dir_name, f"{name}_reverbed{ext}")
 
-    # Load audio file correctly
+    # Load audio
     with AudioFile(input_path) as f:
-        audio = f.read(f.frames)  # Read the entire file
-        sample_rate = f.samplerate  # Get the sample rate
+        audio = f.read(f.frames)
+        sample_rate = f.samplerate
 
-    # Create a very long, wet, and deep reverb effect for drone music
-    board = pedalboard.Pedalboard(
-        [
-            Gain(gain_db=-4),
-            Reverb(
-                room_size=0.95,  # Almost max size for a massive, cathedral-like space
-                damping=0.1,  # Less damping for a lush, long sustain
-                wet_level=0.9,  # Very wet, almost entirely reverberated
-                dry_level=0.1,  # Low dry signal to make it almost fully wet
-                width=1.0,  # Full stereo width for immersive sound
-                freeze_mode=0.0,  # Set to 1.0 if you want infinite sustain
-            ),
-        ]
+    # Build a long, stadium-style IR:
+    # - length_sec: long tail for big space
+    # - decay_sec: slow decay
+    # - early_reflections: richer early field
+    # - highpass_cutoff_hz: keep low-end clean
+    # - tail_diffusion: high for smooth stadium tail
+    ir = make_reverb_ir(
+        sample_rate=sample_rate,
+        length_sec=3.5,
+        decay_sec=3.0,
+        early_reflections=8,
+        highpass_cutoff_hz=120.0,
+        tail_diffusion=0.85,
+        early_diffuse=True,
     )
 
-    # Process the audio through the reverb
-    processed_audio = board(audio, sample_rate)
+    # Convolve per channel
+    n_channels, n_samples = audio.shape
+    wet = np.zeros_like(audio)
+    for ch in range(n_channels):
+        wet[ch] = fftconvolve(audio[ch], ir, mode="full")[:n_samples]
 
-    # Save the processed audio correctly
+    # Match dry peak and mix heavily wet for drone vibe
+    wet_peak = np.max(np.abs(wet)) + 1e-12
+    dry_peak = np.max(np.abs(audio)) + 1e-12
+    wet = wet * (dry_peak / wet_peak)
+    wet_level = 0.9
+    mix = wet_level * wet + (1.0 - wet_level) * audio
+
+    # Write out reverbed file
     with AudioFile(
-        output_path, "w", samplerate=sample_rate, num_channels=processed_audio.shape[0]
+        output_path, "w", samplerate=sample_rate, num_channels=n_channels
     ) as f:
-        f.write(processed_audio)
+        f.write(mix)
 
     return output_path
 
