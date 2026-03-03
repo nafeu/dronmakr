@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>┌ dronmakr v{{ version }} ■ generatr ┐</title>
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✨</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fragment+Mono:ital@0;1&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    crossorigin="anonymous">
+  <style>
+    :root {
+      --secondary: #000000;
+      --primary: #ff9505;
+      --theme-a: #353531;
+      --theme-b: #016fb9;
+      --theme-c: #ec4e20;
+      --toolbar-height: 48px;
+    }
+
+    html {
+      scrollbar-gutter: stable;
+    }
+
+    body {
+      background-color: var(--secondary);
+      color: var(--primary);
+      font-family: "Fragment Mono", monospace;
+      padding: 1rem;
+      padding-top: calc(var(--toolbar-height) + 1rem);
+    }
+
+    #toolbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--toolbar-height);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1rem;
+      padding-right: 0.5rem;
+      background-color: var(--secondary);
+      border-bottom: 1px solid var(--theme-a);
+      z-index: 1000;
+    }
+
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    #toolbar-brand {
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: var(--primary);
+      min-width: 20ch;
+      flex-shrink: 0;
+      text-decoration: none;
+      outline: none;
+    }
+
+    .toolbar-nav {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+    }
+
+    .toolbar-nav a {
+      color: var(--primary);
+      text-decoration: none;
+      padding: 0.35rem 0.65rem;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      background: var(--theme-a);
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .toolbar-nav a:hover {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.15);
+    }
+
+    .toolbar-nav a.active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: var(--secondary);
+    }
+
+    .toolbar-settings {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      text-decoration: none;
+      padding: 0.35rem 0.65rem;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      background: var(--theme-a);
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .toolbar-settings:hover {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.15);
+    }
+
+    main {
+      max-width: 42rem;
+      margin: 0 auto;
+    }
+
+    .generatr-card {
+      border: 1px solid var(--theme-a);
+      padding: 1.5rem;
+      border-radius: 4px;
+      background: #050505;
+    }
+
+    .generatr-card h2 {
+      font-size: 1rem;
+      margin: 0 0 1rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--primary);
+    }
+
+    .generatr-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .form-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .form-row label {
+      font-size: 0.8rem;
+      color: var(--theme-b);
+    }
+
+    .form-row select {
+      font-family: inherit;
+      font-size: 0.9rem;
+      padding: 0.5rem 0.65rem;
+      background: var(--theme-a);
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      color: var(--primary);
+      max-width: 20rem;
+      cursor: pointer;
+    }
+
+    .form-row select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .form-row select option {
+      background: var(--secondary);
+      color: var(--primary);
+    }
+
+    .btn-generate {
+      font-family: inherit;
+      font-size: 0.9rem;
+      padding: 0.5rem 1rem;
+      background: var(--primary);
+      color: var(--secondary);
+      border: 1px solid var(--primary);
+      border-radius: 4px;
+      cursor: pointer;
+      align-self: flex-start;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: opacity 0.15s ease;
+    }
+
+    .btn-generate:hover:not(:disabled) {
+      opacity: 0.9;
+    }
+
+    .btn-generate:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid var(--theme-a);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .generatr-loading {
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--theme-b);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .generatr-loading.hidden {
+      display: none;
+    }
+
+    .generatr-result {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--theme-a);
+    }
+
+    .generatr-result.hidden {
+      display: none;
+    }
+
+    .generatr-result h3 {
+      font-size: 0.85rem;
+      margin: 0 0 0.5rem 0;
+      color: var(--theme-b);
+    }
+
+    .generatr-result ul {
+      margin: 0;
+      padding-left: 1.25rem;
+      font-size: 0.8rem;
+      color: var(--primary);
+      line-height: 1.6;
+      word-break: break-all;
+    }
+
+    .generatr-result .error {
+      color: var(--theme-c);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+
+<body>
+  {% include '_loading_overlay.html' %}
+  <header id="toolbar">
+    <div class="toolbar-left">
+      <a href="/" id="toolbar-brand">┌ dronmakr v{{ version }} ┐</a>
+      <nav class="toolbar-nav">
+        <a href="/auditionr"><i class="fa-solid fa-wave-square"></i> auditionr</a>
+        <a href="/beatbuildr"><i class="fa-solid fa-drum"></i> beatbuildr</a>
+        <a href="/collections"><i class="fa-solid fa-folder-open"></i> collections</a>
+        <a href="/generatr" class="active"><i class="fa-solid fa-wand-magic-sparkles"></i> generatr</a>
+      </nav>
+    </div>
+    <a href="/settings" class="toolbar-settings" title="settings"><i class="fa-solid fa-gear"></i></a>
+  </header>
+
+  <main>
+    <div class="generatr-card">
+      <h2><i class="fa-solid fa-wand-magic-sparkles"></i> Generate Samples</h2>
+
+      <form class="generatr-form" id="generatr-form">
+        <div class="form-row">
+          <label for="type">Type</label>
+          <select id="type" name="type">
+            <option value="drone">drone</option>
+            <option value="bass">bass</option>
+            <option value="transition">transition</option>
+          </select>
+        </div>
+
+        <div class="form-row form-row-subcommand hidden" id="subcommand-row">
+          <label for="subcommand">Subcommand</label>
+          <select id="subcommand" name="subcommand">
+            <option value="reese">reese</option>
+            <option value="donk">donk</option>
+          </select>
+        </div>
+
+        <div class="form-row form-row-subcommand hidden" id="transition-subcommand-row">
+          <label for="transition-subcommand">Subcommand</label>
+          <select id="transition-subcommand" name="transition_subcommand">
+            <option value="sweep">sweep</option>
+            <option value="closh">closh</option>
+            <option value="kickboom">kickboom</option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn-generate" id="btn-generate">
+          <i class="fa-solid fa-play"></i> Generate
+        </button>
+
+        <div class="generatr-loading hidden" id="generatr-loading">
+          <span class="spinner"></span>
+          <span>Generating…</span>
+        </div>
+      </form>
+
+      <div class="generatr-result hidden" id="generatr-result">
+        <h3>Generated files</h3>
+        <ul id="generated-paths"></ul>
+        <p class="error hidden" id="generatr-error"></p>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    (function () {
+      const typeSelect = document.getElementById("type");
+      const subcommandRow = document.getElementById("subcommand-row");
+      const transitionSubcommandRow = document.getElementById("transition-subcommand-row");
+      const form = document.getElementById("generatr-form");
+      const btnGenerate = document.getElementById("btn-generate");
+      const loadingEl = document.getElementById("generatr-loading");
+      const resultEl = document.getElementById("generatr-result");
+      const pathsList = document.getElementById("generated-paths");
+      const errorEl = document.getElementById("generatr-error");
+
+      function updateSubcommandVisibility() {
+        const type = typeSelect.value;
+        subcommandRow.classList.toggle("hidden", type !== "bass");
+        transitionSubcommandRow.classList.toggle("hidden", type !== "transition");
+      }
+
+      typeSelect.addEventListener("change", updateSubcommandVisibility);
+      updateSubcommandVisibility();
+
+      form.addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const type = typeSelect.value;
+        let subcommand = "";
+        if (type === "bass") {
+          subcommand = document.getElementById("subcommand").value;
+        } else if (type === "transition") {
+          subcommand = document.getElementById("transition-subcommand").value;
+        }
+
+        btnGenerate.disabled = true;
+        loadingEl.classList.remove("hidden");
+        resultEl.classList.add("hidden");
+        pathsList.innerHTML = "";
+        errorEl.classList.add("hidden");
+        errorEl.textContent = "";
+
+        try {
+          const res = await fetch("/api/generatr/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ type: type, subcommand: subcommand || undefined }),
+          });
+          const data = await res.json();
+
+          resultEl.classList.remove("hidden");
+          if (data.error) {
+            errorEl.textContent = data.error;
+            errorEl.classList.remove("hidden");
+          } else if (data.paths && data.paths.length) {
+            data.paths.forEach(function (path) {
+              const li = document.createElement("li");
+              li.textContent = path;
+              pathsList.appendChild(li);
+            });
+          } else {
+            pathsList.appendChild(document.createTextNode("(no files returned)"));
+          }
+        } catch (err) {
+          resultEl.classList.remove("hidden");
+          errorEl.textContent = err.message || "Request failed";
+          errorEl.classList.remove("hidden");
+        } finally {
+          btnGenerate.disabled = false;
+          loadingEl.classList.add("hidden");
+        }
+      });
+
+      if (window.__pageReady) window.__pageReady();
+    })();
+  </script>
+</body>
+
+</html>
