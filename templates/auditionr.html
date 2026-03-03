@@ -33,7 +33,9 @@
       color: var(--primary);
       font-family: "Fragment Mono", monospace;
       padding: 1rem;
-      padding-top: calc(var(--toolbar-height) + 1rem);
+      padding-top: calc(var(--toolbar-height) + 0.1rem);
+      margin: 0;
+      overflow: hidden;
     }
 
     /* Themed scrollbar */
@@ -231,21 +233,29 @@
       width: 100%;
       max-width: 100%;
       gap: 0;
+      height: calc(100vh - var(--toolbar-height) - 2rem);
     }
 
     .auditionr-main {
       flex: 1 1 auto;
       min-width: 0;
+      height: 100%;
+      overflow: hidden;
     }
 
     #waveforms {
       max-width: 100%;
+      height: 100%;
+      overflow-y: auto;
+      padding-right: 0.5rem;
+      box-sizing: border-box;
     }
 
     .auditionr-sidebar {
       width: 320px;
       flex-shrink: 0;
       border-left: 1px solid var(--theme-a);
+      height: 100vh;
       background: #050505;
       display: flex;
       flex-direction: column;
@@ -292,15 +302,13 @@
       position: relative;
       flex-shrink: 0;
       min-width: 20px;
+      height: 100%;
     }
 
     .generatr-card {
-      border: 1px solid var(--theme-a);
-      padding: 1rem;
-      border-radius: 4px;
-      background: var(--secondary);
+      padding-right: 1rem;
     }
-
+    
     .generatr-card h2 {
       font-size: 0.9rem;
       margin: 0 0 0.75rem 0;
@@ -399,6 +407,7 @@
       margin-top: 0.75rem;
       padding-top: 0.75rem;
       border-top: 1px solid var(--theme-a);
+      padding-inline: 1.5rem;
     }
 
     .generatr-result.hidden {
@@ -597,10 +606,10 @@
       </main>
     </div>
     <div class="auditionr-sidebar-wrapper">
-      <button type="button" class="sidebar-toggle" id="sidebar-toggle" title="Toggle generate sidebar" aria-label="Toggle generate sidebar">
-        <i class="fa-solid fa-chevron-right" id="sidebar-toggle-icon"></i>
+      <button type="button" class="sidebar-toggle" id="sidebar-toggle" title="Show generate sidebar" aria-label="Toggle generate sidebar">
+        <i class="fa-solid fa-chevron-left" id="sidebar-toggle-icon"></i>
       </button>
-      <aside class="auditionr-sidebar" id="auditionr-sidebar">
+      <aside class="auditionr-sidebar collapsed" id="auditionr-sidebar">
         <div class="auditionr-sidebar-content">
           <div class="generatr-card">
             <h2><i class="fa-solid fa-wand-magic-sparkles"></i> Generate Samples</h2>
@@ -1499,6 +1508,13 @@
       updateGeneratrSubcommandVisibility();
 
       if (sidebarToggle && sidebar) {
+        // Ensure initial icon/title match initial collapsed state
+        (function syncSidebarToggleState() {
+          var collapsed = sidebar.classList.contains("collapsed");
+          sidebarToggleIcon.className = collapsed ? "fa-solid fa-chevron-left" : "fa-solid fa-chevron-right";
+          sidebarToggle.title = collapsed ? "Show generate sidebar" : "Hide generate sidebar";
+        })();
+
         sidebarToggle.addEventListener("click", function () {
           sidebar.classList.toggle("collapsed");
           var collapsed = sidebar.classList.contains("collapsed");
