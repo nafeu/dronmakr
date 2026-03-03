@@ -18,7 +18,6 @@ from utils import get_version, with_final_main_prompt, with_main_prompt as with_
 
 # Import registration and helpers from sub-apps
 from auditionr import register_auditionr
-from generatr import register_generatr
 from beatbuildr import (
     register_beatbuildr,
     ensure_beat_patterns,
@@ -205,9 +204,8 @@ def api_settings_pick_folder():
     )
 
 
-# Register auditionr, generatr, and beatbuildr routes and socket handlers on the unified app.
+# Register auditionr and beatbuildr routes and socket handlers on the unified app.
 register_auditionr(app, socketio)
-register_generatr(app)
 register_beatbuildr(app, socketio)
 
 

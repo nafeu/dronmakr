@@ -226,8 +226,211 @@
       }
     }
 
+    .auditionr-layout {
+      display: flex;
+      width: 100%;
+      max-width: 100%;
+      gap: 0;
+    }
+
+    .auditionr-main {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
     #waveforms {
       max-width: 100%;
+    }
+
+    .auditionr-sidebar {
+      width: 320px;
+      flex-shrink: 0;
+      border-left: 1px solid var(--theme-a);
+      background: #050505;
+      display: flex;
+      flex-direction: column;
+      transition: width 0.2s ease, min-width 0.2s ease;
+      overflow: hidden;
+    }
+
+    .auditionr-sidebar.collapsed {
+      width: 0;
+      min-width: 0;
+      border-left-width: 0;
+    }
+
+    .auditionr-sidebar-content {
+      padding: 1rem;
+      min-width: 320px;
+      overflow-y: auto;
+    }
+
+    .sidebar-toggle {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      transform: translateY(-50%);
+      width: 20px;
+      height: 48px;
+      padding: 0;
+      border: none;
+      border-radius: 0 4px 4px 0;
+      background: var(--theme-a);
+      color: var(--primary);
+      cursor: pointer;
+      font-size: 0.75rem;
+      z-index: 2;
+      transition: background 0.15s ease;
+    }
+
+    .sidebar-toggle:hover {
+      background: var(--primary);
+      color: var(--secondary);
+    }
+
+    .auditionr-sidebar-wrapper {
+      position: relative;
+      flex-shrink: 0;
+      min-width: 20px;
+    }
+
+    .generatr-card {
+      border: 1px solid var(--theme-a);
+      padding: 1rem;
+      border-radius: 4px;
+      background: var(--secondary);
+    }
+
+    .generatr-card h2 {
+      font-size: 0.9rem;
+      margin: 0 0 0.75rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--primary);
+    }
+
+    .generatr-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .generatr-form .form-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .generatr-form .form-row label {
+      font-size: 0.75rem;
+      color: var(--theme-b);
+    }
+
+    .generatr-form .form-row select {
+      font-family: inherit;
+      font-size: 0.85rem;
+      padding: 0.4rem 0.5rem;
+      background: var(--theme-a);
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      color: var(--primary);
+      width: 100%;
+      cursor: pointer;
+    }
+
+    .generatr-form .form-row select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .btn-generate {
+      font-family: inherit;
+      font-size: 0.85rem;
+      padding: 0.45rem 0.85rem;
+      background: var(--primary);
+      color: var(--secondary);
+      border: 1px solid var(--primary);
+      border-radius: 4px;
+      cursor: pointer;
+      align-self: flex-start;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: opacity 0.15s ease;
+    }
+
+    .btn-generate:hover:not(:disabled) {
+      opacity: 0.9;
+    }
+
+    .btn-generate:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .generatr-loading {
+      font-size: 0.8rem;
+      color: var(--theme-b);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .generatr-loading.hidden {
+      display: none;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 0.9rem;
+      height: 0.9rem;
+      border: 2px solid var(--theme-a);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .generatr-result {
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--theme-a);
+    }
+
+    .generatr-result.hidden {
+      display: none;
+    }
+
+    .generatr-result h3 {
+      font-size: 0.8rem;
+      margin: 0 0 0.4rem 0;
+      color: var(--theme-b);
+    }
+
+    .generatr-result ul {
+      margin: 0;
+      padding-left: 1.1rem;
+      font-size: 0.75rem;
+      color: var(--primary);
+      line-height: 1.5;
+      word-break: break-all;
+    }
+
+    .generatr-result .error {
+      color: var(--theme-c);
+      font-size: 0.8rem;
+    }
+
+    .generatr-result .generatr-error.hidden {
+      display: none;
+    }
+
+    .hidden {
+      display: none !important;
     }
 
     .button {
@@ -356,7 +559,6 @@
         <a href="/auditionr" class="active"><i class="fa-solid fa-wave-square"></i> auditionr</a>
         <a href="/beatbuildr"><i class="fa-solid fa-drum"></i> beatbuildr</a>
         <a href="/collections"><i class="fa-solid fa-folder-open"></i> collections</a>
-        <a href="/generatr"><i class="fa-solid fa-wand-magic-sparkles"></i> generatr</a>
       </nav>
     </div>
     <div id="toolbar-actions">
@@ -388,9 +590,62 @@
     </div>
   </header>
 
-  <main id="waveforms">
-    <div id="waveform-container"></div>
-  </main>
+  <div class="auditionr-layout">
+    <div class="auditionr-main">
+      <main id="waveforms">
+        <div id="waveform-container"></div>
+      </main>
+    </div>
+    <div class="auditionr-sidebar-wrapper">
+      <button type="button" class="sidebar-toggle" id="sidebar-toggle" title="Toggle generate sidebar" aria-label="Toggle generate sidebar">
+        <i class="fa-solid fa-chevron-right" id="sidebar-toggle-icon"></i>
+      </button>
+      <aside class="auditionr-sidebar" id="auditionr-sidebar">
+        <div class="auditionr-sidebar-content">
+          <div class="generatr-card">
+            <h2><i class="fa-solid fa-wand-magic-sparkles"></i> Generate Samples</h2>
+            <form class="generatr-form" id="generatr-form">
+              <div class="form-row">
+                <label for="generatr-type">Type</label>
+                <select id="generatr-type" name="type">
+                  <option value="drone">drone</option>
+                  <option value="bass">bass</option>
+                  <option value="transition">transition</option>
+                </select>
+              </div>
+              <div class="form-row form-row-subcommand hidden" id="generatr-subcommand-row">
+                <label for="generatr-subcommand">Subcommand</label>
+                <select id="generatr-subcommand" name="subcommand">
+                  <option value="reese">reese</option>
+                  <option value="donk">donk</option>
+                </select>
+              </div>
+              <div class="form-row form-row-subcommand hidden" id="generatr-transition-subcommand-row">
+                <label for="generatr-transition-subcommand">Subcommand</label>
+                <select id="generatr-transition-subcommand" name="transition_subcommand">
+                  <option value="sweep">sweep</option>
+                  <option value="closh">closh</option>
+                  <option value="kickboom">kickboom</option>
+                </select>
+              </div>
+              <button type="submit" class="btn-generate" id="generatr-btn">
+                <i class="fa-solid fa-play"></i> Generate
+              </button>
+              <div class="generatr-loading hidden" id="generatr-loading">
+                <span class="spinner"></span>
+                <span>Generating…</span>
+              </div>
+            </form>
+            <div class="generatr-result hidden" id="generatr-result">
+              <h3>Generated files</h3>
+              <ul id="generated-paths"></ul>
+              <p class="error generatr-error hidden" id="generatr-error"></p>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
   <script>
     var socket = io();
     var lastFolderCounts = { archive: 0, trash: 0, exports: 0, saved: 0 };
@@ -1220,6 +1475,87 @@
         stopDrumpatternPlayback: stopDrumpatternPlayback
       };
     }
+
+    (function () {
+      var typeSelect = document.getElementById("generatr-type");
+      var subcommandRow = document.getElementById("generatr-subcommand-row");
+      var transitionSubcommandRow = document.getElementById("generatr-transition-subcommand-row");
+      var form = document.getElementById("generatr-form");
+      var btnGenerate = document.getElementById("generatr-btn");
+      var loadingEl = document.getElementById("generatr-loading");
+      var resultEl = document.getElementById("generatr-result");
+      var pathsList = document.getElementById("generated-paths");
+      var errorEl = document.getElementById("generatr-error");
+      var sidebar = document.getElementById("auditionr-sidebar");
+      var sidebarToggle = document.getElementById("sidebar-toggle");
+      var sidebarToggleIcon = document.getElementById("sidebar-toggle-icon");
+
+      function updateGeneratrSubcommandVisibility() {
+        var type = typeSelect.value;
+        subcommandRow.classList.toggle("hidden", type !== "bass");
+        transitionSubcommandRow.classList.toggle("hidden", type !== "transition");
+      }
+      typeSelect.addEventListener("change", updateGeneratrSubcommandVisibility);
+      updateGeneratrSubcommandVisibility();
+
+      if (sidebarToggle && sidebar) {
+        sidebarToggle.addEventListener("click", function () {
+          sidebar.classList.toggle("collapsed");
+          var collapsed = sidebar.classList.contains("collapsed");
+          sidebarToggleIcon.className = collapsed ? "fa-solid fa-chevron-left" : "fa-solid fa-chevron-right";
+          sidebarToggle.title = collapsed ? "Show generate sidebar" : "Hide generate sidebar";
+        });
+      }
+
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        var type = typeSelect.value;
+        var subcommand = "";
+        if (type === "bass") subcommand = document.getElementById("generatr-subcommand").value;
+        else if (type === "transition") subcommand = document.getElementById("generatr-transition-subcommand").value;
+
+        btnGenerate.disabled = true;
+        loadingEl.classList.remove("hidden");
+        resultEl.classList.add("hidden");
+        pathsList.innerHTML = "";
+        errorEl.classList.add("hidden");
+        errorEl.textContent = "";
+
+        fetch("/api/generatr/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: type, subcommand: subcommand || undefined })
+        })
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            resultEl.classList.remove("hidden");
+            if (data.error) {
+              errorEl.textContent = data.error;
+              errorEl.classList.remove("hidden");
+            } else {
+              if (data.paths && data.paths.length) {
+                data.paths.forEach(function (path) {
+                  var li = document.createElement("li");
+                  li.textContent = path;
+                  pathsList.appendChild(li);
+                });
+              } else {
+                pathsList.appendChild(document.createTextNode("(no files returned)"));
+              }
+              socket.emit("requestExports");
+            }
+          })
+          .catch(function (err) {
+            resultEl.classList.remove("hidden");
+            errorEl.textContent = err.message || "Request failed";
+            errorEl.classList.remove("hidden");
+          })
+          .finally(function () {
+            btnGenerate.disabled = false;
+            loadingEl.classList.add("hidden");
+          });
+      });
+    })();
   </script>
 </body>
 

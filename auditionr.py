@@ -1,6 +1,7 @@
 """
 Auditionr: sample audition and processing logic. Registers routes and uses
-shared app/socketio when used from the unified webui.
+shared app/socketio when used from the unified webui. Includes generate
+sidebar (drone, bass, transition) — same backend as former generatr view.
 """
 
 import os
@@ -9,6 +10,7 @@ import subprocess
 import sys
 
 from flask import request, jsonify, send_from_directory
+from settings import ensure_settings
 from utils import (
     get_latest_exports,
     get_auditionr_folder_counts,
@@ -18,10 +20,31 @@ from utils import (
     ARCHIVE_DIR,
     SAVED_DIR,
     TRASH_DIR,
+    format_name,
+    generate_beat_name,
+    generate_drone_name,
+    generate_id,
+    with_main_prompt as with_prompt,
+    RED,
+    RESET,
 )
-from generate_midi import get_patterns
-from generate_sample import apply_effect
+from generate_midi import get_patterns, generate_drone_midi
+from generate_sample import apply_effect, generate_drone_sample
+from generate_transition import (
+    generate_closh_sample,
+    generate_kickboom_sample,
+    generate_sweep_sample,
+    parse_closh_config,
+    parse_sweep_config,
+)
+from generate_bass import (
+    generate_donk_sample,
+    generate_reese_sample,
+    parse_donk_config,
+    parse_reese_config,
+)
 from process_sample import (
+    process_drone_sample,
     trim_sample_start,
     trim_sample_end,
     fade_sample_start,
@@ -293,10 +316,173 @@ def reveal_in_explorer():
     return jsonify({"success": "Revealed in file manager."}), 200
 
 
+# ---------------------------------------------------------------------------
+# Generate sidebar (drone, bass, transition) — same logic as former generatr
+# ---------------------------------------------------------------------------
+
+
+def _run_generate_drone():
+    """One iteration of drone generation. Returns list of paths. Logs to server stdout."""
+    if not os.path.exists("presets/presets.json"):
+        raise FileNotFoundError(
+            "presets/presets.json does not exist, please run build_preset.py"
+        )
+    filters = {}
+    midi_file, selected_chart = generate_drone_midi(
+        pattern=None,
+        shift_octave_down=None,
+        shift_root_note=None,
+        filters=filters,
+        notes=None,
+    )
+    base_sample_name = (
+        f"{generate_drone_name()}_-_{selected_chart}_-_{generate_id()}"
+    )
+    sample_name = format_name(f"drone___{base_sample_name}")
+    output_path = f"{EXPORTS_DIR}/{sample_name}"
+    generated_sample = generate_drone_sample(
+        input_path=midi_file,
+        output_path=f"{output_path}.wav",
+        instrument=None,
+        effect=None,
+    )
+    (
+        generated_sample_stretched,
+        generated_sample_stretched_reverberated,
+        generated_sample_stretched_reverberated_transposed,
+    ) = process_drone_sample(input_path=generated_sample)
+    return [
+        midi_file,
+        generated_sample,
+        generated_sample_stretched,
+        generated_sample_stretched_reverberated,
+        generated_sample_stretched_reverberated_transposed,
+    ]
+
+
+def _run_generate_bass(subcommand: str):
+    """One iteration of bass (reese | donk). Returns list of one path."""
+    if subcommand == "reese":
+        config = parse_reese_config(
+            sound=None, movement=None, distortion=None, fx=None, disable=None
+        )
+        beat_name = generate_beat_name()
+        name_parts = ["reese", beat_name, "170bpm", "4bars", generate_id()]
+        sample_name = format_name("___".join(name_parts))
+        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+        output_path, _ = generate_reese_sample(
+            tempo=170, bars=4, output=output_path, config=config
+        )
+        print(with_prompt(f"generated: {output_path}"))
+        return [output_path]
+    elif subcommand == "donk":
+        config = parse_donk_config(sound=None)
+        beat_name = generate_beat_name()
+        name_parts = ["donk", beat_name, "120bpm", "1bars", generate_id()]
+        sample_name = format_name("___".join(name_parts))
+        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+        output_path, _ = generate_donk_sample(
+            tempo=120, bars=1, output=output_path, config=config
+        )
+        print(with_prompt(f"generated: {output_path}"))
+        return [output_path]
+    else:
+        raise ValueError(f"Unknown bass subcommand: {subcommand}")
+
+
+def _run_generate_transition(subcommand: str):
+    """One iteration of transition (sweep | closh | kickboom). Returns list of one path."""
+    if subcommand == "sweep":
+        config = parse_sweep_config(
+            sound=None, curve=None, filter_str=None, tremolo=None,
+            phaser=None, chorus=None, flanger=None, disable=None,
+        )
+        beat_name = generate_beat_name()
+        name_parts = ["transition_sweep", beat_name, "120bpm", "8bars", generate_id()]
+        sample_name = format_name("___".join(name_parts))
+        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+        output_path, _ = generate_sweep_sample(
+            tempo=120, bars=8, output=output_path, config=config
+        )
+        print(with_prompt(f"generated: {output_path}"))
+        return [output_path]
+    elif subcommand == "closh":
+        config = parse_closh_config(reverb=None, delay=None)
+        beat_name = generate_beat_name()
+        name_parts = ["transition_closh", beat_name, "120bpm", "4bars", generate_id()]
+        sample_name = format_name("___".join(name_parts))
+        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+        output_path, _ = generate_closh_sample(
+            tempo=120, bars=4, output=output_path, config=config
+        )
+        print(with_prompt(f"generated: {output_path}"))
+        return [output_path]
+    elif subcommand == "kickboom":
+        config = parse_closh_config(reverb=None, delay=None)
+        beat_name = generate_beat_name()
+        name_parts = ["transition_kickboom", beat_name, "120bpm", "4bars", generate_id()]
+        sample_name = format_name("___".join(name_parts))
+        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+        output_path, _ = generate_kickboom_sample(
+            tempo=120, bars=4, output=output_path, config=config
+        )
+        print(with_prompt(f"generated: {output_path}"))
+        return [output_path]
+    else:
+        raise ValueError(f"Unknown transition subcommand: {subcommand}")
+
+
+def _handle_api_generate():
+    """
+    POST /api/generatr/generate
+    Body: { "type": "drone" | "bass" | "transition", "subcommand": optional }
+    Returns: { "paths": [...], "error": null } or { "paths": [], "error": "..." }
+    """
+    ensure_settings()
+    data = request.get_json() or {}
+    gen_type = (data.get("type") or "").strip().lower()
+    subcommand = (data.get("subcommand") or "").strip().lower()
+
+    if not gen_type:
+        return jsonify({"paths": [], "error": "Missing type (drone, bass, or transition)"}), 400
+    if gen_type not in ("drone", "bass", "transition"):
+        return jsonify({"paths": [], "error": f"Unknown type: {gen_type}"}), 400
+    if gen_type == "bass" and subcommand not in ("reese", "donk"):
+        return jsonify({"paths": [], "error": "Bass requires subcommand: reese or donk"}), 400
+    if gen_type == "transition" and subcommand not in ("sweep", "closh", "kickboom"):
+        return jsonify(
+            {"paths": [], "error": "Transition requires subcommand: sweep, closh, or kickboom"}
+        ), 400
+
+    try:
+        print(f"{RED}│{RESET} generate: {gen_type}" + (f" {subcommand}" if subcommand else ""))
+        if gen_type == "drone":
+            paths = _run_generate_drone()
+        elif gen_type == "bass":
+            paths = _run_generate_bass(subcommand)
+        else:
+            paths = _run_generate_transition(subcommand)
+        print(f"{RED}■ generate completed{RESET}")
+        _socketio.emit("exports", {"files": get_latest_exports()})
+        _emit_folder_counts()
+        return jsonify({"paths": paths, "error": None})
+    except Exception as e:
+        print(with_prompt(f"generate error: {e}"))
+        return jsonify({"paths": [], "error": str(e)}), 500
+
+
+def _handle_request_exports():
+    """Socket handler: client requests latest exports and folder counts (e.g. after generate)."""
+    _socketio.emit("exports", {"files": get_latest_exports()})
+    _emit_folder_counts()
+
+
 def register_auditionr(app, socketio):
     """Register auditionr routes on the given Flask app. Socketio is used for emits."""
     global _socketio
     _socketio = socketio
+
+    socketio.on_event("requestExports", _handle_request_exports)
 
     app.add_url_rule(
         "/exports/<path:filename>",
@@ -321,6 +507,12 @@ def register_auditionr(app, socketio):
     )
     app.add_url_rule(
         "/reveal", "auditionr_reveal", reveal_in_explorer, methods=["POST"]
+    )
+    app.add_url_rule(
+        "/api/generatr/generate",
+        "auditionr_api_generate",
+        _handle_api_generate,
+        methods=["POST"],
     )
 
 
