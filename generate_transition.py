@@ -2,6 +2,7 @@
 
 import random
 import re
+import tempfile
 from pathlib import Path
 from typing import Any, Literal
 
@@ -571,7 +572,7 @@ def generate_sweep_sample(
     cutoff_high = max(cutoff_high, cutoff_low + 500)
     decay_rate = cfg.get("decay_rate") or random.uniform(*DECAY_RATE_RANGE)
     peak_pos = cfg.get("peak_pos") or random.uniform(*PEAK_POS_RANGE)
-    peak_pos = max(0.15, min(0.85, peak_pos))
+    peak_pos = max(0.15, min(1.0, peak_pos))
     noise_level = cfg.get("noise_level") or random.uniform(*NOISE_LEVEL_RANGE)
     noise_level = max(0.2, min(1.0, noise_level))
     noise_type = cfg.get("noise_type") or random.choice(NOISE_TYPES)
@@ -823,6 +824,27 @@ def _get_random_clap_path() -> Path:
     root = Path(random.choice(roots)).expanduser().resolve()
     if not root.exists() or not root.is_dir():
         raise ValueError(f"DRUM_CLAP_PATHS root does not exist or is not a dir: {root}")
+    candidates = [
+        f for f in root.iterdir() if f.is_file() and f.suffix.lower() == ".wav"
+    ]
+    if not candidates:
+        raise ValueError(f"No .wav files found in {root}")
+    return random.choice(candidates)
+
+
+def _get_random_cymbal_path() -> Path:
+    """Pick a random .wav from DRUM_CYMBAL_PATHS. Supports comma-separated roots."""
+    paths_str = get_setting("DRUM_CYMBAL_PATHS", "")
+    roots = [p.strip() for p in paths_str.split(",") if p.strip()]
+    if not roots:
+        raise ValueError(
+            "DRUM_CYMBAL_PATHS is not configured. Add paths to cymbal samples in settings."
+        )
+    root = Path(random.choice(roots)).expanduser().resolve()
+    if not root.exists() or not root.is_dir():
+        raise ValueError(
+            f"DRUM_CYMBAL_PATHS root does not exist or is not a dir: {root}"
+        )
     candidates = [
         f for f in root.iterdir() if f.is_file() and f.suffix.lower() == ".wav"
     ]
@@ -1114,5 +1136,354 @@ def generate_kickboom_sample(
         "delay_division": config["delay_division"],
         "delay_feedback": config["delay_feedback"],
         "delay_mix": config["delay_mix"],
+    }
+    return output, params_used
+
+
+def generate_longcrash_sample(
+    tempo: int = 120,
+    bars: int = 8,
+    output: str = "longcrash.wav",
+    config: dict[str, Any] | None = None,
+    stretch: float = 3.0,
+    window_size: float = 0.25,
+) -> tuple[str, dict[str, Any]]:
+    """
+    Generate a long crash transition:
+    - random cymbal from DRUM_CYMBAL_PATHS
+    - long convolution reverb (same engine as closh/kickboom)
+    - optional tempo-synced delay
+    - Paulstretch applied after reverb for an elongated, evolving tail.
+    """
+    from paulstretch import paulstretch as paulstretch_fn
+
+    if config is None:
+        config = parse_closh_config()
+
+    cym_path = _get_random_cymbal_path()
+    audio, sr = sf.read(str(cym_path), dtype="float32")
+
+    if audio.ndim == 1:
+        audio = audio[np.newaxis, :]
+    else:
+        audio = np.ascontiguousarray(audio.T)
+
+    # Resample cymbal to internal SAMPLE_RATE if needed
+    if sr != SAMPLE_RATE:
+        import librosa
+
+        audio_lr = audio.T
+        resampled = librosa.resample(audio_lr, orig_sr=sr, target_sr=SAMPLE_RATE)
+        if resampled.ndim == 1:
+            audio = resampled[np.newaxis, :]
+        else:
+            audio = np.ascontiguousarray(resampled.T)
+
+    n_samples = audio.shape[1]
+    tail_samples = int(CLOSH_TAIL_SEC * SAMPLE_RATE)
+    total_len = n_samples + tail_samples
+    padded = np.zeros((audio.shape[0], total_len), dtype=np.float32)
+    padded[:, :n_samples] = audio
+
+    input_peak = np.max(np.abs(audio))
+    if input_peak < 1e-6:
+        raise ValueError(f"Cymbal sample is effectively silent: {cym_path}")
+
+    ir = dsp.make_reverb_ir(
+        SAMPLE_RATE,
+        length_sec=config["reverb_length_sec"],
+        decay_sec=config["reverb_decay_sec"],
+        early_reflections=config["reverb_early_reflections"],
+        highpass_cutoff_hz=config["reverb_highpass_hz"],
+        seed=random.randint(0, 2**31 - 1),
+        tail_diffusion=config["reverb_tail_diffusion"],
+        early_diffuse=True,
+    )
+    wet_level = config["reverb_wet_level"]
+    n_channels = padded.shape[0]
+    wet = np.zeros((n_channels, padded.shape[1] + len(ir) - 1), dtype=np.float32)
+    for ch in range(n_channels):
+        wet[ch] = fftconvolve(padded[ch], ir, mode="full")
+    dry_extended = np.zeros_like(wet, dtype=np.float32)
+    dry_extended[:, : padded.shape[1]] = padded
+    wet_peak = np.max(np.abs(wet)) + 1e-12
+    dry_peak = np.max(np.abs(padded)) + 1e-12
+    wet = wet * (dry_peak / wet_peak)
+    processed = wet_level * wet + (1.0 - wet_level) * dry_extended
+
+    # Optional tempo-synced delay (same as closh/kickboom)
+    if config["delay_enabled"]:
+        delay_sec = _delay_division_to_seconds(config["delay_division"], tempo)
+        delay_plugin = Delay(
+            delay_seconds=delay_sec,
+            feedback=config["delay_feedback"],
+            mix=config["delay_mix"],
+        )
+        board = Pedalboard([delay_plugin])
+        chunk_samples = 44100
+        proc_len = processed.shape[1]
+        n_chunks = (proc_len + chunk_samples - 1) // chunk_samples
+        delay_chunks = []
+        for i in range(n_chunks):
+            start = i * chunk_samples
+            end = min(start + chunk_samples, proc_len)
+            chunk = processed[:, start:end]
+            out_chunk = board(chunk, SAMPLE_RATE, buffer_size=4096, reset=(i == 0))
+            delay_chunks.append(out_chunk)
+        processed = np.concatenate(delay_chunks, axis=1)
+
+    # Use temp files for intermediate processing (only final output is kept)
+    duration_sec = bars * 4 * (60.0 / tempo)
+    max_samples = int(duration_sec * SAMPLE_RATE)
+    pre_stretch = processed[:, :max_samples]
+    if pre_stretch.shape[0] == 2:
+        pre_mono = np.mean(pre_stretch, axis=0)
+    else:
+        pre_mono = pre_stretch[0]
+
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+        pre_path = f.name
+    try:
+        sf.write(pre_path, _normalize_audio(pre_mono), SAMPLE_RATE, subtype="PCM_16")
+
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+            stretched_path = f.name
+        try:
+            paulstretch_fn(
+                pre_path,
+                stretched_path,
+                stretch=stretch,
+                window_size=window_size,
+                show_logs=False,
+            )
+
+            stretched_audio, sr_out = sf.read(stretched_path, dtype="float32")
+        finally:
+            Path(stretched_path).unlink(missing_ok=True)
+    finally:
+        Path(pre_path).unlink(missing_ok=True)
+
+    if sr_out != SAMPLE_RATE:
+        import librosa
+
+        stretched_audio = librosa.resample(
+            stretched_audio.T, orig_sr=sr_out, target_sr=SAMPLE_RATE
+        ).T
+        sr_out = SAMPLE_RATE
+
+    if stretched_audio.ndim > 1:
+        stretched_mono = np.mean(stretched_audio, axis=1)
+    else:
+        stretched_mono = stretched_audio
+
+    target_samples = int(duration_sec * SAMPLE_RATE)
+    if stretched_mono.shape[0] >= target_samples:
+        final_audio = stretched_mono[:target_samples]
+    else:
+        pad = target_samples - stretched_mono.shape[0]
+        final_audio = np.pad(stretched_mono, (0, pad))
+
+    sf.write(output, _normalize_audio(final_audio), SAMPLE_RATE, subtype="PCM_16")
+
+    params_used = {
+        "cymbal_path": str(cym_path),
+        "reverb_wet_level": config["reverb_wet_level"],
+        "reverb_length_sec": config["reverb_length_sec"],
+        "reverb_decay_sec": config["reverb_decay_sec"],
+        "reverb_early_reflections": config["reverb_early_reflections"],
+        "reverb_highpass_hz": config["reverb_highpass_hz"],
+        "reverb_tail_diffusion": config["reverb_tail_diffusion"],
+        "delay_enabled": config["delay_enabled"],
+        "delay_division": config["delay_division"],
+        "delay_feedback": config["delay_feedback"],
+        "delay_mix": config["delay_mix"],
+        "stretch": stretch,
+        "window_size": window_size,
+    }
+    return output, params_used
+
+
+def generate_riser_sample(
+    tempo: int = 120,
+    bars: int = 4,
+    output: str = "riser.wav",
+    longcrash_config: dict[str, Any] | None = None,
+    sweep_config: dict[str, Any] | None = None,
+    stretch: float = 3.0,
+    window_size: float = 0.25,
+    longcrash_level: float = 0.4,
+    sweep_level: float = 0.6,
+    peak_pos: float = 1.0,
+    build_shape: Literal["ease_in", "linear", "ease_out"] = "ease_in",
+) -> tuple[str, dict[str, Any]]:
+    """
+    Generate a riser transition:
+    - base: longcrash (cymbal + reverb + delay + Paulstretch), then reversed
+    - overlay: a riser sweep that builds from start to finish with peak at the END
+      (unlike the regular sweep which peaks in the middle). Uses a slow buildup curve.
+    - mix: longcrash_level : sweep_level (defaults 40% : 60%).
+    """
+    if longcrash_config is None:
+        longcrash_config = parse_closh_config()
+    if sweep_config is None:
+        sweep_config = parse_sweep_config()
+
+    # Force riser-specific sweep params: peak at END, nice slow buildup (ease_in)
+    riser_sweep_config = {**sweep_config, "peak_pos": peak_pos, "build_shape": build_shape}
+
+    # 1) Generate longcrash (forward) to temp file, then reverse
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+        long_path = f.name
+    try:
+        long_path, long_params = generate_longcrash_sample(
+            tempo=tempo,
+            bars=bars,
+            output=long_path,
+            config=longcrash_config,
+            stretch=stretch,
+            window_size=window_size,
+        )
+        long_audio, sr_long = sf.read(long_path, dtype="float32")
+        if sr_long != SAMPLE_RATE:
+            import librosa
+
+            long_audio = librosa.resample(
+                long_audio.T, orig_sr=sr_long, target_sr=SAMPLE_RATE
+            ).T
+        if long_audio.ndim > 1:
+            long_mono = np.mean(long_audio, axis=1)
+        else:
+            long_mono = long_audio
+        long_rev = long_mono[::-1]
+
+        # 2) Generate riser sweep to temp file
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+            sweep_path = f.name
+        try:
+            sweep_path, sweep_params = generate_sweep_sample(
+                tempo=tempo,
+                bars=bars,
+                output=sweep_path,
+                config=riser_sweep_config,
+            )
+            sweep_audio, sr_sweep = sf.read(sweep_path, dtype="float32")
+        finally:
+            Path(sweep_path).unlink(missing_ok=True)
+    finally:
+        Path(long_path).unlink(missing_ok=True)
+
+    if sr_sweep != SAMPLE_RATE:
+        import librosa
+
+        sweep_audio = librosa.resample(
+            sweep_audio.T, orig_sr=sr_sweep, target_sr=SAMPLE_RATE
+        ).T
+    if sweep_audio.ndim > 1:
+        sweep_mono = np.mean(sweep_audio, axis=1)
+    else:
+        sweep_mono = sweep_audio
+
+    target_len = min(len(long_rev), len(sweep_mono))
+    mix_long = long_rev[:target_len]
+    mix_sweep = sweep_mono[:target_len]
+
+    combined = longcrash_level * mix_long + sweep_level * mix_sweep
+    sf.write(output, _normalize_audio(combined), SAMPLE_RATE, subtype="PCM_16")
+
+    params_used = {
+        "longcrash": long_params,
+        "sweep": sweep_params,
+        "longcrash_level": float(longcrash_level),
+        "sweep_level": float(sweep_level),
+        "peak_pos": peak_pos,
+        "build_shape": build_shape,
+    }
+    return output, params_used
+
+
+def generate_drop_sample(
+    tempo: int = 120,
+    bars: int = 4,
+    output: str = "drop.wav",
+    longcrash_config: dict[str, Any] | None = None,
+    sweep_config: dict[str, Any] | None = None,
+    synth: str | None = None,
+    stretch: float = 3.0,
+    window_size: float = 0.25,
+    riser_level: float = 0.4,
+    synth_level: float = 0.6,
+) -> tuple[str, dict[str, Any]]:
+    """
+    Generate a drop transition:
+    - base: riser (as above), then reversed so impact is at the start
+    - overlay: synth drop (high→low pitch) layered on top.
+    """
+    if longcrash_config is None:
+        longcrash_config = parse_closh_config()
+    if sweep_config is None:
+        sweep_config = parse_sweep_config()
+
+    # 1) Generate riser to temp file and reverse it
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+        riser_path = f.name
+    try:
+        riser_path, riser_params = generate_riser_sample(
+            tempo=tempo,
+            bars=bars,
+            output=riser_path,
+            longcrash_config=longcrash_config,
+            sweep_config=sweep_config,
+            stretch=stretch,
+            window_size=window_size,
+        )
+        riser_audio, sr_riser = sf.read(riser_path, dtype="float32")
+    finally:
+        Path(riser_path).unlink(missing_ok=True)
+
+    if sr_riser != SAMPLE_RATE:
+        import librosa
+
+        riser_audio = librosa.resample(
+            riser_audio.T, orig_sr=sr_riser, target_sr=SAMPLE_RATE
+        ).T
+    if riser_audio.ndim > 1:
+        riser_mono = np.mean(riser_audio, axis=1)
+    else:
+        riser_mono = riser_audio
+    riser_rev = riser_mono[::-1]
+
+    # 2) Synth drop (high → low pitch)
+    s = _parse_param_string(synth)
+    voice = _resolve_choice(s, "voice", ("sine", "saw", "square", "tri"))
+    freq_high = _resolve_float(s, "freq_high", (400.0, 2000.0), 200.0, 4000.0)
+    freq_low = _resolve_float(s, "freq_low", (40.0, 120.0), 20.0, 400.0)
+    level = _resolve_float(s, "level", (0.4, 0.9), 0.1, 1.0)
+
+    duration_sec = bars * 4 * (60.0 / tempo)
+    num_samples = int(duration_sec * SAMPLE_RATE)
+    t_norm = np.linspace(0.0, 1.0, num_samples, endpoint=False)
+    freq_sweep = freq_high + (freq_low - freq_high) * t_norm
+    phase_inc = 2 * np.pi * freq_sweep / SAMPLE_RATE
+    phase = np.cumsum(phase_inc)
+    env = (1.0 - t_norm) ** 1.5
+    synth_wave = _oscillator_sample(phase, voice, pulse_width=0.5) * env * level
+
+    target_len = min(len(riser_rev), len(synth_wave))
+    mix_riser = riser_rev[:target_len]
+    mix_synth = synth_wave[:target_len]
+
+    combined = riser_level * mix_riser + synth_level * mix_synth
+    sf.write(output, _normalize_audio(combined), SAMPLE_RATE, subtype="PCM_16")
+
+    params_used = {
+        "riser": riser_params,
+        "synth": {
+            "voice": voice,
+            "freq_high": freq_high,
+            "freq_low": freq_low,
+            "level": level,
+        },
+        "riser_level": float(riser_level),
+        "synth_level": float(synth_level),
     }
     return output, params_used

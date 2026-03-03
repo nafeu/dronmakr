@@ -34,6 +34,9 @@ from generate_transition import (
     generate_closh_sample,
     generate_kickboom_sample,
     generate_sweep_sample,
+    generate_longcrash_sample,
+    generate_riser_sample,
+    generate_drop_sample,
     parse_closh_config,
     parse_sweep_config,
 )
@@ -391,7 +394,7 @@ def _run_generate_bass(subcommand: str):
 
 
 def _run_generate_transition(subcommand: str):
-    """One iteration of transition (sweep | closh | kickboom). Returns list of one path."""
+    """One iteration of transition (sweep | closh | kickboom | longcrash | riser | drop). Returns list of one path."""
     if subcommand == "sweep":
         config = parse_sweep_config(
             sound=None, curve=None, filter_str=None, tremolo=None,
@@ -428,6 +431,43 @@ def _run_generate_transition(subcommand: str):
         )
         print(with_prompt(f"generated: {output_path}"))
         return [output_path]
+    elif subcommand == "longcrash":
+        config = parse_closh_config(reverb=None, delay=None)
+        beat_name = generate_beat_name()
+        name_parts = ["transition_longcrash", beat_name, "120bpm", "8bars", generate_id()]
+        sample_name = format_name("___".join(name_parts))
+        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+        output_path, _ = generate_longcrash_sample(
+            tempo=120, bars=8, output=output_path, config=config
+        )
+        print(with_prompt(f"generated: {output_path}"))
+        return [output_path]
+    elif subcommand == "riser":
+        longcrash_config = parse_closh_config(reverb=None, delay=None)
+        sweep_config = parse_sweep_config()
+        beat_name = generate_beat_name()
+        name_parts = ["transition_riser", beat_name, "120bpm", "4bars", generate_id()]
+        sample_name = format_name("___".join(name_parts))
+        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+        output_path, _ = generate_riser_sample(
+            tempo=120, bars=4, output=output_path,
+            longcrash_config=longcrash_config, sweep_config=sweep_config,
+        )
+        print(with_prompt(f"generated: {output_path}"))
+        return [output_path]
+    elif subcommand == "drop":
+        longcrash_config = parse_closh_config(reverb=None, delay=None)
+        sweep_config = parse_sweep_config()
+        beat_name = generate_beat_name()
+        name_parts = ["transition_drop", beat_name, "120bpm", "4bars", generate_id()]
+        sample_name = format_name("___".join(name_parts))
+        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+        output_path, _ = generate_drop_sample(
+            tempo=120, bars=4, output=output_path,
+            longcrash_config=longcrash_config, sweep_config=sweep_config,
+        )
+        print(with_prompt(f"generated: {output_path}"))
+        return [output_path]
     else:
         raise ValueError(f"Unknown transition subcommand: {subcommand}")
 
@@ -449,9 +489,9 @@ def _handle_api_generate():
         return jsonify({"paths": [], "error": f"Unknown type: {gen_type}"}), 400
     if gen_type == "bass" and subcommand not in ("reese", "donk"):
         return jsonify({"paths": [], "error": "Bass requires subcommand: reese or donk"}), 400
-    if gen_type == "transition" and subcommand not in ("sweep", "closh", "kickboom"):
+    if gen_type == "transition" and subcommand not in ("sweep", "closh", "kickboom", "longcrash", "riser", "drop"):
         return jsonify(
-            {"paths": [], "error": "Transition requires subcommand: sweep, closh, or kickboom"}
+            {"paths": [], "error": "Transition requires subcommand: sweep, closh, kickboom, longcrash, riser, or drop"}
         ), 400
 
     try:
