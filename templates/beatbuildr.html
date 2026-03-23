@@ -203,7 +203,15 @@
       overflow: auto;
       display: flex;
       flex-direction: column;
-      gap: 1rem;
+      gap: 0.75rem;
+      ;
+    }
+
+    .controls-tab {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.25rem;
     }
 
     #sidebar-column {
@@ -265,19 +273,33 @@
     }
 
     .transport-btn {
-      width: 2.5rem;
-      height: 2.5rem;
       padding: 0;
       font-family: inherit;
-      font-size: 1rem;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      border: 1px solid;
+      border: none;
       flex-shrink: 0;
       transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease,
         transform 0.08s ease;
+    }
+
+    .controls-tab .transport-btn {
+      width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 4px;
+    }
+
+    .controls-tab .transport-btn.with-text {
+      width: auto;
+      padding: 0 0.55rem;
+      text-transform: lowercase;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      line-height: 1;
     }
 
     .transport-btn i {
@@ -302,7 +324,7 @@
     }
 
     .transport-btn-secondary {
-      background: #050505;
+      background: var(--theme-a);
       color: var(--primary);
       border-color: var(--theme-a);
     }
@@ -1499,6 +1521,28 @@
 
   <main id="app-layout">
     <section id="main-column">
+      <div class="controls-tab">
+        <button type="button" id="play-toggle" class="transport-btn transport-btn-primary" title="Play">
+          <i class="fa-solid fa-play"></i>
+        </button>
+        <button type="button" id="new-kit-btn" class="transport-btn transport-btn-secondary with-text"
+          title="Load new random drum kit">
+          <i class="fa-solid fa-dice-five"></i>
+          <span>randomize kit</span>
+        </button>
+        <button type="button" id="new-pattern-btn" class="transport-btn transport-btn-secondary"
+          title="Start new pattern (reset all, load random kit)">
+          <i class="fa-solid fa-plus"></i>
+        </button>
+        <button type="button" id="undo-redo-btn" class="transport-btn transport-btn-secondary" title="Undo last edit"
+          disabled>
+          <i class="fa-solid fa-undo"></i>
+        </button>
+        <button type="button" id="clear-sequencer-btn" class="transport-btn transport-btn-secondary"
+          title="Clear entire sequencer">
+          <i class="fa-solid fa-eraser"></i>
+        </button>
+      </div>
       <div class="sequencer-scroll-wrapper">
         <div class="sequencer-grid-scroll">
           <div id="sequencer-grid"></div>
@@ -1598,37 +1642,8 @@
     </section>
 
     <aside id="sidebar-column">
-      <h2><i class="fa-solid fa-sliders"></i> Controls</h2>
+      <h2><i class="fa-solid fa-sliders"></i> Pattern Settings</h2>
       <div id="transport">
-        <div class="transport-actions">
-          <button type="button" id="new-pattern-btn" class="transport-btn transport-btn-secondary"
-            title="Start new pattern (reset all, load random kit)">
-            <i class="fa-solid fa-plus"></i>
-          </button>
-          <button type="button" id="undo-btn" class="transport-btn transport-btn-secondary" title="Undo last edit"
-            disabled>
-            <i class="fa-solid fa-undo"></i>
-          </button>
-          <button type="button" id="redo-btn" class="transport-btn transport-btn-secondary" title="Redo" disabled>
-            <i class="fa-solid fa-redo"></i>
-          </button>
-          <button type="button" id="play-toggle" class="transport-btn transport-btn-primary" title="Play">
-            <i class="fa-solid fa-play"></i>
-          </button>
-          <button type="button" id="stop-button" class="transport-btn transport-btn-secondary" title="Stop">
-            <i class="fa-solid fa-stop"></i>
-          </button>
-          <button type="button" id="new-kit-btn" class="transport-btn transport-btn-secondary"
-            title="Load new random drum kit">
-            <i class="fa-solid fa-dice-five"></i>
-          </button>
-          <button type="button" id="clear-sequencer-btn" class="transport-btn transport-btn-secondary"
-            title="Clear entire sequencer">
-            <i class="fa-solid fa-eraser"></i>
-          </button>
-        </div>
-        <div class="sidebar-section-divider"></div>
-        <h3 class="sidebar-section-label"><i class="fa-solid fa-music"></i> Pattern Settings</h3>
         <div class="transport-tempo">
           <label for="tempo-input">Tempo (bpm)</label>
           <input type="number" id="tempo-input" min="40" max="240" value="120" title="Beats per minute">
@@ -1716,12 +1731,10 @@
 
     const gridContainer = document.getElementById("sequencer-grid");
     const playToggleBtn = document.getElementById("play-toggle");
-    const stopButton = document.getElementById("stop-button");
     const tempoInput = document.getElementById("tempo-input");
     const swingInput = document.getElementById("swing-input");
     const swingDisplay = document.getElementById("swing-display");
-    const undoBtn = document.getElementById("undo-btn");
-    const redoBtn = document.getElementById("redo-btn");
+    const undoRedoBtn = document.getElementById("undo-redo-btn");
 
     function getStepDurationSec() {
       const spb = GRID_STEPS_PER_BEAT[state.gridSize] || 4;
@@ -1765,8 +1778,19 @@
     }
 
     function updateUndoRedoButtons() {
-      undoBtn.disabled = state.undoState === null;
-      redoBtn.disabled = state.redoState === null;
+      const hasUndo = state.undoState !== null;
+      const hasRedo = state.redoState !== null;
+      undoRedoBtn.disabled = !hasUndo && !hasRedo;
+      if (hasUndo) {
+        undoRedoBtn.title = "Undo last edit";
+        undoRedoBtn.innerHTML = "<i class=\"fa-solid fa-undo\"></i>";
+      } else if (hasRedo) {
+        undoRedoBtn.title = "Redo";
+        undoRedoBtn.innerHTML = "<i class=\"fa-solid fa-redo\"></i>";
+      } else {
+        undoRedoBtn.title = "Undo last edit";
+        undoRedoBtn.innerHTML = "<i class=\"fa-solid fa-undo\"></i>";
+      }
     }
 
     function undo() {
@@ -2151,10 +2175,6 @@
       }
     });
 
-    stopButton.addEventListener("click", () => {
-      stopPlayback();
-    });
-
     tempoInput.addEventListener("change", () => {
       let val = parseInt(tempoInput.value, 10);
       if (Number.isNaN(val)) val = state.bpm;
@@ -2211,8 +2231,13 @@
       resizePatternToConfig();
     });
 
-    undoBtn.addEventListener("click", undo);
-    redoBtn.addEventListener("click", redo);
+    undoRedoBtn.addEventListener("click", () => {
+      if (state.undoState !== null) {
+        undo();
+      } else if (state.redoState !== null) {
+        redo();
+      }
+    });
 
     // Export
     const exportLoopsInput = document.getElementById("export-loops-input");
