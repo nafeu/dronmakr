@@ -214,6 +214,53 @@
       gap: 0.25rem;
     }
 
+    .controls-tab-divider {
+      width: 1px;
+      height: 1.25rem;
+      background: var(--theme-a);
+      margin: 0 0.2rem;
+    }
+
+    .step-pattern-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.2rem;
+      flex-wrap: wrap;
+    }
+
+    .step-pattern-label {
+      font-size: 0.65rem;
+      color: var(--theme-a);
+      text-transform: lowercase;
+      margin-right: 0.2rem;
+      white-space: nowrap;
+    }
+
+    .step-pattern-btn {
+      min-width: 1.5rem;
+      height: 1.5rem;
+      padding: 0 0.35rem;
+      font-family: inherit;
+      font-size: 0.65rem;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      background: #050505;
+      color: var(--primary);
+      cursor: pointer;
+      text-transform: lowercase;
+    }
+
+    .step-pattern-btn:hover {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.12);
+    }
+
+    .step-pattern-btn.active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: var(--secondary);
+    }
+
     #sidebar-column {
       border: 1px solid var(--theme-a);
       padding: 0.75rem;
@@ -827,6 +874,16 @@
     .grid-cell.active {
       background: var(--primary);
       box-shadow: inset 0 0 0 1px #000000;
+    }
+
+    .grid-cell.step-pattern-preview {
+      background: rgba(255, 149, 5, 0.25);
+      box-shadow: inset 0 0 0 1px var(--primary);
+    }
+
+    .grid-cell.active.step-pattern-preview {
+      background: var(--primary);
+      box-shadow: inset 0 0 0 2px #ffffff22, inset 0 0 0 1px #000000;
     }
 
     .grid-footer {
@@ -1542,6 +1599,16 @@
           title="Clear entire sequencer">
           <i class="fa-solid fa-eraser"></i>
         </button>
+        <span class="controls-tab-divider"></span>
+        <span class="step-pattern-label">step pattern</span>
+        <div class="step-pattern-group" id="step-pattern-group">
+          <button type="button" class="step-pattern-btn active" data-step-pattern="0" title="No repeating step pattern">0</button>
+          <button type="button" class="step-pattern-btn" data-step-pattern="1" title="Repeat in every cell">1</button>
+          <button type="button" class="step-pattern-btn" data-step-pattern="2" title="Repeat every other cell">2</button>
+          <button type="button" class="step-pattern-btn" data-step-pattern="3" title="Repeat every 3 cells">3</button>
+          <button type="button" class="step-pattern-btn" data-step-pattern="4" title="Repeat every 4 cells">4</button>
+          <button type="button" class="step-pattern-btn" data-step-pattern="8" title="Repeat every 8 cells">8</button>
+        </div>
       </div>
       <div class="sequencer-scroll-wrapper">
         <div class="sequencer-grid-scroll">
@@ -1720,6 +1787,7 @@
       gridSize: "1/16",
       timeSignature: "4/4",
       patternLength: 1,
+      stepPattern: 0,
       undoState: null,  // { type: 'pattern', data } | { type: 'kit', data: { row, path, name, url } }
       redoState: null,
     };
@@ -1735,6 +1803,7 @@
     const swingInput = document.getElementById("swing-input");
     const swingDisplay = document.getElementById("swing-display");
     const undoRedoBtn = document.getElementById("undo-redo-btn");
+    const stepPatternGroup = document.getElementById("step-pattern-group");
 
     function getStepDurationSec() {
       const spb = GRID_STEPS_PER_BEAT[state.gridSize] || 4;
@@ -1948,6 +2017,49 @@
       }
     }
 
+    function clearStepPatternPreview() {
+      gridContainer.querySelectorAll(".grid-cell.step-pattern-preview").forEach((el) => {
+        el.classList.remove("step-pattern-preview");
+      });
+    }
+
+    function getStepPatternIndices(startStep, totalSteps) {
+      if (state.stepPattern <= 0) return [startStep];
+      const indices = [];
+      for (let step = startStep; step < totalSteps; step += state.stepPattern) {
+        indices.push(step);
+      }
+      return indices;
+    }
+
+    function previewStepPattern(rowKey, startStep) {
+      clearStepPatternPreview();
+      if (state.stepPattern <= 0) return;
+      const steps = getSteps();
+      const targets = getStepPatternIndices(startStep, steps);
+      targets.forEach((stepIndex) => {
+        const el = gridContainer.querySelector(`.grid-cell[data-row="${rowKey}"][data-step="${stepIndex}"]`);
+        if (el) el.classList.add("step-pattern-preview");
+      });
+    }
+
+    function applyStepPatternFill(rowKey, startStep) {
+      const steps = getSteps();
+      const targets = getStepPatternIndices(startStep, steps);
+      const shouldClear = targets.every((stepIndex) => state.pattern[rowKey][stepIndex] === 1);
+      targets.forEach((stepIndex) => {
+        state.pattern[rowKey][stepIndex] = shouldClear ? 0 : 1;
+        const cell = gridContainer.querySelector(`.grid-cell[data-row="${rowKey}"][data-step="${stepIndex}"]`);
+        if (cell) {
+          if (shouldClear) {
+            cell.classList.remove("active");
+          } else {
+            cell.classList.add("active");
+          }
+        }
+      });
+    }
+
     function setupGridDrag() {
       gridContainer.addEventListener("mousedown", (e) => {
         const cell = e.target.closest(".grid-cell");
@@ -1956,11 +2068,31 @@
         const rowKey = cell.dataset.row;
         const stepIndex = parseInt(cell.dataset.step, 10);
         saveUndoState();
+        if (state.stepPattern > 0) {
+          applyStepPatternFill(rowKey, stepIndex);
+          return;
+        }
         dragState.active = true;
         dragState.flippedKeys = new Set();
         const key = `${rowKey}-${stepIndex}`;
         dragState.flippedKeys.add(key);
         flipCell(rowKey, stepIndex);
+      });
+
+      gridContainer.addEventListener("mousemove", (e) => {
+        if (dragState.active) return;
+        const cell = e.target.closest(".grid-cell");
+        if (!cell) {
+          clearStepPatternPreview();
+          return;
+        }
+        const rowKey = cell.dataset.row;
+        const stepIndex = parseInt(cell.dataset.step, 10);
+        previewStepPattern(rowKey, stepIndex);
+      });
+
+      gridContainer.addEventListener("mouseleave", () => {
+        clearStepPatternPreview();
       });
     }
 
@@ -1986,6 +2118,17 @@
     updateUndoRedoButtons();
 
     setupGridDrag();
+
+    stepPatternGroup.addEventListener("click", (e) => {
+      const btn = e.target.closest(".step-pattern-btn");
+      if (!btn) return;
+      const val = parseInt(btn.dataset.stepPattern || "0", 10);
+      state.stepPattern = Number.isNaN(val) ? 0 : val;
+      stepPatternGroup.querySelectorAll(".step-pattern-btn").forEach((el) => {
+        el.classList.toggle("active", el === btn);
+      });
+      clearStepPatternPreview();
+    });
 
     const socket = io();
     state.socket = socket;
