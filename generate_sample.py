@@ -3,6 +3,7 @@ import os
 import json
 import random
 import subprocess
+import math
 import pedalboard
 from pathlib import Path
 from settings import get_setting
@@ -478,6 +479,83 @@ def generate_beat_sample(
             cymbal_pattern,
         ) = get_beat_patterns(style, steps=steps, grid_size=grid_size, time_signature=time_sig, length=length)[0]
 
+    meta = pattern_data.get("_meta") if pattern_data and isinstance(pattern_data.get("_meta"), dict) else {}
+
+    def _sanitize_velocity_randomization_map(raw: dict | None) -> dict[str, tuple[float, float]]:
+        if not isinstance(raw, dict):
+            return {}
+        sanitized: dict[str, tuple[float, float]] = {}
+        for row_key, value in raw.items():
+            if row_key not in ROW_KEYS:
+                continue
+            if not isinstance(value, list) or len(value) != 2:
+                continue
+            try:
+                min_v = float(value[0])
+                max_v = float(value[1])
+            except (TypeError, ValueError):
+                continue
+            if not (0.0 <= min_v <= 1.0 and 0.0 <= max_v <= 1.0):
+                continue
+            if min_v >= max_v:
+                continue
+            sanitized[row_key] = (min_v, max_v)
+        return sanitized
+
+    def _sanitize_humanization_map(raw: dict | None) -> dict[str, float]:
+        if not isinstance(raw, dict):
+            return {}
+        sanitized: dict[str, float] = {}
+        for row_key, value in raw.items():
+            if row_key not in ROW_KEYS:
+                continue
+            try:
+                amount = float(value)
+            except (TypeError, ValueError):
+                continue
+            if 0.0 <= amount <= 1.0:
+                sanitized[row_key] = amount
+        return sanitized
+
+    def _random_velocity_for_row(row_key: str) -> float:
+        vr = velocity_randomization.get(row_key)
+        if not vr:
+            return 1.0
+        min_v, max_v = vr
+        return random.uniform(min_v, max_v)
+
+    def _humanize_offset_ms_for_row(row_key: str) -> float:
+        amount = humanization_by_row.get(row_key, 0.0)
+        if not humanize or amount <= 0.0:
+            return 0.0
+        max_offset_ms = step_duration_ms * 0.5 * amount
+        return random.uniform(-max_offset_ms, max_offset_ms)
+
+    def _apply_linear_velocity(segment: AudioSegment, velocity: float) -> AudioSegment:
+        v = max(0.0, min(1.0, velocity))
+        if v >= 1.0:
+            return segment
+        if v <= 0.0:
+            return segment - 120
+        return segment.apply_gain(20.0 * math.log10(v))
+
+    ROW_KEYS = {
+        "kick",
+        "snar",
+        "ghos",
+        "clap",
+        "hhat",
+        "halt",
+        "shkr",
+        "prca",
+        "prcb",
+        "prcc",
+        "tomm",
+        "cymb",
+    }
+    velocity_randomization = _sanitize_velocity_randomization_map(meta.get("velocityRandomization"))
+    humanization_by_row = _sanitize_humanization_map(meta.get("humanization"))
+
     approx_loop_ms = steps * step_duration_ms + swing_triplet_offset_ms * swing_clamped + 100
     track = AudioSegment.silent(duration=int(round(approx_loop_ms))).set_frame_rate(BEAT_EXPORT_SAMPLE_RATE)
 
@@ -489,95 +567,28 @@ def generate_beat_sample(
         step_start_ms = base_start_ms + swing_offset_ms
         position_ms = max(0, int(round(step_start_ms)))
 
-        if kick_pattern[i]:
-            kick_sample = kick[:step_duration_ms_int]
-            track = track.overlay(kick_sample, position=position_ms)
+        def overlay_row(row_key: str, pattern_value: int, sample: AudioSegment, base_ms: float):
+            nonlocal track
+            if not pattern_value:
+                return
+            velocity = _random_velocity_for_row(row_key)
+            human_offset = _humanize_offset_ms_for_row(row_key)
+            position = max(0, int(round(base_ms + human_offset)))
+            segment = _apply_linear_velocity(sample[:step_duration_ms_int], velocity)
+            track = track.overlay(segment, position=position)
 
-        if snare_pattern[i]:
-            snare_timing_offset = random.randint(-5, 5) if humanize else 0
-            main_snare = snare[:step_duration_ms_int]
-            track = track.overlay(
-                main_snare, position=max(0, int(round(step_start_ms + snare_timing_offset)))
-            )
-
-        if ghost_snare_pattern[i]:
-            ghost_snare_db = -6
-            ghost_snare_timing_offset = random.randint(-5, 5) if humanize else 0
-            main_ghost_snare = adjust_velocity(
-                ghost_snare[:step_duration_ms_int], ghost_snare_db
-            )
-            track = track.overlay(
-                main_ghost_snare,
-                position=max(0, int(round(step_start_ms + ghost_snare_timing_offset))),
-            )
-
-        if clap_pattern[i]:
-            clap_timing_offset = random.randint(-5, 5) if humanize else 0
-            main_clap = clap[:step_duration_ms_int]
-            track = track.overlay(
-                main_clap, position=max(0, int(round(step_start_ms + clap_timing_offset)))
-            )
-
-        if hihat_pattern[i]:
-            hihat_db = random.randint(-6, 0) if humanize else 0
-            hihat_sample = adjust_velocity(hihat[:step_duration_ms_int], hihat_db)
-            track = track.overlay(hihat_sample, position=position_ms)
-
-        if hihat_alt_pattern[i]:
-            hihat_alt_db = random.randint(-6, 0) if humanize else 0
-            hihat_alt_sample = adjust_velocity(
-                hihat_alt[:step_duration_ms_int], hihat_alt_db
-            )
-            track = track.overlay(hihat_alt_sample, position=position_ms)
-
-        if shaker_pattern[i]:
-            shaker_db = random.randint(-6, 0) if humanize else 0
-            shaker_sample = adjust_velocity(shaker[:step_duration_ms_int], shaker_db)
-            track = track.overlay(shaker_sample, position=position_ms)
-
-        if perc_a_pattern[i]:
-            perc_a_timing_offset = random.randint(-5, 5) if humanize else 0
-            perc_a_db = random.randint(-6, 0) if humanize else 0
-            perc_a_sample = adjust_velocity(perc_a[:step_duration_ms_int], perc_a_db)
-            track = track.overlay(
-                perc_a_sample,
-                position=max(0, int(round(step_start_ms + perc_a_timing_offset))),
-            )
-
-        if perc_b_pattern[i]:
-            perc_b_timing_offset = random.randint(-5, 5) if humanize else 0
-            perc_b_db = random.randint(-6, 0) if humanize else 0
-            perc_b_sample = adjust_velocity(perc_b[:step_duration_ms_int], perc_b_db)
-            track = track.overlay(
-                perc_b_sample,
-                position=max(0, int(round(step_start_ms + perc_b_timing_offset))),
-            )
-
-        if perc_c_pattern[i]:
-            perc_c_timing_offset = random.randint(-5, 5) if humanize else 0
-            perc_c_db = random.randint(-6, 0) if humanize else 0
-            perc_c_sample = adjust_velocity(perc_c[:step_duration_ms_int], perc_c_db)
-            track = track.overlay(
-                perc_c_sample,
-                position=max(0, int(round(step_start_ms + perc_c_timing_offset))),
-            )
-
-        if tom_pattern[i]:
-            tom_timing_offset = random.randint(-5, 5) if humanize else 0
-            tom_db = random.randint(-6, 0) if humanize else 0
-            tom_sample = adjust_velocity(tom[:step_duration_ms_int], tom_db)
-            track = track.overlay(
-                tom_sample, position=max(0, int(round(step_start_ms + tom_timing_offset)))
-            )
-
-        if cymbal_pattern[i]:
-            cymbal_timing_offset = random.randint(-5, 5) if humanize else 0
-            cymbal_db = random.randint(-6, 0) if humanize else 0
-            cymbal_sample = adjust_velocity(cymbal[:step_duration_ms_int], cymbal_db)
-            track = track.overlay(
-                cymbal_sample,
-                position=max(0, int(round(step_start_ms + cymbal_timing_offset))),
-            )
+        overlay_row("kick", kick_pattern[i], kick, step_start_ms)
+        overlay_row("snar", snare_pattern[i], snare, step_start_ms)
+        overlay_row("ghos", ghost_snare_pattern[i], ghost_snare, step_start_ms)
+        overlay_row("clap", clap_pattern[i], clap, step_start_ms)
+        overlay_row("hhat", hihat_pattern[i], hihat, step_start_ms)
+        overlay_row("halt", hihat_alt_pattern[i], hihat_alt, step_start_ms)
+        overlay_row("shkr", shaker_pattern[i], shaker, step_start_ms)
+        overlay_row("prca", perc_a_pattern[i], perc_a, step_start_ms)
+        overlay_row("prcb", perc_b_pattern[i], perc_b, step_start_ms)
+        overlay_row("prcc", perc_c_pattern[i], perc_c, step_start_ms)
+        overlay_row("tomm", tom_pattern[i], tom, step_start_ms)
+        overlay_row("cymb", cymbal_pattern[i], cymbal, step_start_ms)
 
     # Trim to exact loop length so the exported WAV loops seamlessly and lines up in DAWs.
     exact_loop_sec = length * beats_per_bar * 60.0 / bpm

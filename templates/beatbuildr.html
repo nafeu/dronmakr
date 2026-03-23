@@ -24,6 +24,7 @@
       --grid-cell-size: 28px;
       /* Width of the row/sample label column (header + each row); change to resize. */
       --grid-label-width: 280px;
+      --grid-meta-col-width: 92px;
     }
 
     html {
@@ -886,6 +887,42 @@
       box-shadow: inset 0 0 0 2px #ffffff22, inset 0 0 0 1px #000000;
     }
 
+    .grid-row-meta-cell {
+      border-right: 1px solid var(--theme-a);
+      border-bottom: 1px solid var(--theme-a);
+      background: #050505;
+      padding: 0.15rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.2rem;
+      min-width: var(--grid-meta-col-width);
+    }
+
+    .grid-row-meta-cell input {
+      width: 2.4rem;
+      height: 1.45rem;
+      font-family: inherit;
+      font-size: 0.62rem;
+      padding: 0 0.25rem;
+      background: #0a0a0a;
+      border: 1px solid var(--theme-a);
+      border-radius: 3px;
+      color: var(--primary);
+      text-align: center;
+      box-sizing: border-box;
+    }
+
+    .grid-row-meta-cell input:focus {
+      outline: none;
+      border-color: var(--theme-b);
+      box-shadow: 0 0 0 1px var(--theme-b);
+    }
+
+    .grid-row-meta-cell.humanize input {
+      width: 3.5rem;
+    }
+
     .grid-footer {
       display: grid;
       grid-template-columns: var(--grid-label-width) minmax(0, 1fr);
@@ -986,6 +1023,19 @@
       border-right: 1px solid var(--theme-a);
       padding: 0.15rem 0;
       color: var(--theme-a);
+    }
+
+    .grid-header-meta {
+      font-size: 0.6rem;
+      text-transform: lowercase;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-right: 1px solid var(--theme-a);
+      padding: 0.15rem 0.2rem;
+      color: var(--theme-a);
+      min-width: var(--grid-meta-col-width);
+      text-align: center;
     }
 
     .grid-header-step.beat {
@@ -1788,6 +1838,8 @@
       timeSignature: "4/4",
       patternLength: 1,
       stepPattern: 0,
+      velocityRandomization: {},
+      humanization: {},
       undoState: null,  // { type: 'pattern', data } | { type: 'kit', data: { row, path, name, url } }
       redoState: null,
     };
@@ -1820,9 +1872,54 @@
       ROWS.forEach(row => {
         state.pattern[row] = new Array(steps).fill(0);
         state.buffers[row] = null;
+        state.velocityRandomization[row] = [1, 1];
+        state.humanization[row] = 0;
       });
       state.undoState = null;
       state.redoState = null;
+    }
+
+    function clamp01(value, fallback = 0) {
+      const num = Number(value);
+      if (Number.isNaN(num)) return fallback;
+      return Math.max(0, Math.min(1, num));
+    }
+
+    function sanitizeVelocityPair(value) {
+      if (!Array.isArray(value) || value.length !== 2) return [1, 1];
+      const min = clamp01(value[0], 1);
+      const max = clamp01(value[1], 1);
+      if (min > max) return [1, 1];
+      return [min, max];
+    }
+
+    function sanitizeRowHumanization(value) {
+      return clamp01(value, 0);
+    }
+
+    function normalizeAllRowMeta() {
+      ROWS.forEach((rowKey) => {
+        state.velocityRandomization[rowKey] = sanitizeVelocityPair(state.velocityRandomization[rowKey]);
+        state.humanization[rowKey] = sanitizeRowHumanization(state.humanization[rowKey]);
+      });
+    }
+
+    function getRandomVelocityForRow(rowKey) {
+      const [min, max] = sanitizeVelocityPair(state.velocityRandomization[rowKey]);
+      if (min === max) return min;
+      return min + Math.random() * (max - min);
+    }
+
+    function getHumanizationJitterSecForRow(rowKey) {
+      const amount = sanitizeRowHumanization(state.humanization[rowKey]);
+      if (amount <= 0) return 0;
+      const maxOffset = getStepDurationSec() * 0.5 * amount;
+      return (Math.random() * 2 - 1) * maxOffset;
+    }
+
+    function formatMetaInputValue(value) {
+      const rounded = Math.round(clamp01(value, 0) * 1000) / 1000;
+      return String(rounded);
     }
 
     function deepCopyPattern() {
@@ -1909,7 +2006,7 @@
       gridContainer.innerHTML = "";
 
       const steps = getSteps();
-      const gridCols = `var(--grid-label-width) repeat(${steps}, var(--grid-cell-size))`;
+      const gridCols = `var(--grid-label-width) repeat(${steps}, var(--grid-cell-size)) var(--grid-meta-col-width) var(--grid-meta-col-width)`;
 
       const header = document.createElement("div");
       header.className = "grid-header";
@@ -1931,6 +2028,14 @@
         stepEl.textContent = step + 1;
         header.appendChild(stepEl);
       }
+      const velocityHeader = document.createElement("div");
+      velocityHeader.className = "grid-header-meta";
+      velocityHeader.textContent = "velocity";
+      header.appendChild(velocityHeader);
+      const humanizeHeader = document.createElement("div");
+      humanizeHeader.className = "grid-header-meta";
+      humanizeHeader.textContent = "humanize";
+      header.appendChild(humanizeHeader);
 
       gridContainer.appendChild(header);
 
@@ -1998,6 +2103,68 @@
 
           rowWrapper.appendChild(cell);
         }
+
+        const velocityCell = document.createElement("div");
+        velocityCell.className = "grid-row-meta-cell velocity";
+        const [velMin, velMax] = sanitizeVelocityPair(state.velocityRandomization[rowKey]);
+        state.velocityRandomization[rowKey] = [velMin, velMax];
+
+        const velocityMinInput = document.createElement("input");
+        velocityMinInput.type = "number";
+        velocityMinInput.min = "0";
+        velocityMinInput.max = "1";
+        velocityMinInput.step = "0.01";
+        velocityMinInput.value = formatMetaInputValue(velMin);
+        velocityMinInput.title = "Velocity min (0 to 1)";
+
+        const velocityMaxInput = document.createElement("input");
+        velocityMaxInput.type = "number";
+        velocityMaxInput.min = "0";
+        velocityMaxInput.max = "1";
+        velocityMaxInput.step = "0.01";
+        velocityMaxInput.value = formatMetaInputValue(velMax);
+        velocityMaxInput.title = "Velocity max (0 to 1)";
+
+        velocityMinInput.addEventListener("change", () => {
+          let nextMin = clamp01(velocityMinInput.value, velMin);
+          let nextMax = clamp01(velocityMaxInput.value, velMax);
+          if (nextMin > nextMax) nextMin = nextMax;
+          state.velocityRandomization[rowKey] = [nextMin, nextMax];
+          velocityMinInput.value = formatMetaInputValue(nextMin);
+          velocityMaxInput.value = formatMetaInputValue(nextMax);
+        });
+
+        velocityMaxInput.addEventListener("change", () => {
+          let nextMin = clamp01(velocityMinInput.value, velMin);
+          let nextMax = clamp01(velocityMaxInput.value, velMax);
+          if (nextMax < nextMin) nextMax = nextMin;
+          state.velocityRandomization[rowKey] = [nextMin, nextMax];
+          velocityMinInput.value = formatMetaInputValue(nextMin);
+          velocityMaxInput.value = formatMetaInputValue(nextMax);
+        });
+
+        velocityCell.appendChild(velocityMinInput);
+        velocityCell.appendChild(velocityMaxInput);
+        rowWrapper.appendChild(velocityCell);
+
+        const humanizeCell = document.createElement("div");
+        humanizeCell.className = "grid-row-meta-cell humanize";
+        const humanizeInput = document.createElement("input");
+        humanizeInput.type = "number";
+        humanizeInput.min = "0";
+        humanizeInput.max = "1";
+        humanizeInput.step = "0.01";
+        const humanVal = sanitizeRowHumanization(state.humanization[rowKey]);
+        state.humanization[rowKey] = humanVal;
+        humanizeInput.value = formatMetaInputValue(humanVal);
+        humanizeInput.title = "Humanization (0 to 1)";
+        humanizeInput.addEventListener("change", () => {
+          const nextVal = sanitizeRowHumanization(humanizeInput.value);
+          state.humanization[rowKey] = nextVal;
+          humanizeInput.value = formatMetaInputValue(nextVal);
+        });
+        humanizeCell.appendChild(humanizeInput);
+        rowWrapper.appendChild(humanizeCell);
 
         gridContainer.appendChild(rowWrapper);
       });
@@ -2189,6 +2356,10 @@
         state.gridSize = "1/16";
         state.timeSignature = "4/4";
         state.patternLength = 1;
+        ROWS.forEach((rowKey) => {
+          state.velocityRandomization[rowKey] = [1, 1];
+          state.humanization[rowKey] = 0;
+        });
         tempoInput.value = state.bpm;
         swingInput.value = 0;
         swingDisplay.textContent = "0%";
@@ -2231,9 +2402,13 @@
         audioCtx.resume();
       }
       const source = audioCtx.createBufferSource();
+      const gainNode = audioCtx.createGain();
+      gainNode.gain.value = getRandomVelocityForRow(rowKey);
       source.buffer = buffer;
-      source.connect(audioCtx.destination);
-      source.start(0);
+      source.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      const startAt = Math.max(audioCtx.currentTime + getHumanizationJitterSecForRow(rowKey), audioCtx.currentTime + 0.001);
+      source.start(startAt);
     }
 
     function getSwingOffsetForStep(stepIndex) {
@@ -2261,9 +2436,13 @@
         if (patternRow[stepIndex] !== 1) return;
 
         const source = audioCtx.createBufferSource();
+        const gainNode = audioCtx.createGain();
+        gainNode.gain.value = getRandomVelocityForRow(rowKey);
         source.buffer = buffer;
-        source.connect(audioCtx.destination);
-        source.start(when);
+        source.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        const playAt = Math.max(when + getHumanizationJitterSecForRow(rowKey), audioCtx.currentTime + 0.001);
+        source.start(playAt);
       });
     }
 
@@ -2470,6 +2649,15 @@
 
     function encodePatternForSave() {
       const [num, den] = state.timeSignature.split("/").map(Number);
+      normalizeAllRowMeta();
+      const velocityRandomization = {};
+      const humanization = {};
+      ROWS.forEach((rowKey) => {
+        const [min, max] = sanitizeVelocityPair(state.velocityRandomization[rowKey]);
+        const human = sanitizeRowHumanization(state.humanization[rowKey]);
+        if (min !== 1 || max !== 1) velocityRandomization[rowKey] = [min, max];
+        if (human !== 0) humanization[rowKey] = human;
+      });
       const encoded = {
         _meta: {
           gridSize: state.gridSize,
@@ -2479,6 +2667,12 @@
           swing: state.swing,
         },
       };
+      if (Object.keys(velocityRandomization).length > 0) {
+        encoded._meta.velocityRandomization = velocityRandomization;
+      }
+      if (Object.keys(humanization).length > 0) {
+        encoded._meta.humanization = humanization;
+      }
       ROWS.forEach(rowKey => {
         encoded[rowKey] = state.pattern[rowKey] ? state.pattern[rowKey].slice() : [];
       });
@@ -2659,6 +2853,19 @@
         ? meta.swing : 0;
       swingInput.value = Math.round(state.swing * 100);
       swingDisplay.textContent = Math.round(state.swing * 100) + "%";
+
+      ROWS.forEach((rowKey) => {
+        state.velocityRandomization[rowKey] = [1, 1];
+        state.humanization[rowKey] = 0;
+      });
+      const velocityMeta = (meta.velocityRandomization && typeof meta.velocityRandomization === "object")
+        ? meta.velocityRandomization : {};
+      const humanMeta = (meta.humanization && typeof meta.humanization === "object")
+        ? meta.humanization : {};
+      ROWS.forEach((rowKey) => {
+        state.velocityRandomization[rowKey] = sanitizeVelocityPair(velocityMeta[rowKey]);
+        state.humanization[rowKey] = sanitizeRowHumanization(humanMeta[rowKey]);
+      });
 
       if (data.name) patternNameInput.value = data.name;
 
