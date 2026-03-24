@@ -502,7 +502,7 @@ def generate_beat_sample(
             sanitized[row_key] = (min_v, max_v)
         return sanitized
 
-    def _sanitize_humanization_map(raw: dict | None) -> dict[str, float]:
+    def _sanitize_timing_randomization_map(raw: dict | None) -> dict[str, float]:
         if not isinstance(raw, dict):
             return {}
         sanitized: dict[str, float] = {}
@@ -524,12 +524,12 @@ def generate_beat_sample(
         min_v, max_v = vr
         return random.uniform(min_v, max_v)
 
-    def _humanize_offset_ms_for_row(row_key: str) -> float:
-        amount = humanization_by_row.get(row_key, 0.0)
+    def _timing_randomization_offset_ms_for_row(row_key: str) -> float:
+        amount = timing_randomization_by_row.get(row_key, 0.0)
         if not humanize or amount <= 0.0:
             return 0.0
-        max_offset_ms = step_duration_ms * 0.5 * amount
-        return random.uniform(-max_offset_ms, max_offset_ms)
+        max_offset_ms = step_duration_ms * 0.1 * amount
+        return random.uniform(0.0, max_offset_ms)
 
     def _apply_linear_velocity(segment: AudioSegment, velocity: float) -> AudioSegment:
         v = max(0.0, min(1.0, velocity))
@@ -554,7 +554,7 @@ def generate_beat_sample(
         "cymb",
     }
     velocity_randomization = _sanitize_velocity_randomization_map(meta.get("velocityRandomization"))
-    humanization_by_row = _sanitize_humanization_map(meta.get("humanization"))
+    timing_randomization_by_row = _sanitize_timing_randomization_map(meta.get("timingRandomization"))
 
     approx_loop_ms = steps * step_duration_ms + swing_triplet_offset_ms * swing_clamped + 100
     track = AudioSegment.silent(duration=int(round(approx_loop_ms))).set_frame_rate(BEAT_EXPORT_SAMPLE_RATE)
@@ -572,7 +572,7 @@ def generate_beat_sample(
             if not pattern_value:
                 return
             velocity = _random_velocity_for_row(row_key)
-            human_offset = _humanize_offset_ms_for_row(row_key)
+            human_offset = _timing_randomization_offset_ms_for_row(row_key)
             position = max(0, int(round(base_ms + human_offset)))
             segment = _apply_linear_velocity(sample[:step_duration_ms_int], velocity)
             track = track.overlay(segment, position=position)

@@ -24,7 +24,7 @@
       --grid-cell-size: 28px;
       /* Width of the row/sample label column (header + each row); change to resize. */
       --grid-label-width: 280px;
-      --grid-meta-col-width: 92px;
+      --grid-meta-col-width: 122px;
     }
 
     html {
@@ -348,6 +348,15 @@
       justify-content: center;
       gap: 0.5rem;
       line-height: 1;
+    }
+
+    .humanization-toggle-btn.active {
+      background: var(--primary);
+      color: var(--secondary);
+    }
+
+    .humanization-toggle-btn.active:not(:disabled):hover {
+      background: #ff8900;
     }
 
     .transport-btn i {
@@ -764,6 +773,8 @@
       overflow: auto;
       flex: 1;
       min-height: 0;
+      display: flex;
+      align-items: flex-start;
     }
 
     #sequencer-grid {
@@ -773,6 +784,50 @@
       flex-direction: column;
       align-items: flex-start;
       min-width: fit-content;
+    }
+
+    #sequencer-meta-grid {
+      font-size: 0.7rem;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      min-width: fit-content;
+      background: #050505;
+      flex-shrink: 0;
+      margin-top: 20px;
+    }
+
+    #sequencer-meta-grid[hidden] {
+      display: none !important;
+    }
+
+    #sequencer-meta-grid .grid-row {
+      display: flex;
+    }
+
+    .meta-grid-header-spacer {
+      border-top: 1px solid var(--theme-a);
+      border-bottom: 1px solid var(--theme-a);
+      background: #050505;
+    }
+
+    .meta-grid-spacer-cell {
+      border-right: 1px solid var(--theme-a);
+      border-bottom: none;
+      min-height: 1.35rem;
+      height: 100%;
+    }
+
+    .meta-slider-row-label {
+      flex-shrink: 0;
+      min-width: 1.8rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--theme-a);
+      font-size: 0.6rem;
+      text-transform: lowercase;
+      letter-spacing: 0.04em;
     }
 
     .grid-row {
@@ -888,39 +943,142 @@
     }
 
     .grid-row-meta-cell {
-      border-right: 1px solid var(--theme-a);
-      border-bottom: 1px solid var(--theme-a);
       background: #050505;
-      padding: 0.15rem;
+      display: flex;
+      align-items: center;
+      gap: 0.2rem;
+      min-width: var(--grid-meta-col-width);
+      height: 28px;
+    }
+
+    .meta-slider-wrap {
+      width: 50px;
+      min-width: 0;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 0.2rem;
-      min-width: var(--grid-meta-col-width);
-    }
-
-    .grid-row-meta-cell input {
-      width: 2.4rem;
-      height: 1.45rem;
-      font-family: inherit;
-      font-size: 0.62rem;
-      padding: 0 0.25rem;
-      background: #0a0a0a;
-      border: 1px solid var(--theme-a);
-      border-radius: 3px;
-      color: var(--primary);
-      text-align: center;
+      padding: 0 0.15rem;
       box-sizing: border-box;
     }
 
-    .grid-row-meta-cell input:focus {
-      outline: none;
-      border-color: var(--theme-b);
-      box-shadow: 0 0 0 1px var(--theme-b);
+    .meta-slider {
+      width: 100%;
+      min-width: 0;
+      height: 1.2rem;
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
     }
 
-    .grid-row-meta-cell.humanize input {
-      width: 3.5rem;
+    .meta-slider::-webkit-slider-runnable-track {
+      height: 3px;
+      background: var(--theme-a);
+      border-radius: 2px;
+    }
+
+    .meta-slider::-moz-range-track {
+      height: 3px;
+      background: var(--theme-a);
+      border-radius: 2px;
+    }
+
+    .meta-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--primary);
+      border: 1px solid var(--secondary);
+      margin-top: -3.5px;
+    }
+
+    .meta-slider::-moz-range-thumb {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--primary);
+      border: 1px solid var(--secondary);
+    }
+
+    .meta-slider:focus {
+      outline: none;
+    }
+
+    .velocity-range {
+      position: relative;
+      width: 75px;
+      height: 1.65rem;
+    }
+
+    .velocity-range .meta-slider {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .velocity-range .velocity-range-thumb-max {
+      z-index: 1;
+    }
+
+    .velocity-range .velocity-range-thumb-min {
+      z-index: 2;
+    }
+
+    .velocity-range .meta-slider::-webkit-slider-thumb {
+      pointer-events: auto;
+    }
+
+    .velocity-range .meta-slider::-moz-range-thumb {
+      pointer-events: auto;
+    }
+
+    /* Min: ▲ (apex up), sits slightly lower on the track */
+    .velocity-range .velocity-range-thumb-min::-webkit-slider-thumb {
+      width: 12px;
+      height: 10px;
+      border-radius: 0;
+      background: var(--primary);
+      border: 1px solid var(--secondary);
+      box-sizing: border-box;
+      clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+      margin-top: 2px;
+    }
+
+    .velocity-range .velocity-range-thumb-min::-moz-range-thumb {
+      width: 12px;
+      height: 10px;
+      border-radius: 0;
+      background: var(--primary);
+      border: 1px solid var(--secondary);
+      box-sizing: border-box;
+      clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+      transform: translateY(3px);
+    }
+
+    /* Max: ▼ (apex down), sits slightly higher on the track */
+    .velocity-range .velocity-range-thumb-max::-webkit-slider-thumb {
+      width: 12px;
+      height: 10px;
+      border-radius: 0;
+      background: var(--primary);
+      border: 1px solid var(--secondary);
+      box-sizing: border-box;
+      clip-path: polygon(50% 100%, 0% 0%, 100% 0%);
+      margin-top: -9px;
+    }
+
+    .velocity-range .velocity-range-thumb-max::-moz-range-thumb {
+      width: 12px;
+      height: 10px;
+      border-radius: 0;
+      background: var(--primary);
+      border: 1px solid var(--secondary);
+      box-sizing: border-box;
+      clip-path: polygon(50% 100%, 0% 0%, 100% 0%);
+      transform: translateY(-4px);
     }
 
     .grid-footer {
@@ -1030,11 +1188,9 @@
       text-transform: lowercase;
       display: flex;
       align-items: center;
-      justify-content: center;
       border-right: 1px solid var(--theme-a);
-      padding: 0.15rem 0.2rem;
+      padding: 0.25rem 0.2rem;
       color: var(--theme-a);
-      min-width: var(--grid-meta-col-width);
       text-align: center;
     }
 
@@ -1652,17 +1808,27 @@
         <span class="controls-tab-divider"></span>
         <span class="step-pattern-label">step pattern</span>
         <div class="step-pattern-group" id="step-pattern-group">
-          <button type="button" class="step-pattern-btn active" data-step-pattern="0" title="No repeating step pattern">0</button>
+          <button type="button" class="step-pattern-btn active" data-step-pattern="0"
+            title="No repeating step pattern">0</button>
           <button type="button" class="step-pattern-btn" data-step-pattern="1" title="Repeat in every cell">1</button>
-          <button type="button" class="step-pattern-btn" data-step-pattern="2" title="Repeat every other cell">2</button>
+          <button type="button" class="step-pattern-btn" data-step-pattern="2"
+            title="Repeat every other cell">2</button>
           <button type="button" class="step-pattern-btn" data-step-pattern="3" title="Repeat every 3 cells">3</button>
           <button type="button" class="step-pattern-btn" data-step-pattern="4" title="Repeat every 4 cells">4</button>
           <button type="button" class="step-pattern-btn" data-step-pattern="8" title="Repeat every 8 cells">8</button>
         </div>
+        <span class="controls-tab-divider"></span>
+        <button type="button" id="humanization-toggle-btn"
+          class="transport-btn transport-btn-secondary with-text humanization-toggle-btn" title="humanization"
+          aria-label="humanization" aria-pressed="false">
+          <i class="fa-solid fa-wand-magic-sparkles"></i>
+          <span>humanization</span>
+        </button>
       </div>
       <div class="sequencer-scroll-wrapper">
         <div class="sequencer-grid-scroll">
           <div id="sequencer-grid"></div>
+          <div id="sequencer-meta-grid" hidden></div>
         </div>
         <div class="grid-footer">
           <div class="grid-footer-kit">
@@ -1839,7 +2005,8 @@
       patternLength: 1,
       stepPattern: 0,
       velocityRandomization: {},
-      humanization: {},
+      timingRandomization: {},
+      humanizationUiVisible: false,
       undoState: null,  // { type: 'pattern', data } | { type: 'kit', data: { row, path, name, url } }
       redoState: null,
     };
@@ -1856,6 +2023,15 @@
     const swingDisplay = document.getElementById("swing-display");
     const undoRedoBtn = document.getElementById("undo-redo-btn");
     const stepPatternGroup = document.getElementById("step-pattern-group");
+    const metaGridContainer = document.getElementById("sequencer-meta-grid");
+    const humanizationToggleBtn = document.getElementById("humanization-toggle-btn");
+
+    function applyHumanizationPanelVisibility() {
+      metaGridContainer.hidden = !state.humanizationUiVisible;
+      humanizationToggleBtn.classList.toggle("active", state.humanizationUiVisible);
+      humanizationToggleBtn.setAttribute("aria-pressed", state.humanizationUiVisible ? "true" : "false");
+      humanizationToggleBtn.title = "humanization";
+    }
 
     function getStepDurationSec() {
       const spb = GRID_STEPS_PER_BEAT[state.gridSize] || 4;
@@ -1873,7 +2049,7 @@
         state.pattern[row] = new Array(steps).fill(0);
         state.buffers[row] = null;
         state.velocityRandomization[row] = [1, 1];
-        state.humanization[row] = 0;
+        state.timingRandomization[row] = 0;
       });
       state.undoState = null;
       state.redoState = null;
@@ -1893,14 +2069,14 @@
       return [min, max];
     }
 
-    function sanitizeRowHumanization(value) {
+    function sanitizeRowTimingRandomization(value) {
       return clamp01(value, 0);
     }
 
     function normalizeAllRowMeta() {
       ROWS.forEach((rowKey) => {
         state.velocityRandomization[rowKey] = sanitizeVelocityPair(state.velocityRandomization[rowKey]);
-        state.humanization[rowKey] = sanitizeRowHumanization(state.humanization[rowKey]);
+        state.timingRandomization[rowKey] = sanitizeRowTimingRandomization(state.timingRandomization[rowKey]);
       });
     }
 
@@ -1910,11 +2086,11 @@
       return min + Math.random() * (max - min);
     }
 
-    function getHumanizationJitterSecForRow(rowKey) {
-      const amount = sanitizeRowHumanization(state.humanization[rowKey]);
+    function getTimingRandomizationJitterSecForRow(rowKey) {
+      const amount = sanitizeRowTimingRandomization(state.timingRandomization[rowKey]);
       if (amount <= 0) return 0;
-      const maxOffset = getStepDurationSec() * 0.5 * amount;
-      return (Math.random() * 2 - 1) * maxOffset;
+      const maxOffsetSec = getStepDurationSec() * 0.1 * amount;
+      return Math.random() * maxOffsetSec;
     }
 
     function formatMetaInputValue(value) {
@@ -2004,9 +2180,10 @@
 
     function renderGrid() {
       gridContainer.innerHTML = "";
+      metaGridContainer.innerHTML = "";
 
       const steps = getSteps();
-      const gridCols = `var(--grid-label-width) repeat(${steps}, var(--grid-cell-size)) var(--grid-meta-col-width) var(--grid-meta-col-width)`;
+      const gridCols = `var(--grid-label-width) repeat(${steps}, var(--grid-cell-size))`;
 
       const header = document.createElement("div");
       header.className = "grid-header";
@@ -2028,14 +2205,6 @@
         stepEl.textContent = step + 1;
         header.appendChild(stepEl);
       }
-      const velocityHeader = document.createElement("div");
-      velocityHeader.className = "grid-header-meta";
-      velocityHeader.textContent = "velocity";
-      header.appendChild(velocityHeader);
-      const humanizeHeader = document.createElement("div");
-      humanizeHeader.className = "grid-header-meta";
-      humanizeHeader.textContent = "humanize";
-      header.appendChild(humanizeHeader);
 
       gridContainer.appendChild(header);
 
@@ -2104,70 +2273,101 @@
           rowWrapper.appendChild(cell);
         }
 
+        const metaRow = document.createElement("div");
+        metaRow.className = "grid-row";
+        metaRow.style.gridTemplateColumns = "var(--grid-meta-col-width) var(--grid-meta-col-width)";
+
         const velocityCell = document.createElement("div");
         velocityCell.className = "grid-row-meta-cell velocity";
         const [velMin, velMax] = sanitizeVelocityPair(state.velocityRandomization[rowKey]);
         state.velocityRandomization[rowKey] = [velMin, velMax];
 
-        const velocityMinInput = document.createElement("input");
-        velocityMinInput.type = "number";
-        velocityMinInput.min = "0";
-        velocityMinInput.max = "1";
-        velocityMinInput.step = "0.01";
-        velocityMinInput.value = formatMetaInputValue(velMin);
-        velocityMinInput.title = "Velocity min (0 to 1)";
+        const velocityLabel = document.createElement("span");
+        velocityLabel.className = "meta-slider-row-label";
+        velocityLabel.title = "velocity";
+        velocityLabel.setAttribute("aria-label", "velocity");
+        velocityLabel.textContent = "vel";
 
-        const velocityMaxInput = document.createElement("input");
-        velocityMaxInput.type = "number";
-        velocityMaxInput.min = "0";
-        velocityMaxInput.max = "1";
-        velocityMaxInput.step = "0.01";
-        velocityMaxInput.value = formatMetaInputValue(velMax);
-        velocityMaxInput.title = "Velocity max (0 to 1)";
+        const velocitySliderWrap = document.createElement("div");
+        velocitySliderWrap.className = "meta-slider-wrap velocity-range";
+        const velocityMinSlider = document.createElement("input");
+        velocityMinSlider.type = "range";
+        velocityMinSlider.className = "meta-slider velocity-range-thumb-min";
+        velocityMinSlider.min = "0";
+        velocityMinSlider.max = "1";
+        velocityMinSlider.step = "0.01";
+        velocityMinSlider.value = formatMetaInputValue(velMin);
+        velocityMinSlider.title = "Velocity min";
 
-        velocityMinInput.addEventListener("change", () => {
-          let nextMin = clamp01(velocityMinInput.value, velMin);
-          let nextMax = clamp01(velocityMaxInput.value, velMax);
+        const velocityMaxSlider = document.createElement("input");
+        velocityMaxSlider.type = "range";
+        velocityMaxSlider.className = "meta-slider velocity-range-thumb-max";
+        velocityMaxSlider.min = "0";
+        velocityMaxSlider.max = "1";
+        velocityMaxSlider.step = "0.01";
+        velocityMaxSlider.value = formatMetaInputValue(velMax);
+        velocityMaxSlider.title = "Velocity max";
+
+        velocityMinSlider.addEventListener("input", () => {
+          let nextMin = clamp01(velocityMinSlider.value, velMin);
+          let nextMax = clamp01(velocityMaxSlider.value, velMax);
           if (nextMin > nextMax) nextMin = nextMax;
           state.velocityRandomization[rowKey] = [nextMin, nextMax];
-          velocityMinInput.value = formatMetaInputValue(nextMin);
-          velocityMaxInput.value = formatMetaInputValue(nextMax);
+          velocityMinSlider.value = formatMetaInputValue(nextMin);
+          velocityMaxSlider.value = formatMetaInputValue(nextMax);
         });
 
-        velocityMaxInput.addEventListener("change", () => {
-          let nextMin = clamp01(velocityMinInput.value, velMin);
-          let nextMax = clamp01(velocityMaxInput.value, velMax);
+        velocityMaxSlider.addEventListener("input", () => {
+          let nextMin = clamp01(velocityMinSlider.value, velMin);
+          let nextMax = clamp01(velocityMaxSlider.value, velMax);
           if (nextMax < nextMin) nextMax = nextMin;
           state.velocityRandomization[rowKey] = [nextMin, nextMax];
-          velocityMinInput.value = formatMetaInputValue(nextMin);
-          velocityMaxInput.value = formatMetaInputValue(nextMax);
+          velocityMinSlider.value = formatMetaInputValue(nextMin);
+          velocityMaxSlider.value = formatMetaInputValue(nextMax);
         });
 
-        velocityCell.appendChild(velocityMinInput);
-        velocityCell.appendChild(velocityMaxInput);
-        rowWrapper.appendChild(velocityCell);
+        // Append max first so min sits on top when both overlap at 1.0.
+        velocitySliderWrap.appendChild(velocityMaxSlider);
+        velocitySliderWrap.appendChild(velocityMinSlider);
+        velocityCell.appendChild(velocityLabel);
+        velocityCell.appendChild(velocitySliderWrap);
+        metaRow.appendChild(velocityCell);
 
-        const humanizeCell = document.createElement("div");
-        humanizeCell.className = "grid-row-meta-cell humanize";
-        const humanizeInput = document.createElement("input");
-        humanizeInput.type = "number";
-        humanizeInput.min = "0";
-        humanizeInput.max = "1";
-        humanizeInput.step = "0.01";
-        const humanVal = sanitizeRowHumanization(state.humanization[rowKey]);
-        state.humanization[rowKey] = humanVal;
-        humanizeInput.value = formatMetaInputValue(humanVal);
-        humanizeInput.title = "Humanization (0 to 1)";
-        humanizeInput.addEventListener("change", () => {
-          const nextVal = sanitizeRowHumanization(humanizeInput.value);
-          state.humanization[rowKey] = nextVal;
-          humanizeInput.value = formatMetaInputValue(nextVal);
+        const timingCell = document.createElement("div");
+        timingCell.className = "grid-row-meta-cell timing";
+        const timingLabel = document.createElement("span");
+        timingLabel.className = "meta-slider-row-label";
+        timingLabel.title = "timing";
+        timingLabel.setAttribute("aria-label", "timing");
+        timingLabel.textContent = "timing";
+
+        const timingSliderWrap = document.createElement("div");
+        timingSliderWrap.className = "meta-slider-wrap";
+        const timingInput = document.createElement("input");
+        timingInput.type = "range";
+        timingInput.className = "meta-slider";
+        timingInput.min = "0";
+        timingInput.max = "1";
+        timingInput.step = "0.01";
+        const timingVal = sanitizeRowTimingRandomization(state.timingRandomization[rowKey]);
+        state.timingRandomization[rowKey] = timingVal;
+        timingInput.value = formatMetaInputValue(timingVal);
+        timingInput.title = "Timing (0 to 1): late only";
+        timingInput.addEventListener("input", () => {
+          const nextVal = sanitizeRowTimingRandomization(timingInput.value);
+          state.timingRandomization[rowKey] = nextVal;
+          timingInput.value = formatMetaInputValue(nextVal);
         });
-        humanizeCell.appendChild(humanizeInput);
-        rowWrapper.appendChild(humanizeCell);
+        timingSliderWrap.appendChild(timingInput);
+        timingCell.appendChild(timingLabel);
+        timingCell.appendChild(timingSliderWrap);
+        metaRow.appendChild(timingCell);
 
         gridContainer.appendChild(rowWrapper);
+        metaGridContainer.appendChild(metaRow);
       });
+
+      applyHumanizationPanelVisibility();
     }
 
     function flipCell(rowKey, stepIndex) {
@@ -2297,6 +2497,11 @@
       clearStepPatternPreview();
     });
 
+    humanizationToggleBtn.addEventListener("click", () => {
+      state.humanizationUiVisible = !state.humanizationUiVisible;
+      applyHumanizationPanelVisibility();
+    });
+
     const socket = io();
     state.socket = socket;
 
@@ -2358,7 +2563,7 @@
         state.patternLength = 1;
         ROWS.forEach((rowKey) => {
           state.velocityRandomization[rowKey] = [1, 1];
-          state.humanization[rowKey] = 0;
+          state.timingRandomization[rowKey] = 0;
         });
         tempoInput.value = state.bpm;
         swingInput.value = 0;
@@ -2407,7 +2612,7 @@
       source.buffer = buffer;
       source.connect(gainNode);
       gainNode.connect(audioCtx.destination);
-      const startAt = Math.max(audioCtx.currentTime + getHumanizationJitterSecForRow(rowKey), audioCtx.currentTime + 0.001);
+      const startAt = Math.max(audioCtx.currentTime + getTimingRandomizationJitterSecForRow(rowKey), audioCtx.currentTime + 0.001);
       source.start(startAt);
     }
 
@@ -2441,7 +2646,7 @@
         source.buffer = buffer;
         source.connect(gainNode);
         gainNode.connect(audioCtx.destination);
-        const playAt = Math.max(when + getHumanizationJitterSecForRow(rowKey), audioCtx.currentTime + 0.001);
+        const playAt = Math.max(when + getTimingRandomizationJitterSecForRow(rowKey), audioCtx.currentTime + 0.001);
         source.start(playAt);
       });
     }
@@ -2651,12 +2856,12 @@
       const [num, den] = state.timeSignature.split("/").map(Number);
       normalizeAllRowMeta();
       const velocityRandomization = {};
-      const humanization = {};
+      const timingRandomization = {};
       ROWS.forEach((rowKey) => {
         const [min, max] = sanitizeVelocityPair(state.velocityRandomization[rowKey]);
-        const human = sanitizeRowHumanization(state.humanization[rowKey]);
+        const timing = sanitizeRowTimingRandomization(state.timingRandomization[rowKey]);
         if (min !== 1 || max !== 1) velocityRandomization[rowKey] = [min, max];
-        if (human !== 0) humanization[rowKey] = human;
+        if (timing !== 0) timingRandomization[rowKey] = timing;
       });
       const encoded = {
         _meta: {
@@ -2670,8 +2875,8 @@
       if (Object.keys(velocityRandomization).length > 0) {
         encoded._meta.velocityRandomization = velocityRandomization;
       }
-      if (Object.keys(humanization).length > 0) {
-        encoded._meta.humanization = humanization;
+      if (Object.keys(timingRandomization).length > 0) {
+        encoded._meta.timingRandomization = timingRandomization;
       }
       ROWS.forEach(rowKey => {
         encoded[rowKey] = state.pattern[rowKey] ? state.pattern[rowKey].slice() : [];
@@ -2856,15 +3061,15 @@
 
       ROWS.forEach((rowKey) => {
         state.velocityRandomization[rowKey] = [1, 1];
-        state.humanization[rowKey] = 0;
+        state.timingRandomization[rowKey] = 0;
       });
       const velocityMeta = (meta.velocityRandomization && typeof meta.velocityRandomization === "object")
         ? meta.velocityRandomization : {};
-      const humanMeta = (meta.humanization && typeof meta.humanization === "object")
-        ? meta.humanization : {};
+      const timingMeta = (meta.timingRandomization && typeof meta.timingRandomization === "object")
+        ? meta.timingRandomization : {};
       ROWS.forEach((rowKey) => {
         state.velocityRandomization[rowKey] = sanitizeVelocityPair(velocityMeta[rowKey]);
-        state.humanization[rowKey] = sanitizeRowHumanization(humanMeta[rowKey]);
+        state.timingRandomization[rowKey] = sanitizeRowTimingRandomization(timingMeta[rowKey]);
       });
 
       if (data.name) patternNameInput.value = data.name;
