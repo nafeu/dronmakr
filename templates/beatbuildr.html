@@ -1987,6 +1987,24 @@
     const BPM_MAX = 240;
     const GRID_STEPS_PER_BEAT = { "1/16": 4, "1/16t": 6 };
     const TIME_SIG_BEATS = { "4/4": 4, "3/4": 3 };
+    const BEATBUILDER_LS_KEY = "dronmakr-beatbuildr";
+    const BEATBUILDER_LS_VERSION = 1;
+
+    let beatbuildrLastWrittenJson = "";
+    let beatbuildrLastWrittenTs = 0;
+    let beatbuildrPersistTimer = null;
+
+    function readBeatbuildrStorage() {
+      try {
+        const raw = localStorage.getItem(BEATBUILDER_LS_KEY);
+        if (!raw) return null;
+        const o = JSON.parse(raw);
+        if (!o || o.v !== BEATBUILDER_LS_VERSION || !o.pattern || typeof o.pattern !== "object") return null;
+        return o;
+      } catch (_) {
+        return null;
+      }
+    }
 
     function getSteps() {
       const spb = GRID_STEPS_PER_BEAT[state.gridSize] || 4;
@@ -2009,6 +2027,7 @@
       humanizationUiVisible: false,
       undoState: null,  // { type: 'pattern', data } | { type: 'kit', data: { row, path, name, url } }
       redoState: null,
+      _kitRestoreRemaining: 0,
     };
 
     const dragState = {
@@ -2152,6 +2171,7 @@
       state.undoState = null;
       updateUndoRedoButtons();
       renderGrid();
+      schedulePersistBeatbuildr();
     }
 
     function redo() {
@@ -2171,6 +2191,7 @@
       state.redoState = null;
       updateUndoRedoButtons();
       renderGrid();
+      schedulePersistBeatbuildr();
     }
 
     function getCurrentKitDescriptorForRow(row) {
@@ -2315,6 +2336,7 @@
           state.velocityRandomization[rowKey] = [nextMin, nextMax];
           velocityMinSlider.value = formatMetaInputValue(nextMin);
           velocityMaxSlider.value = formatMetaInputValue(nextMax);
+          schedulePersistBeatbuildr();
         });
 
         velocityMaxSlider.addEventListener("input", () => {
@@ -2324,6 +2346,7 @@
           state.velocityRandomization[rowKey] = [nextMin, nextMax];
           velocityMinSlider.value = formatMetaInputValue(nextMin);
           velocityMaxSlider.value = formatMetaInputValue(nextMax);
+          schedulePersistBeatbuildr();
         });
 
         // Append max first so min sits on top when both overlap at 1.0.
@@ -2357,6 +2380,7 @@
           const nextVal = sanitizeRowTimingRandomization(timingInput.value);
           state.timingRandomization[rowKey] = nextVal;
           timingInput.value = formatMetaInputValue(nextVal);
+          schedulePersistBeatbuildr();
         });
         timingSliderWrap.appendChild(timingInput);
         timingCell.appendChild(timingLabel);
@@ -2382,6 +2406,7 @@
           cell.classList.remove("active");
         }
       }
+      schedulePersistBeatbuildr();
     }
 
     function clearStepPatternPreview() {
@@ -2425,6 +2450,7 @@
           }
         }
       });
+      schedulePersistBeatbuildr();
     }
 
     function setupGridDrag() {
@@ -2481,8 +2507,6 @@
     });
 
     initEmptyPattern();
-    renderGrid();
-    updateUndoRedoButtons();
 
     setupGridDrag();
 
@@ -2495,15 +2519,51 @@
         el.classList.toggle("active", el === btn);
       });
       clearStepPatternPreview();
+      schedulePersistBeatbuildr();
     });
 
     humanizationToggleBtn.addEventListener("click", () => {
       state.humanizationUiVisible = !state.humanizationUiVisible;
       applyHumanizationPanelVisibility();
+      schedulePersistBeatbuildr();
     });
 
     const socket = io();
     state.socket = socket;
+
+    let newKitBtnAwaitingRandomize = false;
+    let newKitBtnSafetyTimer = null;
+
+    function finishNewKitBtnLoadingIfNeeded() {
+      if (!newKitBtnAwaitingRandomize) return;
+      newKitBtnAwaitingRandomize = false;
+      if (newKitBtnSafetyTimer) {
+        clearTimeout(newKitBtnSafetyTimer);
+        newKitBtnSafetyTimer = null;
+      }
+      const btn = document.getElementById("new-kit-btn");
+      if (!btn) return;
+      btn.disabled = false;
+      btn.title = "Load new random drum kit";
+      const icon = btn.querySelector("i");
+      if (icon) icon.className = "fa-solid fa-dice-five";
+    }
+
+    function startNewKitBtnLoading() {
+      if (newKitBtnSafetyTimer) {
+        clearTimeout(newKitBtnSafetyTimer);
+        newKitBtnSafetyTimer = null;
+      }
+      newKitBtnAwaitingRandomize = true;
+      const btn = document.getElementById("new-kit-btn");
+      if (btn) {
+        btn.disabled = true;
+        btn.title = "Loading drum kit…";
+        const icon = btn.querySelector("i");
+        if (icon) icon.className = "fa-solid fa-spinner fa-spin";
+      }
+      newKitBtnSafetyTimer = setTimeout(() => finishNewKitBtnLoadingIfNeeded(), 30000);
+    }
 
     async function loadBufferForRow(rowKey, url) {
       try {
@@ -2532,26 +2592,45 @@
     }
 
     socket.on("kit", async (data) => {
-      state.kit = data;
-      state.undoState = null;
-      state.redoState = null;
-      updateUndoRedoButtons();
-      await hydrateKitBuffers(data);
-      renderGrid();
-      if (window.__pageReady) window.__pageReady();
-      console.log("Received drum kit:", data);
+      try {
+        state._kitRestoreRemaining = 0;
+        state.kit = data;
+        state.undoState = null;
+        state.redoState = null;
+        updateUndoRedoButtons();
+        await hydrateKitBuffers(data);
+        renderGrid();
+        if (window.__pageReady) window.__pageReady();
+        console.log("Received drum kit:", data);
+        schedulePersistBeatbuildr();
+      } finally {
+        finishNewKitBtnLoadingIfNeeded();
+      }
+    });
+
+    socket.on("disconnect", () => {
+      finishNewKitBtnLoadingIfNeeded();
     });
 
     socket.on("sampleReplaced", async (data) => {
-      if (!data || !data.row || !state.kit || !state.kit.kit) return;
+      if (!data || !data.row) return;
+      if (!state.kit) state.kit = { kit: {} };
+      if (!state.kit.kit) state.kit.kit = {};
       const rowKey = data.row;
       state.kit.kit[rowKey] = { name: data.name, path: data.path, url: data.url };
       await loadBufferForRow(rowKey, data.url);
       renderGrid();
+      if (state._kitRestoreRemaining > 0) {
+        state._kitRestoreRemaining--;
+        if (state._kitRestoreRemaining === 0 && window.__pageReady) window.__pageReady();
+      }
+      schedulePersistBeatbuildr();
     });
 
     document.getElementById("new-kit-btn").addEventListener("click", () => {
-      if (state.socket && state.socket.connected) state.socket.emit("requestNewKit");
+      if (!state.socket || !state.socket.connected) return;
+      startNewKitBtnLoading();
+      state.socket.emit("requestNewKit");
     });
 
     document.getElementById("new-pattern-btn").addEventListener("click", () => {
@@ -2577,12 +2656,14 @@
         if (state.socket && state.socket.connected) state.socket.emit("requestNewKit");
         renderGrid();
         updateUndoRedoButtons();
+        schedulePersistBeatbuildr();
       });
     });
 
     document.getElementById("clear-sequencer-btn").addEventListener("click", () => {
       initEmptyPattern();
       renderGrid();
+      schedulePersistBeatbuildr();
     });
 
     function clearPlayhead() {
@@ -2708,6 +2789,7 @@
       state.bpm = Math.max(BPM_MIN, Math.min(BPM_MAX, val));
       tempoInput.value = state.bpm;
       if (isPlaying) restartPlaybackInterval();
+      schedulePersistBeatbuildr();
     });
 
     tempoInput.addEventListener("input", () => {
@@ -2716,12 +2798,14 @@
         state.bpm = Math.max(BPM_MIN, Math.min(BPM_MAX, val));
         if (isPlaying) restartPlaybackInterval();
       }
+      schedulePersistBeatbuildr();
     });
 
     swingInput.addEventListener("input", () => {
       const val = parseInt(swingInput.value, 10);
       state.swing = val / 100; // Convert 0-100 to 0.0-1.0
       swingDisplay.textContent = `${val}%`;
+      schedulePersistBeatbuildr();
     });
 
     function resizePatternToConfig() {
@@ -2744,10 +2828,12 @@
     gridSizeSelect.addEventListener("change", () => {
       state.gridSize = gridSizeSelect.value;
       resizePatternToConfig();
+      schedulePersistBeatbuildr();
     });
     timeSignatureSelect.addEventListener("change", () => {
       state.timeSignature = timeSignatureSelect.value;
       resizePatternToConfig();
+      schedulePersistBeatbuildr();
     });
     patternLengthInput.addEventListener("change", () => {
       let val = parseInt(patternLengthInput.value, 10);
@@ -2756,6 +2842,7 @@
       state.patternLength = val;
       patternLengthInput.value = state.patternLength;
       resizePatternToConfig();
+      schedulePersistBeatbuildr();
     });
 
     undoRedoBtn.addEventListener("click", () => {
@@ -2768,6 +2855,12 @@
 
     // Export
     const exportLoopsInput = document.getElementById("export-loops-input");
+    exportLoopsInput.addEventListener("change", () => {
+      schedulePersistBeatbuildr();
+    });
+    exportLoopsInput.addEventListener("input", () => {
+      schedulePersistBeatbuildr();
+    });
     const exportBtn = document.getElementById("export-btn");
     const exportStatusEl = document.getElementById("export-status");
     const exportResultLink = document.getElementById("export-result-link");
@@ -2847,6 +2940,9 @@
 
     // Pattern save functionality
     const patternNameInput = document.getElementById("pattern-name-input");
+    patternNameInput.addEventListener("input", () => {
+      schedulePersistBeatbuildr();
+    });
     const patternSaveBtn = document.getElementById("pattern-save-btn");
     const errorModalOverlay = document.getElementById("error-modal-overlay");
     const errorModalText = document.getElementById("error-modal-text");
@@ -3082,6 +3178,7 @@
       });
 
       resizePatternToConfig();
+      schedulePersistBeatbuildr();
     }
 
     socket.on("patternLoaded", (data) => {
@@ -3098,6 +3195,9 @@
     const browserKitFilter = document.getElementById("browser-kit-filter");
     const browserKitList = document.getElementById("browser-kit-list");
     const browserKitNameInput = document.getElementById("browser-kit-name-input");
+    browserKitNameInput.addEventListener("input", () => {
+      schedulePersistBeatbuildr();
+    });
     const browserKitSaveBtn = document.getElementById("browser-kit-save-btn");
 
     let drumKitsList = [];
@@ -3143,6 +3243,25 @@
     if (socket.connected) socket.emit("getPatterns");
     socket.on("connect", () => {
       socket.emit("getPatterns");
+      let paths = null;
+      const mem = encodeKitForSave();
+      if (mem && Object.keys(mem).length > 0) {
+        paths = mem;
+      } else {
+        const snap = readBeatbuildrStorage();
+        if (snap && snap.kitPaths && typeof snap.kitPaths === "object") {
+          paths = snap.kitPaths;
+        }
+      }
+      const rows = paths ? ROWS.filter((rk) => paths[rk] && paths[rk].path) : [];
+      if (rows.length > 0) {
+        state._kitRestoreRemaining = rows.length;
+        rows.forEach((rk) => {
+          socket.emit("replaceSampleWithPath", { row: rk, path: paths[rk].path });
+        });
+      } else {
+        socket.emit("requestNewKit");
+      }
     });
 
     function encodeKitForSave() {
@@ -3156,6 +3275,86 @@
         }
       });
       return Object.keys(encoded).length > 0 ? encoded : null;
+    }
+
+    function persistBeatbuildrToLocalStorage() {
+      try {
+        normalizeAllRowMeta();
+        const kitPaths = encodeKitForSave() || {};
+        const payload = {
+          v: BEATBUILDER_LS_VERSION,
+          savedAt: Date.now(),
+          kitPaths,
+          pattern: encodePatternForSave(),
+          exportLoops: Math.max(1, Math.min(64, parseInt(document.getElementById("export-loops-input").value, 10) || 1)),
+          kitName: document.getElementById("browser-kit-name-input")?.value || "",
+          patternName: document.getElementById("pattern-name-input")?.value || "",
+          stepPattern: state.stepPattern,
+          humanizationUiVisible: state.humanizationUiVisible,
+        };
+        const json = JSON.stringify(payload);
+        localStorage.setItem(BEATBUILDER_LS_KEY, json);
+        beatbuildrLastWrittenJson = json;
+        beatbuildrLastWrittenTs = payload.savedAt;
+      } catch (e) {
+        console.warn("beatbuildr persist failed", e);
+      }
+    }
+
+    function schedulePersistBeatbuildr() {
+      if (beatbuildrPersistTimer) clearTimeout(beatbuildrPersistTimer);
+      beatbuildrPersistTimer = setTimeout(() => {
+        beatbuildrPersistTimer = null;
+        persistBeatbuildrToLocalStorage();
+      }, 400);
+    }
+
+    function applyBeatbuildrSnapshot(snap) {
+      applyLoadedPattern({ pattern: snap.pattern, name: snap.patternName || "" });
+      const kitField = document.getElementById("browser-kit-name-input");
+      if (kitField) kitField.value = snap.kitName || "";
+      const eloop = document.getElementById("export-loops-input");
+      if (eloop) {
+        let n = parseInt(snap.exportLoops, 10);
+        if (Number.isNaN(n) || n < 1) n = 1;
+        eloop.value = String(Math.min(64, n));
+      }
+      state.stepPattern = typeof snap.stepPattern === "number" && snap.stepPattern >= 0 ? snap.stepPattern : 0;
+      stepPatternGroup.querySelectorAll(".step-pattern-btn").forEach((el) => {
+        const val = parseInt(el.dataset.stepPattern || "0", 10);
+        el.classList.toggle("active", val === state.stepPattern);
+      });
+      clearStepPatternPreview();
+      state.humanizationUiVisible = !!snap.humanizationUiVisible;
+      applyHumanizationPanelVisibility();
+      state.kit = { kit: Object.fromEntries(ROWS.map((rk) => [rk, null])) };
+      ROWS.forEach((rk) => {
+        state.buffers[rk] = null;
+      });
+    }
+
+    function syncBeatbuildrLastWrittenFromStorage() {
+      try {
+        const raw = localStorage.getItem(BEATBUILDER_LS_KEY) || "";
+        beatbuildrLastWrittenJson = raw;
+        if (raw) {
+          const o = JSON.parse(raw);
+          beatbuildrLastWrittenTs = o.savedAt || 0;
+        } else {
+          beatbuildrLastWrittenTs = 0;
+        }
+      } catch (_) {
+        beatbuildrLastWrittenJson = "";
+        beatbuildrLastWrittenTs = 0;
+      }
+    }
+
+    function bootstrapBeatbuildrLocalState() {
+      const snap = readBeatbuildrStorage();
+      if (snap) applyBeatbuildrSnapshot(snap);
+      syncBeatbuildrLastWrittenFromStorage();
+      renderGrid();
+      updateUndoRedoButtons();
     }
 
     function setKitSaveBtnState(btnState) {
@@ -3429,6 +3628,42 @@
       const type = (data && data.type) || currentSampleType;
       sampleListByType[type] = (data && data.samples) ? [...data.samples] : [];
       if (type === currentSampleType) renderSampleList();
+    });
+
+    bootstrapBeatbuildrLocalState();
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") {
+        if (beatbuildrPersistTimer) {
+          clearTimeout(beatbuildrPersistTimer);
+          beatbuildrPersistTimer = null;
+        }
+        persistBeatbuildrToLocalStorage();
+        return;
+      }
+      if (document.visibilityState !== "visible") return;
+      try {
+        const raw = localStorage.getItem(BEATBUILDER_LS_KEY);
+        if (!raw || raw === beatbuildrLastWrittenJson) return;
+        const o = JSON.parse(raw);
+        if (!o || o.v !== BEATBUILDER_LS_VERSION) return;
+        if ((o.savedAt || 0) <= beatbuildrLastWrittenTs) return;
+        applyBeatbuildrSnapshot(o);
+        beatbuildrLastWrittenJson = raw;
+        beatbuildrLastWrittenTs = o.savedAt || 0;
+        renderGrid();
+        updateUndoRedoButtons();
+        if (state.socket && state.socket.connected) {
+          const paths = o.kitPaths && typeof o.kitPaths === "object" ? o.kitPaths : {};
+          const rows = ROWS.filter((rk) => paths[rk] && paths[rk].path);
+          if (rows.length > 0) {
+            state._kitRestoreRemaining = rows.length;
+            rows.forEach((rk) => {
+              state.socket.emit("replaceSampleWithPath", { row: rk, path: paths[rk].path });
+            });
+          }
+        }
+      } catch (_) {}
     });
   </script>
 </body>

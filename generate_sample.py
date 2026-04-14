@@ -559,8 +559,6 @@ def generate_beat_sample(
     approx_loop_ms = steps * step_duration_ms + swing_triplet_offset_ms * swing_clamped + 100
     track = AudioSegment.silent(duration=int(round(approx_loop_ms))).set_frame_rate(BEAT_EXPORT_SAMPLE_RATE)
 
-    step_duration_ms_int = int(round(step_duration_ms))
-
     for i in range(steps):
         base_start_ms = i * step_duration_ms
         swing_offset_ms = swing_offset_for_step(i)
@@ -574,7 +572,9 @@ def generate_beat_sample(
             velocity = _random_velocity_for_row(row_key)
             human_offset = _timing_randomization_offset_ms_for_row(row_key)
             position = max(0, int(round(base_ms + human_offset)))
-            segment = _apply_linear_velocity(sample[:step_duration_ms_int], velocity)
+            # Match browser preview behavior: play full one-shot sample per trigger.
+            # Truncating to a single step makes rendered exports sound unnaturally choked.
+            segment = _apply_linear_velocity(sample, velocity)
             track = track.overlay(segment, position=position)
 
         overlay_row("kick", kick_pattern[i], kick, step_start_ms)

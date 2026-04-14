@@ -35,7 +35,6 @@ from utils import (
     get_saved_files,
 )
 from generate_midi import get_patterns
-from beatbuildr import generate_random_drum_kit
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -45,14 +44,12 @@ DEBUG_WEBSOCKETS = False
 
 @socketio.on("connect")
 def handle_connect():
-    """Unified connect: send auditionr exports/configs and beatbuildr kit to all clients."""
+    """Unified connect: send auditionr exports/configs; beatbuildr requests its kit over the socket."""
     if DEBUG_WEBSOCKETS:
         print("Client connected via WebSocket")
     socketio.emit("exports", {"files": get_latest_exports()})
     socketio.emit("folder_counts", get_auditionr_folder_counts())
     socketio.emit("configs", {"presets": get_presets(), "patterns": get_patterns()})
-    drum_kit = generate_random_drum_kit()
-    socketio.emit("kit", drum_kit)
 
 
 @app.route("/")
