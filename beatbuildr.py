@@ -13,7 +13,14 @@ from pathlib import Path
 
 from flask import request, send_file
 from flask import send_from_directory
-from settings import get_setting
+from settings import (
+    get_all_drum_paths_for_key,
+    get_active_drum_path_preset_name,
+    get_drum_path_presets,
+    get_setting,
+    parse_escaped_csv,
+    set_active_drum_path_preset,
+)
 
 from utils import (
     EXPORTS_DIR,
@@ -78,7 +85,7 @@ def _get_random_sample_for_env(env_key: str) -> Path | None:
     Returns a small descriptor dict with name and path, or None if not resolvable.
     """
     paths = get_setting(env_key, "")
-    roots = [p.strip() for p in paths.split(",") if p.strip()]
+    roots = parse_escaped_csv(paths)
     if not roots:
         return None
 
@@ -189,8 +196,7 @@ def _collect_samples_for_type(sample_type: str) -> list[dict]:
     env_key = SAMPLE_TYPE_ENV_KEYS.get(sample_type)
     if not env_key:
         return []
-    paths_str = get_setting(env_key, "")
-    roots = [p.strip() for p in paths_str.split(",") if p.strip()]
+    roots = get_all_drum_paths_for_key(env_key)
     results: list[dict] = []
     seen: set[str] = set()
     for root_str in roots:
@@ -236,7 +242,9 @@ def _save_cache_to_file(sample_type: str) -> None:
         pass
 
 
-def get_samples_for_type(sample_type: str, force_refresh: bool = False) -> list[dict]:
+def get_samples_for_type(
+    sample_type: str, force_refresh: bool = False
+) -> list[dict]:
     """Return cached samples for type. Lazy-loads from file or scans. Use force_refresh to rescan."""
     global _sample_caches, _sample_paths_by_type, _all_sample_paths_set
     if sample_type not in SAMPLE_TYPE_ENV_KEYS:
@@ -262,10 +270,12 @@ def get_samples_for_type(sample_type: str, force_refresh: bool = False) -> list[
     return cache
 
 
-def ensure_all_sample_caches() -> None:
+def ensure_all_sample_caches(force_refresh: bool = False) -> None:
     """Build or load cache for all sample types. Blocks until complete."""
+    global _all_sample_paths_set
+    _all_sample_paths_set = set()
     for sample_type in SAMPLE_TYPE_ENV_KEYS:
-        get_samples_for_type(sample_type, force_refresh=False)
+        get_samples_for_type(sample_type, force_refresh=force_refresh)
 
 
 def serve_sample_preview():
@@ -312,7 +322,7 @@ def _is_path_in_sample_roots(path_str: str) -> bool:
     ]
     for key in env_keys:
         paths = get_setting(key, "")
-        for root_str in [p.strip() for p in paths.split(",") if p.strip()]:
+        for root_str in parse_escaped_csv(paths):
             root = Path(root_str).expanduser().resolve()
             if str(root) and (resolved == str(root) or resolved.startswith(str(root) + os.sep)):
                 return True
@@ -648,7 +658,10 @@ def _handle_get_samples(payload):
     if sample_type not in SAMPLE_TYPE_ENV_KEYS:
         sample_type = "kick"
     samples = get_samples_for_type(sample_type, force_refresh=False)
-    _socketio.emit("samples", {"type": sample_type, "samples": samples})
+    _socketio.emit(
+        "samples",
+        {"type": sample_type, "samples": samples},
+    )
 
 
 def _handle_refresh_samples(payload):
@@ -657,7 +670,34 @@ def _handle_refresh_samples(payload):
     if sample_type not in SAMPLE_TYPE_ENV_KEYS:
         sample_type = "kick"
     samples = get_samples_for_type(sample_type, force_refresh=True)
-    _socketio.emit("samples", {"type": sample_type, "samples": samples})
+    _socketio.emit(
+        "samples",
+        {"type": sample_type, "samples": samples},
+    )
+
+
+def _handle_get_drum_path_presets():
+    settings_presets = get_drum_path_presets()
+    active = get_active_drum_path_preset_name()
+    _socketio.emit(
+        "drumPathPresets",
+        {
+            "activePreset": active,
+            "presets": sorted(settings_presets.keys(), key=str.lower),
+        },
+    )
+
+
+def _handle_set_drum_path_preset(payload):
+    name = (payload or {}).get("name", "").strip()
+    ok, result = set_active_drum_path_preset(name)
+    if not ok:
+        _socketio.emit("drumPathPresetSetResult", {"error": result})
+        return
+    active = result
+    _handle_get_drum_path_presets()
+    _socketio.emit("drumPathPresetSetResult", {"success": True, "activePreset": active})
+    _socketio.emit("kit", generate_random_drum_kit())
 
 
 def _handle_replace_sample_with_path(payload):
@@ -811,6 +851,8 @@ def register_beatbuildr(app, socketio):
     socketio.on_event("getSamples", _handle_get_samples)
     socketio.on_event("refreshSamples", _handle_refresh_samples)
     socketio.on_event("replaceSampleWithPath", _handle_replace_sample_with_path)
+    socketio.on_event("getDrumPathPresets", _handle_get_drum_path_presets)
+    socketio.on_event("setDrumPathPreset", _handle_set_drum_path_preset)
     socketio.on_event("exportBeat", _handle_export_beat)
 
 

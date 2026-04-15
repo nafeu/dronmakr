@@ -24,7 +24,17 @@ from beatbuildr import (
     ensure_drum_kits,
     ensure_all_sample_caches,
 )
-from settings import ensure_settings, get_setting, load_settings, save_settings
+from settings import (
+    DRUM_PATH_KEYS,
+    DEFAULT_DRUM_PATH_PRESET_NAME,
+    ensure_settings,
+    get_active_drum_path_preset_name,
+    get_drum_path_presets,
+    get_setting,
+    load_settings,
+    save_settings,
+    set_active_drum_path_preset,
+)
 
 # Helpers for unified socket connect
 from utils import (
@@ -114,11 +124,100 @@ def api_settings_save():
     if not isinstance(data, dict):
         return jsonify({"error": "Invalid JSON"}), 400
     settings = load_settings()
+    drum_presets = get_drum_path_presets(settings)
+    active_preset = get_active_drum_path_preset_name(settings)
+    active_paths = dict(drum_presets.get(active_preset, {}))
     for k, v in data.items():
         if isinstance(v, str):
-            settings[k] = v
+            if k in DRUM_PATH_KEYS:
+                active_paths[k] = v
+            else:
+                settings[k] = v
+    drum_presets[active_preset] = active_paths
+    settings["DRUM_PATH_PRESETS"] = drum_presets
+    settings["ACTIVE_DRUM_PATH_PRESET"] = active_preset
     save_settings(settings)
     return jsonify({"ok": True})
+
+
+@app.route("/api/drum-path-presets", methods=["GET"])
+def api_drum_path_presets_get():
+    """Return drum path preset names and the active preset."""
+    settings = load_settings()
+    presets = get_drum_path_presets(settings)
+    active = get_active_drum_path_preset_name(settings)
+    return jsonify(
+        {
+            "activePreset": active,
+            "defaultPreset": DEFAULT_DRUM_PATH_PRESET_NAME,
+            "presets": presets,
+            "drumPathKeys": DRUM_PATH_KEYS,
+        }
+    )
+
+
+@app.route("/api/drum-path-presets", methods=["POST"])
+def api_drum_path_presets_create():
+    """Create a new drum path preset."""
+    data = request.get_json() or {}
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid JSON"}), 400
+    name = (data.get("name") or "").strip()
+    clone_from_active = bool(data.get("cloneFromActive", True))
+    if not name:
+        return jsonify({"error": "Preset name is required"}), 400
+
+    settings = load_settings()
+    presets = get_drum_path_presets(settings)
+    if name in presets:
+        return jsonify({"error": f'Preset "{name}" already exists'}), 400
+
+    if clone_from_active:
+        active = get_active_drum_path_preset_name(settings)
+        src = presets.get(active, {})
+        presets[name] = {key: src.get(key, "") for key in DRUM_PATH_KEYS}
+    else:
+        presets[name] = {key: "" for key in DRUM_PATH_KEYS}
+
+    settings["DRUM_PATH_PRESETS"] = presets
+    save_settings(settings)
+    return jsonify({"ok": True, "name": name})
+
+
+@app.route("/api/drum-path-presets/<preset_name>", methods=["DELETE"])
+def api_drum_path_presets_delete(preset_name: str):
+    """Delete a drum path preset except the default preset."""
+    name = (preset_name or "").strip()
+    if not name:
+        return jsonify({"error": "Preset name is required"}), 400
+    if name == DEFAULT_DRUM_PATH_PRESET_NAME:
+        return jsonify({"error": "Default preset cannot be deleted"}), 400
+
+    settings = load_settings()
+    presets = get_drum_path_presets(settings)
+    if name not in presets:
+        return jsonify({"error": f'Preset "{name}" does not exist'}), 404
+
+    del presets[name]
+    settings["DRUM_PATH_PRESETS"] = presets
+    active = get_active_drum_path_preset_name(settings)
+    if active == name:
+        settings["ACTIVE_DRUM_PATH_PRESET"] = DEFAULT_DRUM_PATH_PRESET_NAME
+    save_settings(settings)
+    return jsonify({"ok": True})
+
+
+@app.route("/api/drum-path-presets/active", methods=["POST"])
+def api_drum_path_presets_set_active():
+    """Switch active drum path preset."""
+    data = request.get_json() or {}
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid JSON"}), 400
+    name = (data.get("name") or "").strip()
+    ok, result = set_active_drum_path_preset(name)
+    if not ok:
+        return jsonify({"error": result}), 400
+    return jsonify({"ok": True, "activePreset": result})
 
 
 def _pick_folder_native():

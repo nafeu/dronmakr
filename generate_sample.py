@@ -6,7 +6,7 @@ import subprocess
 import math
 import pedalboard
 from pathlib import Path
-from settings import get_setting
+from settings import get_setting, parse_escaped_csv
 from pydub import AudioSegment
 from pedalboard import (
     Compressor,
@@ -424,7 +424,7 @@ def generate_beat_sample(
         shaker = _load("shkr")
         cymbal = _load("cymb")
     else:
-        drum_path = lambda key: random.choice([p.strip() for p in get_setting(key, "").split(",") if p.strip()] or [""])
+        drum_path = lambda key: random.choice(parse_escaped_csv(get_setting(key, "")) or [""])
         kicks = Path(drum_path("DRUM_KICK_PATHS") or ".")
         hihats = Path(drum_path("DRUM_HIHAT_PATHS") or ".")
         percs = Path(drum_path("DRUM_PERC_PATHS") or ".")

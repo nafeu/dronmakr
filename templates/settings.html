@@ -332,6 +332,36 @@
       border-top: none;
     }
 
+    .preset-toolbar {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .preset-toolbar .field-group {
+      gap: 0.3rem;
+    }
+
+    .preset-toolbar select,
+    .preset-toolbar input {
+      height: 2rem;
+      padding: 0 0.6rem;
+      font-family: inherit;
+      font-size: 0.75rem;
+      background: #0a0a0a;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      color: var(--primary);
+    }
+
+    .preset-toolbar select:focus,
+    .preset-toolbar input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
     @keyframes fadeIn {
       from {
         opacity: 0;
@@ -412,6 +442,20 @@
           placeholder="e.g. none">{{ settings.get('IMKLogLevel', 'none') }}</textarea>
       </div>
       <div class="section-title">Drum Sample Paths</div>
+      <div class="preset-toolbar">
+        <div class="field-group">
+          <label for="drumPresetSelect">Drum Path Preset</label>
+          <select id="drumPresetSelect"></select>
+        </div>
+        <button type="button" id="deleteDrumPresetBtn" class="btn-add" title="Delete preset"><i
+            class="fa-solid fa-trash"></i></button>
+        <div class="field-group">
+          <label for="drumPresetNewName">Create New Preset</label>
+          <input type="text" id="drumPresetNewName" placeholder="Preset name..." maxlength="48">
+        </div>
+        <button type="button" id="createDrumPresetBtn" class="btn-add" title="Create preset"><i
+            class="fa-solid fa-plus"></i></button>
+      </div>
       <div class="field-group" data-key="DRUM_KICK_PATHS" data-is-path="true">
         <label for="DRUM_KICK_PATHS">DRUM_KICK_PATHS</label>
         <div class="field-row">
@@ -483,6 +527,24 @@
   <script>
     const form = document.getElementById("settingsForm");
     const toast = document.getElementById("toast");
+    const drumPresetSelect = document.getElementById("drumPresetSelect");
+    const drumPresetNewName = document.getElementById("drumPresetNewName");
+    const createDrumPresetBtn = document.getElementById("createDrumPresetBtn");
+    const deleteDrumPresetBtn = document.getElementById("deleteDrumPresetBtn");
+    const drumPathKeys = [
+      "DRUM_KICK_PATHS",
+      "DRUM_SNARE_PATHS",
+      "DRUM_HIHAT_PATHS",
+      "DRUM_CLAP_PATHS",
+      "DRUM_PERC_PATHS",
+      "DRUM_TOM_PATHS",
+      "DRUM_SHAKER_PATHS",
+      "DRUM_CYMBAL_PATHS",
+    ];
+
+    let drumPresets = {};
+    let activeDrumPreset = "";
+    let defaultDrumPreset = "Default";
 
     function showToast(msg, isError = false) {
       toast.textContent = msg;
@@ -499,8 +561,67 @@
       return cur + "," + add;
     }
 
+    function escapePathCsvToken(path) {
+      const s = String(path || "").trim();
+      if (!s) return "";
+      let out = "";
+      for (let i = 0; i < s.length; i++) {
+        const ch = s[i];
+        if (ch === "\\") out += "\\\\";
+        else if (ch === ",") out += "\\,";
+        else out += ch;
+      }
+      return out;
+    }
+
+    function applyDrumPresetToFields(name) {
+      const preset = drumPresets[name] || {};
+      drumPathKeys.forEach((key) => {
+        const input = document.getElementById(key);
+        if (!input) return;
+        input.value = typeof preset[key] === "string" ? preset[key] : "";
+      });
+    }
+
+    function collectDrumFields() {
+      const out = {};
+      drumPathKeys.forEach((key) => {
+        const input = document.getElementById(key);
+        out[key] = input ? input.value : "";
+      });
+      return out;
+    }
+
+    function renderDrumPresetOptions() {
+      drumPresetSelect.innerHTML = "";
+      const names = Object.keys(drumPresets).sort((a, b) => a.localeCompare(b));
+      names.forEach((name) => {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        drumPresetSelect.appendChild(option);
+      });
+      if (activeDrumPreset && drumPresets[activeDrumPreset]) {
+        drumPresetSelect.value = activeDrumPreset;
+      }
+      deleteDrumPresetBtn.disabled = drumPresetSelect.value === defaultDrumPreset;
+    }
+
+    async function loadDrumPathPresets() {
+      const res = await fetch("/api/drum-path-presets");
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to load drum path presets");
+      }
+      drumPresets = (data && data.presets) || {};
+      activeDrumPreset = data.activePreset || "Default";
+      defaultDrumPreset = data.defaultPreset || "Default";
+      renderDrumPresetOptions();
+      applyDrumPresetToFields(activeDrumPreset);
+    }
+
     // Path + button: call folder picker API and append path
-    document.querySelectorAll("[data-is-path='true'] .btn-add").forEach(btn => {
+    document.querySelectorAll("[data-is-path='true'] .btn-add").forEach((btn) => {
       btn.addEventListener("click", async () => {
         const group = btn.closest(".field-group");
         const key = group.dataset.key;
@@ -510,7 +631,7 @@
           const res = await fetch("/api/settings/pick-folder", { method: "POST" });
           const data = await res.json();
           if (data.path) {
-            input.value = appendComma(input.value, data.path);
+            input.value = appendComma(input.value, escapePathCsvToken(data.path));
             showToast("Folder added.");
           } else if (data.error) {
             showToast("Folder picker failed: " + data.error, true);
@@ -522,7 +643,7 @@
     });
 
     // Append + button for ASSERT_INSTRUMENT and IGNORE_PLUGINS
-    document.querySelectorAll("[data-append-type='plugin'] .append-row .btn-add").forEach(btn => {
+    document.querySelectorAll("[data-append-type='plugin'] .append-row .btn-add").forEach((btn) => {
       btn.addEventListener("click", () => {
         const appendInput = btn.previousElementSibling;
         const targetId = appendInput.dataset.target;
@@ -535,22 +656,93 @@
       });
     });
 
+    drumPresetSelect.addEventListener("change", async () => {
+      const selected = drumPresetSelect.value;
+      if (!selected || selected === activeDrumPreset) return;
+      try {
+        if (activeDrumPreset) {
+          drumPresets[activeDrumPreset] = collectDrumFields();
+        }
+        const res = await fetch("/api/drum-path-presets/active", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: selected }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || "Failed to switch preset");
+        activeDrumPreset = data.activePreset;
+        applyDrumPresetToFields(activeDrumPreset);
+        deleteDrumPresetBtn.disabled = activeDrumPreset === defaultDrumPreset;
+        showToast(`Switched to "${activeDrumPreset}".`);
+      } catch (err) {
+        showToast(err.message, true);
+        renderDrumPresetOptions();
+      }
+    });
+
+    createDrumPresetBtn.addEventListener("click", async () => {
+      const name = (drumPresetNewName.value || "").trim();
+      if (!name) {
+        showToast("Preset name is required.", true);
+        return;
+      }
+      try {
+        const res = await fetch("/api/drum-path-presets", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, cloneFromActive: true }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || "Failed to create preset");
+        drumPresetNewName.value = "";
+        await loadDrumPathPresets();
+        drumPresetSelect.value = name;
+        drumPresetSelect.dispatchEvent(new Event("change"));
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    });
+
+    deleteDrumPresetBtn.addEventListener("click", async () => {
+      const name = drumPresetSelect.value;
+      if (!name) return;
+      if (name === defaultDrumPreset) {
+        showToast("Default preset cannot be deleted.", true);
+        return;
+      }
+      if (!confirm(`Delete drum preset "${name}"?`)) return;
+      try {
+        const res = await fetch(`/api/drum-path-presets/${encodeURIComponent(name)}`, {
+          method: "DELETE",
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || "Failed to delete preset");
+        await loadDrumPathPresets();
+        showToast(`Deleted "${name}".`);
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    });
+
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const btn = form.querySelector(".btn-save");
       btn.disabled = true;
       const data = {};
-      document.querySelectorAll("input[name], textarea[name]").forEach(el => {
+      document.querySelectorAll("input[name], textarea[name]").forEach((el) => {
         if (el.name && !el.name.endsWith("_append")) data[el.name] = el.value;
       });
       try {
         const res = await fetch("/api/settings", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data)
+          body: JSON.stringify(data),
         });
         const result = await res.json();
         if (res.ok && result.ok) {
+          if (activeDrumPreset) {
+            drumPresets[activeDrumPreset] = collectDrumFields();
+          }
           showToast("Settings saved.");
         } else {
           showToast(result.error || "Failed to save.", true);
@@ -560,7 +752,9 @@
       }
       btn.disabled = false;
     });
-    document.addEventListener('DOMContentLoaded', function() { if (window.__pageReady) window.__pageReady(); });
+
+    loadDrumPathPresets().catch((err) => showToast(err.message, true));
+    document.addEventListener("DOMContentLoaded", function () { if (window.__pageReady) window.__pageReady(); });
   </script>
 </body>
 

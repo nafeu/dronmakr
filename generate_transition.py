@@ -13,7 +13,7 @@ from scipy.signal import butter, fftconvolve, lfilter, lfilter_zi
 from pedalboard import Chorus, Delay, Pedalboard, Phaser
 
 import dsp
-from settings import get_setting
+from settings import get_setting, parse_escaped_csv
 
 SAMPLE_RATE = dsp.SAMPLE_RATE
 BLOCK_SIZE = 256
@@ -797,7 +797,7 @@ CLOSH_TAIL_SEC = 12.0
 def _get_random_kick_path() -> Path:
     """Pick a random .wav from DRUM_KICK_PATHS. Supports comma-separated roots."""
     paths_str = get_setting("DRUM_KICK_PATHS", "")
-    roots = [p.strip() for p in paths_str.split(",") if p.strip()]
+    roots = parse_escaped_csv(paths_str)
     if not roots:
         raise ValueError(
             "DRUM_KICK_PATHS is not configured. Add paths to kick samples in settings."
@@ -816,7 +816,7 @@ def _get_random_kick_path() -> Path:
 def _get_random_clap_path() -> Path:
     """Pick a random .wav from DRUM_CLAP_PATHS. Supports comma-separated roots."""
     paths_str = get_setting("DRUM_CLAP_PATHS", "")
-    roots = [p.strip() for p in paths_str.split(",") if p.strip()]
+    roots = parse_escaped_csv(paths_str)
     if not roots:
         raise ValueError(
             "DRUM_CLAP_PATHS is not configured. Add paths to clap samples in settings."
@@ -835,7 +835,7 @@ def _get_random_clap_path() -> Path:
 def _get_random_cymbal_path() -> Path:
     """Pick a random .wav from DRUM_CYMBAL_PATHS. Supports comma-separated roots."""
     paths_str = get_setting("DRUM_CYMBAL_PATHS", "")
-    roots = [p.strip() for p in paths_str.split(",") if p.strip()]
+    roots = parse_escaped_csv(paths_str)
     if not roots:
         raise ValueError(
             "DRUM_CYMBAL_PATHS is not configured. Add paths to cymbal samples in settings."

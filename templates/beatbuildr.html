@@ -189,6 +189,24 @@
       color: var(--secondary);
     }
 
+    .toolbar-select {
+      height: 24px;
+      min-width: 7rem;
+      padding: 0 0.55rem;
+      font-family: inherit;
+      font-size: 0.72rem;
+      background: #0a0a0a;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      color: var(--primary);
+      margin-top: 1px;
+    }
+
+    .toolbar-select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
     #app-layout {
       display: grid;
       grid-template-columns: minmax(0, 3fr) minmax(220px, 1fr);
@@ -1816,6 +1834,7 @@
         <button type="button" id="play-toggle" class="transport-btn transport-btn-primary" title="Play">
           <i class="fa-solid fa-play"></i>
         </button>
+        <select id="drum-path-preset-select" class="toolbar-select" title="Drum path preset"></select>
         <button type="button" id="new-kit-btn" class="transport-btn transport-btn-secondary with-text"
           title="Load new random drum kit">
           <i class="fa-solid fa-dice-five"></i>
@@ -2069,6 +2088,7 @@
       undoState: null,  // { type: 'pattern', data } | { type: 'kit', data: { row, path, name, url } }
       redoState: null,
       _kitRestoreRemaining: 0,
+      activeDrumPathPreset: "",
     };
 
     const dragState = {
@@ -2585,6 +2605,15 @@
 
     const socket = io();
     state.socket = socket;
+    const drumPathPresetSelect = document.getElementById("drum-path-preset-select");
+
+    drumPathPresetSelect.addEventListener("change", () => {
+      const name = drumPathPresetSelect.value;
+      if (!name || !state.socket || !state.socket.connected || name === state.activeDrumPathPreset) {
+        return;
+      }
+      state.socket.emit("setDrumPathPreset", { name });
+    });
 
     let newKitBtnAwaitingRandomize = false;
     let newKitBtnSafetyTimer = null;
@@ -2665,6 +2694,35 @@
 
     socket.on("disconnect", () => {
       finishNewKitBtnLoadingIfNeeded();
+    });
+
+    socket.on("drumPathPresets", (data) => {
+      const presets = (data && Array.isArray(data.presets)) ? data.presets : [];
+      const active = (data && data.activePreset) ? data.activePreset : "";
+      state.activeDrumPathPreset = active;
+      drumPathPresetSelect.innerHTML = "";
+      presets.forEach((name) => {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        drumPathPresetSelect.appendChild(option);
+      });
+      if (active) {
+        drumPathPresetSelect.value = active;
+      }
+      if (!browserTabSamples.hidden) {
+        requestSamplesForType(currentSampleType);
+      }
+      schedulePersistBeatbuildr();
+    });
+
+    socket.on("drumPathPresetSetResult", (data) => {
+      if (data && data.error) {
+        showErrorModal(data.error);
+        if (state.activeDrumPathPreset) {
+          drumPathPresetSelect.value = state.activeDrumPathPreset;
+        }
+      }
     });
 
     socket.on("sampleReplaced", async (data) => {
@@ -3336,13 +3394,14 @@
     if (socket.connected) socket.emit("getPatterns");
     socket.on("connect", () => {
       socket.emit("getPatterns");
+      socket.emit("getDrumPathPresets");
       let paths = null;
       const mem = encodeKitForSave();
       if (mem && Object.keys(mem).length > 0) {
         paths = mem;
       } else {
         const snap = readBeatbuildrStorage();
-        if (snap && snap.kitPaths && typeof snap.kitPaths === "object") {
+        if (canRestoreSnapshotKitForCurrentPreset(snap)) {
           paths = snap.kitPaths;
         }
       }
@@ -3383,6 +3442,7 @@
           exportIncludeHalfTempoVariation: !!document.getElementById("export-half-tempo-variation-input")?.checked,
           kitName: document.getElementById("browser-kit-name-input")?.value || "",
           patternName: document.getElementById("pattern-name-input")?.value || "",
+          drumPathPreset: state.activeDrumPathPreset || "",
           stepPattern: state.stepPattern,
           humanizationUiVisible: state.humanizationUiVisible,
           metronomeEnabled: state.metronomeEnabled,
@@ -3456,6 +3516,15 @@
       syncBeatbuildrLastWrittenFromStorage();
       renderGrid();
       updateUndoRedoButtons();
+    }
+
+    function canRestoreSnapshotKitForCurrentPreset(snap) {
+      if (!snap || !snap.kitPaths || typeof snap.kitPaths !== "object") return false;
+      // Presets are fetched asynchronously after socket connect; don't block restore
+      // while active preset is still unknown.
+      if (!state.activeDrumPathPreset) return true;
+      if (!snap.drumPathPreset) return true;
+      return snap.drumPathPreset === state.activeDrumPathPreset;
     }
 
     function setKitSaveBtnState(btnState) {
@@ -3764,7 +3833,7 @@
             });
           }
         }
-      } catch (_) {}
+      } catch (_) { }
     });
   </script>
 </body>
