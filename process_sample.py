@@ -322,18 +322,18 @@ def apply_reverb_large_to_sample(input_path):
     )
 
 
-def apply_distortion_to_sample(input_path):
+def apply_distortion_to_sample(input_path, drive_db=6.0):
     """Apply pedalboard Distortion and overwrite the file."""
     with AudioFile(input_path) as f:
         audio = f.read(f.frames)
         sample_rate = f.samplerate
-    board = Pedalboard([Distortion(drive_db=6)])
+    board = Pedalboard([Distortion(drive_db=drive_db)])
     processed = board(audio, sample_rate)
     with AudioFile(
         input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
     ) as out:
         out.write(processed)
-    print(f"Applied distortion to: {input_path}")
+    print(f"Applied distortion (drive={drive_db} dB) to: {input_path}")
 
 
 def apply_compress_to_sample(
@@ -363,6 +363,33 @@ def apply_compress_to_sample(
     print(f"Applied aggressive compression to: {input_path}")
 
 
+def apply_compress_mild_to_sample(input_path):
+    """Light compression."""
+    apply_compress_to_sample(
+        input_path,
+        threshold_db=-14.0,
+        ratio=2.5,
+        attack_ms=10.0,
+        release_ms=140.0,
+    )
+
+
+def apply_compress_medium_to_sample(input_path):
+    """Current/default compression behavior."""
+    apply_compress_to_sample(input_path)
+
+
+def apply_compress_heavy_to_sample(input_path):
+    """Heavy compression."""
+    apply_compress_to_sample(
+        input_path,
+        threshold_db=-28.0,
+        ratio=16.0,
+        attack_ms=1.5,
+        release_ms=60.0,
+    )
+
+
 def apply_overdrive_mids_to_sample(
     input_path,
     drive_db=14.0,
@@ -386,12 +413,52 @@ def apply_overdrive_mids_to_sample(
     print(f"Applied mid-focused overdrive to: {input_path}")
 
 
-def apply_chorus_to_sample(input_path):
+def apply_overdrive_mild_to_sample(input_path):
+    """Mild mid-focused overdrive."""
+    apply_overdrive_mids_to_sample(
+        input_path,
+        drive_db=8.0,
+        highpass_hz=150.0,
+        lowpass_hz=5500.0,
+    )
+
+
+def apply_overdrive_medium_to_sample(input_path):
+    """Current/default overdrive behavior."""
+    apply_overdrive_mids_to_sample(input_path)
+
+
+def apply_overdrive_heavy_to_sample(input_path):
+    """Heavy mid-focused overdrive."""
+    apply_overdrive_mids_to_sample(
+        input_path,
+        drive_db=20.0,
+        highpass_hz=300.0,
+        lowpass_hz=3000.0,
+    )
+
+
+def apply_chorus_to_sample(
+    input_path,
+    rate_hz=1.0,
+    depth=0.25,
+    centre_delay_ms=7.0,
+    feedback=0.0,
+    mix=0.5,
+):
     """Apply pedalboard Chorus and overwrite the file."""
     with AudioFile(input_path) as f:
         audio = f.read(f.frames)
         sample_rate = f.samplerate
-    board = Pedalboard([Chorus(rate_hz=1.0, depth=0.25, centre_delay_ms=7.0, feedback=0.0, mix=0.5)])
+    board = Pedalboard([
+        Chorus(
+            rate_hz=rate_hz,
+            depth=depth,
+            centre_delay_ms=centre_delay_ms,
+            feedback=feedback,
+            mix=mix,
+        )
+    ])
     processed = board(audio, sample_rate)
     with AudioFile(
         input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
@@ -400,18 +467,51 @@ def apply_chorus_to_sample(input_path):
     print(f"Applied chorus to: {input_path}")
 
 
-def apply_flanger_to_sample(input_path):
+def apply_chorus_mild_to_sample(input_path):
+    apply_chorus_to_sample(
+        input_path,
+        rate_hz=0.7,
+        depth=0.15,
+        centre_delay_ms=8.0,
+        feedback=0.0,
+        mix=0.3,
+    )
+
+
+def apply_chorus_medium_to_sample(input_path):
+    apply_chorus_to_sample(input_path)
+
+
+def apply_chorus_heavy_to_sample(input_path):
+    apply_chorus_to_sample(
+        input_path,
+        rate_hz=1.4,
+        depth=0.45,
+        centre_delay_ms=6.0,
+        feedback=0.2,
+        mix=0.75,
+    )
+
+
+def apply_flanger_to_sample(
+    input_path,
+    rate_hz=0.5,
+    depth=0.4,
+    centre_delay_ms=2.0,
+    feedback=0.3,
+    mix=0.5,
+):
     """Apply flanger-style effect (Chorus with short delay and feedback) and overwrite the file."""
     with AudioFile(input_path) as f:
         audio = f.read(f.frames)
         sample_rate = f.samplerate
     board = Pedalboard([
         Chorus(
-            rate_hz=0.5,
-            depth=0.4,
-            centre_delay_ms=2.0,
-            feedback=0.3,
-            mix=0.5,
+            rate_hz=rate_hz,
+            depth=depth,
+            centre_delay_ms=centre_delay_ms,
+            feedback=feedback,
+            mix=mix,
         ),
     ])
     processed = board(audio, sample_rate)
@@ -422,18 +522,97 @@ def apply_flanger_to_sample(input_path):
     print(f"Applied flanger to: {input_path}")
 
 
-def apply_phaser_to_sample(input_path):
+def apply_flanger_mild_to_sample(input_path):
+    apply_flanger_to_sample(
+        input_path,
+        rate_hz=0.35,
+        depth=0.2,
+        centre_delay_ms=2.5,
+        feedback=0.15,
+        mix=0.35,
+    )
+
+
+def apply_flanger_medium_to_sample(input_path):
+    apply_flanger_to_sample(input_path)
+
+
+def apply_flanger_heavy_to_sample(input_path):
+    apply_flanger_to_sample(
+        input_path,
+        rate_hz=0.9,
+        depth=0.65,
+        centre_delay_ms=1.2,
+        feedback=0.55,
+        mix=0.75,
+    )
+
+
+def apply_phaser_to_sample(
+    input_path,
+    rate_hz=1.0,
+    depth=0.7,
+    centre_frequency_hz=1000.0,
+    feedback=0.5,
+    mix=0.5,
+):
     """Apply pedalboard Phaser and overwrite the file."""
     with AudioFile(input_path) as f:
         audio = f.read(f.frames)
         sample_rate = f.samplerate
-    board = Pedalboard([Phaser(rate_hz=1.0, depth=0.7, centre_frequency_hz=1000, feedback=0.5, mix=0.5)])
+    board = Pedalboard([
+        Phaser(
+            rate_hz=rate_hz,
+            depth=depth,
+            centre_frequency_hz=centre_frequency_hz,
+            feedback=feedback,
+            mix=mix,
+        )
+    ])
     processed = board(audio, sample_rate)
     with AudioFile(
         input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
     ) as out:
         out.write(processed)
     print(f"Applied phaser to: {input_path}")
+
+
+def apply_phaser_mild_to_sample(input_path):
+    apply_phaser_to_sample(
+        input_path,
+        rate_hz=0.7,
+        depth=0.45,
+        centre_frequency_hz=900.0,
+        feedback=0.25,
+        mix=0.35,
+    )
+
+
+def apply_phaser_medium_to_sample(input_path):
+    apply_phaser_to_sample(input_path)
+
+
+def apply_phaser_heavy_to_sample(input_path):
+    apply_phaser_to_sample(
+        input_path,
+        rate_hz=1.4,
+        depth=0.95,
+        centre_frequency_hz=1300.0,
+        feedback=0.7,
+        mix=0.75,
+    )
+
+
+def apply_distortion_mild_to_sample(input_path):
+    apply_distortion_to_sample(input_path, drive_db=3.0)
+
+
+def apply_distortion_medium_to_sample(input_path):
+    apply_distortion_to_sample(input_path, drive_db=6.0)
+
+
+def apply_distortion_heavy_to_sample(input_path):
+    apply_distortion_to_sample(input_path, drive_db=11.0)
 
 
 def apply_lowpass_to_sample(input_path, cutoff_hz=6000, order=6):

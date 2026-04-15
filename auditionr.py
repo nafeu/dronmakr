@@ -61,11 +61,29 @@ from process_sample import (
     apply_reverb_hall_to_sample,
     apply_reverb_large_to_sample,
     apply_distortion_to_sample,
+    apply_distortion_mild_to_sample,
+    apply_distortion_medium_to_sample,
+    apply_distortion_heavy_to_sample,
     apply_compress_to_sample,
+    apply_compress_mild_to_sample,
+    apply_compress_medium_to_sample,
+    apply_compress_heavy_to_sample,
     apply_overdrive_mids_to_sample,
+    apply_overdrive_mild_to_sample,
+    apply_overdrive_medium_to_sample,
+    apply_overdrive_heavy_to_sample,
     apply_chorus_to_sample,
+    apply_chorus_mild_to_sample,
+    apply_chorus_medium_to_sample,
+    apply_chorus_heavy_to_sample,
     apply_flanger_to_sample,
+    apply_flanger_mild_to_sample,
+    apply_flanger_medium_to_sample,
+    apply_flanger_heavy_to_sample,
     apply_phaser_to_sample,
+    apply_phaser_mild_to_sample,
+    apply_phaser_medium_to_sample,
+    apply_phaser_heavy_to_sample,
     apply_lowpass_to_sample,
     apply_highpass_to_sample,
     apply_bandpass_to_sample,
@@ -253,16 +271,52 @@ def process_file():
             apply_reverb_large_to_sample(file_path)
         case "compress_sample":
             apply_compress_to_sample(file_path)
+        case "compress_mild_sample":
+            apply_compress_mild_to_sample(file_path)
+        case "compress_medium_sample":
+            apply_compress_medium_to_sample(file_path)
+        case "compress_heavy_sample":
+            apply_compress_heavy_to_sample(file_path)
         case "overdrive_mids_sample":
             apply_overdrive_mids_to_sample(file_path)
+        case "overdrive_mild_sample":
+            apply_overdrive_mild_to_sample(file_path)
+        case "overdrive_medium_sample":
+            apply_overdrive_medium_to_sample(file_path)
+        case "overdrive_heavy_sample":
+            apply_overdrive_heavy_to_sample(file_path)
         case "distort_sample":
             apply_distortion_to_sample(file_path)
+        case "distort_mild_sample":
+            apply_distortion_mild_to_sample(file_path)
+        case "distort_medium_sample":
+            apply_distortion_medium_to_sample(file_path)
+        case "distort_heavy_sample":
+            apply_distortion_heavy_to_sample(file_path)
         case "chorus_sample":
             apply_chorus_to_sample(file_path)
+        case "chorus_mild_sample":
+            apply_chorus_mild_to_sample(file_path)
+        case "chorus_medium_sample":
+            apply_chorus_medium_to_sample(file_path)
+        case "chorus_heavy_sample":
+            apply_chorus_heavy_to_sample(file_path)
         case "flanger_sample":
             apply_flanger_to_sample(file_path)
+        case "flanger_mild_sample":
+            apply_flanger_mild_to_sample(file_path)
+        case "flanger_medium_sample":
+            apply_flanger_medium_to_sample(file_path)
+        case "flanger_heavy_sample":
+            apply_flanger_heavy_to_sample(file_path)
         case "phaser_sample":
             apply_phaser_to_sample(file_path)
+        case "phaser_mild_sample":
+            apply_phaser_mild_to_sample(file_path)
+        case "phaser_medium_sample":
+            apply_phaser_medium_to_sample(file_path)
+        case "phaser_heavy_sample":
+            apply_phaser_heavy_to_sample(file_path)
         case "lpf_sample":
             apply_lowpass_to_sample(file_path, cutoff_hz=params.get("cutoff_hz", 6000))
         case "hpf_sample":
