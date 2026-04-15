@@ -237,6 +237,17 @@
       white-space: nowrap;
     }
 
+    .metronome-toggle-btn.active {
+      background: var(--primary);
+      color: var(--secondary);
+      border-color: var(--primary);
+    }
+
+    .metronome-toggle-btn.active:not(:disabled):hover {
+      background: #ff8900;
+      border-color: #ff8900;
+    }
+
     .step-pattern-btn {
       min-width: 1.5rem;
       height: 1.5rem;
@@ -1841,6 +1852,12 @@
           <i class="fa-solid fa-wand-magic-sparkles"></i>
           <span>humanization</span>
         </button>
+        <button type="button" id="metronome-toggle-btn"
+          class="transport-btn transport-btn-secondary with-text metronome-toggle-btn" title="metronome"
+          aria-label="metronome" aria-pressed="false">
+          <i class="fa-solid fa-clock"></i>
+          <span>metronome</span>
+        </button>
       </div>
       <div class="sequencer-scroll-wrapper">
         <div class="sequencer-grid-scroll">
@@ -2048,6 +2065,7 @@
       velocityRandomization: {},
       timingRandomization: {},
       humanizationUiVisible: false,
+      metronomeEnabled: false,
       undoState: null,  // { type: 'pattern', data } | { type: 'kit', data: { row, path, name, url } }
       redoState: null,
       _kitRestoreRemaining: 0,
@@ -2064,6 +2082,7 @@
     const swingInput = document.getElementById("swing-input");
     const swingDisplay = document.getElementById("swing-display");
     const undoRedoBtn = document.getElementById("undo-redo-btn");
+    const metronomeToggleBtn = document.getElementById("metronome-toggle-btn");
     const stepPatternGroup = document.getElementById("step-pattern-group");
     const metaGridContainer = document.getElementById("sequencer-meta-grid");
     const humanizationToggleBtn = document.getElementById("humanization-toggle-btn");
@@ -2073,6 +2092,12 @@
       humanizationToggleBtn.classList.toggle("active", state.humanizationUiVisible);
       humanizationToggleBtn.setAttribute("aria-pressed", state.humanizationUiVisible ? "true" : "false");
       humanizationToggleBtn.title = "humanization";
+    }
+
+    function applyMetronomeButtonState() {
+      metronomeToggleBtn.classList.toggle("active", state.metronomeEnabled);
+      metronomeToggleBtn.setAttribute("aria-pressed", state.metronomeEnabled ? "true" : "false");
+      metronomeToggleBtn.title = state.metronomeEnabled ? "Disable metronome" : "Enable metronome";
     }
 
     function getStepDurationSec() {
@@ -2545,6 +2570,13 @@
       schedulePersistBeatbuildr();
     });
 
+    metronomeToggleBtn.addEventListener("click", () => {
+      state.metronomeEnabled = !state.metronomeEnabled;
+      applyMetronomeButtonState();
+      schedulePersistBeatbuildr();
+    });
+    applyMetronomeButtonState();
+
     humanizationToggleBtn.addEventListener("click", () => {
       state.humanizationUiVisible = !state.humanizationUiVisible;
       applyHumanizationPanelVisibility();
@@ -2733,10 +2765,32 @@
       return 0;
     }
 
+    function playMetronomeClick(stepIndex, when) {
+      if (!state.metronomeEnabled) return;
+      const spb = GRID_STEPS_PER_BEAT[state.gridSize] || 4;
+      const beatsPerBar = TIME_SIG_BEATS[state.timeSignature] || 4;
+      const stepsPerBar = spb * beatsPerBar;
+      if (stepIndex % spb !== 0) return;
+      const isDownbeat = stepIndex % stepsPerBar === 0;
+
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      oscillator.type = "triangle";
+      oscillator.frequency.setValueAtTime(isDownbeat ? 1600 : 1100, when);
+      gainNode.gain.setValueAtTime(0.0001, when);
+      gainNode.gain.exponentialRampToValueAtTime(isDownbeat ? 0.35 : 0.24, when + 0.003);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, when + 0.06);
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      oscillator.start(when);
+      oscillator.stop(when + 0.075);
+    }
+
     function scheduleStep(stepIndex) {
       const baseTime = audioCtx.currentTime + 0.05; // small lookahead
       const swingOffset = getSwingOffsetForStep(stepIndex);
       const when = baseTime + swingOffset;
+      playMetronomeClick(stepIndex, when);
 
       ROWS.forEach(rowKey => {
         const patternRow = state.pattern[rowKey];
@@ -3331,6 +3385,7 @@
           patternName: document.getElementById("pattern-name-input")?.value || "",
           stepPattern: state.stepPattern,
           humanizationUiVisible: state.humanizationUiVisible,
+          metronomeEnabled: state.metronomeEnabled,
         };
         const json = JSON.stringify(payload);
         localStorage.setItem(BEATBUILDER_LS_KEY, json);
@@ -3371,6 +3426,8 @@
       clearStepPatternPreview();
       state.humanizationUiVisible = !!snap.humanizationUiVisible;
       applyHumanizationPanelVisibility();
+      state.metronomeEnabled = !!snap.metronomeEnabled;
+      applyMetronomeButtonState();
       state.kit = { kit: Object.fromEntries(ROWS.map((rk) => [rk, null])) };
       ROWS.forEach((rk) => {
         state.buffers[rk] = null;
