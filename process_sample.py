@@ -248,6 +248,39 @@ def reverse_sample(input_path):
     print(f"Reversed sample saved to: {input_path}")
 
 
+def apply_time_stretch_simple(input_path, stretch_factor):
+    """
+    Simple resampling-based time stretch.
+    - stretch_factor < 1.0: shorter/faster, higher pitch
+    - stretch_factor > 1.0: longer/slower, lower pitch
+    """
+    stretch_factor = float(stretch_factor)
+    if stretch_factor <= 0:
+        raise ValueError("stretch_factor must be greater than 0")
+
+    audio, sample_rate = sf.read(input_path)
+    if audio.size == 0:
+        raise ValueError("Audio file is empty")
+
+    original_len = audio.shape[0]
+    new_len = max(1, int(round(original_len * stretch_factor)))
+
+    src_positions = np.linspace(0, original_len - 1, num=original_len)
+    dst_positions = np.linspace(0, original_len - 1, num=new_len)
+
+    if audio.ndim == 1:
+        stretched = np.interp(dst_positions, src_positions, audio)
+    else:
+        channels = [
+            np.interp(dst_positions, src_positions, audio[:, ch])
+            for ch in range(audio.shape[1])
+        ]
+        stretched = np.stack(channels, axis=1)
+
+    sf.write(input_path, stretched, sample_rate)
+    print(f"Applied simple time stretch ({stretch_factor}x) to: {input_path}")
+
+
 def apply_reverb_to_sample(
     input_path,
     wet_level=0.35,

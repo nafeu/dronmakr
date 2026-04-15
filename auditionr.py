@@ -57,6 +57,7 @@ from process_sample import (
     increase_sample_gain,
     decrease_sample_gain,
     reverse_sample,
+    apply_time_stretch_simple,
     apply_granular_synthesis,
     apply_reverb_to_sample,
     apply_reverb_room_to_sample,
@@ -302,6 +303,8 @@ def process_file():
             decrease_sample_gain(file_path, params["db"])
         case "reverse_sample":
             reverse_sample(file_path)
+        case "stretch_sample":
+            apply_time_stretch_simple(file_path, params.get("stretch_factor", 1.0))
         case "granularize_sample":
             apply_granular_synthesis(file_path)
         case "reverb_sample":

@@ -552,6 +552,23 @@
       border-color: var(--theme-b);
     }
 
+    .transport-checkbox-label {
+      display: flex !important;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0 !important;
+      text-transform: none !important;
+      letter-spacing: 0 !important;
+      color: var(--primary) !important;
+      cursor: pointer;
+    }
+
+    .transport-checkbox-label input[type="checkbox"] {
+      width: 1rem;
+      height: 1rem;
+      accent-color: var(--primary);
+    }
+
     .transport-export-actions {
       margin: 0.5rem 0;
     }
@@ -616,9 +633,9 @@
       letter-spacing: 0.04em;
     }
 
-    .export-info-status.success #export-result-link,
-    .export-info-status.success #export-result-link:link,
-    .export-info-status.success #export-result-link:visited {
+    .export-info-status.success .export-result-link,
+    .export-info-status.success .export-result-link:link,
+    .export-info-status.success .export-result-link:visited {
       color: rgba(76, 175, 80, 0.95);
       text-decoration: none;
       word-break: break-all;
@@ -627,8 +644,8 @@
       line-height: 1.4;
     }
 
-    .export-info-status.success #export-result-link:hover,
-    .export-info-status.success #export-result-link:focus {
+    .export-info-status.success .export-result-link:hover,
+    .export-info-status.success .export-result-link:focus {
       color: rgba(76, 175, 80, 1);
       text-decoration: underline;
     }
@@ -1967,6 +1984,12 @@
           <input type="number" id="export-loops-input" min="1" max="64" value="1"
             title="Number of times to repeat the pattern on export">
         </div>
+        <div class="transport-setting transport-export-checkbox">
+          <label for="export-half-tempo-variation-input" class="transport-checkbox-label">
+            <input type="checkbox" id="export-half-tempo-variation-input">
+            Include Half Tempo Variation
+          </label>
+        </div>
         <div class="transport-export-actions">
           <button type="button" id="export-btn" class="export-btn" title="Export as WAV">
             <i class="fa-solid fa-download"></i> Export WAV
@@ -1974,7 +1997,7 @@
         </div>
         <div id="export-status" class="export-info-status" hidden>
           <span class="export-success-label" id="export-success-label">Export successful</span>
-          <a id="export-result-link" href="#" target="_blank" rel="noopener"></a>
+          <div id="export-result-links"></div>
           <span id="export-error"></span>
         </div>
       </div>
@@ -2855,15 +2878,19 @@
 
     // Export
     const exportLoopsInput = document.getElementById("export-loops-input");
+    const exportHalfTempoVariationInput = document.getElementById("export-half-tempo-variation-input");
     exportLoopsInput.addEventListener("change", () => {
       schedulePersistBeatbuildr();
     });
     exportLoopsInput.addEventListener("input", () => {
       schedulePersistBeatbuildr();
     });
+    exportHalfTempoVariationInput.addEventListener("change", () => {
+      schedulePersistBeatbuildr();
+    });
     const exportBtn = document.getElementById("export-btn");
     const exportStatusEl = document.getElementById("export-status");
-    const exportResultLink = document.getElementById("export-result-link");
+    const exportResultLinks = document.getElementById("export-result-links");
     const exportErrorEl = document.getElementById("export-error");
 
     function isPatternEmpty() {
@@ -2891,9 +2918,7 @@
       exportStatusEl.classList.remove("success", "error");
       const exportSuccessLabel = document.getElementById("export-success-label");
       if (exportSuccessLabel) exportSuccessLabel.hidden = true;
-      exportResultLink.href = "#";
-      exportResultLink.textContent = "";
-      exportResultLink.hidden = true;
+      if (exportResultLinks) exportResultLinks.innerHTML = "";
       exportErrorEl.textContent = "";
       exportErrorEl.hidden = true;
       exportBtn.disabled = true;
@@ -2905,6 +2930,7 @@
         timeSignature: state.timeSignature.split("/").map(Number),
         length: state.patternLength,
         loops,
+        includeHalfTempoVariation: !!(exportHalfTempoVariationInput && exportHalfTempoVariationInput.checked),
         humanize: true,
         pattern,
         kit,
@@ -2917,14 +2943,27 @@
       exportBtn.disabled = false;
       exportBtn.querySelector("i").className = "fa-solid fa-download";
       exportStatusEl.hidden = false;
-      if (data.success && data.filename) {
+      if (data.success && (data.filename || (Array.isArray(data.filenames) && data.filenames.length > 0))) {
         exportStatusEl.classList.remove("error");
         exportStatusEl.classList.add("success");
         const exportSuccessLabel = document.getElementById("export-success-label");
         if (exportSuccessLabel) exportSuccessLabel.hidden = false;
-        exportResultLink.href = "/exports/" + data.filename;
-        exportResultLink.textContent = data.filename;
-        exportResultLink.hidden = false;
+        const filenames = Array.isArray(data.filenames) && data.filenames.length > 0
+          ? data.filenames
+          : [data.filename];
+        if (exportResultLinks) {
+          exportResultLinks.innerHTML = "";
+          filenames.forEach((filename) => {
+            if (!filename) return;
+            const link = document.createElement("a");
+            link.className = "export-result-link";
+            link.href = "/exports/" + filename;
+            link.target = "_blank";
+            link.rel = "noopener";
+            link.textContent = filename;
+            exportResultLinks.appendChild(link);
+          });
+        }
         exportErrorEl.textContent = "";
         exportErrorEl.hidden = true;
       } else if (data.error) {
@@ -2932,7 +2971,7 @@
         exportStatusEl.classList.add("error");
         const exportSuccessLabel = document.getElementById("export-success-label");
         if (exportSuccessLabel) exportSuccessLabel.hidden = true;
-        exportResultLink.hidden = true;
+        if (exportResultLinks) exportResultLinks.innerHTML = "";
         exportErrorEl.textContent = data.error;
         exportErrorEl.hidden = false;
       }
@@ -3287,6 +3326,7 @@
           kitPaths,
           pattern: encodePatternForSave(),
           exportLoops: Math.max(1, Math.min(64, parseInt(document.getElementById("export-loops-input").value, 10) || 1)),
+          exportIncludeHalfTempoVariation: !!document.getElementById("export-half-tempo-variation-input")?.checked,
           kitName: document.getElementById("browser-kit-name-input")?.value || "",
           patternName: document.getElementById("pattern-name-input")?.value || "",
           stepPattern: state.stepPattern,
@@ -3318,6 +3358,10 @@
         let n = parseInt(snap.exportLoops, 10);
         if (Number.isNaN(n) || n < 1) n = 1;
         eloop.value = String(Math.min(64, n));
+      }
+      const ehalf = document.getElementById("export-half-tempo-variation-input");
+      if (ehalf) {
+        ehalf.checked = !!snap.exportIncludeHalfTempoVariation;
       }
       state.stepPattern = typeof snap.stepPattern === "number" && snap.stepPattern >= 0 ? snap.stepPattern : 0;
       stepPatternGroup.querySelectorAll(".step-pattern-btn").forEach((el) => {

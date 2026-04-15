@@ -712,6 +712,7 @@ def _handle_export_beat(payload):
     kit = p.get("kit")
     pattern_name = (p.get("patternName") or "").strip()
     kit_name = (p.get("kitName") or "").strip()
+    include_half_tempo_variation = bool(p.get("includeHalfTempoVariation", False))
 
     if not kit or not isinstance(kit, dict):
         _socketio.emit("exportBeatResult", {"error": "No drum kit loaded"})
@@ -735,34 +736,49 @@ def _handle_export_beat(payload):
         _socketio.emit("exportBeatResult", {"error": "Invalid pattern data"})
         return
 
-    # Build output filename: drumpattern___beatname___pattern___kit___bpm___id
-    beat_name = generate_beat_name()
-    name_parts = ["drumpattern", beat_name]
-    name_parts.append(format_name(pattern_name) if pattern_name else "pattern")
-    name_parts.append(format_name(kit_name) if kit_name else "kit")
-    name_parts.append(f"{bpm}bpm")
-    name_parts.append(generate_id())
-    sample_name = format_name("___".join(name_parts))
-    output_path = os.path.join(EXPORTS_DIR, f"{sample_name}.wav")
-
     os.makedirs(EXPORTS_DIR, exist_ok=True)
 
     try:
-        generate_beat_sample(
-            bpm=bpm,
-            bars=length,
-            output=output_path,
-            humanize=humanize,
-            style="",
-            swing=swing,
-            play=False,
-            pattern_config={"gridSize": grid_size, "timeSignature": time_sig, "length": length},
-            kit_paths=kit_paths,
-            pattern_data=pattern,
-            loops=loops,
+        beat_name = generate_beat_name()
+        bpm_variants = [bpm]
+        if include_half_tempo_variation:
+            half_bpm = max(1, int(round(bpm / 2.0)))
+            bpm_variants.append(half_bpm)
+
+        filenames: list[str] = []
+        for export_bpm in bpm_variants:
+            # Build output filename: drumpattern___beatname___pattern___kit___bpm___id
+            name_parts = ["drumpattern", beat_name]
+            name_parts.append(format_name(pattern_name) if pattern_name else "pattern")
+            name_parts.append(format_name(kit_name) if kit_name else "kit")
+            name_parts.append(f"{export_bpm}bpm")
+            name_parts.append(generate_id())
+            sample_name = format_name("___".join(name_parts))
+            output_path = os.path.join(EXPORTS_DIR, f"{sample_name}.wav")
+
+            generate_beat_sample(
+                bpm=export_bpm,
+                bars=length,
+                output=output_path,
+                humanize=humanize,
+                style="",
+                swing=swing,
+                play=False,
+                pattern_config={"gridSize": grid_size, "timeSignature": time_sig, "length": length},
+                kit_paths=kit_paths,
+                pattern_data=pattern,
+                loops=loops,
+            )
+            filenames.append(os.path.basename(output_path))
+
+        _socketio.emit(
+            "exportBeatResult",
+            {
+                "success": True,
+                "filename": filenames[0] if filenames else "",
+                "filenames": filenames,
+            },
         )
-        filename = os.path.basename(output_path)
-        _socketio.emit("exportBeatResult", {"success": True, "filename": filename})
     except Exception as e:
         _socketio.emit("exportBeatResult", {"error": str(e)})
 
