@@ -850,9 +850,20 @@
         .catch(error => console.error("Error:", error));
     }
 
+    function fetchUndoStatus(path) {
+      return fetch("/undo-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: path })
+      })
+        .then(response => response.json())
+        .then(data => !!data.can_undo)
+        .catch(() => false);
+    }
+
     socket.on("exports", function (data) {
       if (data.files) {
-        applyExportsUpdate(data.files, data.updated_path || null);
+        applyExportsUpdate(data.files, data.updated_path || null, data.undo_available || null);
       }
     });
 
@@ -902,7 +913,13 @@
       inst.wavesurfer.load(filePath);
     }
 
-    function applyExportsUpdate(newFiles, updatedPath) {
+    function setUndoButtonState(file, canUndo) {
+      var inst = waveformInstances[file];
+      if (!inst || !inst.undoButton) return;
+      inst.undoButton.classList.toggle("disabled", !canUndo);
+    }
+
+    function applyExportsUpdate(newFiles, updatedPath, undoAvailability) {
       if (currentDrumpatternStop) {
         currentDrumpatternStop();
         currentDrumpatternStop = null;
@@ -936,11 +953,17 @@
         var inst = waveformInstances[file];
         if (inst && inst.wrapper) {
           /* already pushed */
+          if (undoAvailability && Object.prototype.hasOwnProperty.call(undoAvailability, file)) {
+            setUndoButtonState(file, !!undoAvailability[file]);
+          }
         } else {
           var created = createSingleWaveform(file, onWaveformReady);
           if (created) {
             waveformInstances[file] = created;
             orderedWrappers.push(created.wrapper);
+            if (undoAvailability && Object.prototype.hasOwnProperty.call(undoAvailability, file)) {
+              setUndoButtonState(file, !!undoAvailability[file]);
+            }
           } else {
             onWaveformReady();
           }
@@ -1026,8 +1049,23 @@
       revealButton.addEventListener("click", () => revealSample(filePath));
       actions.appendChild(revealButton);
 
+      var undoButton = document.createElement("div");
+      undoButton.innerHTML = "<i class=\"fa-solid fa-rotate-left\"></i>";
+      undoButton.classList.add("button", "icon-btn");
+      undoButton.title = "Undo Last Edit";
+      undoButton.classList.add("disabled");
+      undoButton.addEventListener("click", () => {
+        if (undoButton.classList.contains("disabled")) return;
+        processSample({
+          path: filePath,
+          command: "undo_last_edit",
+          files: getCurrentFiles()
+        });
+      });
+      actions.appendChild(undoButton);
+
       var reverseButton = document.createElement("div");
-      reverseButton.innerHTML = "<i class=\"fa-solid fa-rotate-left\"></i>";
+      reverseButton.innerHTML = "<i class=\"fa-solid fa-arrows-left-right\"></i>";
       reverseButton.classList.add("button", "icon-btn");
       reverseButton.title = "Reverse";
       reverseButton.addEventListener("click", () => processSample({
@@ -1499,6 +1537,10 @@
 
       wrapper.appendChild(actions);
 
+      fetchUndoStatus(filePath).then(function (canUndo) {
+        undoButton.classList.toggle("disabled", !canUndo);
+      });
+
       var waveformId = "waveform-" + file.replace(/[/.]/g, "-");
       var container = document.getElementById("waveform-container");
       container.appendChild(wrapper);
@@ -1604,7 +1646,8 @@
         wrapper: wrapper,
         wavesurfer: wavesurfer,
         durationEl: duration,
-        stopDrumpatternPlayback: stopDrumpatternPlayback
+        stopDrumpatternPlayback: stopDrumpatternPlayback,
+        undoButton: undoButton
       };
     }
 

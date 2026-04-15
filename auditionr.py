@@ -8,6 +8,7 @@ import os
 import shutil
 import subprocess
 import sys
+import hashlib
 
 from flask import request, jsonify, send_from_directory
 from settings import ensure_settings
@@ -20,6 +21,7 @@ from utils import (
     ARCHIVE_DIR,
     SAVED_DIR,
     TRASH_DIR,
+    TEMP_DIR,
     format_name,
     generate_beat_name,
     generate_drone_name,
@@ -94,6 +96,42 @@ from process_sample import (
 
 # Injected by register_auditionr(app, socketio); used by view functions for emits.
 _socketio = None
+UNDO_DIR = os.path.join(TEMP_DIR, "auditionr_undo")
+
+
+def _ensure_undo_dir():
+    os.makedirs(UNDO_DIR, exist_ok=True)
+
+
+def _undo_snapshot_path(file_path: str) -> str:
+    _ensure_undo_dir()
+    key = hashlib.sha1(os.path.abspath(file_path).encode("utf-8")).hexdigest()
+    return os.path.join(UNDO_DIR, f"{key}.wav")
+
+
+def _save_undo_snapshot(file_path: str):
+    if not os.path.exists(file_path):
+        return
+    snapshot = _undo_snapshot_path(file_path)
+    shutil.copy2(file_path, snapshot)
+
+
+def _clear_undo_snapshot(file_path: str):
+    snapshot = _undo_snapshot_path(file_path)
+    if os.path.exists(snapshot):
+        os.remove(snapshot)
+
+
+def _has_undo_snapshot(file_path: str) -> bool:
+    return os.path.exists(_undo_snapshot_path(file_path))
+
+
+def _undo_availability_for_files(files):
+    availability = {}
+    for file in files:
+        normalized = file.lstrip("./")
+        availability[file] = _has_undo_snapshot(f"./{normalized}")
+    return availability
 
 
 def _emit_folder_counts():
@@ -120,6 +158,7 @@ def skip_file():
         os.makedirs(ARCHIVE_DIR)
 
     file_name = file_path.split(f"{EXPORTS_DIR}/")[1]
+    _clear_undo_snapshot(file_path)
 
     shutil.move(file_path, os.path.join(ARCHIVE_DIR, file_name))
 
@@ -194,6 +233,7 @@ def delete_file():
         os.makedirs(TRASH_DIR)
 
     file_name = file_path.split(f"{EXPORTS_DIR}/")[1]
+    _clear_undo_snapshot(file_path)
 
     shutil.move(file_path, os.path.join(TRASH_DIR, file_name))
 
@@ -221,6 +261,7 @@ def save_file():
         os.makedirs(SAVED_DIR)
 
     file_name = file_path.split(f"{EXPORTS_DIR}/")[1]
+    _clear_undo_snapshot(file_path)
 
     shutil.move(file_path, os.path.join(SAVED_DIR, file_name))
 
@@ -243,6 +284,8 @@ def process_file():
         return jsonify({"error": "File command is required."}), 400
 
     command = params["command"]
+    if command != "undo_last_edit":
+        _save_undo_snapshot(file_path)
 
     match command:
         case "trim_sample_start":
@@ -331,16 +374,36 @@ def process_file():
             apply_eq_mids_to_sample(file_path, params.get("db", 0))
         case "eq_highs_sample":
             apply_eq_highs_to_sample(file_path, params.get("db", 0))
+        case "undo_last_edit":
+            snapshot = _undo_snapshot_path(file_path)
+            if not os.path.exists(snapshot):
+                return jsonify({"error": "No undo snapshot available"}), 400
+            shutil.copy2(snapshot, file_path)
+            _clear_undo_snapshot(file_path)
         case _:
             return jsonify({"error": "Command not recognized"}), 400
 
     files = get_latest_exports(sort_override=params["files"])
+    undo_available = _undo_availability_for_files(files)
     _socketio.emit(
         "exports",
-        {"files": files, "updated_path": params["path"].lstrip("./")},
+        {
+            "files": files,
+            "updated_path": params["path"].lstrip("./"),
+            "undo_available": undo_available,
+        },
     )
     _emit_folder_counts()
     return jsonify({"success": f"File processed with {command}"}), 200
+
+
+def undo_status():
+    params = request.get_json() or {}
+    if not params.get("path"):
+        return jsonify({"error": "File path is required."}), 400
+
+    file_path = f".{params['path']}"
+    return jsonify({"can_undo": _has_undo_snapshot(file_path)}), 200
 
 
 def reveal_in_explorer():
@@ -601,6 +664,9 @@ def register_auditionr(app, socketio):
     )
     app.add_url_rule(
         "/reveal", "auditionr_reveal", reveal_in_explorer, methods=["POST"]
+    )
+    app.add_url_rule(
+        "/undo-status", "auditionr_undo_status", undo_status, methods=["POST"]
     )
     app.add_url_rule(
         "/api/generatr/generate",
