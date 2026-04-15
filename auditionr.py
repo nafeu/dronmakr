@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import hashlib
+import json
 
 from flask import request, jsonify, send_from_directory
 from settings import ensure_settings
@@ -58,6 +59,7 @@ from process_sample import (
     decrease_sample_gain,
     reverse_sample,
     apply_time_stretch_simple,
+    apply_pitch_shift_preserve_length,
     apply_granular_synthesis,
     apply_reverb_to_sample,
     apply_reverb_room_to_sample,
@@ -98,10 +100,77 @@ from process_sample import (
 # Injected by register_auditionr(app, socketio); used by view functions for emits.
 _socketio = None
 UNDO_DIR = os.path.join(TEMP_DIR, "auditionr_undo")
+PITCH_DIR = os.path.join(TEMP_DIR, "auditionr_pitch")
+PITCH_STATE_FILE = os.path.join(PITCH_DIR, "state.json")
 
 
 def _ensure_undo_dir():
     os.makedirs(UNDO_DIR, exist_ok=True)
+
+
+def _ensure_pitch_dir():
+    os.makedirs(PITCH_DIR, exist_ok=True)
+
+
+def _load_pitch_state() -> dict:
+    _ensure_pitch_dir()
+    if not os.path.exists(PITCH_STATE_FILE):
+        return {}
+    try:
+        with open(PITCH_STATE_FILE, "r") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _save_pitch_state(state: dict) -> None:
+    _ensure_pitch_dir()
+    with open(PITCH_STATE_FILE, "w") as f:
+        json.dump(state, f)
+
+
+def _pitch_snapshot_path(file_path: str) -> str:
+    _ensure_pitch_dir()
+    key = hashlib.sha1(os.path.abspath(file_path).encode("utf-8")).hexdigest()
+    return os.path.join(PITCH_DIR, f"{key}_base.wav")
+
+
+def _clear_pitch_state_for_file(file_path: str) -> None:
+    state = _load_pitch_state()
+    abs_path = os.path.abspath(file_path)
+    if abs_path in state:
+        del state[abs_path]
+        _save_pitch_state(state)
+    snap = _pitch_snapshot_path(file_path)
+    if os.path.exists(snap):
+        os.remove(snap)
+
+
+def _apply_pitch_with_fixed_base(file_path: str, semitones_delta: float) -> None:
+    """
+    Apply pitch shift cumulatively from a fixed base snapshot (not from the
+    most recently processed output), preventing transient drift across repeated
+    pitch operations.
+    """
+    abs_path = os.path.abspath(file_path)
+    state = _load_pitch_state()
+    entry = state.get(abs_path)
+    base_snapshot = _pitch_snapshot_path(file_path)
+
+    if not entry or not os.path.exists(base_snapshot):
+        shutil.copy2(file_path, base_snapshot)
+        cumulative = float(semitones_delta)
+    else:
+        cumulative = float(entry.get("semitones", 0.0)) + float(semitones_delta)
+
+    # Rebuild from the fixed base every time.
+    shutil.copy2(base_snapshot, file_path)
+    if abs(cumulative) > 1e-9:
+        apply_pitch_shift_preserve_length(file_path, cumulative)
+
+    state[abs_path] = {"semitones": cumulative}
+    _save_pitch_state(state)
 
 
 def _undo_snapshot_path(file_path: str) -> str:
@@ -160,6 +229,7 @@ def skip_file():
 
     file_name = file_path.split(f"{EXPORTS_DIR}/")[1]
     _clear_undo_snapshot(file_path)
+    _clear_pitch_state_for_file(file_path)
 
     shutil.move(file_path, os.path.join(ARCHIVE_DIR, file_name))
 
@@ -235,6 +305,7 @@ def delete_file():
 
     file_name = file_path.split(f"{EXPORTS_DIR}/")[1]
     _clear_undo_snapshot(file_path)
+    _clear_pitch_state_for_file(file_path)
 
     shutil.move(file_path, os.path.join(TRASH_DIR, file_name))
 
@@ -263,6 +334,7 @@ def save_file():
 
     file_name = file_path.split(f"{EXPORTS_DIR}/")[1]
     _clear_undo_snapshot(file_path)
+    _clear_pitch_state_for_file(file_path)
 
     shutil.move(file_path, os.path.join(SAVED_DIR, file_name))
 
@@ -287,6 +359,8 @@ def process_file():
     command = params["command"]
     if command != "undo_last_edit":
         _save_undo_snapshot(file_path)
+    if command != "pitch_shift_sample":
+        _clear_pitch_state_for_file(file_path)
 
     match command:
         case "trim_sample_start":
@@ -305,6 +379,8 @@ def process_file():
             reverse_sample(file_path)
         case "stretch_sample":
             apply_time_stretch_simple(file_path, params.get("stretch_factor", 1.0))
+        case "pitch_shift_sample":
+            _apply_pitch_with_fixed_base(file_path, params.get("semitones", 0))
         case "granularize_sample":
             apply_granular_synthesis(file_path)
         case "reverb_sample":
@@ -383,6 +459,7 @@ def process_file():
                 return jsonify({"error": "No undo snapshot available"}), 400
             shutil.copy2(snapshot, file_path)
             _clear_undo_snapshot(file_path)
+            _clear_pitch_state_for_file(file_path)
         case _:
             return jsonify({"error": "Command not recognized"}), 400
 

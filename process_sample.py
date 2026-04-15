@@ -19,6 +19,7 @@ from pedalboard import (
     Pedalboard,
     PeakFilter,
     Phaser,
+    PitchShift,
     Resample,
     Reverb,
 )
@@ -279,6 +280,93 @@ def apply_time_stretch_simple(input_path, stretch_factor):
 
     sf.write(input_path, stretched, sample_rate)
     print(f"Applied simple time stretch ({stretch_factor}x) to: {input_path}")
+
+
+def apply_pitch_shift_preserve_length(input_path, semitones):
+    """
+    Pitch shift while preserving duration (length) using pedalboard PitchShift.
+    This keeps tempo locked while still allowing artifacts in a musically useful way.
+    """
+    semitones = float(semitones)
+    if semitones == 0:
+        return
+
+    with AudioFile(input_path) as f:
+        audio = f.read(f.frames)  # shape: (channels, samples)
+        sample_rate = f.samplerate
+
+    if audio.size == 0:
+        raise ValueError("Audio file is empty")
+
+    board = Pedalboard([PitchShift(semitones=semitones)])
+    shifted = board(audio, sample_rate)
+
+    # Keep exact frame length for tight sequencer sync.
+    original_frames = audio.shape[1]
+    shifted_frames = shifted.shape[1]
+    if shifted_frames > original_frames:
+        shifted = shifted[:, :original_frames]
+    elif shifted_frames < original_frames:
+        shifted = np.pad(shifted, ((0, 0), (0, original_frames - shifted_frames)))
+
+    # Deterministic transient-anchor alignment:
+    # align first detected transient only (no adaptive cross-correlation),
+    # which avoids left/right jitter between repeated operations.
+    def _mono_mix(channels_first_audio: np.ndarray) -> np.ndarray:
+        if channels_first_audio.shape[0] == 1:
+            return channels_first_audio[0]
+        return np.mean(channels_first_audio, axis=0)
+
+    def _shift_channels_first(channels_first_audio: np.ndarray, lag_samples: int) -> np.ndarray:
+        out = np.zeros_like(channels_first_audio)
+        if lag_samples > 0:
+            # signal is delayed -> shift left
+            if lag_samples < channels_first_audio.shape[1]:
+                out[:, :-lag_samples] = channels_first_audio[:, lag_samples:]
+        elif lag_samples < 0:
+            # signal is early -> shift right
+            lead = -lag_samples
+            if lead < channels_first_audio.shape[1]:
+                out[:, lead:] = channels_first_audio[:, :-lead]
+        else:
+            out[:] = channels_first_audio
+        return out
+
+    def _first_transient_index(mono: np.ndarray, sr: int) -> int:
+        if mono.size == 0:
+            return 0
+        abs_mono = np.abs(mono.astype(np.float32))
+        peak = float(np.max(abs_mono))
+        if peak <= 1e-8:
+            return 0
+        # Use an amplitude gate near the beginning to anchor onset consistently.
+        gate = max(peak * 0.2, 1e-5)
+        # Search first 500ms for the anchor transient.
+        search_len = min(abs_mono.shape[0], int(sr * 0.5))
+        idxs = np.where(abs_mono[:search_len] >= gate)[0]
+        if idxs.size == 0:
+            return 0
+        return int(idxs[0])
+
+    ref_mono = _mono_mix(audio).astype(np.float32)
+    shifted_mono = _mono_mix(shifted).astype(np.float32)
+    if ref_mono.size > 0 and shifted_mono.size > 0:
+        ref_anchor = _first_transient_index(ref_mono, sample_rate)
+        shifted_anchor = _first_transient_index(shifted_mono, sample_rate)
+        lag = shifted_anchor - ref_anchor
+        # Safety clamp to avoid large accidental jumps.
+        max_lag = int(sample_rate * 0.03)  # 30ms max correction
+        if lag > max_lag:
+            lag = max_lag
+        elif lag < -max_lag:
+            lag = -max_lag
+        shifted = _shift_channels_first(shifted, lag)
+
+    with AudioFile(
+        input_path, "w", samplerate=sample_rate, num_channels=shifted.shape[0]
+    ) as f:
+        f.write(shifted)
+    print(f"Applied pitch shift ({semitones:+g} st) to: {input_path}")
 
 
 def apply_reverb_to_sample(
