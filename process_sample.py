@@ -421,6 +421,17 @@ def apply_reverb_room_to_sample(input_path):
     )
 
 
+def apply_reverb_bedroom_to_sample(input_path):
+    """Very mild short room reverb, like reflections in a small bedroom."""
+    apply_reverb_to_sample(
+        input_path,
+        wet_level=0.18,
+        reverb_length_sec=0.25,
+        decay_sec=0.18,
+        reverb_highpass_hz=120.0,
+    )
+
+
 def apply_reverb_hall_to_sample(input_path):
     """Hall reverb: medium size and decay."""
     apply_reverb_to_sample(
@@ -440,6 +451,28 @@ def apply_reverb_large_to_sample(input_path):
         reverb_length_sec=1.8,
         decay_sec=1.5,
         reverb_highpass_hz=100.0,
+    )
+
+
+def apply_reverb_amphitheatre_to_sample(input_path):
+    """Huge amphitheatre-style reverb with an expansive tail."""
+    apply_reverb_to_sample(
+        input_path,
+        wet_level=0.48,
+        reverb_length_sec=3.5,
+        decay_sec=3.0,
+        reverb_highpass_hz=80.0,
+    )
+
+
+def apply_reverb_space_to_sample(input_path):
+    """Near-endless ambient reverb tail."""
+    apply_reverb_to_sample(
+        input_path,
+        wet_level=0.62,
+        reverb_length_sec=8.0,
+        decay_sec=7.0,
+        reverb_highpass_hz=50.0,
     )
 
 

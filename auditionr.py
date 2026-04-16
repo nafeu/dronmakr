@@ -62,9 +62,12 @@ from process_sample import (
     apply_pitch_shift_preserve_length,
     apply_granular_synthesis,
     apply_reverb_to_sample,
+    apply_reverb_bedroom_to_sample,
     apply_reverb_room_to_sample,
     apply_reverb_hall_to_sample,
     apply_reverb_large_to_sample,
+    apply_reverb_amphitheatre_to_sample,
+    apply_reverb_space_to_sample,
     apply_distortion_to_sample,
     apply_distortion_mild_to_sample,
     apply_distortion_medium_to_sample,
@@ -385,12 +388,18 @@ def process_file():
             apply_granular_synthesis(file_path)
         case "reverb_sample":
             apply_reverb_to_sample(file_path)
+        case "reverb_bedroom_sample":
+            apply_reverb_bedroom_to_sample(file_path)
         case "reverb_room_sample":
             apply_reverb_room_to_sample(file_path)
         case "reverb_hall_sample":
             apply_reverb_hall_to_sample(file_path)
         case "reverb_large_sample":
             apply_reverb_large_to_sample(file_path)
+        case "reverb_amphitheatre_sample":
+            apply_reverb_amphitheatre_to_sample(file_path)
+        case "reverb_space_sample":
+            apply_reverb_space_to_sample(file_path)
         case "compress_sample":
             apply_compress_to_sample(file_path)
         case "compress_mild_sample":

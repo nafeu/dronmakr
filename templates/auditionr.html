@@ -36,6 +36,7 @@
       padding-top: calc(var(--toolbar-height) + 0.1rem);
       margin: 0;
       overflow: hidden;
+      padding-right: 0px;
     }
 
     /* Themed scrollbar */
@@ -291,7 +292,6 @@
     }
 
     .auditionr-sidebar-content {
-      padding: 1rem;
       min-width: 320px;
       overflow-y: auto;
     }
@@ -327,9 +327,9 @@
     }
 
     .generatr-card {
-      padding-right: 1rem;
+      padding: 1rem;
     }
-    
+
     .generatr-card h2 {
       font-size: 0.9rem;
       margin: 0 0 0.75rem 0;
@@ -421,7 +421,9 @@
     }
 
     @keyframes spin {
-      to { transform: rotate(360deg); }
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     .generatr-result {
@@ -671,7 +673,8 @@
       </main>
     </div>
     <div class="auditionr-sidebar-wrapper">
-      <button type="button" class="sidebar-toggle" id="sidebar-toggle" title="Show generate sidebar" aria-label="Toggle generate sidebar">
+      <button type="button" class="sidebar-toggle" id="sidebar-toggle" title="Show generate sidebar"
+        aria-label="Toggle generate sidebar">
         <i class="fa-solid fa-chevron-left" id="sidebar-toggle-icon"></i>
       </button>
       <aside class="auditionr-sidebar collapsed" id="auditionr-sidebar">
@@ -1177,9 +1180,12 @@
           addProcessingAction("-2", "pitch_shift_sample", { semitones: -2 });
           addProcessingAction("-12", "pitch_shift_sample", { semitones: -12 });
         } else if (processingType === "reverb") {
-          addProcessingAction("Room", "reverb_room_sample");
-          addProcessingAction("Hall", "reverb_hall_sample");
+          addProcessingAction("Bedroom", "reverb_bedroom_sample");
+          addProcessingAction("Classroom", "reverb_room_sample");
+          addProcessingAction("Warehouse", "reverb_hall_sample");
           addProcessingAction("Large", "reverb_large_sample");
+          addProcessingAction("Ampitheatre", "reverb_amphitheatre_sample");
+          addProcessingAction("Space", "reverb_space_sample");
         } else if (processingType === "compress") {
           addProcessingAction("Mild", "compress_mild_sample");
           addProcessingAction("Medium", "compress_medium_sample");
