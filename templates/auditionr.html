@@ -274,7 +274,7 @@
     }
 
     .auditionr-sidebar {
-      width: 320px;
+      width: 500px;
       flex-shrink: 0;
       border-left: 1px solid var(--theme-a);
       height: 100vh;
@@ -292,7 +292,7 @@
     }
 
     .auditionr-sidebar-content {
-      min-width: 320px;
+      min-width: 500px;
       overflow-y: auto;
     }
 
@@ -347,16 +347,21 @@
 
     .generatr-form .form-row {
       display: flex;
-      flex-direction: column;
-      gap: 0.35rem;
+      flex-direction: row;
+      align-items: center;
+      gap: 0.6rem;
     }
 
     .generatr-form .form-row label {
       font-size: 0.75rem;
       color: var(--theme-b);
+      min-width: 120px;
+      flex: 0 0 120px;
     }
 
-    .generatr-form .form-row select {
+    .generatr-form .form-row select,
+    .generatr-form .form-row input[type="text"],
+    .generatr-form .form-row input[type="number"] {
       font-family: inherit;
       font-size: 0.85rem;
       padding: 0.4rem 0.5rem;
@@ -364,13 +369,29 @@
       border: 1px solid var(--theme-a);
       border-radius: 4px;
       color: var(--primary);
-      width: 100%;
+      width: auto;
+      flex: 1 1 auto;
       cursor: pointer;
+      box-sizing: border-box;
     }
 
-    .generatr-form .form-row select:focus {
+    .generatr-form .form-row select:focus,
+    .generatr-form .form-row input[type="text"]:focus,
+    .generatr-form .form-row input[type="number"]:focus {
       outline: none;
       border-color: var(--primary);
+    }
+
+    .generatr-form .form-row input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      flex: 0 0 auto;
+      accent-color: var(--primary);
+    }
+
+    .generatr-form .form-row.form-row-post-processing {
+      align-items: flex-start;
     }
 
     .btn-generate {
@@ -711,7 +732,7 @@
               </div>
               <div class="form-row hidden" id="generatr-beat-tempo-row">
                 <label for="generatr-beat-tempo">Tempo</label>
-                <input type="number" id="generatr-beat-tempo" min="1" placeholder="Pattern tempo">
+                <input type="number" id="generatr-beat-tempo" min="1" placeholder="pattern tempo">
               </div>
               <div class="form-row hidden" id="generatr-beat-loops-row">
                 <label for="generatr-beat-loops">Loops</label>
@@ -719,17 +740,15 @@
               </div>
               <div class="form-row hidden" id="generatr-beat-pattern-row">
                 <label for="generatr-beat-pattern">Pattern</label>
-                <input type="text" id="generatr-beat-pattern" placeholder="random pattern">
+                <input type="text" id="generatr-beat-pattern" placeholder="use random pattern">
               </div>
               <div class="form-row hidden" id="generatr-beat-kit-row">
                 <label for="generatr-beat-kit">Kit</label>
-                <input type="text" id="generatr-beat-kit" placeholder="random kit">
+                <input type="text" id="generatr-beat-kit" placeholder="use random kit">
               </div>
               <div class="form-row hidden" id="generatr-beat-randomization-config-row">
                 <label for="generatr-beat-randomization-config">Sample Library</label>
-                <select id="generatr-beat-randomization-config">
-                  <option value="">(active preset)</option>
-                </select>
+                <select id="generatr-beat-randomization-config"></select>
               </div>
               <div class="form-row hidden" id="generatr-beat-swing-row">
                 <label for="generatr-beat-swing">Swing</label>
@@ -740,10 +759,10 @@
                 <input type="number" id="generatr-beat-iterations" min="1" value="1">
               </div>
               <div class="form-row hidden" id="generatr-beat-half-tempo-row">
-                <label for="generatr-beat-half-tempo">Half Tempo Variant</label>
+                <label for="generatr-beat-half-tempo">Include Half Tempo Variant</label>
                 <input type="checkbox" id="generatr-beat-half-tempo">
               </div>
-              <div class="form-row hidden" id="generatr-beat-post-processing-row">
+              <div class="form-row form-row-post-processing hidden" id="generatr-beat-post-processing-row">
                 <label>Post Processing</label>
                 <div id="generatr-beat-post-processing-list"></div>
               </div>
