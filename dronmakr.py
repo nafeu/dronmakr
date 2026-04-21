@@ -10,9 +10,11 @@ import subprocess
 import typer
 
 from settings import ensure_settings
+from settings import get_active_drum_path_preset_name, set_active_drum_path_preset
 from config_validation import validate_server_config_names
 from build_preset import list_presets
 from webui import run as run_webui
+from beatbuildr import generate_random_drum_kit
 from generate_midi import generate_drone_midi, get_pattern_config
 from generate_sample import generate_drone_sample, generate_beat_sample
 from generate_transition import (
@@ -537,8 +539,8 @@ def _load_drum_kits_for_cli():
 
 @cli.command(name="generate-beat")
 def generate_beat(
-    bpm: int = typer.Option(
-        None, "--bpm", "-t", help="Beats per minute (random 80-180 if not specified)"
+    tempo: int = typer.Option(
+        None, "--tempo", "-t", help="Tempo in BPM (uses pattern tempo when not specified)"
     ),
     loops: int = typer.Option(
         2, "--loops", "-l", help="Number of bars per pattern loop"
@@ -555,11 +557,17 @@ def generate_beat(
         "-k",
         help="Drum kit name from config/drum-kits.json (uses env sample folders if not specified)",
     ),
-    randomize_tempo: bool = typer.Option(
-        False,
-        "--randomize-tempo",
+    randomization_config: str | None = typer.Option(
+        None,
+        "--randomization-config",
         "-r",
-        help="Ignore pattern's saved tempo and use random BPM (ignored if --bpm is set)",
+        help="Drum path preset name to use when --kit is not provided.",
+    ),
+    half_tempo_variant: bool = typer.Option(
+        False,
+        "--half-tempo-variant",
+        "-h",
+        help="Also export a half-tempo variant (tempo / 2) for each generated beat.",
     ),
     swing: float = typer.Option(
         0.0,
@@ -571,7 +579,7 @@ def generate_beat(
     ),
     play: bool = typer.Option(
         False,
-        help="Open the exported file with the system's default WAV player",
+        help="Open ALL generated WAV files together with the system's default player",
     ),
     iterations: int = typer.Option(
         1,
@@ -647,14 +655,19 @@ def generate_beat(
 
     print(get_version())
     print(with_prompt(f"tempo"))
-    print(with_prompt(f"  bpm                 {bpm if bpm else GENERATED_LABEL}"))
-    print(with_prompt(f"  randomize-tempo     {randomize_tempo}"))
+    print(with_prompt(f"  tempo               {tempo if tempo else GENERATED_LABEL}"))
     print(with_prompt(f"  loops               {loops}"))
     print(
         with_prompt(f"pattern               {pattern if pattern else GENERATED_LABEL}")
     )
     print(with_prompt(f"kit                   {kit if kit else GENERATED_LABEL}"))
+    print(
+        with_prompt(
+            f"randomization-config  {randomization_config if randomization_config else GENERATED_LABEL}"
+        )
+    )
     print(with_prompt(f"swing                 {swing}"))
+    print(with_prompt(f"half-tempo-variant    {half_tempo_variant}"))
     print(with_prompt(f"play when done        {play}"))
     print(
         with_prompt(
@@ -665,79 +678,108 @@ def generate_beat(
 
     results = []
 
-    for iteration in range(iterations):
-        if iterations > 1:
-            print(f"{RED}■ preparing")
-            print(f"{RED}│{RESET}   iteration {iteration + 1} of {iterations}")
-            print(f"{RED}│{RESET}")
+    original_preset_name = None
+    if matching_kits is None and randomization_config:
+        original_preset_name = get_active_drum_path_preset_name()
+        ok, result = set_active_drum_path_preset(randomization_config)
+        if not ok:
+            print(with_prompt(f"Error: {result}"))
+            sys.exit(1)
+        print(with_prompt(f"Using drum randomization preset: {result}"))
 
-        # Determine pattern for this iteration
-        if matching_patterns is not None:
-            current_pattern = random.choice(matching_patterns)
-        else:
-            current_pattern = random.choice(available_patterns)
+    try:
+        for iteration in range(iterations):
+            if iterations > 1:
+                print(f"{RED}■ preparing")
+                print(f"{RED}│{RESET}   iteration {iteration + 1} of {iterations}")
+                print(f"{RED}│{RESET}")
 
-        # Determine kit for this iteration
-        current_kit_name = ""
-        current_kit_paths = None
-        if matching_kits is not None and drum_kits is not None:
-            current_kit_name = random.choice(matching_kits)
-            current_kit_paths = drum_kits.get(current_kit_name, {})
-            if not isinstance(current_kit_paths, dict):
+            # Determine pattern for this iteration
+            if matching_patterns is not None:
+                current_pattern = random.choice(matching_patterns)
+            else:
+                current_pattern = random.choice(available_patterns)
+
+            # Determine kit for this iteration
+            current_kit_name = ""
+            current_kit_paths = None
+            if matching_kits is not None and drum_kits is not None:
+                current_kit_name = random.choice(matching_kits)
+                current_kit_paths = drum_kits.get(current_kit_name, {})
+                if not isinstance(current_kit_paths, dict):
+                    current_kit_paths = {}
+            else:
+                # Freeze one concrete random kit per iteration so half-tempo exports
+                # are true variants (tempo-only changes) of the same sample choices.
+                random_kit_payload = generate_random_drum_kit()
+                random_kit_rows = random_kit_payload.get("kit", {})
                 current_kit_paths = {}
+                if isinstance(random_kit_rows, dict):
+                    for row_key, descriptor in random_kit_rows.items():
+                        if not isinstance(descriptor, dict):
+                            continue
+                        path = descriptor.get("path")
+                        if isinstance(path, str) and path.strip():
+                            current_kit_paths[row_key] = path.strip()
 
-        raw = beat_patterns_data.get(current_pattern, {})
-        gs, ts, ln, meta_tempo, meta_swing = (None, None, None, None, None)
-        if isinstance(raw, dict) and raw:
-            gs, ts, ln, meta_tempo, meta_swing = get_pattern_config(raw)
+            raw = beat_patterns_data.get(current_pattern, {})
+            gs, ts, ln, meta_tempo, meta_swing = (None, None, None, None, None)
+            if isinstance(raw, dict) and raw:
+                gs, ts, ln, meta_tempo, meta_swing = get_pattern_config(raw)
 
-        pattern_config = None
-        if gs is not None:
-            pattern_config = {"gridSize": gs, "timeSignature": ts, "length": ln}
+            pattern_config = None
+            if gs is not None:
+                pattern_config = {"gridSize": gs, "timeSignature": ts, "length": ln}
 
-        # Determine BPM: --bpm overrides all; else --randomize-tempo ignores _meta tempo; else use _meta tempo or random
-        if bpm is not None:
-            current_bpm = bpm
-        elif randomize_tempo:
-            current_bpm = random.randint(80, 180)
-        elif meta_tempo is not None:
-            current_bpm = int(meta_tempo)
-        else:
-            current_bpm = random.randint(80, 180)
+            # Determine tempo: CLI --tempo overrides; otherwise use pattern tempo when available.
+            if tempo is not None:
+                current_tempo = tempo
+            elif meta_tempo is not None:
+                current_tempo = int(meta_tempo)
+            else:
+                current_tempo = random.randint(80, 180)
 
-        # Use pattern's swing from _meta when available, otherwise CLI swing
-        current_swing = meta_swing if meta_swing is not None else swing
+            # Use pattern's swing from _meta when available, otherwise CLI swing
+            current_swing = meta_swing if meta_swing is not None else swing
 
-        # Generate beat name
-        beat_name = generate_beat_name()
+            # Generate beat name
+            beat_name = generate_beat_name()
 
-        # Generate output filename: drumpattern___beatname___pattern___kit?___bpm___id
-        name_parts = ["drumpattern", beat_name, current_pattern]
-        if current_kit_name:
-            name_parts.append(format_name(current_kit_name))
-        name_parts.append(f"{current_bpm}bpm")
-        name_parts.append(generate_id())
-        sample_name = format_name("___".join(name_parts))
-        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+            tempo_variants = [current_tempo]
+            if half_tempo_variant:
+                tempo_variants.append(max(1, int(round(current_tempo / 2.0))))
 
-        print(generate_beat_header())
-        print(with_generate_beat_prompt(f"bpm: {current_bpm}"))
-        print(with_generate_beat_prompt(f"pattern: {current_pattern}"))
-        if current_kit_name:
-            print(with_generate_beat_prompt(f"kit: {current_kit_name}"))
+            for export_tempo in tempo_variants:
+                # Generate output filename: drumpattern___beatname___pattern___kit?___bpm___id
+                name_parts = ["drumpattern", beat_name, current_pattern]
+                if current_kit_name:
+                    name_parts.append(format_name(current_kit_name))
+                name_parts.append(f"{export_tempo}bpm")
+                name_parts.append(generate_id())
+                sample_name = format_name("___".join(name_parts))
+                output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
 
-        generate_beat_sample(
-            bpm=current_bpm,
-            bars=loops,
-            output=output_path,
-            style=current_pattern,
-            swing=current_swing,
-            play=False,  # Never play during generation
-            pattern_config=pattern_config,
-            kit_paths=current_kit_paths,
-        )
+                print(generate_beat_header())
+                print(with_generate_beat_prompt(f"tempo: {export_tempo}"))
+                print(with_generate_beat_prompt(f"pattern: {current_pattern}"))
+                if current_kit_name:
+                    print(with_generate_beat_prompt(f"kit: {current_kit_name}"))
 
-        results.append(output_path)
+                generate_beat_sample(
+                    bpm=export_tempo,
+                    bars=loops,
+                    output=output_path,
+                    style=current_pattern,
+                    swing=current_swing,
+                    play=False,  # Never play during generation
+                    pattern_config=pattern_config,
+                    kit_paths=current_kit_paths,
+                )
+
+                results.append(output_path)
+    finally:
+        if original_preset_name:
+            set_active_drum_path_preset(original_preset_name)
 
     end_time = time.time()
     time_elapsed = round(end_time - start_time)
