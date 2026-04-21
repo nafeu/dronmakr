@@ -10,9 +10,15 @@ import subprocess
 import sys
 import hashlib
 import json
+import random
+import fnmatch
 
 from flask import request, jsonify, send_from_directory
-from settings import ensure_settings
+from settings import (
+    ensure_settings,
+    get_active_drum_path_preset_name,
+    set_active_drum_path_preset,
+)
 from utils import (
     get_latest_exports,
     get_auditionr_folder_counts,
@@ -31,9 +37,13 @@ from utils import (
     RED,
     RESET,
 )
-from generate_midi import get_patterns, generate_drone_midi
-from processing_actions import get_processing_actions_payload
-from generate_sample import apply_effect, generate_drone_sample
+from generate_midi import get_patterns, generate_drone_midi, get_pattern_config
+from processing_actions import (
+    get_processing_actions_payload,
+    parse_post_processing_spec,
+    apply_post_processing_actions,
+)
+from generate_sample import apply_effect, generate_drone_sample, generate_beat_sample
 from generate_transition import (
     generate_closh_sample,
     generate_kickboom_sample,
@@ -211,6 +221,21 @@ def _undo_availability_for_files(files):
 def _emit_folder_counts():
     if _socketio:
         _socketio.emit("folder_counts", get_auditionr_folder_counts())
+
+
+def _open_files_with_default_player(file_paths):
+    if not file_paths:
+        return
+    try:
+        if sys.platform.startswith("darwin"):
+            subprocess.run(["open"] + file_paths, check=False)
+        elif sys.platform.startswith("win"):
+            for file_path in file_paths:
+                os.startfile(file_path)
+        elif sys.platform.startswith("linux"):
+            subprocess.run(["xdg-open"] + file_paths, check=False)
+    except Exception as e:
+        print(with_prompt(f"Failed to open generated files: {e}"))
 
 
 def serve_exported_file(filename):
@@ -714,10 +739,163 @@ def _run_generate_transition(subcommand: str):
         raise ValueError(f"Unknown transition subcommand: {subcommand}")
 
 
+def _load_beat_patterns_for_generate() -> dict:
+    path = "config/beat-patterns.json"
+    if not os.path.exists(path):
+        return {}
+    with open(path, "r") as f:
+        data = json.load(f)
+    return data if isinstance(data, dict) else {}
+
+
+def _load_drum_kits_for_generate() -> dict:
+    path = "config/drum-kits.json"
+    if not os.path.exists(path):
+        return {}
+    with open(path, "r") as f:
+        data = json.load(f)
+    return data if isinstance(data, dict) else {}
+
+
+def _run_generate_beat(payload: dict):
+    beat_patterns = _load_beat_patterns_for_generate()
+    available_patterns = list(beat_patterns.keys())
+    if not available_patterns:
+        raise ValueError("No patterns found in config/beat-patterns.json")
+
+    drum_kits = _load_drum_kits_for_generate()
+
+    tempo_raw = payload.get("tempo")
+    tempo = int(tempo_raw) if tempo_raw not in (None, "", False) else None
+    loops = max(1, int(payload.get("loops", 2)))
+    pattern = (payload.get("pattern") or "").strip()
+    kit = (payload.get("kit") or "").strip()
+    randomization_config = (payload.get("sampleLibrary") or "").strip()
+    half_tempo_variant = bool(payload.get("halfTempoVariant", False))
+    swing = float(payload.get("swing", 0.0))
+    iterations = max(1, int(payload.get("iterations", 1)))
+
+    post_processing = payload.get("postProcessing")
+    if isinstance(post_processing, list):
+        post_processing_spec = ",".join(str(p).strip() for p in post_processing if str(p).strip())
+    else:
+        post_processing_spec = post_processing
+    post_actions = parse_post_processing_spec(post_processing_spec)
+
+    if pattern:
+        if "*" in pattern:
+            matching_patterns = [p for p in available_patterns if fnmatch.fnmatch(p, pattern)]
+            if not matching_patterns:
+                raise ValueError(f"No patterns match '{pattern}'")
+        else:
+            if pattern not in available_patterns:
+                raise ValueError(f"Pattern '{pattern}' not found in config/beat-patterns.json")
+            matching_patterns = [pattern]
+    else:
+        matching_patterns = None
+
+    available_kits = list(drum_kits.keys())
+    if kit:
+        if "*" in kit:
+            matching_kits = [k for k in available_kits if fnmatch.fnmatch(k, kit)]
+            if not matching_kits:
+                raise ValueError(f"No kits match '{kit}'")
+        else:
+            if kit not in drum_kits:
+                raise ValueError(f"Kit '{kit}' not found in config/drum-kits.json")
+            matching_kits = [kit]
+    else:
+        matching_kits = None
+
+    original_preset_name = None
+    if not matching_kits and randomization_config:
+        original_preset_name = get_active_drum_path_preset_name()
+        ok, result = set_active_drum_path_preset(randomization_config)
+        if not ok:
+            raise ValueError(result)
+        print(with_prompt(f"Using drum randomization preset: {result}"))
+
+    paths: list[str] = []
+    try:
+        for _ in range(iterations):
+            current_pattern = (
+                random.choice(matching_patterns)
+                if matching_patterns is not None
+                else random.choice(available_patterns)
+            )
+            current_kit_name = ""
+            current_kit_paths = None
+            if matching_kits is not None:
+                current_kit_name = random.choice(matching_kits)
+                kp = drum_kits.get(current_kit_name, {})
+                current_kit_paths = kp if isinstance(kp, dict) else {}
+
+            raw = beat_patterns.get(current_pattern, {})
+            meta_tempo = None
+            meta_swing = None
+            pattern_config = None
+            if isinstance(raw, dict) and raw:
+                gs, ts, ln, meta_tempo, meta_swing = get_pattern_config(raw)
+                if gs is not None:
+                    pattern_config = {"gridSize": gs, "timeSignature": ts, "length": ln}
+
+            current_tempo = (
+                tempo
+                if tempo is not None
+                else int(meta_tempo)
+                if meta_tempo is not None
+                else random.randint(80, 180)
+            )
+            current_swing = meta_swing if meta_swing is not None else swing
+            beat_name = generate_beat_name()
+            tempo_variants = [current_tempo]
+            if half_tempo_variant:
+                tempo_variants.append(max(1, int(round(current_tempo / 2.0))))
+
+            for export_tempo in tempo_variants:
+                name_parts = ["drumpattern", beat_name, current_pattern]
+                if current_kit_name:
+                    name_parts.append(format_name(current_kit_name))
+                name_parts.append(f"{export_tempo}bpm")
+                name_parts.append(generate_id())
+                sample_name = format_name("___".join(name_parts))
+                output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+
+                generate_beat_sample(
+                    bpm=export_tempo,
+                    bars=loops,
+                    output=output_path,
+                    style=current_pattern,
+                    swing=current_swing,
+                    play=False,
+                    pattern_config=pattern_config,
+                    kit_paths=current_kit_paths,
+                )
+                if post_actions:
+                    apply_post_processing_actions(output_path, post_actions)
+                paths.append(output_path)
+    finally:
+        if original_preset_name:
+            set_active_drum_path_preset(original_preset_name)
+
+    return paths
+
+
+def _handle_api_generate_options():
+    ensure_settings()
+    return jsonify(
+        {
+            "patterns": sorted(_load_beat_patterns_for_generate().keys()),
+            "kits": sorted(_load_drum_kits_for_generate().keys()),
+            "processingActions": get_processing_actions_payload(),
+        }
+    )
+
+
 def _handle_api_generate():
     """
     POST /api/generatr/generate
-    Body: { "type": "drone" | "bass" | "transition", "subcommand": optional }
+    Body: { "type": "drone" | "bass" | "transition" | "beat", "subcommand": optional }
     Returns: { "paths": [...], "error": null } or { "paths": [], "error": "..." }
     """
     ensure_settings()
@@ -726,8 +904,8 @@ def _handle_api_generate():
     subcommand = (data.get("subcommand") or "").strip().lower()
 
     if not gen_type:
-        return jsonify({"paths": [], "error": "Missing type (drone, bass, or transition)"}), 400
-    if gen_type not in ("drone", "bass", "transition"):
+        return jsonify({"paths": [], "error": "Missing type (drone, bass, transition, or beat)"}), 400
+    if gen_type not in ("drone", "bass", "transition", "beat"):
         return jsonify({"paths": [], "error": f"Unknown type: {gen_type}"}), 400
     if gen_type == "bass" and subcommand not in ("reese", "donk"):
         return jsonify({"paths": [], "error": "Bass requires subcommand: reese or donk"}), 400
@@ -742,8 +920,10 @@ def _handle_api_generate():
             paths = _run_generate_drone()
         elif gen_type == "bass":
             paths = _run_generate_bass(subcommand)
-        else:
+        elif gen_type == "transition":
             paths = _run_generate_transition(subcommand)
+        else:
+            paths = _run_generate_beat(data)
         print(f"{RED}■ generate completed{RESET}")
         _socketio.emit("exports", {"files": get_latest_exports()})
         _emit_folder_counts()
@@ -801,6 +981,12 @@ def register_auditionr(app, socketio):
         "auditionr_api_generate",
         _handle_api_generate,
         methods=["POST"],
+    )
+    app.add_url_rule(
+        "/api/generatr/options",
+        "auditionr_api_generate_options",
+        _handle_api_generate_options,
+        methods=["GET"],
     )
 
 

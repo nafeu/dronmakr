@@ -688,6 +688,7 @@
                   <option value="drone">drone</option>
                   <option value="bass">bass</option>
                   <option value="transition">transition</option>
+                  <option value="beat">beat</option>
                 </select>
               </div>
               <div class="form-row form-row-subcommand hidden" id="generatr-subcommand-row">
@@ -707,6 +708,44 @@
                   <option value="riser">riser</option>
                   <option value="drop">drop</option>
                 </select>
+              </div>
+              <div class="form-row hidden" id="generatr-beat-tempo-row">
+                <label for="generatr-beat-tempo">Tempo</label>
+                <input type="number" id="generatr-beat-tempo" min="1" placeholder="Pattern tempo">
+              </div>
+              <div class="form-row hidden" id="generatr-beat-loops-row">
+                <label for="generatr-beat-loops">Loops</label>
+                <input type="number" id="generatr-beat-loops" min="1" value="2">
+              </div>
+              <div class="form-row hidden" id="generatr-beat-pattern-row">
+                <label for="generatr-beat-pattern">Pattern</label>
+                <input type="text" id="generatr-beat-pattern" placeholder="random pattern">
+              </div>
+              <div class="form-row hidden" id="generatr-beat-kit-row">
+                <label for="generatr-beat-kit">Kit</label>
+                <input type="text" id="generatr-beat-kit" placeholder="random kit">
+              </div>
+              <div class="form-row hidden" id="generatr-beat-randomization-config-row">
+                <label for="generatr-beat-randomization-config">Sample Library</label>
+                <select id="generatr-beat-randomization-config">
+                  <option value="">(active preset)</option>
+                </select>
+              </div>
+              <div class="form-row hidden" id="generatr-beat-swing-row">
+                <label for="generatr-beat-swing">Swing</label>
+                <input type="number" id="generatr-beat-swing" min="0" max="1" step="0.01" value="0">
+              </div>
+              <div class="form-row hidden" id="generatr-beat-iterations-row">
+                <label for="generatr-beat-iterations">Iterations</label>
+                <input type="number" id="generatr-beat-iterations" min="1" value="1">
+              </div>
+              <div class="form-row hidden" id="generatr-beat-half-tempo-row">
+                <label for="generatr-beat-half-tempo">Half Tempo Variant</label>
+                <input type="checkbox" id="generatr-beat-half-tempo">
+              </div>
+              <div class="form-row hidden" id="generatr-beat-post-processing-row">
+                <label>Post Processing</label>
+                <div id="generatr-beat-post-processing-list"></div>
               </div>
               <button type="submit" class="btn-generate" id="generatr-btn">
                 <i class="fa-solid fa-play"></i> Generate
@@ -1333,6 +1372,26 @@
       var typeSelect = document.getElementById("generatr-type");
       var subcommandRow = document.getElementById("generatr-subcommand-row");
       var transitionSubcommandRow = document.getElementById("generatr-transition-subcommand-row");
+      var beatRows = [
+        document.getElementById("generatr-beat-tempo-row"),
+        document.getElementById("generatr-beat-loops-row"),
+        document.getElementById("generatr-beat-pattern-row"),
+        document.getElementById("generatr-beat-kit-row"),
+        document.getElementById("generatr-beat-randomization-config-row"),
+        document.getElementById("generatr-beat-swing-row"),
+        document.getElementById("generatr-beat-iterations-row"),
+        document.getElementById("generatr-beat-half-tempo-row"),
+        document.getElementById("generatr-beat-post-processing-row")
+      ];
+      var beatTempoInput = document.getElementById("generatr-beat-tempo");
+      var beatLoopsInput = document.getElementById("generatr-beat-loops");
+      var beatPatternInput = document.getElementById("generatr-beat-pattern");
+      var beatKitInput = document.getElementById("generatr-beat-kit");
+      var beatRandomizationConfigSelect = document.getElementById("generatr-beat-randomization-config");
+      var beatSwingInput = document.getElementById("generatr-beat-swing");
+      var beatIterationsInput = document.getElementById("generatr-beat-iterations");
+      var beatHalfTempoInput = document.getElementById("generatr-beat-half-tempo");
+      var beatPostProcessingList = document.getElementById("generatr-beat-post-processing-list");
       var form = document.getElementById("generatr-form");
       var btnGenerate = document.getElementById("generatr-btn");
       var loadingEl = document.getElementById("generatr-loading");
@@ -1342,11 +1401,92 @@
       var sidebar = document.getElementById("auditionr-sidebar");
       var sidebarToggle = document.getElementById("sidebar-toggle");
       var sidebarToggleIcon = document.getElementById("sidebar-toggle-icon");
+      var beatGenerateOptionsLoaded = false;
+
+      function setSelectOptions(selectEl, values, includeRandom) {
+        var current = selectEl.value;
+        selectEl.innerHTML = "";
+        if (includeRandom) {
+          var randomOpt = document.createElement("option");
+          randomOpt.value = "";
+          randomOpt.textContent = "(random)";
+          selectEl.appendChild(randomOpt);
+        }
+        (values || []).forEach(function (val) {
+          var opt = document.createElement("option");
+          opt.value = val;
+          opt.textContent = val;
+          selectEl.appendChild(opt);
+        });
+        if (current && Array.from(selectEl.options).some(function (opt) { return opt.value === current; })) {
+          selectEl.value = current;
+        }
+      }
+
+      function renderBeatPostProcessing(actionsPayload) {
+        beatPostProcessingList.innerHTML = "";
+        var actions = (actionsPayload && actionsPayload.actions) || [];
+        beatPostProcessingList.style.display = "grid";
+        beatPostProcessingList.style.gridTemplateColumns = "1fr";
+        beatPostProcessingList.style.gap = "4px";
+        beatPostProcessingList.style.maxHeight = "260px";
+        beatPostProcessingList.style.overflowY = "auto";
+        beatPostProcessingList.style.padding = "8px";
+        beatPostProcessingList.style.border = "1px solid rgba(255,255,255,0.12)";
+        beatPostProcessingList.style.borderRadius = "6px";
+        actions.forEach(function (action, idx) {
+          var label = document.createElement("label");
+          label.style.display = "flex";
+          label.style.alignItems = "center";
+          label.style.gap = "8px";
+          var input = document.createElement("input");
+          input.type = "checkbox";
+          input.value = action.token;
+          input.id = "generatr-beat-post-" + idx;
+          var text = document.createElement("span");
+          text.textContent = action.token;
+          label.appendChild(input);
+          label.appendChild(text);
+          beatPostProcessingList.appendChild(label);
+        });
+      }
+
+      function loadBeatGenerateOptions() {
+        if (beatGenerateOptionsLoaded) return Promise.resolve();
+        return Promise.all([
+          fetch("/api/generatr/options").then(function (res) { return res.json(); }),
+          fetch("/api/drum-path-presets").then(function (res) { return res.json(); })
+        ])
+          .then(function (parts) {
+            var data = parts[0] || {};
+            var presetData = parts[1] || {};
+            var presetNames = Object.keys((presetData && presetData.presets) || {});
+            setSelectOptions(beatRandomizationConfigSelect, presetNames, false);
+            var activeOpt = document.createElement("option");
+            activeOpt.value = "";
+            activeOpt.textContent = "(active preset)";
+            beatRandomizationConfigSelect.insertBefore(activeOpt, beatRandomizationConfigSelect.firstChild);
+            if (presetData.activePreset) {
+              beatRandomizationConfigSelect.value = presetData.activePreset;
+            }
+            renderBeatPostProcessing(data.processingActions || { actions: [] });
+            beatGenerateOptionsLoaded = true;
+          })
+          .catch(function (err) {
+            console.error("Failed to load beat options:", err);
+          });
+      }
 
       function updateGeneratrSubcommandVisibility() {
         var type = typeSelect.value;
         subcommandRow.classList.toggle("hidden", type !== "bass");
         transitionSubcommandRow.classList.toggle("hidden", type !== "transition");
+        beatRows.forEach(function (row) {
+          row.classList.toggle("hidden", type !== "beat");
+        });
+        if (type === "beat") {
+          loadBeatGenerateOptions();
+        }
       }
       typeSelect.addEventListener("change", updateGeneratrSubcommandVisibility);
       updateGeneratrSubcommandVisibility();
@@ -1371,8 +1511,25 @@
         e.preventDefault();
         var type = typeSelect.value;
         var subcommand = "";
+        var body = { type: type };
         if (type === "bass") subcommand = document.getElementById("generatr-subcommand").value;
         else if (type === "transition") subcommand = document.getElementById("generatr-transition-subcommand").value;
+        if (subcommand) body.subcommand = subcommand;
+        if (type === "beat") {
+          var checkedPost = Array.from(
+            beatPostProcessingList.querySelectorAll("input[type='checkbox']:checked")
+          ).map(function (el) { return el.value; });
+          var tempoRaw = (beatTempoInput.value || "").trim();
+          body.tempo = tempoRaw ? parseInt(tempoRaw, 10) : null;
+          body.loops = parseInt(beatLoopsInput.value || "2", 10);
+          body.pattern = (beatPatternInput.value || "").trim();
+          body.kit = (beatKitInput.value || "").trim();
+          body.sampleLibrary = beatRandomizationConfigSelect.value || "";
+          body.swing = parseFloat(beatSwingInput.value || "0");
+          body.iterations = parseInt(beatIterationsInput.value || "1", 10);
+          body.halfTempoVariant = !!beatHalfTempoInput.checked;
+          body.postProcessing = checkedPost;
+        }
 
         btnGenerate.disabled = true;
         loadingEl.classList.remove("hidden");
@@ -1384,7 +1541,7 @@
         fetch("/api/generatr/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ type: type, subcommand: subcommand || undefined })
+          body: JSON.stringify(body)
         })
           .then(function (res) { return res.json(); })
           .then(function (data) {
