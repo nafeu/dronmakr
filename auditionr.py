@@ -60,6 +60,7 @@ from generate_bass import (
     parse_donk_config,
     parse_reese_config,
 )
+from beatbuildr import generate_random_drum_kit
 from process_sample import (
     process_drone_sample,
     trim_sample_start,
@@ -829,6 +830,19 @@ def _run_generate_beat(payload: dict):
                 current_kit_name = random.choice(matching_kits)
                 kp = drum_kits.get(current_kit_name, {})
                 current_kit_paths = kp if isinstance(kp, dict) else {}
+            else:
+                # Freeze one concrete random kit per iteration so half-tempo exports
+                # remain true tempo variants of the same underlying sample choices.
+                random_kit_payload = generate_random_drum_kit()
+                random_kit_rows = random_kit_payload.get("kit", {})
+                current_kit_paths = {}
+                if isinstance(random_kit_rows, dict):
+                    for row_key, descriptor in random_kit_rows.items():
+                        if not isinstance(descriptor, dict):
+                            continue
+                        path = descriptor.get("path")
+                        if isinstance(path, str) and path.strip():
+                            current_kit_paths[row_key] = path.strip()
 
             raw = beat_patterns.get(current_pattern, {})
             meta_tempo = None
@@ -870,6 +884,7 @@ def _run_generate_beat(payload: dict):
                     play=False,
                     pattern_config=pattern_config,
                     kit_paths=current_kit_paths,
+                    pattern_data=raw if isinstance(raw, dict) else None,
                 )
                 if post_actions:
                     apply_post_processing_actions(output_path, post_actions)
