@@ -46,6 +46,7 @@ from utils import (
 )
 from generate_midi import get_patterns
 from config_validation import validate_server_config_names
+from processing_actions import get_processing_actions_payload
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -58,9 +59,16 @@ def handle_connect():
     """Unified connect: send auditionr exports/configs; beatbuildr requests its kit over the socket."""
     if DEBUG_WEBSOCKETS:
         print("Client connected via WebSocket")
+    socketio.emit(
+        "configs",
+        {
+            "presets": get_presets(),
+            "patterns": get_patterns(),
+            "processingActions": get_processing_actions_payload(),
+        },
+    )
     socketio.emit("exports", {"files": get_latest_exports()})
     socketio.emit("folder_counts", get_auditionr_folder_counts())
-    socketio.emit("configs", {"presets": get_presets(), "patterns": get_patterns()})
 
 
 @app.route("/")

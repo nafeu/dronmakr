@@ -15,6 +15,7 @@ from config_validation import validate_server_config_names
 from build_preset import list_presets
 from webui import run as run_webui
 from beatbuildr import generate_random_drum_kit
+from processing_actions import parse_post_processing_spec, apply_post_processing_actions
 from generate_midi import generate_drone_midi, get_pattern_config
 from generate_sample import generate_drone_sample, generate_beat_sample
 from generate_transition import (
@@ -75,6 +76,19 @@ def open_files_with_default_player(file_paths):
             subprocess.run(["xdg-open"] + file_paths)
     except Exception as e:
         print(with_prompt(f"Failed to open files: {e}"))
+
+
+def apply_post_processing_to_wavs(wav_paths: list[str], post_processing: str | None):
+    try:
+        actions = parse_post_processing_spec(post_processing)
+    except ValueError as e:
+        print(with_prompt(f"Error: {e}"))
+        sys.exit(1)
+    if not actions:
+        return
+    for wav_path in wav_paths:
+        print(with_prompt(f"post-processing      {wav_path}"))
+        apply_post_processing_actions(wav_path, actions)
 
 
 def version_callback(ctx: typer.Context, value: bool):
@@ -172,6 +186,12 @@ def bass_reese(
     play: bool = typer.Option(
         False, "--play", "-p", help="Open output with default WAV player."
     ),
+    post_processing: str | None = typer.Option(
+        None,
+        "--post-processing",
+        "-x",
+        help="Comma-separated post-processing actions to apply to each generated WAV.",
+    ),
 ):
     """Generate a Reese bass loop (raw by default; use --sound neuro for neuro-style, --sound sub for sub)."""
     ensure_settings()
@@ -184,6 +204,7 @@ def bass_reese(
     print(with_prompt(f"  tempo               {tempo}"))
     print(with_prompt(f"  bars                {bars}"))
     print(with_prompt(f"  iterations          {iterations}"))
+    print(with_prompt(f"  post-processing     {post_processing if post_processing else GENERATED_LABEL}"))
     print(with_prompt(f"  play when done      {play}"))
     print(f"{RED}│{RESET}")
 
@@ -236,6 +257,7 @@ def bass_reese(
     if iterations > 1:
         for r in results:
             print(with_prompt(f"generated: {r}"))
+    apply_post_processing_to_wavs(results, post_processing)
     if play and results:
         open_files_with_default_player(results)
     return results
@@ -265,6 +287,12 @@ def bass_donk(
     play: bool = typer.Option(
         False, "--play", "-p", help="Open output with default WAV player."
     ),
+    post_processing: str | None = typer.Option(
+        None,
+        "--post-processing",
+        "-x",
+        help="Comma-separated post-processing actions to apply to each generated WAV.",
+    ),
 ):
     """Generate a donk bass loop: short percussive hits with pitch-drop, mono. UK donk / hard bounce."""
     ensure_settings()
@@ -277,6 +305,7 @@ def bass_donk(
     print(with_prompt(f"  tempo               {tempo}"))
     print(with_prompt(f"  bars                {bars}"))
     print(with_prompt(f"  iterations          {iterations}"))
+    print(with_prompt(f"  post-processing     {post_processing if post_processing else GENERATED_LABEL}"))
     print(with_prompt(f"  play when done      {play}"))
     print(f"{RED}│{RESET}")
 
@@ -319,6 +348,7 @@ def bass_donk(
     if iterations > 1:
         for r in results:
             print(with_prompt(f"generated: {r}"))
+    apply_post_processing_to_wavs(results, post_processing)
     if play and results:
         open_files_with_default_player(results)
     return results
@@ -392,6 +422,12 @@ def generate_drone(
         "--play",
         help="Open all generated files with the system's default player",
     ),
+    post_processing: str | None = typer.Option(
+        None,
+        "--post-processing",
+        "-x",
+        help="Comma-separated post-processing actions to apply to each generated WAV.",
+    ),
 ):
     """Generate n iterations of samples (.wav) with parameters"""
     start_time = time.time()
@@ -455,6 +491,7 @@ def generate_drone(
             f"iterations           {iterations if iterations else GENERATED_LABEL}"
         )
     )
+    print(with_prompt(f"post-processing      {post_processing if post_processing else GENERATED_LABEL}"))
     print(with_prompt(f"play when done        {play}"))
     print(f"{RED}│{RESET}")
 
@@ -518,9 +555,11 @@ def generate_drone(
         else:
             print(with_prompt(f"           {result}"))
 
+    wav_files = [f for f in results if f.endswith(".wav")]
+    apply_post_processing_to_wavs(wav_files, post_processing)
+
     # Open all generated .wav files if play is enabled
     if play and results:
-        wav_files = [f for f in results if f.endswith(".wav")]
         if wav_files:
             open_files_with_default_player(wav_files)
 
@@ -580,6 +619,12 @@ def generate_beat(
     play: bool = typer.Option(
         False,
         help="Open ALL generated WAV files together with the system's default player",
+    ),
+    post_processing: str | None = typer.Option(
+        None,
+        "--post-processing",
+        "-x",
+        help="Comma-separated post-processing actions to apply to each generated WAV.",
     ),
     iterations: int = typer.Option(
         1,
@@ -668,6 +713,7 @@ def generate_beat(
     )
     print(with_prompt(f"swing                 {swing}"))
     print(with_prompt(f"half-tempo-variant    {half_tempo_variant}"))
+    print(with_prompt(f"post-processing       {post_processing if post_processing else GENERATED_LABEL}"))
     print(with_prompt(f"play when done        {play}"))
     print(
         with_prompt(
@@ -791,6 +837,8 @@ def generate_beat(
         else:
             print(with_prompt(f"           {result}"))
 
+    apply_post_processing_to_wavs(results, post_processing)
+
     # Open all files at once if play is enabled
     if play and results:
         open_files_with_default_player(results)
@@ -862,6 +910,12 @@ def transition_sweep(
     play: bool = typer.Option(
         False, "--play", "-p", help="Open output with default WAV player."
     ),
+    post_processing: str | None = typer.Option(
+        None,
+        "--post-processing",
+        "-x",
+        help="Comma-separated post-processing actions to apply to each generated WAV.",
+    ),
 ):
     """Generate a noise riser (techno/trance/house).
 
@@ -877,6 +931,7 @@ def transition_sweep(
     print(with_prompt(f"  tempo               {tempo}"))
     print(with_prompt(f"  bars                {bars}"))
     print(with_prompt(f"  iterations          {iterations}"))
+    print(with_prompt(f"  post-processing     {post_processing if post_processing else GENERATED_LABEL}"))
     print(with_prompt(f"  play when done      {play}"))
     print(f"{RED}│{RESET}")
 
@@ -930,6 +985,7 @@ def transition_sweep(
     if iterations > 1:
         for r in results:
             print(with_prompt(f"generated: {r}"))
+    apply_post_processing_to_wavs(results, post_processing)
     if play and results:
         open_files_with_default_player(results)
     return results
@@ -959,6 +1015,12 @@ def transition_closh(
     play: bool = typer.Option(
         False, "--play", "-p", help="Open output with default WAV player."
     ),
+    post_processing: str | None = typer.Option(
+        None,
+        "--post-processing",
+        "-x",
+        help="Comma-separated post-processing actions to apply to each generated WAV.",
+    ),
 ):
     """Generate washed clap transition: random clap from DRUM_CLAP_PATHS with long reverb.
 
@@ -975,6 +1037,7 @@ def transition_closh(
     print(with_prompt(f"  tempo               {tempo}"))
     print(with_prompt(f"  bars                {bars}"))
     print(with_prompt(f"  iterations          {iterations}"))
+    print(with_prompt(f"  post-processing     {post_processing if post_processing else GENERATED_LABEL}"))
     print(
         with_prompt(
             f"  delay               {'on' if config['delay_enabled'] else 'off'}"
@@ -1017,6 +1080,7 @@ def transition_closh(
     if iterations > 1:
         for r in results:
             print(with_prompt(f"generated: {r}"))
+    apply_post_processing_to_wavs(results, post_processing)
     if play and results:
         open_files_with_default_player(results)
     return results
@@ -1046,6 +1110,12 @@ def transition_kickboom(
     play: bool = typer.Option(
         False, "--play", "-p", help="Open output with default WAV player."
     ),
+    post_processing: str | None = typer.Option(
+        None,
+        "--post-processing",
+        "-x",
+        help="Comma-separated post-processing actions to apply to each generated WAV.",
+    ),
 ):
     """Generate washed kick transition: random kick from DRUM_KICK_PATHS with long reverb.
 
@@ -1062,6 +1132,7 @@ def transition_kickboom(
     print(with_prompt(f"  tempo               {tempo}"))
     print(with_prompt(f"  bars                {bars}"))
     print(with_prompt(f"  iterations          {iterations}"))
+    print(with_prompt(f"  post-processing     {post_processing if post_processing else GENERATED_LABEL}"))
     print(
         with_prompt(
             f"  delay               {'on' if config['delay_enabled'] else 'off'}"
@@ -1104,6 +1175,7 @@ def transition_kickboom(
     if iterations > 1:
         for r in results:
             print(with_prompt(f"generated: {r}"))
+    apply_post_processing_to_wavs(results, post_processing)
     if play and results:
         open_files_with_default_player(results)
     return results
@@ -1142,6 +1214,12 @@ def transition_longcrash(
     play: bool = typer.Option(
         False, "--play", "-p", help="Open output with default WAV player."
     ),
+    post_processing: str | None = typer.Option(
+        None,
+        "--post-processing",
+        "-x",
+        help="Comma-separated post-processing actions to apply to each generated WAV.",
+    ),
 ):
     """Generate long crash transition: random cymbal with long reverb + Paulstretch tail.
 
@@ -1158,6 +1236,7 @@ def transition_longcrash(
     print(with_prompt(f"  tempo               {tempo}"))
     print(with_prompt(f"  bars                {bars}"))
     print(with_prompt(f"  iterations          {iterations}"))
+    print(with_prompt(f"  post-processing     {post_processing if post_processing else GENERATED_LABEL}"))
     print(
         with_prompt(
             f"  delay               {'on' if config['delay_enabled'] else 'off'}"
@@ -1208,6 +1287,7 @@ def transition_longcrash(
     if iterations > 1:
         for r in results:
             print(with_prompt(f"generated: {r}"))
+    apply_post_processing_to_wavs(results, post_processing)
     if play and results:
         open_files_with_default_player(results)
     return results
@@ -1311,6 +1391,12 @@ def transition_riser(
     play: bool = typer.Option(
         False, "--play", "-p", help="Open output with default WAV player."
     ),
+    post_processing: str | None = typer.Option(
+        None,
+        "--post-processing",
+        "-x",
+        help="Comma-separated post-processing actions to apply to each generated WAV.",
+    ),
 ):
     """Generate riser transition: reversed longcrash + upward sweep that peaks at the end."""
     start_time = time.time()
@@ -1334,6 +1420,7 @@ def transition_riser(
     print(with_prompt(f"  tempo               {tempo}"))
     print(with_prompt(f"  bars                {bars}"))
     print(with_prompt(f"  iterations          {iterations}"))
+    print(with_prompt(f"  post-processing     {post_processing if post_processing else GENERATED_LABEL}"))
     print(with_prompt(f"  longcrash stretch   {stretch} (win {window_size})"))
     print(with_prompt(f"  mix                 longcrash={longcrash_level} sweep={sweep_level}"))
     print(f"{RED}│{RESET}")
@@ -1375,6 +1462,7 @@ def transition_riser(
     if iterations > 1:
         for r in results:
             print(with_prompt(f"generated: {r}"))
+    apply_post_processing_to_wavs(results, post_processing)
     if play and results:
         open_files_with_default_player(results)
     return results
@@ -1474,6 +1562,12 @@ def transition_drop(
     play: bool = typer.Option(
         False, "--play", "-p", help="Open output with default WAV player."
     ),
+    post_processing: str | None = typer.Option(
+        None,
+        "--post-processing",
+        "-x",
+        help="Comma-separated post-processing actions to apply to each generated WAV.",
+    ),
 ):
     """Generate drop transition: reversed riser + synth drop (high→low pitch)."""
     start_time = time.time()
@@ -1497,6 +1591,7 @@ def transition_drop(
     print(with_prompt(f"  tempo               {tempo}"))
     print(with_prompt(f"  bars                {bars}"))
     print(with_prompt(f"  iterations          {iterations}"))
+    print(with_prompt(f"  post-processing     {post_processing if post_processing else GENERATED_LABEL}"))
     print(with_prompt(f"  longcrash stretch   {stretch} (win {window_size})"))
     print(with_prompt(f"  mix                 riser={riser_level} synth={synth_level}"))
     print(f"{RED}│{RESET}")
@@ -1537,6 +1632,7 @@ def transition_drop(
     if iterations > 1:
         for r in results:
             print(with_prompt(f"generated: {r}"))
+    apply_post_processing_to_wavs(results, post_processing)
     if play and results:
         open_files_with_default_player(results)
     return results

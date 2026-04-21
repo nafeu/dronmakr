@@ -883,6 +883,16 @@
       updateFolderCounts(data);
     });
 
+    var processingCatalog = { types: [], actions: [] };
+    socket.on("configs", function (data) {
+      if (!data || !data.processingActions) return;
+      var payload = data.processingActions;
+      processingCatalog = {
+        types: Array.isArray(payload.types) ? payload.types : [],
+        actions: Array.isArray(payload.actions) ? payload.actions : []
+      };
+    });
+
     function updateFolderCounts(counts) {
       if (!counts) return;
       lastFolderCounts = counts;
@@ -1106,22 +1116,10 @@
       var processingActionsDivider = document.createElement("div");
       processingActionsDivider.classList.add("processing-actions-divider", "hidden");
       var processingTypeButtons = {};
-      var processingTypes = [
-        { key: "cut", label: "Cut" },
-        { key: "fade", label: "Fade" },
-        { key: "eq", label: "EQ" },
-        { key: "gain", label: "Gain" },
-        { key: "filter", label: "Filter" },
-        { key: "stretch", label: "Stretch" },
-        { key: "pitch", label: "Pitch" },
-        { key: "reverb", label: "Reverb" },
-        { key: "compress", label: "Compress" },
-        { key: "overdrive", label: "Overdrive" },
-        { key: "distort", label: "Distort" },
-        { key: "chorus", label: "Chorus" },
-        { key: "flanger", label: "Flanger" },
-        { key: "phaser", label: "Phaser" }
-      ];
+      var processingTypes = [{ key: "cut", label: "Cut" }]
+        .concat((processingCatalog.types || []).map(function (type) {
+          return { key: type.key, label: type.label };
+        }));
 
       function clearProcessingActions() {
         processingActionButtons.forEach(function (btn) { actions.removeChild(btn); });
@@ -1160,75 +1158,13 @@
             "trim_sample_end",
             { seconds: selectedWaveformTimestamps[file] }
           );
-        } else if (processingType === "fade") {
-          addProcessingAction("In 2s", "fade_sample_start", { seconds: 2 });
-          addProcessingAction("In 5s", "fade_sample_start", { seconds: 5 });
-          addProcessingAction("Out 2s", "fade_sample_end", { seconds: 2 });
-          addProcessingAction("Out 5s", "fade_sample_end", { seconds: 5 });
-        } else if (processingType === "eq") {
-          addProcessingAction("Lows +5dB", "eq_lows_sample", { db: 5 });
-          addProcessingAction("Lows -5dB", "eq_lows_sample", { db: -5 });
-          addProcessingAction("Mids +5dB", "eq_mids_sample", { db: 5 });
-          addProcessingAction("Mids -5dB", "eq_mids_sample", { db: -5 });
-          addProcessingAction("Highs +5dB", "eq_highs_sample", { db: 5 });
-          addProcessingAction("Highs -5dB", "eq_highs_sample", { db: -5 });
-        } else if (processingType === "gain") {
-          addProcessingAction("+2db", "increase_sample_gain", { db: 2 });
-          addProcessingAction("-2db", "decrease_sample_gain", { db: 2 });
-        } else if (processingType === "filter") {
-          addProcessingAction("LPF", "lpf_sample");
-          addProcessingAction("LPF-", "lpf_sample", { cutoff_hz: 2500 });
-          addProcessingAction("LPF--", "lpf_sample", { cutoff_hz: 800 });
-          addProcessingAction("HPF", "hpf_sample");
-          addProcessingAction("HPF+", "hpf_sample", { cutoff_hz: 350 });
-          addProcessingAction("HPF++", "hpf_sample", { cutoff_hz: 800 });
-          addProcessingAction("BPF", "bpf_sample");
-          addProcessingAction("BPF-", "bpf_sample", { low_hz: 180, high_hz: 3200 });
-          addProcessingAction("BPF--", "bpf_sample", { low_hz: 100, high_hz: 1000 });
-          addProcessingAction("BPF+", "bpf_sample", { low_hz: 500, high_hz: 10000 });
-          addProcessingAction("BPF++", "bpf_sample", { low_hz: 1200, high_hz: 16000 });
-        } else if (processingType === "stretch") {
-          addProcessingAction("1/2 Speed", "stretch_sample", { stretch_factor: 2.0 });
-          addProcessingAction("2x Speed", "stretch_sample", { stretch_factor: 0.5 });
-        } else if (processingType === "pitch") {
-          addProcessingAction("+1", "pitch_shift_sample", { semitones: 1 });
-          addProcessingAction("+2", "pitch_shift_sample", { semitones: 2 });
-          addProcessingAction("+12", "pitch_shift_sample", { semitones: 12 });
-          addProcessingAction("-1", "pitch_shift_sample", { semitones: -1 });
-          addProcessingAction("-2", "pitch_shift_sample", { semitones: -2 });
-          addProcessingAction("-12", "pitch_shift_sample", { semitones: -12 });
-        } else if (processingType === "reverb") {
-          addProcessingAction("Bedroom", "reverb_bedroom_sample");
-          addProcessingAction("Classroom", "reverb_room_sample");
-          addProcessingAction("Warehouse", "reverb_hall_sample");
-          addProcessingAction("Large", "reverb_large_sample");
-          addProcessingAction("Ampitheatre", "reverb_amphitheatre_sample");
-          addProcessingAction("Space", "reverb_space_sample");
-        } else if (processingType === "compress") {
-          addProcessingAction("Mild", "compress_mild_sample");
-          addProcessingAction("Medium", "compress_medium_sample");
-          addProcessingAction("Heavy", "compress_heavy_sample");
-        } else if (processingType === "overdrive") {
-          addProcessingAction("Mild", "overdrive_mild_sample");
-          addProcessingAction("Medium", "overdrive_medium_sample");
-          addProcessingAction("Heavy", "overdrive_heavy_sample");
-        } else if (processingType === "distort") {
-          addProcessingAction("Mild", "distort_mild_sample");
-          addProcessingAction("Medium", "distort_medium_sample");
-          addProcessingAction("Heavy", "distort_heavy_sample");
-        } else if (processingType === "chorus") {
-          addProcessingAction("Mild", "chorus_mild_sample");
-          addProcessingAction("Medium", "chorus_medium_sample");
-          addProcessingAction("Heavy", "chorus_heavy_sample");
-        } else if (processingType === "flanger") {
-          addProcessingAction("Mild", "flanger_mild_sample");
-          addProcessingAction("Medium", "flanger_medium_sample");
-          addProcessingAction("Heavy", "flanger_heavy_sample");
-        } else if (processingType === "phaser") {
-          addProcessingAction("Mild", "phaser_mild_sample");
-          addProcessingAction("Medium", "phaser_medium_sample");
-          addProcessingAction("Heavy", "phaser_heavy_sample");
+          return;
         }
+        (processingCatalog.actions || [])
+          .filter(function (action) { return action.type === processingType; })
+          .forEach(function (action) {
+            addProcessingAction(action.label, action.command, action.params || {});
+          });
       }
 
       processingTypes.forEach(function (type) {

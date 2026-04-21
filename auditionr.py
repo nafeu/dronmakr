@@ -32,6 +32,7 @@ from utils import (
     RESET,
 )
 from generate_midi import get_patterns, generate_drone_midi
+from processing_actions import get_processing_actions_payload
 from generate_sample import apply_effect, generate_drone_sample
 from generate_transition import (
     generate_closh_sample,
@@ -346,7 +347,14 @@ def duplicate_file():
 
 
 def refresh_configs():
-    _socketio.emit("configs", {"presets": get_presets(), "patterns": get_patterns()})
+    _socketio.emit(
+        "configs",
+        {
+            "presets": get_presets(),
+            "patterns": get_patterns(),
+            "processingActions": get_processing_actions_payload(),
+        },
+    )
     return jsonify({"success": "Refreshed configurations"}), 200
 
 
