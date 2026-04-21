@@ -8,6 +8,7 @@ import binascii
 import json
 import os
 import random
+import re
 import shutil
 from pathlib import Path
 
@@ -504,6 +505,7 @@ def ensure_beat_patterns():
 
 DRUM_KITS_FILE = "config/drum-kits.json"
 DRUM_KITS_SAMPLE = "resources/drum-kits-sample.json"
+VALID_CONFIG_NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
 def ensure_drum_kits():
@@ -603,6 +605,14 @@ def _handle_save_kit(payload):
 
     if not name:
         _socketio.emit("kitSaveResult", {"error": "Kit name is required"})
+        return
+    if not VALID_CONFIG_NAME_RE.fullmatch(name):
+        _socketio.emit(
+            "kitSaveResult",
+            {
+                "error": "Invalid kit name. Use lowercase kebab-case only (letters/numbers with '-' only)."
+            },
+        )
         return
 
     if not kit or not isinstance(kit, dict):

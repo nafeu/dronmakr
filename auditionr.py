@@ -317,6 +317,34 @@ def delete_file():
     return jsonify({"success": "File moved to trash."}), 200
 
 
+def duplicate_file():
+    params = request.get_json() or {}
+    if not params.get("path"):
+        return jsonify({"error": "File path is required."}), 400
+
+    file_path = f".{params['path']}"
+    if not os.path.exists(file_path):
+        return jsonify({"error": "File does not exist."}), 404
+
+    source_dir = os.path.dirname(file_path)
+    source_name = os.path.basename(file_path)
+    source_stem, source_ext = os.path.splitext(source_name)
+    duplicate_name = f"{source_stem}_copy{source_ext}"
+    duplicate_path = os.path.join(source_dir, duplicate_name)
+
+    counter = 2
+    while os.path.exists(duplicate_path):
+        duplicate_name = f"{source_stem}_copy{counter}{source_ext}"
+        duplicate_path = os.path.join(source_dir, duplicate_name)
+        counter += 1
+
+    shutil.copy2(file_path, duplicate_path)
+
+    _socketio.emit("exports", {"files": get_latest_exports()})
+    _emit_folder_counts()
+    return jsonify({"success": f"File duplicated as {duplicate_name}"}), 200
+
+
 def refresh_configs():
     _socketio.emit("configs", {"presets": get_presets(), "patterns": get_patterns()})
     return jsonify({"success": "Refreshed configurations"}), 200
@@ -744,6 +772,9 @@ def register_auditionr(app, socketio):
     )
     app.add_url_rule("/reprocess", "auditionr_reprocess", reprocess, methods=["POST"])
     app.add_url_rule("/delete", "auditionr_delete_file", delete_file, methods=["POST"])
+    app.add_url_rule(
+        "/duplicate", "auditionr_duplicate_file", duplicate_file, methods=["POST"]
+    )
     app.add_url_rule(
         "/refresh", "auditionr_refresh_configs", refresh_configs, methods=["GET"]
     )

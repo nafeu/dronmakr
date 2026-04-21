@@ -815,6 +815,16 @@
         .catch(error => console.error("Error:", error));
     }
 
+    function duplicateSample(path) {
+      fetch("/duplicate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path })
+      }).then(response => response.json())
+        .then(data => console.log(data))
+        .catch(error => console.error("Error:", error));
+    }
+
     function formatTimestamp(seconds) {
       const roundedSeconds = Math.round(seconds); // Round to the nearest second
       const hours = Math.floor(roundedSeconds / 3600);
@@ -1013,7 +1023,8 @@
       wrapper.appendChild(titleContainer);
 
       var waveformDiv = document.createElement("div");
-      waveformDiv.id = "waveform-" + file.replace(/[/.]/g, "-");
+      var waveformIdSafe = "waveform-" + file.replace(/[^a-zA-Z0-9_-]/g, "-");
+      waveformDiv.id = waveformIdSafe;
       waveformDiv.classList.add("waveform")
       wrapper.appendChild(waveformDiv);
 
@@ -1075,6 +1086,13 @@
       actions.appendChild(reverseButton);
 
       var deleteButton = document.createElement("div");
+      var duplicateButton = document.createElement("div");
+      duplicateButton.innerHTML = "<i class=\"fa-solid fa-copy\"></i>";
+      duplicateButton.classList.add("button", "icon-btn");
+      duplicateButton.title = "Duplicate";
+      duplicateButton.addEventListener("click", () => duplicateSample(filePath));
+      actions.appendChild(duplicateButton);
+
       deleteButton.innerHTML = "<i class=\"fa-solid fa-trash-can\"></i>";
       deleteButton.classList.add("button", "icon-btn");
       deleteButton.title = "Delete";
@@ -1242,11 +1260,10 @@
         undoButton.classList.toggle("disabled", !canUndo);
       });
 
-      var waveformId = "waveform-" + file.replace(/[/.]/g, "-");
       var container = document.getElementById("waveform-container");
       container.appendChild(wrapper);
       var wavesurfer = WaveSurfer.create({
-        container: "#" + waveformId,
+        container: "#" + waveformIdSafe,
         waveColor: "#353531",
         progressColor: isDrumpattern ? "#016fb9" : (isTransition ? "#ec4e20" : "#ff9505"),
         backend: "MediaElement",

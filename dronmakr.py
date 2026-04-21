@@ -10,6 +10,7 @@ import subprocess
 import typer
 
 from settings import ensure_settings
+from config_validation import validate_server_config_names
 from build_preset import list_presets
 from webui import run as run_webui
 from generate_midi import generate_drone_midi, get_pattern_config
@@ -76,6 +77,12 @@ def open_files_with_default_player(file_paths):
 
 def version_callback(ctx: typer.Context, value: bool):
     if value:
+        ensure_settings()
+        try:
+            validate_server_config_names()
+        except ValueError as e:
+            print(with_prompt(str(e)))
+            raise typer.Exit(code=1)
         print(get_cli_version())
         raise typer.Exit()
 
@@ -94,6 +101,11 @@ def main(
 ):
     """CLI entrypoint. With no subcommand, launches the unified web UI."""
     ensure_settings()
+    try:
+        validate_server_config_names()
+    except ValueError as e:
+        print(with_prompt(str(e)))
+        raise typer.Exit(code=1)
     if ctx.invoked_subcommand is None:
         ctx.invoke(webui, debug=False, port=3766, open_browser=True)
 
@@ -529,7 +541,7 @@ def generate_beat(
         None, "--bpm", "-t", help="Beats per minute (random 80-180 if not specified)"
     ),
     loops: int = typer.Option(
-        1, "--loops", "-l", help="Number of bars per pattern loop"
+        2, "--loops", "-l", help="Number of bars per pattern loop"
     ),
     pattern: str = typer.Option(
         None,
@@ -557,7 +569,6 @@ def generate_beat(
         max=1.0,
         help="Rhythmic swing amount between 0 (straight) and 1 (strong swing).",
     ),
-    humanize: bool = typer.Option(True, help="Apply humanization (velocity + timing)"),
     play: bool = typer.Option(
         False,
         help="Open the exported file with the system's default WAV player",
@@ -613,18 +624,26 @@ def generate_beat(
                 sys.exit(1)
             matching_patterns = [pattern]
 
-    # Resolve kit if --kit specified
-    kit_paths = None
-    kit_name_for_file = ""
+    # Resolve kit: exact match, wildcard match (*), or settings-based samples if not specified
+    matching_kits = None
+    drum_kits = None
     if kit is not None and kit:
         drum_kits = _load_drum_kits_for_cli()
-        if kit not in drum_kits:
-            print(with_prompt(f"Error: Kit '{kit}' not found in config/drum-kits.json"))
+        available_kits = builtins.list(drum_kits.keys()) if drum_kits else []
+        if not available_kits:
+            print(with_prompt("Error: No kits found in config/drum-kits.json"))
             sys.exit(1)
-        kit_paths = drum_kits[kit]
-        if not isinstance(kit_paths, dict):
-            kit_paths = {}
-        kit_name_for_file = format_name(kit)
+
+        if "*" in kit:
+            matching_kits = [k for k in available_kits if fnmatch.fnmatch(k, kit)]
+            if not matching_kits:
+                print(with_prompt(f"Error: No kits match '{kit}'"))
+                sys.exit(1)
+        else:
+            if kit not in drum_kits:
+                print(with_prompt(f"Error: Kit '{kit}' not found in config/drum-kits.json"))
+                sys.exit(1)
+            matching_kits = [kit]
 
     print(get_version())
     print(with_prompt(f"tempo"))
@@ -636,7 +655,6 @@ def generate_beat(
     )
     print(with_prompt(f"kit                   {kit if kit else GENERATED_LABEL}"))
     print(with_prompt(f"swing                 {swing}"))
-    print(with_prompt(f"humanize              {humanize}"))
     print(with_prompt(f"play when done        {play}"))
     print(
         with_prompt(
@@ -658,6 +676,15 @@ def generate_beat(
             current_pattern = random.choice(matching_patterns)
         else:
             current_pattern = random.choice(available_patterns)
+
+        # Determine kit for this iteration
+        current_kit_name = ""
+        current_kit_paths = None
+        if matching_kits is not None and drum_kits is not None:
+            current_kit_name = random.choice(matching_kits)
+            current_kit_paths = drum_kits.get(current_kit_name, {})
+            if not isinstance(current_kit_paths, dict):
+                current_kit_paths = {}
 
         raw = beat_patterns_data.get(current_pattern, {})
         gs, ts, ln, meta_tempo, meta_swing = (None, None, None, None, None)
@@ -686,8 +713,8 @@ def generate_beat(
 
         # Generate output filename: drumpattern___beatname___pattern___kit?___bpm___id
         name_parts = ["drumpattern", beat_name, current_pattern]
-        if kit_name_for_file:
-            name_parts.append(kit_name_for_file)
+        if current_kit_name:
+            name_parts.append(format_name(current_kit_name))
         name_parts.append(f"{current_bpm}bpm")
         name_parts.append(generate_id())
         sample_name = format_name("___".join(name_parts))
@@ -696,17 +723,18 @@ def generate_beat(
         print(generate_beat_header())
         print(with_generate_beat_prompt(f"bpm: {current_bpm}"))
         print(with_generate_beat_prompt(f"pattern: {current_pattern}"))
+        if current_kit_name:
+            print(with_generate_beat_prompt(f"kit: {current_kit_name}"))
 
         generate_beat_sample(
             bpm=current_bpm,
             bars=loops,
             output=output_path,
-            humanize=humanize,
             style=current_pattern,
             swing=current_swing,
             play=False,  # Never play during generation
             pattern_config=pattern_config,
-            kit_paths=kit_paths,
+            kit_paths=current_kit_paths,
         )
 
         results.append(output_path)

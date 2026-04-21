@@ -3346,7 +3346,19 @@
     const browserKitFilter = document.getElementById("browser-kit-filter");
     const browserKitList = document.getElementById("browser-kit-list");
     const browserKitNameInput = document.getElementById("browser-kit-name-input");
+    function normalizeKitName(raw) {
+      return (raw || "")
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "")
+        .replace(/-+/g, "-")
+        .replace(/^-+|-+$/g, "");
+    }
     browserKitNameInput.addEventListener("input", () => {
+      const normalized = normalizeKitName(browserKitNameInput.value);
+      if (browserKitNameInput.value !== normalized) {
+        browserKitNameInput.value = normalized;
+      }
       schedulePersistBeatbuildr();
     });
     const browserKitSaveBtn = document.getElementById("browser-kit-save-btn");
@@ -3467,7 +3479,7 @@
     function applyBeatbuildrSnapshot(snap) {
       applyLoadedPattern({ pattern: snap.pattern, name: snap.patternName || "" });
       const kitField = document.getElementById("browser-kit-name-input");
-      if (kitField) kitField.value = snap.kitName || "";
+      if (kitField) kitField.value = normalizeKitName(snap.kitName || "");
       const eloop = document.getElementById("export-loops-input");
       if (eloop) {
         let n = parseInt(snap.exportLoops, 10);

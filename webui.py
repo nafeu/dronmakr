@@ -45,6 +45,7 @@ from utils import (
     get_saved_files,
 )
 from generate_midi import get_patterns
+from config_validation import validate_server_config_names
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -321,6 +322,11 @@ def run(
     ensure_settings()
     ensure_beat_patterns()
     ensure_drum_kits()
+    try:
+        validate_server_config_names()
+    except ValueError as e:
+        print(with_prompt(str(e)))
+        raise SystemExit(1) from e
 
     print(with_prompt("Building sample cache..."))
     ensure_all_sample_caches()
