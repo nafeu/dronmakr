@@ -5,6 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>┌ dronmakr v{{ version }} ■ folysplitr ┐</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/7.4.0/wavesurfer.min.js"></script>
   <link rel="icon"
     href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⏳</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -33,6 +34,29 @@
       padding: 1rem;
       padding-top: calc(var(--toolbar-height) + 1rem);
       margin: 0;
+    }
+
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--theme-a) var(--secondary);
+    }
+
+    *::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    *::-webkit-scrollbar-track {
+      background: var(--secondary);
+    }
+
+    *::-webkit-scrollbar-thumb {
+      background: var(--theme-a);
+      border-radius: 4px;
+    }
+
+    *::-webkit-scrollbar-thumb:hover {
+      background: var(--theme-b);
     }
 
     #toolbar {
@@ -121,13 +145,16 @@
     }
 
     main {
-      max-width: 48rem;
+      max-width: 64rem;
       margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.5rem;
     }
 
     h1 {
       font-size: 1.2rem;
-      margin-bottom: 0.5rem;
+      margin: 0;
     }
 
     p {
@@ -135,6 +162,202 @@
       line-height: 1.6;
       font-size: 0.9rem;
       margin: 0;
+    }
+
+    .panel {
+      border: 1px solid var(--theme-a);
+      border-radius: 8px;
+      padding: 1rem;
+      background: rgba(53, 53, 49, 0.35);
+      display: grid;
+      gap: 0.85rem;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .tab-btn.active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: var(--secondary);
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    .panel-title {
+      font-size: 0.88rem;
+      color: var(--primary);
+      letter-spacing: 0.02em;
+      margin: 0;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    label {
+      font-size: 0.8rem;
+      color: var(--theme-b);
+      min-width: 8rem;
+    }
+
+    select,
+    button {
+      font-family: inherit;
+      font-size: 0.85rem;
+      border-radius: 4px;
+      border: 1px solid var(--theme-a);
+      background: var(--theme-a);
+      color: var(--primary);
+      padding: 0.5rem 0.7rem;
+    }
+
+    select {
+      min-width: 22rem;
+      max-width: 100%;
+    }
+
+    button {
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+
+    button:hover:not(:disabled) {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.15);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .record-btn {
+      min-width: 8rem;
+      font-weight: 600;
+    }
+
+    .record-btn.recording {
+      background: var(--theme-c);
+      border-color: var(--theme-c);
+      color: var(--secondary);
+    }
+
+    .status-text {
+      font-size: 0.8rem;
+      color: var(--theme-b);
+    }
+
+    .status-text.error {
+      color: var(--theme-c);
+    }
+
+    .time-pill {
+      font-size: 0.8rem;
+      border: 1px solid var(--theme-a);
+      border-radius: 999px;
+      padding: 0.2rem 0.6rem;
+      color: var(--theme-b);
+      background: rgba(1, 111, 185, 0.16);
+    }
+
+    .time-pill.recording {
+      border-color: var(--theme-c);
+      color: var(--theme-c);
+      background: rgba(236, 78, 32, 0.16);
+    }
+
+    .meter-wrap {
+      display: grid;
+      gap: 0.35rem;
+      margin-bottom: 1rem;
+    }
+
+    #meter-canvas {
+      width: 100%;
+      height: 84px;
+      border-radius: 6px;
+      border: 1px solid var(--theme-a);
+      background: #121211;
+      display: block;
+    }
+
+    .meter-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--theme-b);
+    }
+
+    .meter-meta span:last-child {
+      color: var(--primary);
+    }
+
+    .waveform-wrapper {
+      padding: 0.7rem 0.2rem 0.1rem;
+    }
+
+    .waveform-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .waveform-title {
+      font-size: 0.78rem;
+      color: var(--theme-b);
+      word-break: break-all;
+    }
+
+    .waveform-duration {
+      font-size: 0.78rem;
+      color: var(--theme-c);
+      font-weight: 700;
+    }
+
+    #waveform {
+      margin-bottom: 0.7rem;
+    }
+
+    .playback-controls {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .playback-btn {
+      min-width: 4rem;
+    }
+
+    .empty-state {
+      border: 1px dashed var(--theme-a);
+      border-radius: 8px;
+      padding: 1.5rem;
+      text-align: center;
+      color: var(--theme-b);
+      font-size: 0.85rem;
+      background: rgba(53, 53, 49, 0.2);
+    }
+
+    #status {
+      /* margin-bottom: 1rem; */
+      display: none;
     }
   </style>
 </head>
@@ -155,10 +378,446 @@
   </header>
 
   <main>
-    <h1><i class="fa-solid fa-seedling"></i> folysplitr</h1>
-    <p>Placeholder page for the upcoming folysplitr feature.</p>
+    <div class="tabs">
+      <button id="tab-recorder" class="tab-btn active"><i class="fa-solid fa-microphone-lines"></i> recorder</button>
+      <button id="tab-splitr" class="tab-btn"><i class="fa-solid fa-scissors"></i> splitr</button>
+    </div>
+
+    <section id="panel-recorder" class="panel tab-panel active">
+      <div class="row">
+        <label for="device-select">Select input device</label>
+        <select id="device-select"></select>
+      </div>
+      <div class="row">
+        <button id="record-btn" class="record-btn"><i class="fa-solid fa-microphone"></i> Record</button>
+        <button id="stop-btn"><i class="fa-solid fa-stop"></i> Stop</button>
+        <span id="timer-pill" class="time-pill">00:00 / 05:00</span>
+      </div>
+      <div class="meter-wrap">
+        <canvas id="meter-canvas" width="1080" height="84"></canvas>
+        <div class="meter-meta">
+          <span id="meter-db">-inf dBFS</span>
+          <span id="meter-state">waiting for input...</span>
+        </div>
+      </div>
+      <div id="status" class="status-text">Ready.</div>
+      <div id="waveform-shell" class="waveform-wrapper" style="display: none;">
+        <div class="waveform-header">
+          <span id="waveform-title" class="waveform-title"></span>
+          <span id="waveform-duration" class="waveform-duration">--:--</span>
+        </div>
+        <div id="waveform"></div>
+        <div class="playback-controls">
+          <button id="play-btn" class="playback-btn"><i class="fa-solid fa-play"></i> Play</button>
+        </div>
+      </div>
+      <div id="wave-empty" class="empty-state">No recording loaded yet. Record a take to render the waveform.</div>
+    </section>
+
+    <section id="panel-splitr" class="panel tab-panel">
+      <h1><i class="fa-solid fa-scissors"></i> folysplitr splitr</h1>
+      <div class="empty-state">Splitr tab placeholder. Splitting workflow coming next.</div>
+    </section>
   </main>
-  <script>document.addEventListener('DOMContentLoaded', function() { if (window.__pageReady) window.__pageReady(); });</script>
+  <script>
+    var MAX_RECORDING_MS = 5 * 60 * 1000;
+    var deviceSelect = document.getElementById("device-select");
+    var recordBtn = document.getElementById("record-btn");
+    var stopBtn = document.getElementById("stop-btn");
+    var playBtn = document.getElementById("play-btn");
+    var timerPill = document.getElementById("timer-pill");
+    var statusEl = document.getElementById("status");
+    var meterDbEl = document.getElementById("meter-db");
+    var meterStateEl = document.getElementById("meter-state");
+    var meterCanvas = document.getElementById("meter-canvas");
+    var meterCtx = meterCanvas.getContext("2d");
+    var waveformShell = document.getElementById("waveform-shell");
+    var waveformTitle = document.getElementById("waveform-title");
+    var waveformDuration = document.getElementById("waveform-duration");
+    var waveEmpty = document.getElementById("wave-empty");
+    var tabRecorderBtn = document.getElementById("tab-recorder");
+    var tabSplitrBtn = document.getElementById("tab-splitr");
+    var panelRecorder = document.getElementById("panel-recorder");
+    var panelSplitr = document.getElementById("panel-splitr");
+
+    var monitorStream = null;
+    var audioContext = null;
+    var analyser = null;
+    var meterData = null;
+    var meterAnimId = null;
+
+    var mediaRecorder = null;
+    var recordingChunks = [];
+    var recordingTimer = null;
+    var recordingStart = null;
+    var maxStopTimer = null;
+
+    var waveSurfer = null;
+    var lastRecordingUrl = null;
+
+    function showTab(tabName) {
+      var recorderActive = tabName === "recorder";
+      tabRecorderBtn.classList.toggle("active", recorderActive);
+      tabSplitrBtn.classList.toggle("active", !recorderActive);
+      panelRecorder.classList.toggle("active", recorderActive);
+      panelSplitr.classList.toggle("active", !recorderActive);
+    }
+
+    function setStatus(text, isError) {
+      statusEl.innerText = text;
+      statusEl.classList.toggle("error", !!isError);
+    }
+
+    function formatTime(seconds) {
+      var s = Math.max(0, Math.floor(seconds));
+      var mm = String(Math.floor(s / 60)).padStart(2, "0");
+      var ss = String(s % 60).padStart(2, "0");
+      return mm + ":" + ss;
+    }
+
+    function pickRecorderMimeType() {
+      var types = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/ogg;codecs=opus",
+        "audio/ogg",
+        "audio/mp4"
+      ];
+      for (var i = 0; i < types.length; i++) {
+        if (window.MediaRecorder && MediaRecorder.isTypeSupported(types[i])) return types[i];
+      }
+      return "";
+    }
+
+    function stopCurrentStream() {
+      if (!monitorStream) return;
+      monitorStream.getTracks().forEach(function (track) { track.stop(); });
+      monitorStream = null;
+    }
+
+    function stopMeter() {
+      if (meterAnimId != null) cancelAnimationFrame(meterAnimId);
+      meterAnimId = null;
+      analyser = null;
+      meterData = null;
+      if (audioContext) {
+        try { audioContext.close(); } catch (e) { }
+        audioContext = null;
+      }
+      drawMeter(0, true);
+    }
+
+    function drawMeter(level, idle) {
+      var w = meterCanvas.width;
+      var h = meterCanvas.height;
+      meterCtx.fillStyle = "#121211";
+      meterCtx.fillRect(0, 0, w, h);
+
+      var bars = 48;
+      var gap = 3;
+      var barW = (w - (bars - 1) * gap) / bars;
+      var maxHeight = h - 16;
+      var activeBars = Math.round(level * bars);
+      for (var i = 0; i < bars; i++) {
+        var x = i * (barW + gap);
+        var ratio = (i + 1) / bars;
+        var yHeight = Math.max(6, maxHeight * ratio);
+        var y = h - yHeight - 6;
+        if (idle) {
+          meterCtx.fillStyle = "#2b2b28";
+        } else if (i < activeBars) {
+          meterCtx.fillStyle = ratio > 0.85 ? "#ec4e20" : (ratio > 0.6 ? "#ff9505" : "#016fb9");
+        } else {
+          meterCtx.fillStyle = "#2b2b28";
+        }
+        meterCtx.fillRect(x, y, barW, yHeight);
+      }
+    }
+
+    function updateMeterState(db) {
+      if (!Number.isFinite(db)) {
+        meterDbEl.innerText = "-inf dBFS";
+        meterStateEl.innerText = "waiting for input...";
+        return;
+      }
+      meterDbEl.innerText = db.toFixed(1) + " dBFS";
+      if (db > -6) {
+        meterStateEl.innerText = "too loud (risk clipping)";
+      } else if (db < -36) {
+        meterStateEl.innerText = "too quiet";
+      } else {
+        meterStateEl.innerText = "healthy input level";
+      }
+    }
+
+    function meterLoop() {
+      if (!analyser || !meterData) return;
+      analyser.getFloatTimeDomainData(meterData);
+      var sumSq = 0;
+      for (var i = 0; i < meterData.length; i++) sumSq += meterData[i] * meterData[i];
+      var rms = Math.sqrt(sumSq / meterData.length);
+      var db = rms > 0 ? 20 * Math.log10(rms) : -Infinity;
+      var normalized = Number.isFinite(db) ? Math.min(1, Math.max(0, (db + 60) / 60)) : 0;
+      drawMeter(normalized, false);
+      updateMeterState(db);
+      meterAnimId = requestAnimationFrame(meterLoop);
+    }
+
+    async function startMonitorForDevice(deviceId) {
+      stopMeter();
+      stopCurrentStream();
+      var constraints = { audio: deviceId ? { deviceId: { exact: deviceId } } : true };
+      monitorStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      var source = audioContext.createMediaStreamSource(monitorStream);
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 1024;
+      analyser.smoothingTimeConstant = 0.85;
+      meterData = new Float32Array(analyser.fftSize);
+      source.connect(analyser);
+      meterLoop();
+    }
+
+    async function refreshDevices() {
+      var devices = await navigator.mediaDevices.enumerateDevices();
+      var inputs = devices.filter(function (d) { return d.kind === "audioinput"; });
+      deviceSelect.innerHTML = "";
+      if (!inputs.length) {
+        var optNone = document.createElement("option");
+        optNone.value = "";
+        optNone.textContent = "No audio input devices found";
+        deviceSelect.appendChild(optNone);
+        deviceSelect.disabled = true;
+        return;
+      }
+
+      inputs.forEach(function (device, idx) {
+        var option = document.createElement("option");
+        option.value = device.deviceId;
+        option.textContent = device.label || ("Input " + (idx + 1));
+        deviceSelect.appendChild(option);
+      });
+      deviceSelect.disabled = false;
+    }
+
+    function setRecordingUi(isRecording) {
+      recordBtn.disabled = isRecording;
+      stopBtn.disabled = !isRecording;
+      recordBtn.classList.toggle("recording", isRecording);
+      timerPill.classList.toggle("recording", isRecording);
+      if (isRecording) {
+        recordBtn.innerHTML = '<i class="fa-solid fa-circle"></i> Recording...';
+      } else {
+        recordBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Record';
+      }
+    }
+
+    function updateTimer() {
+      if (!recordingStart) {
+        timerPill.innerText = "00:00 / 05:00";
+        return;
+      }
+      var elapsed = (Date.now() - recordingStart) / 1000;
+      timerPill.innerText = formatTime(elapsed) + " / 05:00";
+    }
+
+    async function startRecording() {
+      if (!monitorStream) {
+        setStatus("No input stream ready yet.", true);
+        return;
+      }
+      if (!window.MediaRecorder) {
+        setStatus("MediaRecorder is not supported in this browser.", true);
+        return;
+      }
+      var mimeType = pickRecorderMimeType();
+      try {
+        mediaRecorder = mimeType
+          ? new MediaRecorder(monitorStream, { mimeType: mimeType, audioBitsPerSecond: 320000 })
+          : new MediaRecorder(monitorStream, { audioBitsPerSecond: 320000 });
+      } catch (err) {
+        setStatus("Unable to start recorder: " + err.message, true);
+        return;
+      }
+
+      recordingChunks = [];
+      mediaRecorder.ondataavailable = function (event) {
+        if (event.data && event.data.size > 0) recordingChunks.push(event.data);
+      };
+      mediaRecorder.onerror = function (event) {
+        setStatus("Recorder error: " + (event.error && event.error.message ? event.error.message : "unknown"), true);
+      };
+      mediaRecorder.onstop = onRecordingStopped;
+
+      recordingStart = Date.now();
+      updateTimer();
+      recordingTimer = setInterval(updateTimer, 250);
+      maxStopTimer = setTimeout(function () {
+        if (mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
+      }, MAX_RECORDING_MS);
+
+      mediaRecorder.start(250);
+      setRecordingUi(true);
+      setStatus("Recording...");
+    }
+
+    function stopRecording() {
+      if (!mediaRecorder || mediaRecorder.state !== "recording") return;
+      mediaRecorder.stop();
+    }
+
+    async function onRecordingStopped() {
+      clearInterval(recordingTimer);
+      clearTimeout(maxStopTimer);
+      recordingTimer = null;
+      maxStopTimer = null;
+      setRecordingUi(false);
+      updateTimer();
+      recordingStart = null;
+      timerPill.innerText = "00:00 / 05:00";
+
+      if (!recordingChunks.length) {
+        setStatus("No audio captured.", true);
+        return;
+      }
+
+      var mimeType = (mediaRecorder && mediaRecorder.mimeType) || "audio/webm";
+      var blob = new Blob(recordingChunks, { type: mimeType });
+      var ext = mimeType.indexOf("ogg") !== -1 ? ".ogg" : (mimeType.indexOf("mp4") !== -1 ? ".m4a" : ".webm");
+      var formData = new FormData();
+      formData.append("file", blob, "folysplitr_take" + ext);
+
+      setStatus("Saving recording...");
+      try {
+        var res = await fetch("/api/folysplitr/recordings", {
+          method: "POST",
+          body: formData
+        });
+        var payload = await res.json();
+        if (!res.ok || !payload.ok) {
+          throw new Error(payload.error || "Save failed");
+        }
+        lastRecordingUrl = payload.url;
+        loadWaveform(payload.url, payload.filename);
+        setStatus("Recording saved.");
+      } catch (err) {
+        setStatus("Failed to save recording: " + err.message, true);
+      }
+    }
+
+    function loadWaveform(url, title) {
+      if (waveSurfer) {
+        try { waveSurfer.destroy(); } catch (e) { }
+        waveSurfer = null;
+      }
+      waveEmpty.style.display = "none";
+      waveformShell.style.display = "block";
+      waveformTitle.innerText = title || url;
+      waveformDuration.innerText = "--:--";
+      playBtn.innerHTML = '<i class="fa-solid fa-play"></i> Play';
+
+      waveSurfer = WaveSurfer.create({
+        container: "#waveform",
+        waveColor: "#353531",
+        progressColor: "#016fb9",
+        cursorColor: "#ff9505",
+        height: 92,
+        backend: "MediaElement",
+      });
+      waveSurfer.load(url);
+
+      waveSurfer.on("ready", function () {
+        waveformDuration.innerText = formatTime(waveSurfer.getDuration());
+      });
+      waveSurfer.on("play", function () {
+        playBtn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause';
+      });
+      waveSurfer.on("pause", function () {
+        if (!waveSurfer.isPlaying()) {
+          playBtn.innerHTML = '<i class="fa-solid fa-play"></i> Play';
+        }
+      });
+      waveSurfer.on("finish", function () {
+        playBtn.innerHTML = '<i class="fa-solid fa-play"></i> Play';
+      });
+    }
+
+    async function loadLatestRecording() {
+      try {
+        var res = await fetch("/api/folysplitr/recordings");
+        var payload = await res.json();
+        if (!res.ok || !payload.ok || !payload.files || !payload.files.length) return;
+        var latest = payload.files[0];
+        lastRecordingUrl = latest.url;
+        loadWaveform(latest.url, latest.filename);
+        setStatus("Latest recording loaded.");
+      } catch (e) {
+        setStatus("Could not load previous recordings.", true);
+      }
+    }
+
+    recordBtn.addEventListener("click", function () {
+      startRecording();
+    });
+    stopBtn.addEventListener("click", function () {
+      stopRecording();
+    });
+    playBtn.addEventListener("click", function () {
+      if (!waveSurfer) return;
+      if (waveSurfer.isPlaying()) {
+        waveSurfer.pause();
+      } else {
+        waveSurfer.play();
+      }
+    });
+    deviceSelect.addEventListener("change", async function () {
+      try {
+        await startMonitorForDevice(deviceSelect.value);
+        setStatus("Input device switched.");
+      } catch (err) {
+        setStatus("Failed to switch input device: " + err.message, true);
+      }
+    });
+    tabRecorderBtn.addEventListener("click", function () {
+      showTab("recorder");
+    });
+    tabSplitrBtn.addEventListener("click", function () {
+      showTab("splitr");
+    });
+
+    async function boot() {
+      stopBtn.disabled = true;
+      drawMeter(0, true);
+      try {
+        await startMonitorForDevice("");
+        await refreshDevices();
+        if (deviceSelect.options.length > 0 && monitorStream) {
+          var selectedTrack = monitorStream.getAudioTracks()[0];
+          var selectedSetting = selectedTrack && selectedTrack.getSettings ? selectedTrack.getSettings().deviceId : "";
+          if (selectedSetting) deviceSelect.value = selectedSetting;
+        }
+        setStatus("Microphone ready.");
+      } catch (err) {
+        setStatus("Microphone access denied or unavailable: " + err.message, true);
+      }
+      await loadLatestRecording();
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      boot();
+      if (window.__pageReady) window.__pageReady();
+    });
+
+    window.addEventListener("beforeunload", function () {
+      stopRecording();
+      stopMeter();
+      stopCurrentStream();
+      if (waveSurfer) {
+        try { waveSurfer.destroy(); } catch (e) { }
+      }
+    });
+  </script>
 </body>
 
 </html>
