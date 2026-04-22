@@ -357,6 +357,7 @@
       color: var(--theme-b);
       min-width: 120px;
       flex: 0 0 120px;
+      text-align: right;
     }
 
     .generatr-form .form-row select,
@@ -1388,7 +1389,40 @@
     }
 
     (function () {
+      /**
+       * Feature flags (auditionr only): ?flags=FLAG_A,FLAG_B
+       * Flags are trimmed, lowercased, and stored in a Set for quick lookup.
+       * Example: ?flags=all_cli_options — shows drone / bass / transition in Generate Samples.
+       */
+      function parseAuditionrFeatureFlags() {
+        try {
+          var params = new URLSearchParams(window.location.search);
+          var raw = params.get("flags") || "";
+          return new Set(
+            raw.split(",")
+              .map(function (s) { return String(s).trim().toLowerCase(); })
+              .filter(function (s) { return s.length > 0; })
+          );
+        } catch (e) {
+          return new Set();
+        }
+      }
+
+      var auditionrFeatureFlags = parseAuditionrFeatureFlags();
+      var FLAG_ALL_CLI_OPTIONS = "all_cli_options";
+
       var typeSelect = document.getElementById("generatr-type");
+      if (typeSelect && !auditionrFeatureFlags.has(FLAG_ALL_CLI_OPTIONS)) {
+        var gatedTypeValues = { drone: true, bass: true, transition: true };
+        var toRemove = [];
+        Array.from(typeSelect.options).forEach(function (opt) {
+          if (gatedTypeValues[opt.value]) toRemove.push(opt);
+        });
+        toRemove.forEach(function (opt) { opt.remove(); });
+        var stillValid = Array.from(typeSelect.options).some(function (o) { return o.value === typeSelect.value; });
+        if (!stillValid) typeSelect.value = "beat";
+      }
+
       var subcommandRow = document.getElementById("generatr-subcommand-row");
       var transitionSubcommandRow = document.getElementById("generatr-transition-subcommand-row");
       var beatRows = [
