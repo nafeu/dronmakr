@@ -1072,6 +1072,30 @@ def get_saved_files():
     ]
 
 
+def validate_saved_paths_for_package(paths: list) -> tuple[list[dict], list[str]]:
+    """
+    Given URL paths like /saved/foo.wav, return entries that exist in saved/
+    (same shape as get_saved_files) and a list of paths that were not allowed.
+    """
+    allowed = {item["path"]: item for item in get_saved_files()}
+    valid: list[dict] = []
+    invalid: list[str] = []
+    seen: set[str] = set()
+    for p in paths:
+        if not isinstance(p, str):
+            invalid.append(str(p))
+            continue
+        key = p.strip()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        if key in allowed:
+            valid.append(dict(allowed[key]))
+        else:
+            invalid.append(key)
+    return valid, invalid
+
+
 def rename_samples(
     pack_name, artist_name="", affix=False, dry_run=False, delimiter="^"
 ):

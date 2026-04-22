@@ -43,6 +43,7 @@ from utils import (
     get_latest_exports,
     get_presets,
     get_saved_files,
+    validate_saved_paths_for_package,
 )
 from generate_midi import get_patterns
 from config_validation import validate_server_config_names
@@ -106,6 +107,24 @@ def collections_page():
 def api_collections_saved():
     """Return list of saved .wav files with name, path, and type for collections."""
     return jsonify({"files": get_saved_files()})
+
+
+@app.route("/api/collections/package-selection", methods=["POST"])
+def api_collections_package_selection():
+    """
+    Validate a list of /saved/... paths for packaging (must exist on disk).
+    Used by the collections packaging UI and future export flows.
+    """
+    data = request.get_json(silent=True) or {}
+    paths = data.get("paths")
+    if paths is None:
+        return jsonify({"ok": False, "error": "Missing paths"}), 400
+    if not isinstance(paths, list):
+        return jsonify({"ok": False, "error": "paths must be a list"}), 400
+    valid, invalid = validate_saved_paths_for_package(paths)
+    return jsonify(
+        {"ok": True, "items": valid, "invalidPaths": invalid, "count": len(valid)}
+    )
 
 
 def _serve_saved_file(filename):

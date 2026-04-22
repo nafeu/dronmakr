@@ -323,6 +323,41 @@
       background: rgba(255, 149, 5, 0.15);
     }
 
+    .collection-card .card-package-cb {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      width: 2rem;
+      height: 2rem;
+      margin: 0;
+      flex-shrink: 0;
+      cursor: pointer;
+      border-radius: 4px;
+      border: 1px solid var(--theme-a);
+      background-color: var(--secondary);
+      background-image: none;
+      box-sizing: border-box;
+    }
+
+    .collection-card .card-package-cb:checked {
+      background-color: var(--primary);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Cpath stroke='%23000000' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round' d='M5 12l5 5 9-10'/%3E%3C/svg%3E");
+      background-size: 70% 70%;
+      background-position: center;
+      background-repeat: no-repeat;
+      border-color: var(--primary);
+    }
+
+    .collection-card .card-package-cb:focus {
+      outline: none;
+      border-color: var(--theme-b);
+      box-shadow: 0 0 0 1px var(--theme-b);
+    }
+
+    .collection-card .card-package-cb:focus:checked {
+      border-color: var(--theme-b);
+    }
+
     /* Type colors: match auditionr */
     .collection-card.type-drumpattern .card-name,
     .collection-card.type-drumpattern .card-duration {
@@ -408,9 +443,79 @@
       gap: 0.35rem;
     }
 
-    .sidebar-card .placeholder-text {
+    .sidebar-card .packaging-count {
       font-size: 0.8rem;
+      color: var(--theme-b);
+      margin: 0 0 0.65rem 0;
+    }
+
+    .sidebar-card .packaging-selected-list-wrap {
+      max-width: 100%;
+      width: 100%;
+      max-height: min(50vh, 22rem);
+      overflow: auto;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      background: #0a0a0a;
+      box-sizing: border-box;
+    }
+
+    .sidebar-card .packaging-selected-list {
+      list-style: none;
+      margin: 0;
+      padding: 0.4rem 0;
+      min-width: min-content;
+    }
+
+    .sidebar-card .packaging-selected-list li {
+      font-size: 0.72rem;
+      color: var(--primary);
+      padding: 0.35rem 0.65rem;
+      border-bottom: 1px solid rgba(53, 53, 49, 0.6);
+      white-space: nowrap;
+    }
+
+    .sidebar-card .packaging-selected-list li:last-child {
+      border-bottom: none;
+    }
+
+    .sidebar-card .packaging-selected-list li.packaging-selected-empty {
       color: var(--theme-a);
+      font-style: italic;
+      border-bottom: none;
+    }
+
+    .collections-filters .collections-filter-btn {
+      padding: 0 0.65rem;
+      font-family: inherit;
+      font-size: 0.75rem;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      background: var(--theme-a);
+      color: var(--primary);
+      cursor: pointer;
+      height: 2rem;
+      white-space: nowrap;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .collections-filters .collections-filter-btn.collections-filter-btn--icon {
+      min-width: 2rem;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+    }
+
+    .collections-filters .collections-filter-btn:hover {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.15);
+    }
+
+    .collections-filters .collections-pagination button {
+      min-width: 2rem;
+      padding: 0.35rem 0.5rem;
     }
 
     .collections-empty {
@@ -421,6 +526,8 @@
 
     #filter-name,
     #filter-type,
+    #select-all-packaging,
+    #deselect-all-packaging,
     #page-prev,
     #page-next {
       height: 2rem;
@@ -459,10 +566,18 @@
           <option value="transition">transition</option>
           <option value="other">other</option>
         </select>
+        <button type="button" id="select-all-packaging" class="collections-filter-btn collections-filter-btn--icon"
+          title="Select all matching the current filters (all pages)" aria-label="Select all matching filters">
+          <i class="fa-solid fa-check-double" aria-hidden="true"></i>
+        </button>
+        <button type="button" id="deselect-all-packaging" class="collections-filter-btn collections-filter-btn--icon"
+          title="Clear packaging selection" aria-label="Clear packaging selection">
+          <i class="fa-solid fa-square-xmark" aria-hidden="true"></i>
+        </button>
         <div class="collections-pagination">
-          <button type="button" id="page-prev" disabled><i class="fa-solid fa-chevron-left"></i> Prev</button>
+          <button type="button" id="page-prev" disabled title="Previous page" aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></button>
           <span class="page-info" id="page-info">—</span>
-          <button type="button" id="page-next" disabled>Next <i class="fa-solid fa-chevron-right"></i></button>
+          <button type="button" id="page-next" disabled title="Next page" aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></button>
         </div>
       </div>
       <div id="collections-grid" class="collections-grid"></div>
@@ -470,7 +585,10 @@
     <div class="collections-sidebar">
       <aside class="sidebar-card">
         <h2><i class="fa-solid fa-box"></i> Packaging Options</h2>
-        <p class="placeholder-text">Packaging options will appear here.</p>
+        <p class="packaging-count" id="packaging-count">0 samples selected</p>
+        <div class="packaging-selected-list-wrap">
+          <ul id="packaging-selected-list" class="packaging-selected-list" aria-live="polite"></ul>
+        </div>
       </aside>
     </div>
   </main>
@@ -483,6 +601,8 @@
       var currentPage = 0;
       var waveSurferInstances = {};
       var activeWsId = null;
+      /** @type {Map<string, {name: string, type: string}>} path -> metadata for packaging */
+      var selectedForPackage = new Map();
 
       function progressColorForType(type) {
         if (type === "drumpattern") return "#016fb9";
@@ -504,6 +624,34 @@
           if (typeQ && f.type !== typeQ) return false;
           if (nameQ && f.name.toLowerCase().indexOf(nameQ) === -1) return false;
           return true;
+        });
+      }
+
+      function renderPackagingSidebar() {
+        var countEl = document.getElementById("packaging-count");
+        var listEl = document.getElementById("packaging-selected-list");
+        var n = selectedForPackage.size;
+        countEl.textContent = n === 1 ? "1 sample selected" : n + " samples selected";
+        var entries = [];
+        selectedForPackage.forEach(function (meta, path) {
+          entries.push({ path: path, name: meta.name, type: meta.type });
+        });
+        entries.sort(function (a, b) {
+          return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+        });
+        listEl.innerHTML = "";
+        if (entries.length === 0) {
+          var emptyLi = document.createElement("li");
+          emptyLi.className = "packaging-selected-empty";
+          emptyLi.textContent = "No samples selected.";
+          listEl.appendChild(emptyLi);
+          return;
+        }
+        entries.forEach(function (e) {
+          var li = document.createElement("li");
+          li.textContent = e.name;
+          li.title = e.path + " · " + e.type;
+          listEl.appendChild(li);
         });
       }
 
@@ -563,6 +711,21 @@
             playBtn.title = "Play / Pause";
             playBtn.innerHTML = "<i class=\"fa-solid fa-play\"></i>";
             waveformRow.appendChild(playBtn);
+            var packCb = document.createElement("input");
+            packCb.type = "checkbox";
+            packCb.className = "card-package-cb";
+            packCb.title = "Select for packaging";
+            packCb.setAttribute("aria-label", "Select for packaging: " + item.name);
+            packCb.checked = selectedForPackage.has(item.path);
+            packCb.addEventListener("change", function () {
+              if (packCb.checked) {
+                selectedForPackage.set(item.path, { name: item.name, type: item.type });
+              } else {
+                selectedForPackage.delete(item.path);
+              }
+              renderPackagingSidebar();
+            });
+            waveformRow.appendChild(packCb);
             card.appendChild(waveformRow);
 
             grid.appendChild(card);
@@ -614,7 +777,12 @@
         document.getElementById("page-prev").disabled = currentPage === 0;
         document.getElementById("page-next").disabled = start + PAGE_SIZE >= total;
         var totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-        document.getElementById("page-info").textContent = total === 0 ? "0 items" : "Page " + (currentPage + 1) + " of " + totalPages + " (" + total + " items)";
+        var pageInfo = document.getElementById("page-info");
+        if (total === 0) {
+          pageInfo.textContent = "0 (0)";
+        } else {
+          pageInfo.textContent = (currentPage + 1) + " of " + totalPages + " (" + total + ")";
+        }
       }
 
       function goPrev() {
@@ -642,11 +810,36 @@
       document.getElementById("page-prev").addEventListener("click", goPrev);
       document.getElementById("page-next").addEventListener("click", goNext);
 
+      document.getElementById("select-all-packaging").addEventListener("click", function () {
+        getFiltered().forEach(function (item) {
+          selectedForPackage.set(item.path, { name: item.name, type: item.type });
+        });
+        renderPackagingSidebar();
+        renderPage();
+      });
+
+      document.getElementById("deselect-all-packaging").addEventListener("click", function () {
+        selectedForPackage.clear();
+        renderPackagingSidebar();
+        renderPage();
+      });
+
       fetch("/api/collections/saved")
         .then(function (r) { return r.json(); })
         .then(function (data) {
           allFiles = (data && data.files) ? data.files : [];
+          var allowedPaths = new Set(allFiles.map(function (f) { return f.path; }));
+          var stalePaths = [];
+          selectedForPackage.forEach(function (_, path) {
+            if (!allowedPaths.has(path)) {
+              stalePaths.push(path);
+            }
+          });
+          stalePaths.forEach(function (p) {
+            selectedForPackage.delete(p);
+          });
           currentPage = 0;
+          renderPackagingSidebar();
           renderPage();
           if (window.__pageReady) window.__pageReady();
         })
