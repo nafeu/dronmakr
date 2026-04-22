@@ -11,6 +11,7 @@ import random
 import re
 import shutil
 from pathlib import Path
+from urllib.parse import quote, unquote
 
 from flask import request, send_file
 from flask import send_from_directory
@@ -50,6 +51,11 @@ DRUM_ROW_ORDER = [
     "tomm",
     "cymb",
 ]
+
+
+def _kit_sample_url(filename: str) -> str:
+    """Build a safe /kit-samples URL for filenames with reserved chars."""
+    return f"/kit-samples/{quote(filename)}"
 
 
 ENV_TO_ROW_MAPPING = {
@@ -126,7 +132,7 @@ def generate_random_drum_kit() -> dict:
         kit[row] = {
             "name": src_path.stem,
             "path": str(src_path),
-            "url": f"/kit-samples/{filename}",
+            "url": _kit_sample_url(filename),
         }
 
     return {"rows": DRUM_ROW_ORDER, "kit": kit, "base_url": "/kit-samples"}
@@ -154,7 +160,7 @@ def replace_sample_for_row(row: str) -> dict | None:
     return {
         "name": src_path.stem,
         "path": str(src_path),
-        "url": f"/kit-samples/{filename}",
+        "url": _kit_sample_url(filename),
     }
 
 
@@ -370,7 +376,7 @@ def replace_sample_with_path(row: str, path_str: str) -> dict | None:
     return {
         "name": src_path.stem,
         "path": str(src_path),
-        "url": f"/kit-samples/{filename}",
+        "url": _kit_sample_url(filename),
     }
 
 
@@ -585,7 +591,7 @@ def load_kit_by_name(kit_name: str) -> dict | None:
         kit[row] = {
             "name": src_path.stem,
             "path": str(src_path),
-            "url": f"/kit-samples/{filename}",
+            "url": _kit_sample_url(filename),
         }
 
     return {"rows": DRUM_ROW_ORDER, "kit": kit, "base_url": "/kit-samples"}
@@ -749,7 +755,7 @@ def _resolve_kit_path(row: str, path_str: str) -> str | None:
         return None
     s = path_str.strip()
     if "/kit-samples/" in s:
-        filename = s.split("/kit-samples/")[-1].split("?")[0]
+        filename = unquote(s.split("/kit-samples/")[-1].split("?")[0])
         if filename:
             resolved = Path(TEMP_DIR) / "beatbuildr" / filename
             if resolved.exists():
