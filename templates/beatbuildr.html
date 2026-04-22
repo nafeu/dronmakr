@@ -1440,6 +1440,28 @@
       background: rgba(255, 149, 5, 0.22);
     }
 
+    .browser-list-item-delete {
+      flex-shrink: 0;
+      width: 1.4rem;
+      height: 1.4rem;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      background: transparent;
+      color: var(--theme-a);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 0.65rem;
+      transition: all 0.12s ease;
+    }
+
+    .browser-list-item-delete:hover {
+      color: #ff7f7f;
+      border-color: #ff7f7f;
+      background: rgba(255, 127, 127, 0.12);
+    }
+
     .browser-list-item-name-wrap {
       flex: 1;
       min-width: 0;
@@ -3458,14 +3480,35 @@
       filtered.forEach((patternName) => {
         const li = document.createElement("li");
         li.className = "browser-list-item";
-        li.innerHTML = "<i class=\"fa-solid fa-music\"></i> " + patternName;
         li.dataset.patternName = patternName;
+
+        const nameWrap = document.createElement("span");
+        nameWrap.className = "browser-list-item-name-wrap";
+        nameWrap.innerHTML = "<i class=\"fa-solid fa-music\"></i> " + patternName;
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "browser-list-item-delete";
+        deleteBtn.title = "Delete pattern";
+        deleteBtn.innerHTML = "<i class=\"fa-solid fa-trash\"></i>";
+
         li.addEventListener("click", () => {
           patternNameInput.value = normalizeKebabNameFinal(patternName);
           if (state.socket && state.socket.connected) {
             state.socket.emit("loadPattern", { name: patternName });
           }
         });
+        deleteBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          showConfirmModal(`Delete pattern "${patternName}"?`, () => {
+            if (state.socket && state.socket.connected) {
+              state.socket.emit("deletePattern", { name: patternName });
+            }
+          });
+        });
+        li.appendChild(nameWrap);
+        li.appendChild(deleteBtn);
         browserPatternList.appendChild(li);
       });
     }
@@ -3541,6 +3584,15 @@
       }
     });
 
+    socket.on("patternDeleteResult", (data) => {
+      if (data && data.error) {
+        showErrorModal(data.error);
+      } else if (data && data.success && patternNameInput.value === data.name) {
+        patternNameInput.value = "";
+        schedulePersistBeatbuildr();
+      }
+    });
+
     // Browser – kits list, filter, load, save
     const browserKitFilter = document.getElementById("browser-kit-filter");
     const browserKitList = document.getElementById("browser-kit-list");
@@ -3579,14 +3631,35 @@
       filtered.forEach((kitName) => {
         const li = document.createElement("li");
         li.className = "browser-list-item";
-        li.innerHTML = "<i class=\"fa-solid fa-drum\"></i> " + kitName;
         li.dataset.kitName = kitName;
+
+        const nameWrap = document.createElement("span");
+        nameWrap.className = "browser-list-item-name-wrap";
+        nameWrap.innerHTML = "<i class=\"fa-solid fa-drum\"></i> " + kitName;
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.className = "browser-list-item-delete";
+        deleteBtn.title = "Delete kit";
+        deleteBtn.innerHTML = "<i class=\"fa-solid fa-trash\"></i>";
+
         li.addEventListener("click", () => {
           browserKitNameInput.value = normalizeKebabNameFinal(kitName);
           if (state.socket && state.socket.connected) {
             state.socket.emit("loadKit", { name: kitName });
           }
         });
+        deleteBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          showConfirmModal(`Delete kit "${kitName}"?`, () => {
+            if (state.socket && state.socket.connected) {
+              state.socket.emit("deleteKit", { name: kitName });
+            }
+          });
+        });
+        li.appendChild(nameWrap);
+        li.appendChild(deleteBtn);
         browserKitList.appendChild(li);
       });
     }
@@ -3817,6 +3890,15 @@
     socket.on("kitLoadResult", (data) => {
       if (data.error) {
         showErrorModal(data.error);
+      }
+    });
+
+    socket.on("kitDeleteResult", (data) => {
+      if (data && data.error) {
+        showErrorModal(data.error);
+      } else if (data && data.success && browserKitNameInput.value === data.name) {
+        browserKitNameInput.value = "";
+        schedulePersistBeatbuildr();
       }
     });
 

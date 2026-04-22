@@ -485,6 +485,19 @@ def _extract_kit_paths(kit: dict) -> dict[str, str]:
     return paths
 
 
+def _write_drum_kits_config(kits: dict) -> None:
+    """Write drum kits config preserving existing compact layout."""
+    os.makedirs(os.path.dirname(DRUM_KITS_FILE), exist_ok=True)
+    with open(DRUM_KITS_FILE, "w") as f:
+        f.write("{\n")
+        items = list(kits.items())
+        for i, (kit_name, kit_data) in enumerate(items):
+            comma = "" if i == len(items) - 1 else ","
+            paths_json = json.dumps(kit_data)
+            f.write(f'  "{kit_name}": {paths_json}{comma}\n')
+        f.write("}\n")
+
+
 def _handle_save_pattern(payload):
     """
     Save a beat pattern to config/beat-patterns.json.
@@ -566,6 +579,30 @@ def _handle_load_pattern(payload):
 
     _socketio.emit("patternLoaded", {"name": name, "pattern": pattern_data})
     _socketio.emit("patternLoadResult", {"success": True, "name": name})
+
+
+def _handle_delete_pattern(payload):
+    """Delete a pattern by name. Payload: { "name": str }."""
+    name = (payload or {}).get("name", "").strip()
+    if not name:
+        _socketio.emit("patternDeleteResult", {"error": "Pattern name is required"})
+        return
+
+    try:
+        patterns = _load_beat_patterns_config()
+        if name not in patterns:
+            _socketio.emit(
+                "patternDeleteResult", {"error": f"Pattern '{name}' not found"}
+            )
+            return
+        del patterns[name]
+        _write_patterns_config(patterns)
+        _socketio.emit("patternDeleteResult", {"success": True, "name": name})
+        _socketio.emit("patterns", {"patterns": list(patterns.keys())})
+    except Exception as e:
+        _socketio.emit(
+            "patternDeleteResult", {"error": f"Failed to delete pattern: {str(e)}"}
+        )
 
 
 def serve_kit_sample(filename: str):
@@ -719,15 +756,7 @@ def _handle_save_kit(payload):
 
         kits[name] = paths
 
-        os.makedirs(os.path.dirname(DRUM_KITS_FILE), exist_ok=True)
-        with open(DRUM_KITS_FILE, "w") as f:
-            f.write("{\n")
-            items = list(kits.items())
-            for i, (kit_name, kit_data) in enumerate(items):
-                comma = "" if i == len(items) - 1 else ","
-                paths_json = json.dumps(kit_data)
-                f.write(f'  "{kit_name}": {paths_json}{comma}\n')
-            f.write("}\n")
+        _write_drum_kits_config(kits)
 
         _socketio.emit("kitSaveResult", {"success": True, "name": name})
         _socketio.emit("drumKits", {"kits": list(kits.keys())})
@@ -736,6 +765,26 @@ def _handle_save_kit(payload):
         _socketio.emit(
             "kitSaveResult", {"error": f"Failed to save kit: {str(e)}"}
         )
+
+
+def _handle_delete_kit(payload):
+    """Delete a kit by name. Payload: { "name": str }."""
+    name = (payload or {}).get("name", "").strip()
+    if not name:
+        _socketio.emit("kitDeleteResult", {"error": "Kit name is required"})
+        return
+
+    try:
+        kits = _load_drum_kits_config()
+        if name not in kits:
+            _socketio.emit("kitDeleteResult", {"error": f"Kit '{name}' not found"})
+            return
+        del kits[name]
+        _write_drum_kits_config(kits)
+        _socketio.emit("kitDeleteResult", {"success": True, "name": name})
+        _socketio.emit("drumKits", {"kits": list(kits.keys())})
+    except Exception as e:
+        _socketio.emit("kitDeleteResult", {"error": f"Failed to delete kit: {str(e)}"})
 
 
 def _handle_save_groove(payload):
@@ -799,15 +848,7 @@ def _handle_save_groove(payload):
         kits[name] = paths
         _write_patterns_config(patterns)
 
-        os.makedirs(os.path.dirname(DRUM_KITS_FILE), exist_ok=True)
-        with open(DRUM_KITS_FILE, "w") as f:
-            f.write("{\n")
-            items = list(kits.items())
-            for i, (kit_name, kit_data) in enumerate(items):
-                comma = "" if i == len(items) - 1 else ","
-                paths_json = json.dumps(kit_data)
-                f.write(f'  "{kit_name}": {paths_json}{comma}\n')
-            f.write("}\n")
+        _write_drum_kits_config(kits)
 
         _socketio.emit("grooveSaveResult", {"success": True, "name": name})
         _socketio.emit("patterns", {"patterns": list(patterns.keys())})
@@ -1017,9 +1058,11 @@ def register_beatbuildr(app, socketio):
     socketio.on_event("savePattern", _handle_save_pattern)
     socketio.on_event("getPatterns", _handle_get_patterns)
     socketio.on_event("loadPattern", _handle_load_pattern)
+    socketio.on_event("deletePattern", _handle_delete_pattern)
     socketio.on_event("getDrumKits", _handle_get_drum_kits)
     socketio.on_event("loadKit", _handle_load_kit)
     socketio.on_event("saveKit", _handle_save_kit)
+    socketio.on_event("deleteKit", _handle_delete_kit)
     socketio.on_event("saveGroove", _handle_save_groove)
     socketio.on_event("getSamples", _handle_get_samples)
     socketio.on_event("refreshSamples", _handle_refresh_samples)
