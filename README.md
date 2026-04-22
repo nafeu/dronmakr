@@ -24,29 +24,24 @@ git clone https://github.com/nafeu/dronmakr.git
 cd dronmakr
 ```
 
-Setup Virtual Environment
+Setup virtual environment
 
 ```sh
 python -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
-```
-
-Install Dependencies
-
-```sh
 pip install -r requirements.txt
 ```
 
-Configure your environment variables
+Configure your environment variables:
 
-```
+```sh
 cp .env-sample .env
 ```
 
-Fill in the `.env` with relevant values, the following is an example:
+Fill in `.env` with relevant values. Example:
 
-```
+```env
 PLUGIN_PATHS="/Library/Audio/Plug-Ins/Components,/Library/Audio/Plug-Ins/VST,/Library/Audio/Plug-Ins/VST3"
 ASSERT_INSTRUMENT="Reaktor 6"
 IGNORE_PLUGINS=""
@@ -55,70 +50,200 @@ CUSTOM_PLUGINS=""
 
 ## Usage
 
-### 0. Verify the CLI is installed
+### 0) Verify the CLI
 
-`python dronmakr.py --version`
+```sh
+python dronmakr.py --version
+```
 
 ```
 dronmakr ■ v_._._
   github.com/nafeu/dronmakr (phrakturemusic@proton.me)
 ```
 
-`python dronmakr.py --help`
-
-```
-Usage: python dronmakr.py [OPTIONS] COMMAND [ARGS]...
-
-  Default to 'generate-drone' if no command is given.
-
-Commands:
-  generate-drone  Generate n iterations of drone samples (.wav) with parameters
-  list            List all available presets
-  pack            Rename all samples inside of saved folder for packaging
-  server          Run auditioner web server
+```sh
+python dronmakr.py --help
 ```
 
-### 1. Build Presets Using Your VST/AU Library
-
-`python build_preset.py`
-
-### 2. Generate Drone Samples
-
-`python dronmakr.py generate-drone --help`
-
 ```
-Usage: dronmakr.py generate-drone [OPTIONS]
+Usage: dronmakr.py [OPTIONS] COMMAND [ARGS]...
 
-  Generate n iterations of drone samples (.wav) with parameters
+  CLI entrypoint. With no subcommand, launches the unified web UI.
 
 Options:
-  -n, --name TEXT           Name for the generated sample.
-  -N, --notes TEXT          Comma separated list of notes with octave numbers (e.g., C2,D#3,F#3). Overrides other MIDI generation options.
-  -c, --chart-name TEXT     Chart name to filter chords/scales.
-  -i, --instrument TEXT     Name of the instrument.
-  -e, --effect TEXT         Name of the effect or chain.
-  -t, --tags TEXT           Comma delimited list of tags to filter
-                            chords/scales.
-  -r, --roots TEXT          Comma delimited list of roots to filter
-                            chords/scales.
-  -y, --chart-type TEXT     Type of chart used for midi, either 'chord' or
-                            'scale'.
-  -s, --style TEXT          Style of sample. One of "chaotic_arpeggio",
-                            "chord", "split_chord", "quantized_arpeggio".
-  -I, --iterations INTEGER  Number of times to generate samples (default: 1).
-                            [default: 1]
-  -O, --shift-octave-down   Shift all notes one octave down.
-  -R, --shift-root-note     Shift root note one octave down.
-  -d, --dry-run             Verify CLI options
-  -v, --log-server          Run logs as server mode
-  --help                    Show this message and exit.
+  -v, --version         Show the version and exit.
+  --install-completion  Install completion for the current shell.
+  --show-completion     Show completion for the current shell, to copy it or
+                        customize the installation.
+  --help                Show this message and exit.
+
+Commands:
+  generate-drone       Generate n iterations of samples (.wav) with...
+  generate-beat        Generate n iterations of drum loops from...
+  list                 List all available presets
+  pack                 Rename all samples inside of saved folder for...
+  webui                Run the unified web UI (auditionr + beatbuildr on...
+  reset                Delete all files within the exports, trash and...
+  generate-bass        Generate bass loops.
+  generate-transition  Generate transition sounds (sweeps, risers, etc.).
 ```
 
-### 3. View Your Samples in the Auditioner
+### 1) Build presets from your VST/AU library
 
-`python dronmakr.py server`
+```sh
+python build_preset.py
+```
 
-Open `http://0.0.0.0:3766` in a browser window.
+### 2) Run the unified web UI
+
+Start the app:
+
+```sh
+python dronmakr.py webui
+```
+
+Or just run with no command (same result):
+
+```sh
+python dronmakr.py
+```
+
+Open `http://0.0.0.0:3766` in a browser.
+
+#### Web UI previews
+
+##### auditionr
+
+![Auditionr Preview](preview-auditionr.png)
+
+##### beatbuildr
+
+![Beatbuildr Preview](preview-beatbuildr.png)
+
+##### collections
+
+![Collections Preview](preview-collections.png)
+
+### 3) CLI command examples (current)
+
+#### `generate-drone`
+
+```sh
+python dronmakr.py generate-drone \
+  --name "my_drone" \
+  --instrument "Reaktor 6" \
+  --chart-name "minor" \
+  --iterations 2 \
+  --post-processing "normalize,fade"
+```
+
+```sh
+python dronmakr.py generate-drone --help
+```
+
+#### `generate-beat`
+
+```sh
+python dronmakr.py generate-beat \
+  --tempo 140 \
+  --loops 4 \
+  --pattern "default" \
+  --kit "funky-dance" \
+  --variants "1/2,3/4" \
+  --swing 0.2 \
+  --iterations 2
+```
+
+```sh
+python dronmakr.py generate-beat --help
+```
+
+#### `generate-bass` (`reese`, `donk`)
+
+```sh
+python dronmakr.py generate-bass reese \
+  --tempo 170 \
+  --bars 4 \
+  --sound "sub;neuro;wave_a:saw;wave_b:tri" \
+  --movement "filter_cutoff_low:180;filter_cutoff_high:3800" \
+  --distortion "drive_soft:0.3;hard_mix:0.2" \
+  --fx "stereo_width:0.75;chorus_mix:0.25"
+```
+
+```sh
+python dronmakr.py generate-bass donk \
+  --tempo 140 \
+  --bars 2 \
+  --sound "wave:sine;base_freq:52;pitch_start_semitones:18;sat_drive:0.45" \
+  --iterations 3
+```
+
+```sh
+python dronmakr.py generate-bass --help
+python dronmakr.py generate-bass reese --help
+python dronmakr.py generate-bass donk --help
+```
+
+#### `generate-transition` (`sweep`, `closh`, `kickboom`, `longcrash`, `riser`, `drop`)
+
+```sh
+python dronmakr.py generate-transition sweep \
+  --tempo 128 \
+  --bars 8 \
+  --sound "voice:noise;type:white" \
+  --curve "shape:ease_in;peak_pos:0.9" \
+  --filter "type:hpf;cutoff_low:250;cutoff_high:11000" \
+  --iterations 2
+```
+
+```sh
+python dronmakr.py generate-transition riser \
+  --tempo 140 \
+  --bars 4 \
+  --peak-pos 1.0 \
+  --build-shape ease_in \
+  --longcrash-level 0.45 \
+  --sweep-level 0.65
+```
+
+```sh
+python dronmakr.py generate-transition drop \
+  --tempo 140 \
+  --bars 4 \
+  --synth "voice:saw;freq_high:2600;freq_low:90;level:0.7" \
+  --riser-level 0.4 \
+  --synth-level 0.6
+```
+
+```sh
+python dronmakr.py generate-transition --help
+python dronmakr.py generate-transition sweep --help
+python dronmakr.py generate-transition closh --help
+python dronmakr.py generate-transition kickboom --help
+python dronmakr.py generate-transition longcrash --help
+python dronmakr.py generate-transition riser --help
+python dronmakr.py generate-transition drop --help
+```
+
+#### Utility commands (`list`, `pack`, `reset`, `webui`)
+
+```sh
+python dronmakr.py list --show-patterns
+python dronmakr.py list --show-chain-plugins
+```
+
+```sh
+python dronmakr.py pack --name "night textures" --artist "phrakture" --dry-run
+python dronmakr.py reset --force
+python dronmakr.py webui --port 3766 --open-browser
+```
+
+```sh
+python dronmakr.py list --help
+python dronmakr.py pack --help
+python dronmakr.py reset --help
+python dronmakr.py webui --help
+```
 
 ## Project Limitations
 
