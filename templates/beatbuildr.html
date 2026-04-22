@@ -3091,8 +3091,34 @@
 
     // Pattern save functionality
     const patternNameInput = document.getElementById("pattern-name-input");
+    /**
+     * Kit and pattern names: lowercase kebab-case; spaces become '-'; ASCII hyphen allowed.
+     * Live: do not strip leading/trailing '-' so hyphens work while typing (e.g. "my-").
+     * Final: trim edge hyphens on blur / before save (matches server kebab-case rules).
+     */
+    function normalizeKebabNameLive(raw) {
+      return (raw || "")
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9\-]/g, "")
+        .replace(/-+/g, "-");
+    }
+    function normalizeKebabNameFinal(raw) {
+      return normalizeKebabNameLive(raw).replace(/^-+|-+$/g, "");
+    }
     patternNameInput.addEventListener("input", () => {
+      const normalized = normalizeKebabNameLive(patternNameInput.value);
+      if (patternNameInput.value !== normalized) {
+        patternNameInput.value = normalized;
+      }
       schedulePersistBeatbuildr();
+    });
+    patternNameInput.addEventListener("blur", () => {
+      const v = normalizeKebabNameFinal(patternNameInput.value);
+      if (patternNameInput.value !== v) {
+        patternNameInput.value = v;
+        schedulePersistBeatbuildr();
+      }
     });
     const patternSaveBtn = document.getElementById("pattern-save-btn");
     const errorModalOverlay = document.getElementById("error-modal-overlay");
@@ -3175,11 +3201,12 @@
     }
 
     patternSaveBtn.addEventListener("click", () => {
-      const patternName = patternNameInput.value.trim();
+      const patternName = normalizeKebabNameFinal(patternNameInput.value);
       if (!patternName) {
         showErrorModal("Please enter a pattern name.");
         return;
       }
+      patternNameInput.value = patternName;
 
       const pattern = encodePatternForSave();
       if (state.socket && state.socket.connected) {
@@ -3263,7 +3290,7 @@
         li.innerHTML = "<i class=\"fa-solid fa-music\"></i> " + patternName;
         li.dataset.patternName = patternName;
         li.addEventListener("click", () => {
-          patternNameInput.value = patternName;
+          patternNameInput.value = normalizeKebabNameFinal(patternName);
           if (state.socket && state.socket.connected) {
             state.socket.emit("loadPattern", { name: patternName });
           }
@@ -3319,7 +3346,7 @@
         state.timingRandomization[rowKey] = sanitizeRowTimingRandomization(timingMeta[rowKey]);
       });
 
-      if (data.name) patternNameInput.value = data.name;
+      if (data.name) patternNameInput.value = normalizeKebabNameFinal(data.name);
 
       ROWS.forEach((rowKey) => {
         const rowData = pattern[rowKey];
@@ -3346,20 +3373,19 @@
     const browserKitFilter = document.getElementById("browser-kit-filter");
     const browserKitList = document.getElementById("browser-kit-list");
     const browserKitNameInput = document.getElementById("browser-kit-name-input");
-    function normalizeKitName(raw) {
-      return (raw || "")
-        .toLowerCase()
-        .replace(/\s+/g, "-")
-        .replace(/[^a-z0-9-]/g, "")
-        .replace(/-+/g, "-")
-        .replace(/^-+|-+$/g, "");
-    }
     browserKitNameInput.addEventListener("input", () => {
-      const normalized = normalizeKitName(browserKitNameInput.value);
+      const normalized = normalizeKebabNameLive(browserKitNameInput.value);
       if (browserKitNameInput.value !== normalized) {
         browserKitNameInput.value = normalized;
       }
       schedulePersistBeatbuildr();
+    });
+    browserKitNameInput.addEventListener("blur", () => {
+      const v = normalizeKebabNameFinal(browserKitNameInput.value);
+      if (browserKitNameInput.value !== v) {
+        browserKitNameInput.value = v;
+        schedulePersistBeatbuildr();
+      }
     });
     const browserKitSaveBtn = document.getElementById("browser-kit-save-btn");
 
@@ -3386,7 +3412,7 @@
         li.innerHTML = "<i class=\"fa-solid fa-drum\"></i> " + kitName;
         li.dataset.kitName = kitName;
         li.addEventListener("click", () => {
-          browserKitNameInput.value = kitName;
+          browserKitNameInput.value = normalizeKebabNameFinal(kitName);
           if (state.socket && state.socket.connected) {
             state.socket.emit("loadKit", { name: kitName });
           }
@@ -3479,7 +3505,7 @@
     function applyBeatbuildrSnapshot(snap) {
       applyLoadedPattern({ pattern: snap.pattern, name: snap.patternName || "" });
       const kitField = document.getElementById("browser-kit-name-input");
-      if (kitField) kitField.value = normalizeKitName(snap.kitName || "");
+      if (kitField) kitField.value = normalizeKebabNameFinal(snap.kitName || "");
       const eloop = document.getElementById("export-loops-input");
       if (eloop) {
         let n = parseInt(snap.exportLoops, 10);
@@ -3561,11 +3587,12 @@
     }
 
     browserKitSaveBtn.addEventListener("click", () => {
-      const kitName = browserKitNameInput.value.trim();
+      const kitName = normalizeKebabNameFinal(browserKitNameInput.value);
       if (!kitName) {
         showErrorModal("Please enter a kit name.");
         return;
       }
+      browserKitNameInput.value = kitName;
       const kit = encodeKitForSave();
       if (!kit) {
         showErrorModal("No kit to save. Load or generate a kit first.");

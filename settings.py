@@ -302,18 +302,22 @@ def get_drum_path_preset_entries(settings: dict | None = None) -> list[dict[str,
 
 
 def get_all_drum_paths_for_key(key: str, settings: dict | None = None) -> list[str]:
+    """Return parsed path roots for `key` from the active drum path preset only."""
     if key not in DRUM_PATH_KEYS:
         return []
-    entries = get_drum_path_preset_entries(settings)
+    src = settings if isinstance(settings, dict) else load_settings()
+    _normalize_drum_presets_inplace(src)
+    active = get_active_drum_path_preset_name(src)
+    presets = get_drum_path_presets(src)
+    entry = presets.get(active, {})
+    value = entry.get(key, "")
+    if not isinstance(value, str) or not value.strip():
+        return []
     out: list[str] = []
     seen: set[str] = set()
-    for entry in entries:
-        value = entry.get(key, "")
-        if not isinstance(value, str):
+    for item in parse_escaped_csv(value):
+        if item in seen:
             continue
-        for item in parse_escaped_csv(value):
-            if item in seen:
-                continue
-            seen.add(item)
-            out.append(item)
+        seen.add(item)
+        out.append(item)
     return out

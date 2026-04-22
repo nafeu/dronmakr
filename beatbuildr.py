@@ -207,7 +207,26 @@ def _collect_samples_for_type(sample_type: str) -> list[dict]:
 
 
 def _get_cache_file(sample_type: str) -> str:
-    return os.path.join(TEMP_DIR, f"sample-cache-{sample_type}s.json")
+    preset = get_active_drum_path_preset_name()
+    safe = re.sub(r"[^\w\-]+", "_", preset) or "preset"
+    return os.path.join(TEMP_DIR, f"sample-cache-{safe}-{sample_type}s.json")
+
+
+def invalidate_sample_caches() -> None:
+    """Clear sample list caches (memory + temp JSON). Call when drum path preset changes."""
+    global _sample_caches, _sample_paths_by_type, _all_sample_paths_set
+    _sample_caches.clear()
+    _sample_paths_by_type.clear()
+    _all_sample_paths_set.clear()
+    try:
+        for name in os.listdir(TEMP_DIR):
+            if name.startswith("sample-cache-") and name.endswith(".json"):
+                try:
+                    os.remove(os.path.join(TEMP_DIR, name))
+                except OSError:
+                    pass
+    except OSError:
+        pass
 
 
 def _load_cache_from_file(sample_type: str) -> bool:
@@ -705,6 +724,7 @@ def _handle_set_drum_path_preset(payload):
         _socketio.emit("drumPathPresetSetResult", {"error": result})
         return
     active = result
+    invalidate_sample_caches()
     _handle_get_drum_path_presets()
     _socketio.emit("drumPathPresetSetResult", {"success": True, "activePreset": active})
     _socketio.emit("kit", generate_random_drum_kit())
