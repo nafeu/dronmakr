@@ -1,9 +1,11 @@
+import json
+import os
 import random
 import re
-import uuid
-import os
-import json
 import shutil
+import subprocess
+import sys
+import uuid
 
 from version import __version__
 
@@ -24,6 +26,7 @@ PRESETS_PATH = f"{PRESETS_DIR}/presets.json"
 SAVED_DIR = "saved"
 TEMP_DIR = "temp"
 TRASH_DIR = "trash"
+PACKAGES_DIR = "packages"
 
 
 def get_cli_version():
@@ -1094,6 +1097,265 @@ def validate_saved_paths_for_package(paths: list) -> tuple[list[dict], list[str]
         else:
             invalid.append(key)
     return valid, invalid
+
+
+def ensure_packages_dir() -> str:
+    """Create local packages/ output root (gitignored). Returns absolute path."""
+    root = os.path.abspath(PACKAGES_DIR)
+    os.makedirs(root, exist_ok=True)
+    return root
+
+
+def parse_saved_sample_stem(stem: str) -> tuple[str, str, str]:
+    """
+    Split a saved sample stem (filename without .wav) into generated name, style
+    segment, and trailing id segment.
+
+    For standard names joined with ___: index 1 is generated; parts between that
+    and the last segment are style/meta; the last segment is the unique id.
+
+    For drone___name_-_chart_-_id, the tail is split on _-_.
+    """
+    stem = (stem or "").strip()
+    parts = stem.split("___")
+    if len(parts) >= 3:
+        generated = parts[1]
+        style = "___".join(parts[2:-1]) if len(parts) > 3 else ""
+        uid = parts[-1]
+        return generated, style, uid
+    if len(parts) == 2 and parts[0] == "drone" and "_-_" in parts[1]:
+        chunks = parts[1].split("_-_")
+        if len(chunks) >= 3:
+            gen = chunks[0]
+            uid = chunks[-1]
+            style = "_-_".join(chunks[1:-1])
+            return gen, style, uid
+        if len(chunks) == 2:
+            return chunks[0], "", chunks[1]
+    if len(parts) == 2:
+        return "", parts[1], ""
+    return "", stem, ""
+
+
+def _normalize_name_piece(text: str) -> str:
+    """Normalize one name segment and collapse any repeated underscores."""
+    s = format_name((text or "").strip())
+    s = re.sub(r"_+", "_", s)
+    return s.strip("_")
+
+
+def build_package_export_basename(
+    package_name: str,
+    author_name: str,
+    sample_index: int,
+    total_selected: int,
+    source_name_stem: str,
+    include_generated: bool,
+    include_style: bool,
+) -> str:
+    """
+    Build destination .wav basename (no extension): package__NN__meta__author
+    using double-underscore between major segments. sample_index is 1-based.
+    """
+    pkg = _normalize_name_piece((package_name or "").strip() or "package")
+    auth = _normalize_name_piece((author_name or "").strip() or "author")
+    width = max(2, len(str(max(1, total_selected))))
+    num = str(sample_index).zfill(width)
+    gen, style, _uid = parse_saved_sample_stem(source_name_stem)
+    meta_parts: list[str] = []
+    if include_generated and gen:
+        g = _normalize_name_piece(gen)
+        if g:
+            meta_parts.append(g)
+    if include_style and style:
+        st = _normalize_name_piece(style)
+        if st:
+            meta_parts.append(st)
+    sample_meta = "__".join(meta_parts) if meta_parts else ""
+    chunks: list[str] = [pkg, num]
+    if sample_meta:
+        chunks.append(sample_meta)
+    chunks.append(auth)
+    return "__".join([c for c in chunks if c])
+
+
+def _saved_url_to_abs(path: str) -> str | None:
+    if not isinstance(path, str) or not path.startswith("/saved/"):
+        return None
+    rel = path[len("/saved/") :].lstrip("/")
+    if not rel or ".." in rel.split("/"):
+        return None
+    base = os.path.abspath(SAVED_DIR)
+    abs_path = os.path.abspath(os.path.join(SAVED_DIR, rel))
+    if not abs_path.startswith(base + os.sep) and abs_path != base:
+        return None
+    return abs_path if os.path.isfile(abs_path) else None
+
+
+def _unique_dest_path(dest_path: str) -> str:
+    if not os.path.exists(dest_path):
+        return dest_path
+    root, ext = os.path.splitext(dest_path)
+    n = 2
+    while True:
+        cand = f"{root}_{n}{ext}"
+        if not os.path.exists(cand):
+            return cand
+        n += 1
+
+
+def reveal_directory_in_file_manager(dir_path: str) -> None:
+    """Open a directory in the system file manager (best effort)."""
+    dir_path = os.path.abspath(dir_path)
+    if not os.path.isdir(dir_path):
+        return
+    try:
+        if sys.platform == "darwin":
+            subprocess.run(["open", dir_path], check=False)
+        elif sys.platform == "win32":
+            subprocess.run(["explorer", dir_path], check=False)
+        else:
+            subprocess.run(["xdg-open", dir_path], check=False)
+    except (FileNotFoundError, OSError):
+        pass
+
+
+def trash_selected_saved_samples(paths_in_order: list[str]) -> dict:
+    """Move selected /saved/... files to trash/. Keeps original order for reporting."""
+    if not isinstance(paths_in_order, list) or not paths_in_order:
+        return {"ok": False, "error": "Select at least one sample to trash."}
+
+    allowed = {item["path"]: item for item in get_saved_files()}
+    ordered: list[dict] = []
+    seen: set[str] = set()
+    for p in paths_in_order:
+        if not isinstance(p, str):
+            return {"ok": False, "error": "Each path must be a string."}
+        key = p.strip()
+        if key not in allowed:
+            return {"ok": False, "error": f"Invalid or missing file: {key}"}
+        if key in seen:
+            continue
+        seen.add(key)
+        ordered.append(dict(allowed[key]))
+    if not ordered:
+        return {"ok": False, "error": "Select at least one sample to trash."}
+
+    os.makedirs(TRASH_DIR, exist_ok=True)
+    trashed: list[str] = []
+    try:
+        for entry in ordered:
+            abs_src = _saved_url_to_abs(entry["path"])
+            if not abs_src:
+                return {"ok": False, "error": f"Could not resolve path: {entry['path']}"}
+            base_fn = os.path.basename(abs_src)
+            trash_dest = os.path.join(os.path.abspath(TRASH_DIR), base_fn)
+            trash_dest = _unique_dest_path(trash_dest)
+            shutil.move(abs_src, trash_dest)
+            trashed.append(base_fn)
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
+
+    return {"ok": True, "trashed": trashed, "count": len(trashed)}
+
+
+def export_collections_package(
+    paths_in_order: list[str],
+    package_name: str,
+    author_name: str,
+    include_generated: bool,
+    include_style: bool,
+    trash_on_save: bool,
+) -> dict:
+    """
+    Copy selected /saved/... files into packages/{author}_-_{package}/ with
+    renamed baselines. Optionally move originals to trash/ after successful copy.
+
+    paths_in_order: URL paths in export order (1..n numbering follows this list).
+    """
+    pkg_name = (package_name or "").strip()
+    auth_name = (author_name or "").strip()
+    if not pkg_name:
+        return {"ok": False, "error": "Package name is required."}
+    if not auth_name:
+        return {"ok": False, "error": "Author name is required."}
+    if not isinstance(paths_in_order, list) or not paths_in_order:
+        return {"ok": False, "error": "Select at least one sample to export."}
+
+    allowed = {item["path"]: item for item in get_saved_files()}
+    ordered: list[dict] = []
+    seen: set[str] = set()
+    for p in paths_in_order:
+        if not isinstance(p, str):
+            return {"ok": False, "error": "Each path must be a string."}
+        key = p.strip()
+        if key not in allowed:
+            return {"ok": False, "error": f"Invalid or missing file: {key}"}
+        if key in seen:
+            continue
+        seen.add(key)
+        ordered.append(dict(allowed[key]))
+    if not ordered:
+        return {"ok": False, "error": "Select at least one sample to export."}
+
+    ensure_packages_dir()
+    folder_name = f"{format_name(auth_name)}_-_{format_name(pkg_name)}"
+    package_dir = os.path.abspath(os.path.join(PACKAGES_DIR, folder_name))
+    if os.path.exists(package_dir):
+        return {
+            "ok": False,
+            "error": f'Package folder already exists: "{folder_name}". Choose a different name or remove the folder.',
+        }
+
+    os.makedirs(package_dir, exist_ok=True)
+    total = len(ordered)
+    exported_names: list[str] = []
+    abs_sources: list[str] = []
+
+    try:
+        for i, entry in enumerate(ordered):
+            src_url = entry["path"]
+            stem = entry["name"]
+            abs_src = _saved_url_to_abs(src_url)
+            if not abs_src:
+                raise ValueError(f"Could not resolve path: {src_url}")
+            abs_sources.append(abs_src)
+            base = build_package_export_basename(
+                pkg_name,
+                auth_name,
+                i + 1,
+                total,
+                stem,
+                include_generated,
+                include_style,
+            )
+            dest = _unique_dest_path(os.path.join(package_dir, base + ".wav"))
+            shutil.copy2(abs_src, dest)
+            exported_names.append(os.path.basename(dest))
+
+        if trash_on_save:
+            os.makedirs(TRASH_DIR, exist_ok=True)
+            for abs_src in abs_sources:
+                base_fn = os.path.basename(abs_src)
+                trash_dest = os.path.join(os.path.abspath(TRASH_DIR), base_fn)
+                trash_dest = _unique_dest_path(trash_dest)
+                shutil.move(abs_src, trash_dest)
+    except Exception as e:
+        try:
+            if os.path.isdir(package_dir):
+                shutil.rmtree(package_dir, ignore_errors=True)
+        except Exception:
+            pass
+        return {"ok": False, "error": str(e)}
+
+    reveal_directory_in_file_manager(package_dir)
+    return {
+        "ok": True,
+        "packageDir": package_dir,
+        "folderName": folder_name,
+        "exported": exported_names,
+        "trashOnSave": trash_on_save,
+    }
 
 
 def rename_samples(

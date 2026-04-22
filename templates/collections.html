@@ -536,6 +536,222 @@
     #filter-type {
       font-size: 0.75rem;
     }
+
+    .packaging-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      margin-top: 0.75rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid var(--theme-a);
+    }
+
+    .packaging-form label {
+      font-size: 0.65rem;
+      color: var(--theme-a);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      display: block;
+      margin-bottom: 0.25rem;
+    }
+
+    .packaging-form input[type="text"] {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.45rem 0.55rem;
+      font-family: inherit;
+      font-size: 0.78rem;
+      background: #0a0a0a;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      color: var(--primary);
+    }
+
+    .packaging-form input[type="text"]:focus {
+      outline: none;
+      border-color: var(--theme-b);
+    }
+
+    .packaging-options-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+
+    .packaging-option {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.72rem;
+      color: var(--primary);
+      cursor: pointer;
+    }
+
+    .packaging-option input {
+      width: 1rem;
+      height: 1rem;
+      margin: 0;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    .packaging-preview-label {
+      font-size: 0.65rem;
+      color: var(--theme-a);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-top: 0.25rem;
+    }
+
+    .packaging-preview {
+      margin: 0.35rem 0 0 0;
+      padding: 0.55rem 0.65rem;
+      font-size: 0.68rem;
+      color: var(--theme-b);
+      background: #0a0a0a;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 6.5rem;
+      overflow: auto;
+      line-height: 1.45;
+    }
+
+    .packaging-export-btn {
+      margin-top: 0.65rem;
+      width: 100%;
+      padding: 0.55rem 0.75rem;
+      font-family: inherit;
+      font-size: 0.8rem;
+      border: 1px solid var(--primary);
+      border-radius: 4px;
+      background: var(--primary);
+      color: var(--secondary);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .packaging-export-btn:hover:not(:disabled) {
+      background: #ff8900;
+      border-color: #ff8900;
+    }
+
+    .packaging-export-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .packaging-trash-btn {
+      margin-top: 0.5rem;
+      width: 100%;
+      padding: 0.55rem 0.75rem;
+      font-family: inherit;
+      font-size: 0.8rem;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      background: var(--theme-a);
+      color: var(--primary);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .packaging-trash-btn:hover:not(:disabled) {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.15);
+    }
+
+    .packaging-trash-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .confirm-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    .confirm-modal-overlay[hidden] {
+      display: none !important;
+    }
+
+    .confirm-modal-content {
+      background: #050505;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      padding: 1rem;
+      min-width: 280px;
+      max-width: min(90vw, 420px);
+    }
+
+    .confirm-modal-text {
+      font-size: 0.8rem;
+      color: var(--primary);
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      line-height: 1.45;
+    }
+
+    .confirm-modal-text i {
+      color: var(--theme-c);
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+
+    .confirm-modal-buttons {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+    }
+
+    .confirm-modal-btn {
+      padding: 0.4rem 0.8rem;
+      font-family: inherit;
+      font-size: 0.75rem;
+      cursor: pointer;
+      border: 1px solid var(--theme-a);
+      border-radius: 3px;
+      background: var(--theme-a);
+      color: var(--primary);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .confirm-modal-btn:hover {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.15);
+    }
+
+    .confirm-modal-btn.primary {
+      background: var(--primary);
+      color: var(--secondary);
+      border-color: var(--primary);
+    }
+
+    .confirm-modal-btn.primary:hover {
+      background: #ff8900;
+      border-color: #ff8900;
+    }
+
+    .error-modal-content .confirm-modal-text i {
+      color: var(--theme-c);
+    }
   </style>
 </head>
 
@@ -575,9 +791,11 @@
           <i class="fa-solid fa-square-xmark" aria-hidden="true"></i>
         </button>
         <div class="collections-pagination">
-          <button type="button" id="page-prev" disabled title="Previous page" aria-label="Previous page"><i class="fa-solid fa-chevron-left"></i></button>
+          <button type="button" id="page-prev" disabled title="Previous page" aria-label="Previous page"><i
+              class="fa-solid fa-chevron-left"></i></button>
           <span class="page-info" id="page-info">—</span>
-          <button type="button" id="page-next" disabled title="Next page" aria-label="Next page"><i class="fa-solid fa-chevron-right"></i></button>
+          <button type="button" id="page-next" disabled title="Next page" aria-label="Next page"><i
+              class="fa-solid fa-chevron-right"></i></button>
         </div>
       </div>
       <div id="collections-grid" class="collections-grid"></div>
@@ -589,9 +807,65 @@
         <div class="packaging-selected-list-wrap">
           <ul id="packaging-selected-list" class="packaging-selected-list" aria-live="polite"></ul>
         </div>
+        <button type="button" id="pkg-trash-selected-btn" class="packaging-trash-btn" disabled>
+          <i class="fa-solid fa-trash" aria-hidden="true"></i> Trash Selected Samples
+        </button>
+        <div class="packaging-form">
+          <div>
+            <label for="pkg-package-name">Package name</label>
+            <input type="text" id="pkg-package-name" autocomplete="off" maxlength="120"
+              placeholder="enter package name">
+          </div>
+          <div>
+            <label for="pkg-author-name">Author name</label>
+            <input type="text" id="pkg-author-name" autocomplete="off" maxlength="120" placeholder="enter author name">
+          </div>
+          <div class="packaging-options-row">
+            <label class="packaging-option">
+              <input type="checkbox" id="pkg-include-generated">
+              <span>Include generated name</span>
+            </label>
+            <label class="packaging-option">
+              <input type="checkbox" id="pkg-include-style">
+              <span>Include style meta</span>
+            </label>
+            <label class="packaging-option">
+              <input type="checkbox" id="pkg-trash-on-save">
+              <span>Trash source files on save</span>
+            </label>
+          </div>
+          <div>
+            <div class="packaging-preview-label">Export name preview</div>
+            <pre class="packaging-preview" id="pkg-preview" aria-live="polite">—</pre>
+          </div>
+          <button type="button" id="pkg-export-btn" class="packaging-export-btn" disabled>
+            <i class="fa-solid fa-file-export" aria-hidden="true"></i> Export package
+          </button>
+        </div>
       </aside>
     </div>
   </main>
+
+  <div id="collections-confirm-overlay" class="confirm-modal-overlay" hidden>
+    <div class="confirm-modal-content">
+      <div id="collections-confirm-text" class="confirm-modal-text"></div>
+      <div class="confirm-modal-buttons">
+        <button type="button" id="collections-confirm-yes" class="confirm-modal-btn primary"><i
+            class="fa-solid fa-check"></i> Yes</button>
+        <button type="button" id="collections-confirm-no" class="confirm-modal-btn"><i class="fa-solid fa-xmark"></i>
+          No</button>
+      </div>
+    </div>
+  </div>
+  <div id="collections-error-overlay" class="confirm-modal-overlay" hidden>
+    <div class="confirm-modal-content error-modal-content">
+      <div id="collections-error-text" class="confirm-modal-text"></div>
+      <div class="confirm-modal-buttons">
+        <button type="button" id="collections-error-close" class="confirm-modal-btn primary"><i
+            class="fa-solid fa-xmark"></i> Close</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     (function () {
@@ -653,7 +927,331 @@
           li.title = e.path + " · " + e.type;
           listEl.appendChild(li);
         });
+        updatePackagingPreview();
+        updateExportBtnState();
       }
+
+      function normalizePiece(text) {
+        if (text == null || String(text) === "") {
+          return "";
+        }
+        var s = String(text).replace(/ /g, "_").replace(/-/g, "_");
+        try {
+          s = s.replace(/(?<!^)(?=[A-Z])/g, "_").toLowerCase();
+        } catch (e) {
+          s = s.toLowerCase();
+        }
+        s = s.replace(/_+/g, "_").replace(/^_+|_+$/g, "");
+        return s;
+      }
+
+      function parseSampleStem(stem) {
+        stem = (stem || "").trim();
+        var parts = stem.split("___");
+        if (parts.length >= 3) {
+          return {
+            generated: parts[1],
+            style: parts.length > 3 ? parts.slice(2, -1).join("___") : "",
+            uid: parts[parts.length - 1]
+          };
+        }
+        if (parts.length === 2 && parts[0] === "drone" && parts[1].indexOf("_-_") !== -1) {
+          var chunks = parts[1].split("_-_");
+          if (chunks.length >= 3) {
+            return {
+              generated: chunks[0],
+              style: chunks.slice(1, -1).join("_-_"),
+              uid: chunks[chunks.length - 1]
+            };
+          }
+          if (chunks.length === 2) {
+            return { generated: chunks[0], style: "", uid: chunks[1] };
+          }
+        }
+        if (parts.length === 2) {
+          return { generated: "", style: parts[1], uid: "" };
+        }
+        return { generated: "", style: stem, uid: "" };
+      }
+
+      function buildExportBasenamePreview(packageName, authorName, sampleIndex, totalSelected, sourceStem, includeGen, includeStyle) {
+        var pkg = normalizePiece((packageName || "").trim() || "package");
+        var auth = normalizePiece((authorName || "").trim() || "author");
+        var width = Math.max(2, String(Math.max(1, totalSelected)).length);
+        var num = String(sampleIndex);
+        while (num.length < width) {
+          num = "0" + num;
+        }
+        var p = parseSampleStem(sourceStem);
+        var metaParts = [];
+        if (includeGen && p.generated) {
+          var g = normalizePiece(p.generated);
+          if (g) metaParts.push(g);
+        }
+        if (includeStyle && p.style) {
+          var st = normalizePiece(p.style);
+          if (st) metaParts.push(st);
+        }
+        var sampleMeta = metaParts.length ? metaParts.join("__") : "";
+        var chunks = [pkg, num];
+        if (sampleMeta) {
+          chunks.push(sampleMeta);
+        }
+        chunks.push(auth);
+        return chunks.filter(function (x) { return x !== ""; }).join("__");
+      }
+
+      function selectedStemsSorted() {
+        var names = [];
+        selectedForPackage.forEach(function (meta) {
+          names.push(meta.name);
+        });
+        names.sort(function (a, b) {
+          return a.toLowerCase().localeCompare(b.toLowerCase());
+        });
+        return names;
+      }
+
+      function updatePackagingPreview() {
+        var el = document.getElementById("pkg-preview");
+        var pkg = document.getElementById("pkg-package-name").value;
+        var auth = document.getElementById("pkg-author-name").value;
+        var ig = document.getElementById("pkg-include-generated").checked;
+        var ist = document.getElementById("pkg-include-style").checked;
+        var stems = selectedStemsSorted();
+        var n = Math.max(selectedForPackage.size, 1);
+        if (stems.length === 0) {
+          stems = ["reese___vaelthorn___170bpm___4bars___a1b2c3d4"];
+        }
+        var lines = [];
+        var show = Math.min(2, stems.length);
+        for (var i = 0; i < show; i++) {
+          lines.push(buildExportBasenamePreview(pkg, auth, i + 1, Math.max(selectedForPackage.size, 1), stems[i], ig, ist) + ".wav");
+        }
+        if (selectedForPackage.size > 2) {
+          lines.push("… +" + (selectedForPackage.size - 2) + " more");
+        }
+        el.textContent = lines.join("\n");
+      }
+
+      function updateExportBtnState() {
+        var btn = document.getElementById("pkg-export-btn");
+        var trashBtn = document.getElementById("pkg-trash-selected-btn");
+        var pkg = document.getElementById("pkg-package-name").value.trim();
+        var auth = document.getElementById("pkg-author-name").value.trim();
+        btn.disabled = selectedForPackage.size === 0 || !pkg || !auth;
+        trashBtn.disabled = selectedForPackage.size === 0;
+      }
+
+      function showCollectionsError(msg) {
+        var overlay = document.getElementById("collections-error-overlay");
+        var wrap = document.getElementById("collections-error-text");
+        wrap.innerHTML = "<i class=\"fa-solid fa-triangle-exclamation\" aria-hidden=\"true\"></i><span></span>";
+        wrap.querySelector("span").textContent = msg;
+        overlay.hidden = false;
+      }
+
+      function hideCollectionsError() {
+        document.getElementById("collections-error-overlay").hidden = true;
+      }
+
+      function showCollectionsConfirm(message, onYes) {
+        var overlay = document.getElementById("collections-confirm-overlay");
+        var textEl = document.getElementById("collections-confirm-text");
+        textEl.innerHTML = "<i class=\"fa-solid fa-circle-question\" aria-hidden=\"true\"></i><span></span>";
+        textEl.querySelector("span").textContent = message;
+        overlay.hidden = false;
+        var yesBtn = document.getElementById("collections-confirm-yes");
+        var noBtn = document.getElementById("collections-confirm-no");
+        function cleanup() {
+          overlay.hidden = true;
+          yesBtn.removeEventListener("click", onYesClick);
+          noBtn.removeEventListener("click", onNoClick);
+        }
+        function onYesClick() {
+          cleanup();
+          if (typeof onYes === "function") {
+            onYes();
+          }
+        }
+        function onNoClick() {
+          cleanup();
+        }
+        yesBtn.addEventListener("click", onYesClick);
+        noBtn.addEventListener("click", onNoClick);
+      }
+
+      function needsPackagingExportConfirm() {
+        var g = document.getElementById("pkg-include-generated").checked;
+        var s = document.getElementById("pkg-include-style").checked;
+        var t = document.getElementById("pkg-trash-on-save").checked;
+        return g && s && t;
+      }
+
+      function performPackageExport() {
+        var entries = [];
+        selectedForPackage.forEach(function (meta, p) {
+          entries.push({ path: p, name: meta.name });
+        });
+        entries.sort(function (a, b) {
+          return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+        });
+        var paths = entries.map(function (e) {
+          return e.path;
+        });
+        var body = {
+          paths: paths,
+          packageName: document.getElementById("pkg-package-name").value.trim(),
+          authorName: document.getElementById("pkg-author-name").value.trim(),
+          includeGeneratedName: document.getElementById("pkg-include-generated").checked,
+          includeStyle: document.getElementById("pkg-include-style").checked,
+          trashOnSave: document.getElementById("pkg-trash-on-save").checked
+        };
+        var btn = document.getElementById("pkg-export-btn");
+        btn.disabled = true;
+        fetch("/api/collections/export-package", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        })
+          .then(function (r) {
+            return r.json().then(function (data) {
+              return { ok: r.ok, data: data };
+            });
+          })
+          .then(function (res) {
+            if (!res.ok || !res.data || !res.data.ok) {
+              var err = (res.data && res.data.error) ? res.data.error : "Export failed.";
+              showCollectionsError(err);
+              return;
+            }
+            return fetch("/api/collections/saved").then(function (r2) {
+              return r2.json();
+            });
+          })
+          .then(function (data) {
+            if (!data) {
+              return;
+            }
+            allFiles = (data && data.files) ? data.files : [];
+            var allowedPaths = new Set(allFiles.map(function (f) {
+              return f.path;
+            }));
+            var stalePaths = [];
+            selectedForPackage.forEach(function (_, path) {
+              if (!allowedPaths.has(path)) {
+                stalePaths.push(path);
+              }
+            });
+            stalePaths.forEach(function (p) {
+              selectedForPackage.delete(p);
+            });
+            currentPage = 0;
+            renderPackagingSidebar();
+            renderPage();
+          })
+          .catch(function (err) {
+            console.error(err);
+            showCollectionsError("Network error during export.");
+          })
+          .finally(function () {
+            updateExportBtnState();
+          });
+      }
+
+      function performTrashSelectedSamples() {
+        var entries = [];
+        selectedForPackage.forEach(function (meta, p) {
+          entries.push({ path: p, name: meta.name });
+        });
+        entries.sort(function (a, b) {
+          return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+        });
+        var paths = entries.map(function (e) {
+          return e.path;
+        });
+        var btn = document.getElementById("pkg-trash-selected-btn");
+        btn.disabled = true;
+        fetch("/api/collections/trash-selected", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ paths: paths })
+        })
+          .then(function (r) {
+            return r.json().then(function (data) {
+              return { ok: r.ok, data: data };
+            });
+          })
+          .then(function (res) {
+            if (!res.ok || !res.data || !res.data.ok) {
+              var err = (res.data && res.data.error) ? res.data.error : "Trash failed.";
+              showCollectionsError(err);
+              return;
+            }
+            return fetch("/api/collections/saved").then(function (r2) {
+              return r2.json();
+            });
+          })
+          .then(function (data) {
+            if (!data) {
+              return;
+            }
+            allFiles = (data && data.files) ? data.files : [];
+            var allowedPaths = new Set(allFiles.map(function (f) {
+              return f.path;
+            }));
+            var stalePaths = [];
+            selectedForPackage.forEach(function (_, path) {
+              if (!allowedPaths.has(path)) {
+                stalePaths.push(path);
+              }
+            });
+            stalePaths.forEach(function (p) {
+              selectedForPackage.delete(p);
+            });
+            currentPage = 0;
+            renderPackagingSidebar();
+            renderPage();
+          })
+          .catch(function (err) {
+            console.error(err);
+            showCollectionsError("Network error while trashing samples.");
+          })
+          .finally(function () {
+            updateExportBtnState();
+          });
+      }
+
+      ["pkg-package-name", "pkg-author-name"].forEach(function (id) {
+        document.getElementById(id).addEventListener("input", function () {
+          updatePackagingPreview();
+          updateExportBtnState();
+        });
+      });
+      ["pkg-include-generated", "pkg-include-style", "pkg-trash-on-save"].forEach(function (id) {
+        document.getElementById(id).addEventListener("change", function () {
+          updatePackagingPreview();
+        });
+      });
+      document.getElementById("collections-error-close").addEventListener("click", hideCollectionsError);
+      document.getElementById("pkg-export-btn").addEventListener("click", function () {
+        if (needsPackagingExportConfirm()) {
+          showCollectionsConfirm(
+            "Generated name, style details, and Trash on save are all enabled. Original files will be moved to trash after export. Continue?",
+            performPackageExport
+          );
+        } else {
+          performPackageExport();
+        }
+      });
+      document.getElementById("pkg-trash-selected-btn").addEventListener("click", function () {
+        if (selectedForPackage.size === 0) return;
+        var count = selectedForPackage.size;
+        showCollectionsConfirm(
+          "Trash " + count + " selected sample" + (count === 1 ? "" : "s") + "? This will move them to the trash folder.",
+          performTrashSelectedSamples
+        );
+      });
 
       function renderPage() {
         Object.keys(waveSurferInstances).forEach(function (id) {
@@ -823,6 +1421,9 @@
         renderPackagingSidebar();
         renderPage();
       });
+
+      updatePackagingPreview();
+      updateExportBtnState();
 
       fetch("/api/collections/saved")
         .then(function (r) { return r.json(); })

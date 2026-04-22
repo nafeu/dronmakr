@@ -39,10 +39,12 @@ from settings import (
 # Helpers for unified socket connect
 from utils import (
     SAVED_DIR,
+    export_collections_package,
     get_auditionr_folder_counts,
     get_latest_exports,
     get_presets,
     get_saved_files,
+    trash_selected_saved_samples,
     validate_saved_paths_for_package,
 )
 from generate_midi import get_patterns
@@ -125,6 +127,39 @@ def api_collections_package_selection():
     return jsonify(
         {"ok": True, "items": valid, "invalidPaths": invalid, "count": len(valid)}
     )
+
+
+@app.route("/api/collections/export-package", methods=["POST"])
+def api_collections_export_package():
+    """Copy selected saved samples into packages/{author}_-_{package}/ with new names."""
+    data = request.get_json(silent=True) or {}
+    paths = data.get("paths")
+    if not isinstance(paths, list):
+        return jsonify({"ok": False, "error": "paths must be a list"}), 400
+    result = export_collections_package(
+        paths_in_order=paths,
+        package_name=(data.get("packageName") or "").strip(),
+        author_name=(data.get("authorName") or "").strip(),
+        include_generated=bool(data.get("includeGeneratedName")),
+        include_style=bool(data.get("includeStyle")),
+        trash_on_save=bool(data.get("trashOnSave")),
+    )
+    if not result.get("ok"):
+        return jsonify(result), 400
+    return jsonify(result)
+
+
+@app.route("/api/collections/trash-selected", methods=["POST"])
+def api_collections_trash_selected():
+    """Move selected saved samples to trash/."""
+    data = request.get_json(silent=True) or {}
+    paths = data.get("paths")
+    if not isinstance(paths, list):
+        return jsonify({"ok": False, "error": "paths must be a list"}), 400
+    result = trash_selected_saved_samples(paths)
+    if not result.get("ok"):
+        return jsonify(result), 400
+    return jsonify(result)
 
 
 def _serve_saved_file(filename):
