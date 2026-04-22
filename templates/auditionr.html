@@ -759,9 +759,13 @@
                 <label for="generatr-beat-iterations">Iterations</label>
                 <input type="number" id="generatr-beat-iterations" min="1" value="1">
               </div>
-              <div class="form-row hidden" id="generatr-beat-half-tempo-row">
-                <label for="generatr-beat-half-tempo">Include Half Tempo Variant</label>
-                <input type="checkbox" id="generatr-beat-half-tempo">
+              <div class="form-row hidden" id="generatr-beat-variants-row">
+                <label>Variants</label>
+                <div id="generatr-beat-variants-list">
+                  <label><input type="checkbox" value="1/2"> Include 1/2 Tempo Variation</label>
+                  <label><input type="checkbox" value="1/4"> Include 1/4 Tempo Variation</label>
+                  <label><input type="checkbox" value="3/4"> Include 3/4 Tempo Variation</label>
+                </div>
               </div>
               <div class="form-row form-row-post-processing hidden" id="generatr-beat-post-processing-row">
                 <label>Post Processing</label>
@@ -1433,7 +1437,7 @@
         document.getElementById("generatr-beat-randomization-config-row"),
         document.getElementById("generatr-beat-swing-row"),
         document.getElementById("generatr-beat-iterations-row"),
-        document.getElementById("generatr-beat-half-tempo-row"),
+        document.getElementById("generatr-beat-variants-row"),
         document.getElementById("generatr-beat-post-processing-row")
       ];
       var beatTempoInput = document.getElementById("generatr-beat-tempo");
@@ -1443,7 +1447,7 @@
       var beatRandomizationConfigSelect = document.getElementById("generatr-beat-randomization-config");
       var beatSwingInput = document.getElementById("generatr-beat-swing");
       var beatIterationsInput = document.getElementById("generatr-beat-iterations");
-      var beatHalfTempoInput = document.getElementById("generatr-beat-half-tempo");
+      var beatVariantsList = document.getElementById("generatr-beat-variants-list");
       var beatPostProcessingList = document.getElementById("generatr-beat-post-processing-list");
       var form = document.getElementById("generatr-form");
       var btnGenerate = document.getElementById("generatr-btn");
@@ -1580,7 +1584,9 @@
           body.sampleLibrary = beatRandomizationConfigSelect.value || "";
           body.swing = parseFloat(beatSwingInput.value || "0");
           body.iterations = parseInt(beatIterationsInput.value || "1", 10);
-          body.halfTempoVariant = !!beatHalfTempoInput.checked;
+          body.variants = Array.from(
+            beatVariantsList.querySelectorAll("input[type='checkbox']:checked")
+          ).map(function (el) { return el.value; });
           body.postProcessing = checkedPost;
         }
 

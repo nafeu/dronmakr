@@ -561,6 +561,15 @@
       margin-bottom: 0.35rem;
     }
 
+    .transport-setting-group-label {
+      display: block;
+      font-size: 0.7rem;
+      color: var(--theme-a);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.35rem;
+    }
+
     .transport-setting select,
     .transport-setting input[type="number"] {
       width: 100%;
@@ -2021,9 +2030,18 @@
             title="Number of times to repeat the pattern on export">
         </div>
         <div class="transport-setting transport-export-checkbox">
-          <label for="export-half-tempo-variation-input" class="transport-checkbox-label">
-            <input type="checkbox" id="export-half-tempo-variation-input">
-            Include Half Tempo Variation
+          <label class="transport-setting-group-label">Variations</label>
+          <label for="export-variation-half-input" class="transport-checkbox-label">
+            <input type="checkbox" id="export-variation-half-input" value="1/2">
+            Include 1/2 Tempo Variation
+          </label>
+          <label for="export-variation-quarter-input" class="transport-checkbox-label">
+            <input type="checkbox" id="export-variation-quarter-input" value="1/4">
+            Include 1/4 Tempo Variation
+          </label>
+          <label for="export-variation-three-quarter-input" class="transport-checkbox-label">
+            <input type="checkbox" id="export-variation-three-quarter-input" value="3/4">
+            Include 3/4 Tempo Variation
           </label>
         </div>
         <div class="transport-export-actions">
@@ -2990,15 +3008,17 @@
 
     // Export
     const exportLoopsInput = document.getElementById("export-loops-input");
-    const exportHalfTempoVariationInput = document.getElementById("export-half-tempo-variation-input");
+    const exportVariationInputs = Array.from(document.querySelectorAll("input[id^='export-variation-']"));
     exportLoopsInput.addEventListener("change", () => {
       schedulePersistBeatbuildr();
     });
     exportLoopsInput.addEventListener("input", () => {
       schedulePersistBeatbuildr();
     });
-    exportHalfTempoVariationInput.addEventListener("change", () => {
-      schedulePersistBeatbuildr();
+    exportVariationInputs.forEach((el) => {
+      el.addEventListener("change", () => {
+        schedulePersistBeatbuildr();
+      });
     });
     const exportBtn = document.getElementById("export-btn");
     const exportStatusEl = document.getElementById("export-status");
@@ -3042,7 +3062,7 @@
         timeSignature: state.timeSignature.split("/").map(Number),
         length: state.patternLength,
         loops,
-        includeHalfTempoVariation: !!(exportHalfTempoVariationInput && exportHalfTempoVariationInput.checked),
+        variants: exportVariationInputs.filter((el) => el.checked).map((el) => el.value),
         humanize: true,
         pattern,
         kit,
@@ -3477,7 +3497,7 @@
           kitPaths,
           pattern: encodePatternForSave(),
           exportLoops: Math.max(1, Math.min(64, parseInt(document.getElementById("export-loops-input").value, 10) || 1)),
-          exportIncludeHalfTempoVariation: !!document.getElementById("export-half-tempo-variation-input")?.checked,
+          exportVariants: exportVariationInputs.filter((el) => el.checked).map((el) => el.value),
           kitName: document.getElementById("browser-kit-name-input")?.value || "",
           patternName: document.getElementById("pattern-name-input")?.value || "",
           drumPathPreset: state.activeDrumPathPreset || "",
@@ -3512,10 +3532,12 @@
         if (Number.isNaN(n) || n < 1) n = 1;
         eloop.value = String(Math.min(64, n));
       }
-      const ehalf = document.getElementById("export-half-tempo-variation-input");
-      if (ehalf) {
-        ehalf.checked = !!snap.exportIncludeHalfTempoVariation;
-      }
+      const snapVariants = Array.isArray(snap.exportVariants)
+        ? snap.exportVariants
+        : (snap.exportIncludeHalfTempoVariation ? ["1/2"] : []);
+      exportVariationInputs.forEach((el) => {
+        el.checked = snapVariants.includes(el.value);
+      });
       state.stepPattern = typeof snap.stepPattern === "number" && snap.stepPattern >= 0 ? snap.stepPattern : 0;
       stepPatternGroup.querySelectorAll(".step-pattern-btn").forEach((el) => {
         const val = parseInt(el.dataset.stepPattern || "0", 10);

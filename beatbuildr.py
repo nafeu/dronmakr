@@ -52,10 +52,31 @@ DRUM_ROW_ORDER = [
     "cymb",
 ]
 
+SUPPORTED_TEMPO_VARIANTS: dict[str, float] = {
+    "1/2": 0.5,
+    "1/4": 0.25,
+    "3/4": 0.75,
+}
+
 
 def _kit_sample_url(filename: str) -> str:
     """Build a safe /kit-samples URL for filenames with reserved chars."""
     return f"/kit-samples/{quote(filename)}"
+
+
+def _parse_tempo_variants(raw) -> list[str]:
+    """Normalize tempo variants payload (list or comma-separated string)."""
+    out: list[str] = []
+    if isinstance(raw, str):
+        items = [x.strip() for x in raw.split(",")]
+    elif isinstance(raw, list):
+        items = [str(x).strip() for x in raw]
+    else:
+        items = []
+    for item in items:
+        if item in SUPPORTED_TEMPO_VARIANTS and item not in out:
+            out.append(item)
+    return out
 
 
 ENV_TO_ROW_MAPPING = {
@@ -788,7 +809,10 @@ def _handle_export_beat(payload):
     kit = p.get("kit")
     pattern_name = (p.get("patternName") or "").strip()
     kit_name = (p.get("kitName") or "").strip()
-    include_half_tempo_variation = bool(p.get("includeHalfTempoVariation", False))
+    variants = _parse_tempo_variants(p.get("variants", []))
+    # Backward compatibility with old checkbox payload.
+    if bool(p.get("includeHalfTempoVariation", False)) and "1/2" not in variants:
+        variants.append("1/2")
 
     if not kit or not isinstance(kit, dict):
         _socketio.emit("exportBeatResult", {"error": "No drum kit loaded"})
@@ -817,9 +841,13 @@ def _handle_export_beat(payload):
     try:
         beat_name = generate_beat_name()
         bpm_variants = [bpm]
-        if include_half_tempo_variation:
-            half_bpm = max(1, int(round(bpm / 2.0)))
-            bpm_variants.append(half_bpm)
+        for token in variants:
+            factor = SUPPORTED_TEMPO_VARIANTS.get(token)
+            if factor is None:
+                continue
+            variant_bpm = max(1, int(round(bpm * factor)))
+            if variant_bpm not in bpm_variants:
+                bpm_variants.append(variant_bpm)
 
         filenames: list[str] = []
         for export_bpm in bpm_variants:

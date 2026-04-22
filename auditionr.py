@@ -758,6 +758,28 @@ def _load_drum_kits_for_generate() -> dict:
     return data if isinstance(data, dict) else {}
 
 
+API_SUPPORTED_TEMPO_VARIANTS: dict[str, float] = {
+    "1/2": 0.5,
+    "1/4": 0.25,
+    "3/4": 0.75,
+}
+
+
+def _parse_api_variants(raw) -> list[str]:
+    """Normalize API variants payload (list or comma-separated string)."""
+    out: list[str] = []
+    if isinstance(raw, str):
+        items = [x.strip() for x in raw.split(",")]
+    elif isinstance(raw, list):
+        items = [str(x).strip() for x in raw]
+    else:
+        items = []
+    for item in items:
+        if item in API_SUPPORTED_TEMPO_VARIANTS and item not in out:
+            out.append(item)
+    return out
+
+
 def _run_generate_beat(payload: dict):
     beat_patterns = _load_beat_patterns_for_generate()
     available_patterns = list(beat_patterns.keys())
@@ -772,7 +794,10 @@ def _run_generate_beat(payload: dict):
     pattern = (payload.get("pattern") or "").strip()
     kit = (payload.get("kit") or "").strip()
     randomization_config = (payload.get("sampleLibrary") or "").strip()
-    half_tempo_variant = bool(payload.get("halfTempoVariant", False))
+    variants = _parse_api_variants(payload.get("variants", []))
+    # Backward compatibility for old UI payload.
+    if bool(payload.get("halfTempoVariant", False)) and "1/2" not in variants:
+        variants.append("1/2")
     swing = float(payload.get("swing", 0.0))
     iterations = max(1, int(payload.get("iterations", 1)))
 
@@ -831,7 +856,7 @@ def _run_generate_beat(payload: dict):
                 kp = drum_kits.get(current_kit_name, {})
                 current_kit_paths = kp if isinstance(kp, dict) else {}
             else:
-                # Freeze one concrete random kit per iteration so half-tempo exports
+                # Freeze one concrete random kit per iteration so tempo-variant exports
                 # remain true tempo variants of the same underlying sample choices.
                 random_kit_payload = generate_random_drum_kit()
                 random_kit_rows = random_kit_payload.get("kit", {})
@@ -863,8 +888,13 @@ def _run_generate_beat(payload: dict):
             current_swing = meta_swing if meta_swing is not None else swing
             beat_name = generate_beat_name()
             tempo_variants = [current_tempo]
-            if half_tempo_variant:
-                tempo_variants.append(max(1, int(round(current_tempo / 2.0))))
+            for token in variants:
+                factor = API_SUPPORTED_TEMPO_VARIANTS.get(token)
+                if factor is None:
+                    continue
+                vtempo = max(1, int(round(current_tempo * factor)))
+                if vtempo not in tempo_variants:
+                    tempo_variants.append(vtempo)
 
             for export_tempo in tempo_variants:
                 name_parts = ["drumpattern", beat_name, current_pattern]

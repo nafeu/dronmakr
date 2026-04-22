@@ -576,6 +576,30 @@ def _load_drum_kits_for_cli():
     return data if isinstance(data, dict) else {}
 
 
+CLI_SUPPORTED_TEMPO_VARIANTS: dict[str, float] = {
+    "1/2": 0.5,
+    "1/4": 0.25,
+    "3/4": 0.75,
+}
+
+
+def _parse_cli_variants(raw: str | None) -> list[str]:
+    """Parse -a/--variants CSV into ordered unique supported values."""
+    if not raw:
+        return []
+    out: list[str] = []
+    for token in [x.strip() for x in str(raw).split(",")]:
+        if not token:
+            continue
+        if token not in CLI_SUPPORTED_TEMPO_VARIANTS:
+            raise typer.BadParameter(
+                f"Unsupported variant '{token}'. Supported values: {', '.join(CLI_SUPPORTED_TEMPO_VARIANTS.keys())}"
+            )
+        if token not in out:
+            out.append(token)
+    return out
+
+
 @cli.command(name="generate-beat")
 def generate_beat(
     tempo: int = typer.Option(
@@ -602,11 +626,11 @@ def generate_beat(
         "-r",
         help="Drum path preset name to use when --kit is not provided.",
     ),
-    half_tempo_variant: bool = typer.Option(
-        False,
-        "--half-tempo-variant",
-        "-h",
-        help="Also export a half-tempo variant (tempo / 2) for each generated beat.",
+    variants: str | None = typer.Option(
+        None,
+        "--variants",
+        "-a",
+        help='Comma-separated tempo variants to also export. Supported: "1/2,1/4,3/4".',
     ),
     swing: float = typer.Option(
         0.0,
@@ -712,7 +736,8 @@ def generate_beat(
         )
     )
     print(with_prompt(f"swing                 {swing}"))
-    print(with_prompt(f"half-tempo-variant    {half_tempo_variant}"))
+    parsed_variants = _parse_cli_variants(variants)
+    print(with_prompt(f"variants              {','.join(parsed_variants) if parsed_variants else GENERATED_LABEL}"))
     print(with_prompt(f"post-processing       {post_processing if post_processing else GENERATED_LABEL}"))
     print(with_prompt(f"play when done        {play}"))
     print(
@@ -755,7 +780,7 @@ def generate_beat(
                 if not isinstance(current_kit_paths, dict):
                     current_kit_paths = {}
             else:
-                # Freeze one concrete random kit per iteration so half-tempo exports
+                # Freeze one concrete random kit per iteration so tempo-variant exports
                 # are true variants (tempo-only changes) of the same sample choices.
                 random_kit_payload = generate_random_drum_kit()
                 random_kit_rows = random_kit_payload.get("kit", {})
@@ -792,8 +817,13 @@ def generate_beat(
             beat_name = generate_beat_name()
 
             tempo_variants = [current_tempo]
-            if half_tempo_variant:
-                tempo_variants.append(max(1, int(round(current_tempo / 2.0))))
+            for token in parsed_variants:
+                factor = CLI_SUPPORTED_TEMPO_VARIANTS.get(token)
+                if factor is None:
+                    continue
+                vtempo = max(1, int(round(current_tempo * factor)))
+                if vtempo not in tempo_variants:
+                    tempo_variants.append(vtempo)
 
             for export_tempo in tempo_variants:
                 # Generate output filename: drumpattern___beatname___pattern___kit?___bpm___id
