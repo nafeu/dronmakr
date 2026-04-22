@@ -544,7 +544,7 @@
 
     let drumPresets = {};
     let activeDrumPreset = "";
-    let defaultDrumPreset = "Default";
+    let defaultDrumPreset = "default";
 
     function showToast(msg, isError = false) {
       toast.textContent = msg;
@@ -614,8 +614,8 @@
         throw new Error(data.error || "Failed to load drum path presets");
       }
       drumPresets = (data && data.presets) || {};
-      activeDrumPreset = data.activePreset || "Default";
-      defaultDrumPreset = data.defaultPreset || "Default";
+      activeDrumPreset = data.activePreset || "default";
+      defaultDrumPreset = data.defaultPreset || "default";
       renderDrumPresetOptions();
       applyDrumPresetToFields(activeDrumPreset);
     }
@@ -707,7 +707,7 @@
       const name = drumPresetSelect.value;
       if (!name) return;
       if (name === defaultDrumPreset) {
-        showToast("Default preset cannot be deleted.", true);
+        showToast("default preset cannot be deleted.", true);
         return;
       }
       if (!confirm(`Delete drum preset "${name}"?`)) return;

@@ -224,7 +224,7 @@ def _collect_samples_for_type(sample_type: str) -> list[dict]:
     env_key = SAMPLE_TYPE_ENV_KEYS.get(sample_type)
     if not env_key:
         return []
-    roots = get_all_drum_paths_for_key(env_key)
+    roots = _get_all_drum_paths_for_key_across_presets(env_key)
     results: list[dict] = []
     seen: set[str] = set()
     for root_str in roots:
@@ -233,10 +233,36 @@ def _collect_samples_for_type(sample_type: str) -> list[dict]:
     return sorted(results, key=lambda x: (x["name"].lower(), x["path"]))
 
 
+def _get_all_drum_paths_for_key_across_presets(env_key: str) -> list[str]:
+    """Return unique configured roots for a drum path key across all presets."""
+    if env_key not in SAMPLE_TYPE_ENV_KEYS.values():
+        return []
+    roots: list[str] = []
+    seen: set[str] = set()
+
+    # Include all configured presets so loaded samples remain valid across preset changes.
+    presets = get_drum_path_presets()
+    for paths in presets.values():
+        raw = paths.get(env_key, "") if isinstance(paths, dict) else ""
+        for item in parse_escaped_csv(raw):
+            normalized = str(Path(item).expanduser().resolve())
+            if normalized in seen:
+                continue
+            seen.add(normalized)
+            roots.append(normalized)
+
+    # Backward compatibility: include active flat setting values as well.
+    for item in get_all_drum_paths_for_key(env_key):
+        normalized = str(Path(item).expanduser().resolve())
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        roots.append(normalized)
+    return roots
+
+
 def _get_cache_file(sample_type: str) -> str:
-    preset = get_active_drum_path_preset_name()
-    safe = re.sub(r"[^\w\-]+", "_", preset) or "preset"
-    return os.path.join(TEMP_DIR, f"sample-cache-{safe}-{sample_type}s.json")
+    return os.path.join(TEMP_DIR, f"sample-cache-all-presets-{sample_type}s.json")
 
 
 def invalidate_sample_caches() -> None:
@@ -363,13 +389,17 @@ def _is_path_in_sample_roots(path_str: str) -> bool:
     path_str = os.path.normpath(path_str)
     resolved = str(Path(path_str).resolve())
     env_keys = [
-        "DRUM_KICK_PATHS", "DRUM_SNARE_PATHS", "DRUM_CLAP_PATHS",
-        "DRUM_HIHAT_PATHS", "DRUM_SHAKER_PATHS", "DRUM_PERC_PATHS",
-        "DRUM_TOM_PATHS", "DRUM_CYMBAL_PATHS",
+        "DRUM_KICK_PATHS",
+        "DRUM_SNARE_PATHS",
+        "DRUM_CLAP_PATHS",
+        "DRUM_HIHAT_PATHS",
+        "DRUM_SHAKER_PATHS",
+        "DRUM_PERC_PATHS",
+        "DRUM_TOM_PATHS",
+        "DRUM_CYMBAL_PATHS",
     ]
     for key in env_keys:
-        paths = get_setting(key, "")
-        for root_str in parse_escaped_csv(paths):
+        for root_str in _get_all_drum_paths_for_key_across_presets(key):
             root = Path(root_str).expanduser().resolve()
             if str(root) and (resolved == str(root) or resolved.startswith(str(root) + os.sep)):
                 return True
@@ -417,6 +447,44 @@ def _handle_replace_sample(payload):
         _socketio.emit("sampleReplaced", {"row": row, **descriptor})
 
 
+def _write_patterns_config(patterns: dict) -> None:
+    """Write patterns config preserving existing human-readable layout."""
+    os.makedirs(os.path.dirname(BEAT_PATTERNS_FILE), exist_ok=True)
+    with open(BEAT_PATTERNS_FILE, "w") as f:
+        f.write("{\n")
+        pattern_items = list(patterns.items())
+        for i, (pattern_name, pattern_data) in enumerate(pattern_items):
+            is_last_pattern = i == len(pattern_items) - 1
+            f.write(f'  "{pattern_name}": {{\n')
+
+            meta = pattern_data.get("_meta")
+            row_items = [(k, v) for k, v in pattern_data.items() if k != "_meta"]
+            if meta and isinstance(meta, dict):
+                meta_str = json.dumps(meta)
+                f.write(f'    "_meta": {meta_str},\n')
+            for j, (row_key, row_values) in enumerate(row_items):
+                is_last_row = j == len(row_items) - 1
+                values_str = json.dumps(row_values)
+                comma = "" if is_last_row else ","
+                f.write(f'    "{row_key}": {values_str}{comma}\n')
+
+            comma = "" if is_last_pattern else ","
+            f.write(f"  }}{comma}\n")
+        f.write("}\n")
+
+
+def _extract_kit_paths(kit: dict) -> dict[str, str]:
+    """Build kit paths dict from client payload, ignoring missing rows/paths."""
+    paths: dict[str, str] = {}
+    for row in DRUM_ROW_ORDER:
+        desc = kit.get(row)
+        if desc and isinstance(desc, dict):
+            p = desc.get("path")
+            if p and isinstance(p, str) and p.strip():
+                paths[row] = p.strip()
+    return paths
+
+
 def _handle_save_pattern(payload):
     """
     Save a beat pattern to config/beat-patterns.json.
@@ -441,14 +509,8 @@ def _handle_save_pattern(payload):
         _socketio.emit("patternSaveResult", {"error": "Invalid pattern structure"})
         return
 
-    beat_patterns_file = "config/beat-patterns.json"
-
     try:
-        if os.path.exists(beat_patterns_file):
-            with open(beat_patterns_file, "r") as f:
-                patterns = json.load(f)
-        else:
-            patterns = {}
+        patterns = _load_beat_patterns_config()
 
         if name in patterns and not overwrite:
             _socketio.emit(
@@ -457,32 +519,7 @@ def _handle_save_pattern(payload):
             return
 
         patterns[name] = pattern
-
-        os.makedirs(os.path.dirname(beat_patterns_file), exist_ok=True)
-        with open(beat_patterns_file, "w") as f:
-            f.write("{\n")
-            pattern_items = list(patterns.items())
-            for i, (pattern_name, pattern_data) in enumerate(pattern_items):
-                is_last_pattern = i == len(pattern_items) - 1
-                f.write(f'  "{pattern_name}": {{\n')
-
-                meta = pattern_data.get("_meta")
-                row_items = [(k, v) for k, v in pattern_data.items() if k != "_meta"]
-                written = 0
-                if meta and isinstance(meta, dict):
-                    meta_str = json.dumps(meta)
-                    f.write(f'    "_meta": {meta_str},\n')
-                    written += 1
-                for j, (row_key, row_values) in enumerate(row_items):
-                    is_last_row = j == len(row_items) - 1
-                    values_str = json.dumps(row_values)
-                    comma = "" if is_last_row else ","
-                    f.write(f'    "{row_key}": {values_str}{comma}\n')
-                    written += 1
-
-                comma = "" if is_last_pattern else ","
-                f.write(f"  }}{comma}\n")
-            f.write("}\n")
+        _write_patterns_config(patterns)
 
         _socketio.emit("patternSaveResult", {"success": True, "name": name})
 
@@ -666,14 +703,7 @@ def _handle_save_kit(payload):
         return
 
     # Build paths dict from kit: only include rows with valid path
-    paths: dict[str, str] = {}
-    for row in DRUM_ROW_ORDER:
-        desc = kit.get(row)
-        if desc and isinstance(desc, dict):
-            p = desc.get("path")
-            if p and isinstance(p, str) and p.strip():
-                paths[row] = p.strip()
-
+    paths = _extract_kit_paths(kit)
     if not paths:
         _socketio.emit("kitSaveResult", {"error": "No valid samples to save"})
         return
@@ -706,6 +736,84 @@ def _handle_save_kit(payload):
         _socketio.emit(
             "kitSaveResult", {"error": f"Failed to save kit: {str(e)}"}
         )
+
+
+def _handle_save_groove(payload):
+    """
+    Save the current pattern and kit under a shared name.
+    Payload: { "name": str, "pattern": dict, "kit": dict, "overwrite": bool }
+    """
+    name = (payload or {}).get("name", "").strip()
+    pattern = (payload or {}).get("pattern")
+    kit = (payload or {}).get("kit")
+    overwrite = bool((payload or {}).get("overwrite", False))
+
+    if not name:
+        _socketio.emit("grooveSaveResult", {"error": "Groove name is required"})
+        return
+    if not VALID_CONFIG_NAME_RE.fullmatch(name):
+        _socketio.emit(
+            "grooveSaveResult",
+            {
+                "error": "Invalid groove name. Use lowercase kebab-case only (letters/numbers with '-' only)."
+            },
+        )
+        return
+    if not pattern or not isinstance(pattern, dict):
+        _socketio.emit("grooveSaveResult", {"error": "Invalid pattern data"})
+        return
+    if not kit or not isinstance(kit, dict):
+        _socketio.emit("grooveSaveResult", {"error": "Invalid kit data"})
+        return
+
+    expected_rows = set(DRUM_ROW_ORDER)
+    pattern_rows = {k for k in pattern.keys() if k != "_meta"}
+    if pattern_rows != expected_rows:
+        _socketio.emit("grooveSaveResult", {"error": "Invalid pattern structure"})
+        return
+
+    paths = _extract_kit_paths(kit)
+    if not paths:
+        _socketio.emit("grooveSaveResult", {"error": "No valid samples to save"})
+        return
+
+    try:
+        patterns = _load_beat_patterns_config()
+        kits = _load_drum_kits_config()
+
+        needs_pattern_overwrite = name in patterns and not overwrite
+        needs_kit_overwrite = name in kits and not overwrite
+        if needs_pattern_overwrite or needs_kit_overwrite:
+            _socketio.emit(
+                "grooveSaveResult",
+                {
+                    "needsConfirmation": True,
+                    "name": name,
+                    "overwritePatternRequired": needs_pattern_overwrite,
+                    "overwriteKitRequired": needs_kit_overwrite,
+                },
+            )
+            return
+
+        patterns[name] = pattern
+        kits[name] = paths
+        _write_patterns_config(patterns)
+
+        os.makedirs(os.path.dirname(DRUM_KITS_FILE), exist_ok=True)
+        with open(DRUM_KITS_FILE, "w") as f:
+            f.write("{\n")
+            items = list(kits.items())
+            for i, (kit_name, kit_data) in enumerate(items):
+                comma = "" if i == len(items) - 1 else ","
+                paths_json = json.dumps(kit_data)
+                f.write(f'  "{kit_name}": {paths_json}{comma}\n')
+            f.write("}\n")
+
+        _socketio.emit("grooveSaveResult", {"success": True, "name": name})
+        _socketio.emit("patterns", {"patterns": list(patterns.keys())})
+        _socketio.emit("drumKits", {"kits": list(kits.keys())})
+    except Exception as e:
+        _socketio.emit("grooveSaveResult", {"error": f"Failed to save groove: {str(e)}"})
 
 
 def _handle_get_samples(payload):
@@ -912,6 +1020,7 @@ def register_beatbuildr(app, socketio):
     socketio.on_event("getDrumKits", _handle_get_drum_kits)
     socketio.on_event("loadKit", _handle_load_kit)
     socketio.on_event("saveKit", _handle_save_kit)
+    socketio.on_event("saveGroove", _handle_save_groove)
     socketio.on_event("getSamples", _handle_get_samples)
     socketio.on_event("refreshSamples", _handle_refresh_samples)
     socketio.on_event("replaceSampleWithPath", _handle_replace_sample_with_path)

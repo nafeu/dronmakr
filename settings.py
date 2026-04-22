@@ -17,7 +17,7 @@ DRUM_PATH_KEYS = [
     "DRUM_CLAP_PATHS",
     "DRUM_CYMBAL_PATHS",
 ]
-DEFAULT_DRUM_PATH_PRESET_NAME = "Default"
+DEFAULT_DRUM_PATH_PRESET_NAME = "default"
 DRUM_PATH_PRESET_NAME_KEY = "DRUM_PATH_PRESET"
 DEFAULT_KEYS = [
     "PLUGIN_PATHS",
@@ -59,7 +59,10 @@ _default_values = {
 def _normalize_preset_name(name: str | None) -> str:
     if not isinstance(name, str):
         return ""
-    return name.strip()
+    normalized = name.strip()
+    if normalized.lower() == DEFAULT_DRUM_PATH_PRESET_NAME:
+        return DEFAULT_DRUM_PATH_PRESET_NAME
+    return normalized
 
 
 def parse_escaped_csv(value: str | None) -> list[str]:

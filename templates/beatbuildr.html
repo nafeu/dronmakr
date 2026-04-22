@@ -1191,6 +1191,16 @@
       justify-content: center;
     }
 
+    .grid-footer .save-btn.save-btn-text {
+      width: auto;
+      padding: 0 0.6rem;
+      gap: 0.35rem;
+      font-size: 0.66rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
     .grid-footer .save-btn:hover:not(:disabled) {
       background: #ff8900;
       border-color: #ff8900;
@@ -1906,6 +1916,10 @@
             <button type="button" id="pattern-save-btn" class="save-btn" title="Save current pattern">
               <i class="fa-solid fa-floppy-disk"></i>
             </button>
+            <button type="button" id="groove-save-btn" class="save-btn save-btn-text" title="Save current groove">
+              <i class="fa-solid fa-layer-group"></i>
+              <span>Save Groove</span>
+            </button>
           </div>
         </div>
       </div>
@@ -1917,6 +1931,10 @@
           </button>
           <button type="button" class="browser-tab-btn" data-tab="kits" title="Load saved drum kits">
             <i class="fa-solid fa-drum"></i> kits
+          </button>
+          <button type="button" class="browser-tab-btn" data-tab="grooves"
+            title="Load saved grooves (matching pattern + kit names)">
+            <i class="fa-solid fa-layer-group"></i> grooves
           </button>
           <span class="browser-tab-divider"></span>
           <div class="browser-samples-row">
@@ -1945,6 +1963,10 @@
         <div id="browser-tab-kits" class="browser-tab-panel" hidden>
           <input type="text" id="browser-kit-filter" class="browser-filter-input" placeholder="Filter kits…">
           <ul id="browser-kit-list" class="browser-list"></ul>
+        </div>
+        <div id="browser-tab-grooves" class="browser-tab-panel" hidden>
+          <input type="text" id="browser-groove-filter" class="browser-filter-input" placeholder="Filter grooves…">
+          <ul id="browser-groove-list" class="browser-list"></ul>
         </div>
         <div id="browser-tab-samples" class="browser-tab-panel" hidden>
           <div class="browser-samples-header">
@@ -2624,6 +2646,9 @@
     const socket = io();
     state.socket = socket;
     const drumPathPresetSelect = document.getElementById("drum-path-preset-select");
+    let initialKitRestoreAttempted = false;
+    let awaitingPresetSyncForInitialRestore = false;
+    let pendingInitialRestorePaths = null;
 
     drumPathPresetSelect.addEventListener("change", () => {
       const name = drumPathPresetSelect.value;
@@ -2693,6 +2718,21 @@
       await Promise.all(tasks);
     }
 
+    function restoreInitialKitFromPaths(paths) {
+      const rows = paths ? ROWS.filter((rk) => paths[rk] && paths[rk].path) : [];
+      if (rows.length > 0) {
+        state._kitRestoreRemaining = rows.length;
+        rows.forEach((rk) => {
+          socket.emit("replaceSampleWithPath", { row: rk, path: paths[rk].path });
+        });
+      } else {
+        socket.emit("requestNewKit");
+      }
+      initialKitRestoreAttempted = true;
+      awaitingPresetSyncForInitialRestore = false;
+      pendingInitialRestorePaths = null;
+    }
+
     socket.on("kit", async (data) => {
       try {
         state._kitRestoreRemaining = 0;
@@ -2705,6 +2745,9 @@
         if (window.__pageReady) window.__pageReady();
         console.log("Received drum kit:", data);
         schedulePersistBeatbuildr();
+        if (awaitingPresetSyncForInitialRestore && !initialKitRestoreAttempted) {
+          restoreInitialKitFromPaths(pendingInitialRestorePaths);
+        }
       } finally {
         finishNewKitBtnLoadingIfNeeded();
       }
@@ -2732,6 +2775,28 @@
         requestSamplesForType(currentSampleType);
       }
       schedulePersistBeatbuildr();
+
+      if (!initialKitRestoreAttempted) {
+        const snap = readBeatbuildrStorage();
+        const desiredPreset = (snap && typeof snap.drumPathPreset === "string") ? snap.drumPathPreset.trim() : "";
+        const canSyncPreset = desiredPreset && presets.includes(desiredPreset) && desiredPreset !== active;
+        if (canSyncPreset && !awaitingPresetSyncForInitialRestore) {
+          awaitingPresetSyncForInitialRestore = true;
+          pendingInitialRestorePaths =
+            snap && snap.kitPaths && typeof snap.kitPaths === "object" ? snap.kitPaths : null;
+          socket.emit("setDrumPathPreset", { name: desiredPreset });
+          return;
+        }
+
+        let paths = null;
+        const mem = encodeKitForSave();
+        if (mem && Object.keys(mem).length > 0) {
+          paths = mem;
+        } else if (canRestoreSnapshotKitForCurrentPreset(snap)) {
+          paths = snap.kitPaths;
+        }
+        restoreInitialKitFromPaths(paths);
+      }
     });
 
     socket.on("drumPathPresetSetResult", (data) => {
@@ -2739,6 +2804,17 @@
         showErrorModal(data.error);
         if (state.activeDrumPathPreset) {
           drumPathPresetSelect.value = state.activeDrumPathPreset;
+        }
+        if (awaitingPresetSyncForInitialRestore && !initialKitRestoreAttempted) {
+          const snap = readBeatbuildrStorage();
+          let paths = null;
+          const mem = encodeKitForSave();
+          if (mem && Object.keys(mem).length > 0) {
+            paths = mem;
+          } else if (canRestoreSnapshotKitForCurrentPreset(snap)) {
+            paths = snap.kitPaths;
+          }
+          restoreInitialKitFromPaths(paths);
         }
       }
     });
@@ -3141,6 +3217,7 @@
       }
     });
     const patternSaveBtn = document.getElementById("pattern-save-btn");
+    const grooveSaveBtn = document.getElementById("groove-save-btn");
     const errorModalOverlay = document.getElementById("error-modal-overlay");
     const errorModalText = document.getElementById("error-modal-text");
     const errorModalClose = document.getElementById("error-modal-close");
@@ -3209,6 +3286,17 @@
       });
     }
 
+    function showGrooveConfirmPrompt(grooveName) {
+      showConfirmModal(`Are you sure you want to overwrite "${grooveName}" as a groove?`, () => {
+        const pattern = encodePatternForSave();
+        const kit = encodeKitForSave();
+        if (kit && state.socket && state.socket.connected) {
+          setGrooveSaveBtnState("loading");
+          state.socket.emit("saveGroove", { name: grooveName, pattern, kit, overwrite: true });
+        }
+      });
+    }
+
     function setPatternSaveBtnState(btnState) {
       const icon = patternSaveBtn.querySelector("i");
       patternSaveBtn.disabled = btnState === "loading";
@@ -3217,6 +3305,26 @@
         setTimeout(() => {
           patternSaveBtn.querySelector("i").className = "fa-solid fa-floppy-disk";
         }, 1500);
+      }
+    }
+
+    function setGrooveSaveBtnState(btnState) {
+      const icon = grooveSaveBtn.querySelector("i");
+      const label = grooveSaveBtn.querySelector("span");
+      grooveSaveBtn.disabled = btnState === "loading";
+      if (btnState === "loading") {
+        icon.className = "fa-solid fa-spinner fa-spin";
+        label.textContent = "Saving...";
+      } else if (btnState === "success") {
+        icon.className = "fa-solid fa-check";
+        label.textContent = "Saved";
+        setTimeout(() => {
+          grooveSaveBtn.querySelector("i").className = "fa-solid fa-layer-group";
+          grooveSaveBtn.querySelector("span").textContent = "Save Groove";
+        }, 1500);
+      } else {
+        icon.className = "fa-solid fa-layer-group";
+        label.textContent = "Save Groove";
       }
     }
 
@@ -3248,12 +3356,50 @@
       }
     });
 
+    grooveSaveBtn.addEventListener("click", () => {
+      const grooveName = normalizeKebabNameFinal(patternNameInput.value);
+      if (!grooveName) {
+        showErrorModal("Please enter a groove name in the pattern field.");
+        return;
+      }
+      patternNameInput.value = grooveName;
+      browserKitNameInput.value = grooveName;
+
+      const pattern = encodePatternForSave();
+      const kit = encodeKitForSave();
+      if (!kit) {
+        showErrorModal("No kit to save. Load or generate a kit first.");
+        return;
+      }
+      if (state.socket && state.socket.connected) {
+        setGrooveSaveBtnState("loading");
+        state.socket.emit("saveGroove", { name: grooveName, pattern, kit, overwrite: false });
+      }
+    });
+
+    socket.on("grooveSaveResult", (data) => {
+      if (data.needsConfirmation) {
+        setGrooveSaveBtnState("idle");
+        showGrooveConfirmPrompt(data.name);
+      } else if (data.success) {
+        setGrooveSaveBtnState("success");
+        if (state.socket && state.socket.connected) {
+          state.socket.emit("getPatterns");
+          state.socket.emit("getDrumKits");
+        }
+      } else if (data.error) {
+        setGrooveSaveBtnState("idle");
+        showErrorModal(data.error);
+      }
+    });
+
     // Browser card – tab switching
     const SAMPLE_TYPES = ["kick", "snare", "hihat", "clap", "perc", "tom", "shaker", "cymbal"];
     const SAMPLE_TYPE_LABELS = { kick: "kicks", snare: "snares", hihat: "hats", clap: "claps", perc: "percs", tom: "toms", shaker: "shakers", cymbal: "cymbals" };
     const browserTabBtns = document.querySelectorAll(".browser-tab-btn[data-tab]");
     const browserTabPatterns = document.getElementById("browser-tab-patterns");
     const browserTabKits = document.getElementById("browser-tab-kits");
+    const browserTabGrooves = document.getElementById("browser-tab-grooves");
     const browserTabSamples = document.getElementById("browser-tab-samples");
     const browserSampleTypeSelect = document.getElementById("browser-sample-type-select");
 
@@ -3264,10 +3410,14 @@
         btn.classList.add("active");
         browserTabPatterns.hidden = tab !== "patterns";
         browserTabKits.hidden = tab !== "kits";
+        browserTabGrooves.hidden = tab !== "grooves";
         browserTabSamples.hidden = tab !== "samples";
         if (tab === "patterns") {
           state.socket && state.socket.emit("getPatterns");
         } else if (tab === "kits") {
+          state.socket && state.socket.emit("getDrumKits");
+        } else if (tab === "grooves") {
+          state.socket && state.socket.emit("getPatterns");
           state.socket && state.socket.emit("getDrumKits");
         } else if (tab === "samples") {
           currentSampleType = browserSampleTypeSelect.value;
@@ -3288,6 +3438,7 @@
     const browserPatternList = document.getElementById("browser-pattern-list");
 
     let patternList = [];
+    let drumKitsList = [];
 
     function renderPatternList() {
       const query = (browserPatternFilter.value || "").trim().toLowerCase();
@@ -3324,6 +3475,7 @@
     socket.on("patterns", (data) => {
       patternList = (data && data.patterns) ? [...data.patterns] : [];
       renderPatternList();
+      renderGrooveList();
     });
 
     function applyLoadedPattern(data) {
@@ -3409,8 +3561,6 @@
     });
     const browserKitSaveBtn = document.getElementById("browser-kit-save-btn");
 
-    let drumKitsList = [];
-
     function renderKitList() {
       const query = (browserKitFilter.value || "").trim().toLowerCase();
       const filtered = query
@@ -3446,32 +3596,58 @@
     socket.on("drumKits", (data) => {
       drumKitsList = (data && data.kits) ? [...data.kits] : [];
       renderKitList();
+      renderGrooveList();
     });
+
+    // Browser – grooves list, filter, load pattern + kit
+    const browserGrooveFilter = document.getElementById("browser-groove-filter");
+    const browserGrooveList = document.getElementById("browser-groove-list");
+
+    function renderGrooveList() {
+      const query = (browserGrooveFilter.value || "").trim().toLowerCase();
+      const kitNames = new Set(drumKitsList);
+      const grooves = patternList.filter((name) => kitNames.has(name));
+      const filtered = query
+        ? grooves.filter((name) => name.toLowerCase().includes(query))
+        : grooves;
+
+      browserGrooveList.innerHTML = "";
+      if (filtered.length === 0) {
+        const li = document.createElement("li");
+        li.className = "browser-list-empty";
+        li.textContent = grooves.length === 0 ? "No grooves saved yet" : "No matching grooves";
+        browserGrooveList.appendChild(li);
+        return;
+      }
+
+      filtered.forEach((grooveName) => {
+        const li = document.createElement("li");
+        li.className = "browser-list-item";
+        li.innerHTML = "<i class=\"fa-solid fa-layer-group\"></i> " + grooveName;
+        li.dataset.grooveName = grooveName;
+        li.addEventListener("click", () => {
+          const normalized = normalizeKebabNameFinal(grooveName);
+          patternNameInput.value = normalized;
+          browserKitNameInput.value = normalized;
+          if (state.socket && state.socket.connected) {
+            state.socket.emit("loadPattern", { name: grooveName });
+            state.socket.emit("loadKit", { name: grooveName });
+          }
+        });
+        browserGrooveList.appendChild(li);
+      });
+    }
+
+    browserGrooveFilter.addEventListener("input", renderGrooveList);
 
     // Request patterns when page loads (patterns tab is default visible)
     if (socket.connected) socket.emit("getPatterns");
     socket.on("connect", () => {
+      initialKitRestoreAttempted = false;
+      awaitingPresetSyncForInitialRestore = false;
+      pendingInitialRestorePaths = null;
       socket.emit("getPatterns");
       socket.emit("getDrumPathPresets");
-      let paths = null;
-      const mem = encodeKitForSave();
-      if (mem && Object.keys(mem).length > 0) {
-        paths = mem;
-      } else {
-        const snap = readBeatbuildrStorage();
-        if (canRestoreSnapshotKitForCurrentPreset(snap)) {
-          paths = snap.kitPaths;
-        }
-      }
-      const rows = paths ? ROWS.filter((rk) => paths[rk] && paths[rk].path) : [];
-      if (rows.length > 0) {
-        state._kitRestoreRemaining = rows.length;
-        rows.forEach((rk) => {
-          socket.emit("replaceSampleWithPath", { row: rk, path: paths[rk].path });
-        });
-      } else {
-        socket.emit("requestNewKit");
-      }
     });
 
     function encodeKitForSave() {
