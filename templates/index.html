@@ -19,6 +19,7 @@
       --theme-a: #353531;
       --theme-b: #016fb9;
       --theme-c: #ec4e20;
+      --theme-d: white;
       --toolbar-height: 48px;
     }
 
@@ -130,7 +131,7 @@
     p {
       font-size: 0.85rem;
       line-height: 1.6;
-      color: var(--theme-b);
+      color: var(--primary);
       margin-bottom: 1rem;
     }
 
@@ -169,6 +170,19 @@
       margin: 0;
       font-size: 0.8rem;
     }
+
+    pre {
+      padding: 1rem;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      color: var(--theme-d);
+      font-size: 0.8rem;
+      overflow-x: auto;
+    }
+
+    code {
+      color: var(--theme-d);
+    }
   </style>
 </head>
 
@@ -181,14 +195,13 @@
         <a href="/auditionr"><i class="fa-solid fa-wave-square"></i> auditionr</a>
         <a href="/beatbuildr"><i class="fa-solid fa-drum"></i> beatbuildr</a>
         <a href="/collections"><i class="fa-solid fa-folder-open"></i> collections</a>
+        <a href="/folysplitr"><i class="fa-solid fa-seedling"></i> folysplitr</a>
       </nav>
     </div>
     <a href="/settings" class="toolbar-settings" title="settings"><i class="fa-solid fa-gear"></i></a>
   </header>
 
   <main>
-    <h1>dronmakr</h1>
-    <p>Generate drones and beats, audition and process samples, build drum patterns — all from one suite.</p>
     <div class="card-grid">
       <a href="/auditionr" class="card">
         <h2><i class="fa-solid fa-wave-square"></i> auditionr</h2>
@@ -198,9 +211,17 @@
         <h2><i class="fa-solid fa-drum"></i> beatbuildr</h2>
         <p>Build drum patterns with a random kit, preview, and save patterns to config.</p>
       </a>
+      <a href="/collections" class="card">
+        <h2><i class="fa-solid fa-folder-open"></i> collections</h2>
+        <p>Browse saved samples, filter your library, and package selected files for export.</p>
+      </a>
+      <a href="/folysplitr" class="card">
+        <h2><i class="fa-solid fa-seedling"></i> folysplitr</h2>
+        <p>Placeholder page for the upcoming folysplitr feature set.</p>
+      </a>
     </div>
   </main>
-  <script>document.addEventListener('DOMContentLoaded', function() { if (window.__pageReady) window.__pageReady(); });</script>
+  <script>document.addEventListener('DOMContentLoaded', function () { if (window.__pageReady) window.__pageReady(); });</script>
 </body>
 
 </html>

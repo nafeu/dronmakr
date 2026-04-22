@@ -9,9 +9,11 @@ eventlet.monkey_patch()
 import threading
 import time
 import webbrowser
+from pathlib import Path
 
 from flask import Flask, jsonify, render_template, request, send_from_directory
 from flask_socketio import SocketIO
+from markdown_it import MarkdownIt
 
 from version import __version__
 from utils import get_version, with_final_main_prompt, with_main_prompt as with_prompt
@@ -55,6 +57,28 @@ app = Flask(__name__, static_folder="static", template_folder="templates")
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 DEBUG_WEBSOCKETS = False
+ROOT_DIR = Path(__file__).resolve().parent
+README_PATH = ROOT_DIR / "README.md"
+
+
+def _render_readme_html() -> str:
+    """Load README.md and render it as safe HTML for the home page."""
+    if not README_PATH.exists():
+        return "<p>README.md not found.</p>"
+    try:
+        markdown_text = README_PATH.read_text(encoding="utf-8")
+    except OSError as exc:
+        return f"<p>Unable to read README.md: {exc}</p>"
+
+    md = (
+        MarkdownIt("commonmark", {"html": False, "linkify": True, "typographer": True})
+        .enable("table")
+        .enable("strikethrough")
+    )
+    return md.render(markdown_text)
+
+
+README_HTML = _render_readme_html()
 
 
 @socketio.on("connect")
@@ -76,8 +100,14 @@ def handle_connect():
 
 @app.route("/")
 def index():
-    """Landing page with links to auditionr and beatbuildr."""
-    return render_template("index.html", version=__version__)
+    """Landing page with app links and rendered README content."""
+    page_html = render_template("index.html", version=__version__)
+    readme_block = (
+        '<section id="readme-content" style="margin-top: 2rem;">'
+        f"{README_HTML}"
+        "</section>"
+    )
+    return page_html.replace("</main>", f"{readme_block}</main>", 1)
 
 
 @app.route("/auditionr")
@@ -103,6 +133,12 @@ def settings_page():
 def collections_page():
     """Collections view: saved folder as waveform grid with filters and packaging sidebar."""
     return render_template("collections.html", version=__version__)
+
+
+@app.route("/folysplitr")
+def folysplitr_page():
+    """Folysplitr placeholder page."""
+    return render_template("folysplitr.html", version=__version__)
 
 
 @app.route("/api/collections/saved")

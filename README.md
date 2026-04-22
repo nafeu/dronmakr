@@ -2,21 +2,9 @@
 
 > pronounced "drone maker"
 
-Python-based music sample generator powered by [pedalboard.io](https://spotify.github.io/pedalboard/index.html), [paulstretch](https://github.com/canyondust/paulstretch_python) and your own **VST Instruments & FX** library.
+Python-based suite of sample generation, editing and packaging tools.
 
 [![Join the Discord](https://img.shields.io/discord/1358944581873307871?label=discord&logo=discord&style=for-the-badge)](https://discord.gg/BysAyRje57) [![Support on Patreon](https://img.shields.io/badge/Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white)](https://www.patreon.com/phrakture)
-
-### _Load available audio plugins and save presets_
-
-![dronmakr cli preview](./preview-3.gif)
-
-### _Generate midi and render samples using a CLI_
-
-![dronmakr cli preview](./preview-1.gif)
-
-### _Audition the generated results_
-
-![dronmakr auditioner preview](./preview-2.gif)
 
 ## Made Using `dronmakr`
 
