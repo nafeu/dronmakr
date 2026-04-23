@@ -138,7 +138,7 @@ def collections_page():
 
 @app.route("/folysplitr")
 def folysplitr_page():
-    """Folysplitr placeholder page."""
+    """Folysplitr recorder + split workflow page."""
     return render_template("folysplitr.html", version=__version__)
 
 

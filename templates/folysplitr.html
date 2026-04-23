@@ -200,20 +200,6 @@
       margin: 0;
     }
 
-    .row {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      margin-bottom: 1rem;
-    }
-
-    label {
-      font-size: 0.8rem;
-      color: var(--theme-b);
-      min-width: 8rem;
-    }
-
     select,
     button {
       font-family: inherit;
@@ -245,15 +231,30 @@
       cursor: not-allowed;
     }
 
+    .record-btn i,
+    .icon-btn i {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1em;
+      height: 1em;
+      line-height: 1;
+    }
+
     .record-btn {
-      min-width: 8rem;
-      font-weight: 600;
+      min-width: 2.25rem;
+      width: 2.25rem;
+      height: 2.25rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .record-btn.recording {
       background: var(--theme-c);
       border-color: var(--theme-c);
       color: var(--secondary);
+      opacity: 0.65;
     }
 
     .status-text {
@@ -265,49 +266,68 @@
       color: var(--theme-c);
     }
 
-    .time-pill {
-      font-size: 0.8rem;
-      border: 1px solid var(--theme-a);
-      border-radius: 999px;
-      padding: 0.2rem 0.6rem;
-      color: var(--theme-b);
-      background: rgba(1, 111, 185, 0.16);
+    .recorder-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.85rem;
+      flex-wrap: wrap;
     }
 
-    .time-pill.recording {
-      border-color: var(--theme-c);
-      color: var(--theme-c);
-      background: rgba(236, 78, 32, 0.16);
+    .icon-btn {
+      width: 2.25rem;
+      height: 2.25rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .device-picker {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.65rem;
+      margin-left: 0.15rem;
+    }
+
+    .device-picker i {
+      color: var(--theme-b);
+      font-size: 0.9rem;
+      width: 0.9rem;
+      text-align: center;
+      flex: 0 0 auto;
+    }
+
+    .device-picker select {
+      min-width: 19rem;
+    }
+
+    .preview-body {
+      display: flex;
+      align-items: stretch;
+      gap: 0.55rem;
+      margin-bottom: 0.7rem;
+      min-height: 92px;
     }
 
     .meter-wrap {
-      display: grid;
-      gap: 0.35rem;
-      margin-bottom: 1rem;
+      width: 16px;
+      flex: 0 0 16px;
     }
 
     #meter-canvas {
-      width: 100%;
-      height: 84px;
-      border-radius: 6px;
+      width: 16px;
+      height: 92px;
       border: 1px solid var(--theme-a);
+      border-radius: 3px;
       background: #121211;
       display: block;
     }
 
-    .meter-meta {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.75rem;
-      color: var(--theme-b);
-    }
-
-    .meter-meta span:last-child {
-      color: var(--primary);
-    }
-
     .waveform-wrapper {
       padding: 0.7rem 0.2rem 0.1rem;
+      margin-bottom: 1rem;
     }
 
     .waveform-header {
@@ -332,7 +352,10 @@
     }
 
     #waveform {
-      margin-bottom: 0.7rem;
+      flex: 1 1 auto;
+      min-height: 92px;
+      height: 92px;
+      margin: 0;
     }
 
     .playback-controls {
@@ -355,10 +378,34 @@
       background: rgba(53, 53, 49, 0.2);
     }
 
+    .splitr-preview {
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .splitr-nav {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .splitr-index {
+      font-size: 0.78rem;
+      color: var(--theme-b);
+      min-width: 5.5rem;
+      text-align: center;
+    }
+
+    #splitr-waveform {
+      margin: 0.15rem 0 0.65rem;
+    }
+
     #status {
       /* margin-bottom: 1rem; */
       display: none;
     }
+
   </style>
 </head>
 
@@ -384,39 +431,51 @@
     </div>
 
     <section id="panel-recorder" class="panel tab-panel active">
-      <div class="row">
-        <label for="device-select">Select input device</label>
-        <select id="device-select"></select>
-      </div>
-      <div class="row">
-        <button id="record-btn" class="record-btn"><i class="fa-solid fa-microphone"></i> Record</button>
-        <button id="stop-btn"><i class="fa-solid fa-stop"></i> Stop</button>
-        <span id="timer-pill" class="time-pill">00:00 / 05:00</span>
-      </div>
-      <div class="meter-wrap">
-        <canvas id="meter-canvas" width="1080" height="84"></canvas>
-        <div class="meter-meta">
-          <span id="meter-db">-inf dBFS</span>
-          <span id="meter-state">waiting for input...</span>
+      <div class="recorder-toolbar">
+        <button id="play-btn" class="icon-btn" title="play"><i class="fa-solid fa-play"></i></button>
+        <button id="record-btn" class="record-btn" title="record"><i class="fa-solid fa-circle"></i></button>
+        <button id="stop-btn" class="icon-btn" title="stop"><i class="fa-solid fa-stop"></i></button>
+        <div class="device-picker">
+          <i class="fa-solid fa-microphone-lines" title="select input device"></i>
+          <select id="device-select">
+            <option value="">no input device selected</option>
+          </select>
         </div>
       </div>
       <div id="status" class="status-text">Ready.</div>
-      <div id="waveform-shell" class="waveform-wrapper" style="display: none;">
+      <div id="waveform-shell" class="waveform-wrapper">
         <div class="waveform-header">
-          <span id="waveform-title" class="waveform-title"></span>
+          <span id="waveform-title" class="waveform-title">recording preview</span>
           <span id="waveform-duration" class="waveform-duration">--:--</span>
         </div>
-        <div id="waveform"></div>
-        <div class="playback-controls">
-          <button id="play-btn" class="playback-btn"><i class="fa-solid fa-play"></i> Play</button>
+        <div class="preview-body">
+          <div id="waveform"></div>
+          <div class="meter-wrap">
+            <canvas id="meter-canvas" width="16" height="92"></canvas>
+          </div>
         </div>
       </div>
-      <div id="wave-empty" class="empty-state">No recording loaded yet. Record a take to render the waveform.</div>
     </section>
 
     <section id="panel-splitr" class="panel tab-panel">
-      <h1><i class="fa-solid fa-scissors"></i> folysplitr splitr</h1>
-      <div class="empty-state">Splitr tab placeholder. Splitting workflow coming next.</div>
+      <div class="splitr-preview">
+        <div class="splitr-nav">
+          <button id="splitr-prev-btn"><i class="fa-solid fa-chevron-left"></i></button>
+          <span id="splitr-index" class="splitr-index">0 / 0</span>
+          <button id="splitr-next-btn"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+        <div id="splitr-shell" class="waveform-wrapper" style="display: none;">
+          <div class="waveform-header">
+            <span id="splitr-title" class="waveform-title"></span>
+            <span id="splitr-duration" class="waveform-duration">--:--</span>
+          </div>
+          <div id="splitr-waveform"></div>
+          <div class="playback-controls">
+            <button id="splitr-play-btn" class="playback-btn"><i class="fa-solid fa-play"></i> Play</button>
+          </div>
+        </div>
+        <div id="splitr-empty" class="empty-state">No recordings available yet. Record a sample first.</div>
+      </div>
     </section>
   </main>
   <script>
@@ -425,20 +484,24 @@
     var recordBtn = document.getElementById("record-btn");
     var stopBtn = document.getElementById("stop-btn");
     var playBtn = document.getElementById("play-btn");
-    var timerPill = document.getElementById("timer-pill");
     var statusEl = document.getElementById("status");
-    var meterDbEl = document.getElementById("meter-db");
-    var meterStateEl = document.getElementById("meter-state");
     var meterCanvas = document.getElementById("meter-canvas");
     var meterCtx = meterCanvas.getContext("2d");
     var waveformShell = document.getElementById("waveform-shell");
     var waveformTitle = document.getElementById("waveform-title");
     var waveformDuration = document.getElementById("waveform-duration");
-    var waveEmpty = document.getElementById("wave-empty");
     var tabRecorderBtn = document.getElementById("tab-recorder");
     var tabSplitrBtn = document.getElementById("tab-splitr");
     var panelRecorder = document.getElementById("panel-recorder");
     var panelSplitr = document.getElementById("panel-splitr");
+    var splitrPrevBtn = document.getElementById("splitr-prev-btn");
+    var splitrNextBtn = document.getElementById("splitr-next-btn");
+    var splitrPlayBtn = document.getElementById("splitr-play-btn");
+    var splitrIndexEl = document.getElementById("splitr-index");
+    var splitrShell = document.getElementById("splitr-shell");
+    var splitrEmpty = document.getElementById("splitr-empty");
+    var splitrTitle = document.getElementById("splitr-title");
+    var splitrDuration = document.getElementById("splitr-duration");
 
     var monitorStream = null;
     var audioContext = null;
@@ -448,12 +511,19 @@
 
     var mediaRecorder = null;
     var recordingChunks = [];
-    var recordingTimer = null;
-    var recordingStart = null;
+    var recordingStartMs = 0;
+    var recordingTimerId = null;
     var maxStopTimer = null;
+    var liveWaveCanvas = null;
+    var liveWaveCtx = null;
+    var liveWaveAnimId = null;
 
     var waveSurfer = null;
     var lastRecordingUrl = null;
+    var recordingsList = [];
+    var splitrIndex = 0;
+    var splitrWaveSurfer = null;
+    var isPlaybackActive = false;
 
     function showTab(tabName) {
       var recorderActive = tabName === "recorder";
@@ -513,40 +583,22 @@
       meterCtx.fillStyle = "#121211";
       meterCtx.fillRect(0, 0, w, h);
 
-      var bars = 48;
-      var gap = 3;
-      var barW = (w - (bars - 1) * gap) / bars;
-      var maxHeight = h - 16;
-      var activeBars = Math.round(level * bars);
-      for (var i = 0; i < bars; i++) {
-        var x = i * (barW + gap);
-        var ratio = (i + 1) / bars;
-        var yHeight = Math.max(6, maxHeight * ratio);
-        var y = h - yHeight - 6;
+      var segments = 20;
+      var gap = 2;
+      var segHeight = Math.floor((h - ((segments + 1) * gap)) / segments);
+      var activeSegments = Math.round(level * segments);
+
+      for (var i = 0; i < segments; i++) {
+        var y = h - gap - ((i + 1) * segHeight) - (i * gap);
+        var ratio = (i + 1) / segments;
         if (idle) {
           meterCtx.fillStyle = "#2b2b28";
-        } else if (i < activeBars) {
-          meterCtx.fillStyle = ratio > 0.85 ? "#ec4e20" : (ratio > 0.6 ? "#ff9505" : "#016fb9");
+        } else if (i < activeSegments) {
+          meterCtx.fillStyle = ratio > 0.85 ? "#ec4e20" : (ratio > 0.55 ? "#ff9505" : "#016fb9");
         } else {
           meterCtx.fillStyle = "#2b2b28";
         }
-        meterCtx.fillRect(x, y, barW, yHeight);
-      }
-    }
-
-    function updateMeterState(db) {
-      if (!Number.isFinite(db)) {
-        meterDbEl.innerText = "-inf dBFS";
-        meterStateEl.innerText = "waiting for input...";
-        return;
-      }
-      meterDbEl.innerText = db.toFixed(1) + " dBFS";
-      if (db > -6) {
-        meterStateEl.innerText = "too loud (risk clipping)";
-      } else if (db < -36) {
-        meterStateEl.innerText = "too quiet";
-      } else {
-        meterStateEl.innerText = "healthy input level";
+        meterCtx.fillRect(2, y, w - 4, Math.max(2, segHeight));
       }
     }
 
@@ -559,7 +611,6 @@
       var db = rms > 0 ? 20 * Math.log10(rms) : -Infinity;
       var normalized = Number.isFinite(db) ? Math.min(1, Math.max(0, (db + 60) / 60)) : 0;
       drawMeter(normalized, false);
-      updateMeterState(db);
       meterAnimId = requestAnimationFrame(meterLoop);
     }
 
@@ -586,7 +637,7 @@
       if (!inputs.length) {
         var optNone = document.createElement("option");
         optNone.value = "";
-        optNone.textContent = "No audio input devices found";
+        optNone.textContent = "no input device selected";
         deviceSelect.appendChild(optNone);
         deviceSelect.disabled = true;
         return;
@@ -602,24 +653,103 @@
     }
 
     function setRecordingUi(isRecording) {
-      recordBtn.disabled = isRecording;
-      stopBtn.disabled = !isRecording;
+      playBtn.disabled = !!isRecording;
       recordBtn.classList.toggle("recording", isRecording);
-      timerPill.classList.toggle("recording", isRecording);
+      stopBtn.disabled = false;
       if (isRecording) {
-        recordBtn.innerHTML = '<i class="fa-solid fa-circle"></i> Recording...';
+        recordBtn.innerHTML = '<i class="fa-solid fa-circle"></i>';
+        recordBtn.title = "stop recording";
       } else {
-        recordBtn.innerHTML = '<i class="fa-solid fa-microphone"></i> Record';
+        recordBtn.innerHTML = '<i class="fa-solid fa-circle"></i>';
+        recordBtn.title = "record";
       }
     }
 
-    function updateTimer() {
-      if (!recordingStart) {
-        timerPill.innerText = "00:00 / 05:00";
-        return;
+    function updateTimerFromMs(ms) {
+      var elapsed = Math.max(0, (ms || 0) / 1000);
+      waveformDuration.innerText = formatTime(elapsed);
+    }
+
+    function resetTimer() {
+      waveformDuration.innerText = "--:--";
+    }
+
+    function clearLiveWaveCanvas() {
+      if (!liveWaveCtx || !liveWaveCanvas) return;
+      liveWaveCtx.fillStyle = "#121211";
+      liveWaveCtx.fillRect(0, 0, liveWaveCanvas.width, liveWaveCanvas.height);
+    }
+
+    function stopLiveWaveAnimation() {
+      if (liveWaveAnimId != null) cancelAnimationFrame(liveWaveAnimId);
+      liveWaveAnimId = null;
+    }
+
+    function ensureLiveWaveCanvas() {
+      var container = document.getElementById("waveform");
+      if (!container) return false;
+      if (!liveWaveCanvas) {
+        liveWaveCanvas = document.createElement("canvas");
+        liveWaveCanvas.style.width = "100%";
+        liveWaveCanvas.style.height = "92px";
+        liveWaveCanvas.style.display = "block";
+        container.innerHTML = "";
+        container.appendChild(liveWaveCanvas);
       }
-      var elapsed = (Date.now() - recordingStart) / 1000;
-      timerPill.innerText = formatTime(elapsed) + " / 05:00";
+      var dpr = window.devicePixelRatio || 1;
+      var cssWidth = Math.max(1, container.clientWidth || 640);
+      var cssHeight = 92;
+      liveWaveCanvas.width = Math.floor(cssWidth * dpr);
+      liveWaveCanvas.height = Math.floor(cssHeight * dpr);
+      liveWaveCtx = liveWaveCanvas.getContext("2d");
+      clearLiveWaveCanvas();
+      return true;
+    }
+
+    function startLiveWaveAnimation() {
+      if (!analyser || !ensureLiveWaveCanvas()) return;
+      stopLiveWaveAnimation();
+      var dpr = window.devicePixelRatio || 1;
+      var shiftPx = Math.max(1, Math.floor(2 * dpr));
+      var bg = "#121211";
+
+      function frame() {
+        if (!liveWaveCtx || !liveWaveCanvas || !analyser) return;
+        liveWaveCtx.drawImage(
+          liveWaveCanvas,
+          shiftPx,
+          0,
+          liveWaveCanvas.width - shiftPx,
+          liveWaveCanvas.height,
+          0,
+          0,
+          liveWaveCanvas.width - shiftPx,
+          liveWaveCanvas.height
+        );
+        liveWaveCtx.fillStyle = bg;
+        liveWaveCtx.fillRect(liveWaveCanvas.width - shiftPx, 0, shiftPx, liveWaveCanvas.height);
+
+        analyser.getFloatTimeDomainData(meterData);
+        var peak = 0;
+        for (var i = 0; i < meterData.length; i++) {
+          var abs = Math.abs(meterData[i]);
+          if (abs > peak) peak = abs;
+        }
+        var clamped = Math.min(1, peak * 1.25);
+        var half = liveWaveCanvas.height / 2;
+        var amp = Math.max(1, clamped * (liveWaveCanvas.height * 0.44));
+        var x = liveWaveCanvas.width - Math.floor(shiftPx / 2);
+
+        liveWaveCtx.strokeStyle = clamped > 0.85 ? "#ec4e20" : (clamped > 0.5 ? "#ff9505" : "#016fb9");
+        liveWaveCtx.lineWidth = Math.max(1, dpr);
+        liveWaveCtx.beginPath();
+        liveWaveCtx.moveTo(x, half - amp);
+        liveWaveCtx.lineTo(x, half + amp);
+        liveWaveCtx.stroke();
+
+        liveWaveAnimId = requestAnimationFrame(frame);
+      }
+      liveWaveAnimId = requestAnimationFrame(frame);
     }
 
     async function startRecording() {
@@ -631,6 +761,14 @@
         setStatus("MediaRecorder is not supported in this browser.", true);
         return;
       }
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        return;
+      }
+      if (waveSurfer) {
+        try { waveSurfer.destroy(); } catch (e) { }
+        waveSurfer = null;
+      }
+
       var mimeType = pickRecorderMimeType();
       try {
         mediaRecorder = mimeType
@@ -648,16 +786,29 @@
       mediaRecorder.onerror = function (event) {
         setStatus("Recorder error: " + (event.error && event.error.message ? event.error.message : "unknown"), true);
       };
-      mediaRecorder.onstop = onRecordingStopped;
+      mediaRecorder.onstop = function () {
+        var finalMime = (mediaRecorder && mediaRecorder.mimeType) || mimeType || "audio/webm";
+        var blob = new Blob(recordingChunks, { type: finalMime });
+        onRecordedBlob(blob);
+      };
 
-      recordingStart = Date.now();
-      updateTimer();
-      recordingTimer = setInterval(updateTimer, 250);
+      recordingStartMs = Date.now();
+      if (recordingTimerId) clearInterval(recordingTimerId);
+      recordingTimerId = setInterval(function () {
+        var ms = Date.now() - recordingStartMs;
+        updateTimerFromMs(ms);
+        waveformDuration.innerText = formatTime(ms / 1000);
+      }, 100);
+
+      mediaRecorder.start(100);
+      waveformTitle.innerText = "recording...";
+      waveformDuration.innerText = "00:00";
+      waveformShell.style.display = "block";
+      startLiveWaveAnimation();
+      updateTimerFromMs(0);
       maxStopTimer = setTimeout(function () {
-        if (mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
+        stopRecording();
       }, MAX_RECORDING_MS);
-
-      mediaRecorder.start(250);
       setRecordingUi(true);
       setStatus("Recording...");
     }
@@ -667,23 +818,36 @@
       mediaRecorder.stop();
     }
 
-    async function onRecordingStopped() {
-      clearInterval(recordingTimer);
-      clearTimeout(maxStopTimer);
-      recordingTimer = null;
-      maxStopTimer = null;
-      setRecordingUi(false);
-      updateTimer();
-      recordingStart = null;
-      timerPill.innerText = "00:00 / 05:00";
+    function stopPlayback() {
+      if (!waveSurfer) return;
+      try { waveSurfer.pause(); } catch (e) { }
+      if (waveSurfer.getDuration && waveSurfer.getDuration() > 0) {
+        try { waveSurfer.seekTo(0); } catch (e) { }
+      }
+      isPlaybackActive = false;
+      playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+      recordBtn.disabled = false;
+    }
 
-      if (!recordingChunks.length) {
+    async function onRecordedBlob(blob) {
+      clearTimeout(maxStopTimer);
+      maxStopTimer = null;
+      if (recordingTimerId) clearInterval(recordingTimerId);
+      recordingTimerId = null;
+      stopLiveWaveAnimation();
+      setRecordingUi(false);
+      resetTimer();
+      var waveformContainer = document.getElementById("waveform");
+      if (waveformContainer) waveformContainer.innerHTML = "";
+      liveWaveCanvas = null;
+      liveWaveCtx = null;
+
+      if (!blob || !blob.size) {
         setStatus("No audio captured.", true);
         return;
       }
 
-      var mimeType = (mediaRecorder && mediaRecorder.mimeType) || "audio/webm";
-      var blob = new Blob(recordingChunks, { type: mimeType });
+      var mimeType = blob.type || "audio/webm";
       var ext = mimeType.indexOf("ogg") !== -1 ? ".ogg" : (mimeType.indexOf("mp4") !== -1 ? ".m4a" : ".webm");
       var formData = new FormData();
       formData.append("file", blob, "folysplitr_take" + ext);
@@ -700,6 +864,9 @@
         }
         lastRecordingUrl = payload.url;
         loadWaveform(payload.url, payload.filename);
+        await refreshRecordingsList();
+        splitrIndex = 0;
+        renderSplitrCurrent();
         setStatus("Recording saved.");
       } catch (err) {
         setStatus("Failed to save recording: " + err.message, true);
@@ -707,15 +874,17 @@
     }
 
     function loadWaveform(url, title) {
+      stopLiveWaveAnimation();
       if (waveSurfer) {
         try { waveSurfer.destroy(); } catch (e) { }
         waveSurfer = null;
       }
-      waveEmpty.style.display = "none";
+      var waveformContainer = document.getElementById("waveform");
+      if (waveformContainer) waveformContainer.innerHTML = "";
       waveformShell.style.display = "block";
       waveformTitle.innerText = title || url;
       waveformDuration.innerText = "--:--";
-      playBtn.innerHTML = '<i class="fa-solid fa-play"></i> Play';
+      playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
 
       waveSurfer = WaveSurfer.create({
         container: "#waveform",
@@ -731,44 +900,130 @@
         waveformDuration.innerText = formatTime(waveSurfer.getDuration());
       });
       waveSurfer.on("play", function () {
-        playBtn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause';
+        isPlaybackActive = true;
+        playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+        recordBtn.disabled = true;
       });
       waveSurfer.on("pause", function () {
         if (!waveSurfer.isPlaying()) {
-          playBtn.innerHTML = '<i class="fa-solid fa-play"></i> Play';
+          isPlaybackActive = false;
+          playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+          recordBtn.disabled = false;
         }
       });
       waveSurfer.on("finish", function () {
-        playBtn.innerHTML = '<i class="fa-solid fa-play"></i> Play';
+        isPlaybackActive = false;
+        playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+        recordBtn.disabled = false;
       });
+    }
+
+    async function refreshRecordingsList() {
+      var res = await fetch("/api/folysplitr/recordings");
+      var payload = await res.json();
+      if (!res.ok || !payload.ok || !payload.files) {
+        throw new Error(payload.error || "Failed to load recordings");
+      }
+      recordingsList = payload.files;
+      return recordingsList;
+    }
+
+    function renderSplitrCurrent() {
+      var total = recordingsList.length;
+      if (splitrIndex >= total) splitrIndex = Math.max(0, total - 1);
+      splitrIndexEl.innerText = total ? ((splitrIndex + 1) + " / " + total) : "0 / 0";
+      splitrPrevBtn.disabled = total <= 1;
+      splitrNextBtn.disabled = total <= 1;
+      splitrPlayBtn.disabled = total === 0;
+
+      if (!total) {
+        splitrShell.style.display = "none";
+        splitrEmpty.style.display = "block";
+        if (splitrWaveSurfer) {
+          try { splitrWaveSurfer.destroy(); } catch (e) { }
+          splitrWaveSurfer = null;
+        }
+        return;
+      }
+
+      var item = recordingsList[splitrIndex];
+      splitrEmpty.style.display = "none";
+      splitrShell.style.display = "block";
+      splitrTitle.innerText = item.filename || item.url;
+      splitrDuration.innerText = "--:--";
+      splitrPlayBtn.innerHTML = '<i class="fa-solid fa-play"></i> Play';
+
+      if (splitrWaveSurfer) {
+        try { splitrWaveSurfer.destroy(); } catch (e) { }
+        splitrWaveSurfer = null;
+      }
+      splitrWaveSurfer = WaveSurfer.create({
+        container: "#splitr-waveform",
+        waveColor: "#353531",
+        progressColor: "#ec4e20",
+        cursorColor: "#ff9505",
+        height: 88,
+        backend: "MediaElement",
+      });
+      splitrWaveSurfer.load(item.url);
+      splitrWaveSurfer.on("ready", function () {
+        splitrDuration.innerText = formatTime(splitrWaveSurfer.getDuration());
+      });
+      splitrWaveSurfer.on("play", function () {
+        splitrPlayBtn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause';
+      });
+      splitrWaveSurfer.on("pause", function () {
+        if (!splitrWaveSurfer.isPlaying()) {
+          splitrPlayBtn.innerHTML = '<i class="fa-solid fa-play"></i> Play';
+        }
+      });
+      splitrWaveSurfer.on("finish", function () {
+        splitrPlayBtn.innerHTML = '<i class="fa-solid fa-play"></i> Play';
+      });
+    }
+
+    function goToSplitrDelta(delta) {
+      if (!recordingsList.length) return;
+      splitrIndex = (splitrIndex + delta + recordingsList.length) % recordingsList.length;
+      renderSplitrCurrent();
     }
 
     async function loadLatestRecording() {
       try {
-        var res = await fetch("/api/folysplitr/recordings");
-        var payload = await res.json();
-        if (!res.ok || !payload.ok || !payload.files || !payload.files.length) return;
-        var latest = payload.files[0];
+        await refreshRecordingsList();
+        if (!recordingsList.length) return;
+        var latest = recordingsList[0];
         lastRecordingUrl = latest.url;
         loadWaveform(latest.url, latest.filename);
-        setStatus("Latest recording loaded.");
+        renderSplitrCurrent();
+        setStatus("Recordings loaded.");
       } catch (e) {
         setStatus("Could not load previous recordings.", true);
       }
     }
 
     recordBtn.addEventListener("click", function () {
-      startRecording();
-    });
-    stopBtn.addEventListener("click", function () {
-      stopRecording();
+      if (isPlaybackActive) return;
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        stopRecording();
+      } else {
+        startRecording();
+      }
     });
     playBtn.addEventListener("click", function () {
+      if (mediaRecorder && mediaRecorder.state === "recording") return;
       if (!waveSurfer) return;
       if (waveSurfer.isPlaying()) {
         waveSurfer.pause();
       } else {
         waveSurfer.play();
+      }
+    });
+    stopBtn.addEventListener("click", function () {
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        stopRecording();
+      } else {
+        stopPlayback();
       }
     });
     deviceSelect.addEventListener("change", async function () {
@@ -785,9 +1040,24 @@
     tabSplitrBtn.addEventListener("click", function () {
       showTab("splitr");
     });
+    splitrPrevBtn.addEventListener("click", function () {
+      goToSplitrDelta(-1);
+    });
+    splitrNextBtn.addEventListener("click", function () {
+      goToSplitrDelta(1);
+    });
+    splitrPlayBtn.addEventListener("click", function () {
+      if (!splitrWaveSurfer) return;
+      if (splitrWaveSurfer.isPlaying()) {
+        splitrWaveSurfer.pause();
+      } else {
+        splitrWaveSurfer.play();
+      }
+    });
 
     async function boot() {
-      stopBtn.disabled = true;
+      playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+      stopBtn.innerHTML = '<i class="fa-solid fa-stop"></i>';
       drawMeter(0, true);
       try {
         await startMonitorForDevice("");
@@ -813,8 +1083,12 @@
       stopRecording();
       stopMeter();
       stopCurrentStream();
+      stopLiveWaveAnimation();
       if (waveSurfer) {
         try { waveSurfer.destroy(); } catch (e) { }
+      }
+      if (splitrWaveSurfer) {
+        try { splitrWaveSurfer.destroy(); } catch (e) { }
       }
     });
   </script>
