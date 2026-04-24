@@ -52,7 +52,7 @@ from utils import (
 from generate_midi import get_patterns
 from config_validation import validate_server_config_names
 from processing_actions import get_processing_actions_payload
-from folysplitr import ensure_recordings_dir, register_folysplitr
+from folysplitr import ensure_recordings_dir, ensure_splits_dirs, register_folysplitr
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -423,6 +423,7 @@ def run(
     ensure_beat_patterns()
     ensure_drum_kits()
     ensure_recordings_dir()
+    ensure_splits_dirs()
     try:
         validate_server_config_names()
     except ValueError as e:

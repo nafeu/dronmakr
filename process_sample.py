@@ -20,6 +20,7 @@ from pedalboard import (
     PeakFilter,
     Phaser,
     PitchShift,
+    NoiseGate,
     Resample,
     Reverb,
 )
@@ -236,6 +237,51 @@ def decrease_sample_gain(input_path, db):
 
     sf.write(input_path, audio, sample_rate)
     print(f"Decreased gain by {db} dB: {input_path}")
+
+
+def normalize_sample(input_path, target_peak_db=-1.0):
+    """Normalize sample peak to target dBFS and overwrite file."""
+    audio, sample_rate = sf.read(input_path)
+    if audio.size == 0:
+        raise ValueError("Audio file is empty")
+    peak = float(np.max(np.abs(audio)))
+    if peak <= 1e-12:
+        return
+    target_linear = 10 ** (float(target_peak_db) / 20.0)
+    scale = target_linear / peak
+    normalized = np.clip(audio * scale, -1.0, 1.0)
+    sf.write(input_path, normalized, sample_rate)
+    print(f"Normalized sample to {target_peak_db} dBFS: {input_path}")
+
+
+def apply_noise_gate_to_sample(
+    input_path,
+    threshold_db=-30.0,
+    ratio=8.0,
+    attack_ms=2.0,
+    release_ms=60.0,
+):
+    """Apply noise gate and overwrite file."""
+    with AudioFile(input_path) as f:
+        audio = f.read(f.frames)
+        sample_rate = f.samplerate
+    board = Pedalboard([
+        NoiseGate(
+            threshold_db=threshold_db,
+            ratio=ratio,
+            attack_ms=attack_ms,
+            release_ms=release_ms,
+        )
+    ])
+    processed = board(audio, sample_rate)
+    with AudioFile(
+        input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
+    ) as out:
+        out.write(processed)
+    print(
+        "Applied noise gate "
+        f"(threshold={threshold_db}dB, attack={attack_ms}ms, release={release_ms}ms): {input_path}"
+    )
 
 
 def reverse_sample(input_path):

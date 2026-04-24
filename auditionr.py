@@ -110,6 +110,8 @@ from process_sample import (
     apply_eq_lows_to_sample,
     apply_eq_mids_to_sample,
     apply_eq_highs_to_sample,
+    normalize_sample,
+    apply_noise_gate_to_sample,
 )
 
 # Injected by register_auditionr(app, socketio); used by view functions for emits.
@@ -524,6 +526,15 @@ def process_file():
             apply_eq_mids_to_sample(file_path, params.get("db", 0))
         case "eq_highs_sample":
             apply_eq_highs_to_sample(file_path, params.get("db", 0))
+        case "normalize_sample":
+            normalize_sample(file_path)
+        case "noisegate_sample":
+            apply_noise_gate_to_sample(
+                file_path,
+                threshold_db=params.get("threshold_db", -30),
+                attack_ms=params.get("attack_ms", 8),
+                release_ms=params.get("release_ms", 140),
+            )
         case "undo_last_edit":
             snapshot = _undo_snapshot_path(file_path)
             if not os.path.exists(snapshot):

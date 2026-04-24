@@ -362,10 +362,26 @@
       display: flex;
       gap: 0.5rem;
       align-items: center;
+      margin-bottom: 1rem;
     }
 
     .playback-btn {
       min-width: 4rem;
+    }
+
+    .splitr-compact button,
+    #splitr-actions button,
+    #splitr-organize button,
+    #splitr-select-tools button {
+      font-size: 0.74rem;
+      padding: 0.34rem 0.48rem;
+      line-height: 1.15;
+    }
+
+    .splitr-compact .playback-btn {
+      min-width: 3.2rem;
+      font-size: 0.76rem;
+      padding: 0.36rem 0.52rem;
     }
 
     .empty-state {
@@ -390,6 +406,67 @@
       flex-wrap: wrap;
     }
 
+    .splitr-actions,
+    .splitr-organize {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      align-items: center;
+    }
+
+    .splitr-actions {
+      margin-bottom: 1rem;
+    }
+
+    .splitr-select-tools {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .splitr-threshold {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      color: var(--theme-b);
+      font-size: 0.75rem;
+    }
+
+    .splitr-threshold input {
+      width: 5rem;
+      font-family: inherit;
+      font-size: 0.8rem;
+      border-radius: 4px;
+      border: 1px solid var(--theme-a);
+      background: #121211;
+      color: var(--primary);
+      padding: 0.38rem 0.45rem;
+    }
+
+    .splitr-subtitle {
+      font-size: 0.72rem;
+      color: var(--theme-b);
+      letter-spacing: 0.02em;
+      margin-top: 0.2rem;
+      margin-bottom: 0.35rem;
+    }
+
+    .splitr-btn-active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: var(--secondary);
+    }
+
+    .splitr-actions-divider {
+      width: 1px;
+      height: 20px;
+      border-left: 1px solid var(--theme-a);
+      opacity: 0.6;
+      margin: 0 4px;
+    }
+
     .splitr-index {
       font-size: 0.78rem;
       color: var(--theme-b);
@@ -401,11 +478,32 @@
       margin: 0.15rem 0 0.65rem;
     }
 
+    .splitr-waveform-wrap {
+      position: relative;
+      margin: 0.15rem 0 0.65rem;
+    }
+
+    .splitr-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 4;
+    }
+
+    .splitr-overlay-marker {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      margin-left: -1px;
+      background: rgba(236, 78, 32, 0.92);
+      box-shadow: 0 0 0 1px rgba(236, 78, 32, 0.25);
+    }
+
     #status {
       /* margin-bottom: 1rem; */
       display: none;
     }
-
   </style>
 </head>
 
@@ -469,10 +567,23 @@
             <span id="splitr-title" class="waveform-title"></span>
             <span id="splitr-duration" class="waveform-duration">--:--</span>
           </div>
-          <div id="splitr-waveform"></div>
-          <div class="playback-controls">
-            <button id="splitr-play-btn" class="playback-btn"><i class="fa-solid fa-play"></i> Play</button>
+          <div class="splitr-waveform-wrap">
+            <div id="splitr-waveform"></div>
+            <div id="splitr-overlay" class="splitr-overlay"></div>
           </div>
+          <div class="playback-controls splitr-compact">
+            <button id="splitr-play-btn" class="playback-btn"><i class="fa-solid fa-play"></i> Play</button>
+            <button id="splitr-trash-btn" class="playback-btn" title="move to trash"><i
+                class="fa-solid fa-trash-can"></i></button>
+            <button id="splitr-archive-btn" class="playback-btn" title="move to archive"><i
+                class="fa-solid fa-box-archive"></i></button>
+          </div>
+          <div class="splitr-subtitle">split</div>
+          <div id="splitr-select-tools" class="splitr-select-tools"></div>
+          <div class="splitr-subtitle">post procressing</div>
+          <div id="splitr-actions" class="splitr-actions"></div>
+          <div class="splitr-subtitle">organize</div>
+          <div id="splitr-organize" class="splitr-organize"></div>
         </div>
         <div id="splitr-empty" class="empty-state">No recordings available yet. Record a sample first.</div>
       </div>
@@ -497,11 +608,17 @@
     var splitrPrevBtn = document.getElementById("splitr-prev-btn");
     var splitrNextBtn = document.getElementById("splitr-next-btn");
     var splitrPlayBtn = document.getElementById("splitr-play-btn");
+    var splitrTrashBtn = document.getElementById("splitr-trash-btn");
+    var splitrArchiveBtn = document.getElementById("splitr-archive-btn");
     var splitrIndexEl = document.getElementById("splitr-index");
     var splitrShell = document.getElementById("splitr-shell");
     var splitrEmpty = document.getElementById("splitr-empty");
     var splitrTitle = document.getElementById("splitr-title");
     var splitrDuration = document.getElementById("splitr-duration");
+    var splitrActionsEl = document.getElementById("splitr-actions");
+    var splitrOrganizeEl = document.getElementById("splitr-organize");
+    var splitrSelectToolsEl = document.getElementById("splitr-select-tools");
+    var splitrOverlayEl = document.getElementById("splitr-overlay");
 
     var monitorStream = null;
     var audioContext = null;
@@ -524,6 +641,14 @@
     var splitrIndex = 0;
     var splitrWaveSurfer = null;
     var isPlaybackActive = false;
+    var processingCatalog = { types: [], actions: [] };
+    var splitCategories = [];
+    var splitrSelectedSeconds = 0;
+    var splitrActiveProcessingType = null;
+    var splitrMarkers = [];
+    var splitrDurationSeconds = 0;
+    var splitrPlacementMode = false;
+    var splitrAutoThreshold = 0.35;
 
     function showTab(tabName) {
       var recorderActive = tabName === "recorder";
@@ -536,6 +661,343 @@
     function setStatus(text, isError) {
       statusEl.innerText = text;
       statusEl.classList.toggle("error", !!isError);
+    }
+
+    function getActiveSplitrItem() {
+      if (!recordingsList.length) return null;
+      return recordingsList[splitrIndex] || null;
+    }
+
+    async function splitrDuplicate() {
+      var item = getActiveSplitrItem();
+      if (!item) return;
+      var res = await fetch("/api/folysplitr/duplicate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: item.path })
+      });
+      var payload = await res.json();
+      if (!res.ok || !payload.ok) throw new Error(payload.error || "Duplicate failed");
+      await refreshRecordingsList();
+      var newPath = payload.file && payload.file.path;
+      if (newPath) {
+        splitrIndex = recordingsList.findIndex(function (r) { return r.path === newPath; });
+        if (splitrIndex < 0) splitrIndex = 0;
+      }
+      renderSplitrCurrent();
+    }
+
+    async function splitrProcess(command, extraParams) {
+      var item = getActiveSplitrItem();
+      if (!item) return;
+      var body = Object.assign({
+        path: item.path,
+        command: command
+      }, extraParams || {});
+      var res = await fetch("/api/folysplitr/process", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      var payload = await res.json();
+      if (!res.ok || !payload.ok) throw new Error(payload.error || "Process failed");
+      await refreshRecordingsList();
+      var current = payload.file && payload.file.path;
+      if (current) {
+        splitrIndex = recordingsList.findIndex(function (r) { return r.path === current; });
+        if (splitrIndex < 0) splitrIndex = 0;
+      }
+      renderSplitrCurrent();
+    }
+
+    function splitRound(v) {
+      return Math.max(0, Math.round(v * 1000) / 1000);
+    }
+
+    function defaultMarkersFromDuration(duration) {
+      if (!duration || duration <= 0) return [];
+      return [0, splitRound(duration)];
+    }
+
+    function sanitizeMarkers(markers, duration) {
+      if (!duration || duration <= 0) return [];
+      var out = [0, splitRound(duration)];
+      (markers || []).forEach(function (m) {
+        var t = splitRound(Math.max(0, Math.min(duration, Number(m) || 0)));
+        if (t > 0 && t < duration) out.push(t);
+      });
+      out.sort(function (a, b) { return a - b; });
+      var dedup = [];
+      out.forEach(function (t) {
+        if (!dedup.length || Math.abs(t - dedup[dedup.length - 1]) > 0.01) dedup.push(t);
+      });
+      return dedup;
+    }
+
+    function renderSplitOverlay() {
+      if (!splitrOverlayEl) return;
+      splitrOverlayEl.innerHTML = "";
+      if (!splitrDurationSeconds || splitrDurationSeconds <= 0) return;
+
+      function addMarker(time) {
+        if (time <= 0 || time >= splitrDurationSeconds) return;
+        var el = document.createElement("div");
+        el.className = "splitr-overlay-marker";
+        el.style.left = ((time / splitrDurationSeconds) * 100).toFixed(4) + "%";
+        splitrOverlayEl.appendChild(el);
+      }
+
+      sanitizeMarkers(splitrMarkers, splitrDurationSeconds).forEach(addMarker);
+    }
+
+    async function splitUsingMarkers() {
+      var item = getActiveSplitrItem();
+      if (!item) throw new Error("No active sample");
+      var originalPath = item.path;
+      var originalIdx = splitrIndex;
+      var markers = sanitizeMarkers(splitrMarkers, splitrDurationSeconds);
+      if (markers.length < 2) throw new Error("Add at least one marker");
+      var res = await fetch("/api/folysplitr/split", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          path: item.path,
+          markers: markers
+        })
+      });
+      var payload = await res.json();
+      if (!res.ok || !payload.ok) throw new Error(payload.error || "Split failed");
+
+      var createdFiles = Array.isArray(payload.files) ? payload.files.slice() : [];
+      var removeIdx = recordingsList.findIndex(function (r) { return r.path === (payload.originalPath || originalPath); });
+      if (removeIdx < 0) removeIdx = originalIdx;
+      if (removeIdx < 0) removeIdx = 0;
+      if (removeIdx < recordingsList.length) recordingsList.splice(removeIdx, 1);
+      if (createdFiles.length) {
+        Array.prototype.splice.apply(recordingsList, [removeIdx, 0].concat(createdFiles));
+      }
+      splitrIndex = removeIdx;
+      if (splitrIndex >= recordingsList.length) splitrIndex = Math.max(0, recordingsList.length - 1);
+      renderSplitrCurrent();
+    }
+
+    async function autodetectMarkers() {
+      var item = getActiveSplitrItem();
+      if (!item) throw new Error("No active sample");
+      var res = await fetch("/api/folysplitr/markers/autodetect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          path: item.path,
+          threshold: splitrAutoThreshold
+        })
+      });
+      var payload = await res.json();
+      if (!res.ok || !payload.ok) throw new Error(payload.error || "Autodetect failed");
+      splitrMarkers = sanitizeMarkers(payload.markers || [], splitrDurationSeconds);
+      renderSplitOverlay();
+    }
+
+    function renderSplitSelectionControls() {
+      splitrSelectToolsEl.innerHTML = "";
+      function addBtn(label, onClick, active) {
+        var btn = document.createElement("button");
+        btn.textContent = label;
+        if (active) btn.classList.add("splitr-btn-active");
+        btn.addEventListener("click", onClick);
+        splitrSelectToolsEl.appendChild(btn);
+        return btn;
+      }
+      addBtn("Preview Mode", function () {
+        splitrPlacementMode = false;
+        renderSplitSelectionControls();
+      }, !splitrPlacementMode);
+      addBtn("Placement Mode", function () {
+        splitrPlacementMode = true;
+        renderSplitSelectionControls();
+      }, splitrPlacementMode);
+      addBtn("Add Marker", function () {
+        splitrMarkers.push(splitrSelectedSeconds);
+        splitrMarkers = sanitizeMarkers(splitrMarkers, splitrDurationSeconds);
+        renderSplitOverlay();
+      });
+      addBtn("Delete Marker", function () {
+        var bestIdx = -1;
+        var bestDist = Infinity;
+        splitrMarkers.forEach(function (m, i) {
+          if (m <= 0.001 || Math.abs(m - splitrDurationSeconds) <= 0.001) return;
+          var d = Math.abs(m - splitrSelectedSeconds);
+          if (d < bestDist) {
+            bestDist = d;
+            bestIdx = i;
+          }
+        });
+        if (bestIdx >= 0) splitrMarkers.splice(bestIdx, 1);
+        splitrMarkers = sanitizeMarkers(splitrMarkers, splitrDurationSeconds);
+        renderSplitOverlay();
+      });
+      addBtn("Clear Markers", function () {
+        splitrMarkers = defaultMarkersFromDuration(splitrDurationSeconds);
+        renderSplitOverlay();
+      });
+      addBtn("Split", async function () {
+        try {
+          await splitUsingMarkers();
+          setStatus("Split created. Loaded left-most new slice.");
+        } catch (e) {
+          setStatus(e.message || "Split failed.", true);
+        }
+      });
+      var thresholdWrap = document.createElement("label");
+      thresholdWrap.className = "splitr-threshold";
+      thresholdWrap.innerHTML = 'threshold <input id="splitr-threshold-input" type="number" min="0.01" max="1" step="0.01" value="' + splitrAutoThreshold + '">';
+      splitrSelectToolsEl.appendChild(thresholdWrap);
+      var thresholdInput = document.getElementById("splitr-threshold-input");
+      thresholdInput.addEventListener("change", function () {
+        var v = Number(thresholdInput.value);
+        if (!Number.isFinite(v)) return;
+        splitrAutoThreshold = Math.max(0.01, Math.min(1, v));
+        thresholdInput.value = String(splitrAutoThreshold);
+      });
+      addBtn("Autodetect", async function () {
+        try {
+          await autodetectMarkers();
+          setStatus("Markers autodetected.");
+        } catch (e) {
+          setStatus(e.message || "Autodetect failed.", true);
+        }
+      });
+      renderSplitOverlay();
+    }
+
+    async function splitrOrganize(destination) {
+      var item = getActiveSplitrItem();
+      if (!item) return;
+      var res = await fetch("/api/folysplitr/organize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: item.path, destination: destination })
+      });
+      var payload = await res.json();
+      if (!res.ok || !payload.ok) throw new Error(payload.error || "Move failed");
+      await refreshRecordingsList();
+      var current = payload.file && payload.file.path;
+      if (current) {
+        splitrIndex = recordingsList.findIndex(function (r) { return r.path === current; });
+        if (splitrIndex < 0) splitrIndex = 0;
+      }
+      renderSplitrCurrent();
+    }
+
+    function renderSplitrOrganizeButtons() {
+      splitrOrganizeEl.innerHTML = "";
+      splitCategories
+        .filter(function (category) { return category !== "trash" && category !== "archive"; })
+        .forEach(function (category) {
+          var btn = document.createElement("button");
+          btn.textContent = category;
+          btn.addEventListener("click", async function () {
+            try {
+              await splitrOrganize(category);
+              setStatus("Moved to " + category + ".");
+            } catch (e) {
+              setStatus(e.message || "Move failed.", true);
+            }
+          });
+          splitrOrganizeEl.appendChild(btn);
+        });
+    }
+
+    function renderSplitrActions() {
+      splitrActionsEl.innerHTML = "";
+      var processingTypes = [{ key: "cut", label: "Cut" }]
+        .concat((processingCatalog.types || []).map(function (type) {
+          return { key: type.key, label: type.label };
+        }));
+
+      function addActionButton(label, onClick) {
+        var btn = document.createElement("button");
+        btn.textContent = label;
+        btn.addEventListener("click", onClick);
+        splitrActionsEl.appendChild(btn);
+        return btn;
+      }
+
+      addActionButton("Duplicate", async function () {
+        try {
+          await splitrDuplicate();
+          setStatus("Sample duplicated.");
+        } catch (e) {
+          setStatus(e.message || "Duplicate failed.", true);
+        }
+      });
+      addActionButton("Reverse", async function () {
+        try {
+          await splitrProcess("reverse_sample");
+          setStatus("Applied reverse.");
+        } catch (e) {
+          setStatus(e.message || "Reverse failed.", true);
+        }
+      });
+
+      var divider = document.createElement("div");
+      divider.className = "splitr-actions-divider";
+      splitrActionsEl.appendChild(divider);
+
+      var typeButtons = {};
+      processingTypes.forEach(function (type) {
+        var btn = addActionButton(type.label, function () {
+          if (splitrActiveProcessingType === type.key) {
+            splitrActiveProcessingType = null;
+          } else {
+            splitrActiveProcessingType = type.key;
+          }
+          Object.keys(typeButtons).forEach(function (k) {
+            typeButtons[k].classList.toggle("splitr-btn-active", k === splitrActiveProcessingType);
+          });
+          renderSplitrActions();
+        });
+        typeButtons[type.key] = btn;
+        btn.classList.toggle("splitr-btn-active", type.key === splitrActiveProcessingType);
+      });
+
+      if (!splitrActiveProcessingType) return;
+      var detailDivider = document.createElement("div");
+      detailDivider.className = "splitr-actions-divider";
+      splitrActionsEl.appendChild(detailDivider);
+
+      if (splitrActiveProcessingType === "cut") {
+        addActionButton("Start At " + formatTime(splitrSelectedSeconds), async function () {
+          try {
+            await splitrProcess("trim_sample_start", { seconds: splitrSelectedSeconds });
+            setStatus("Trimmed start.");
+          } catch (e) {
+            setStatus(e.message || "Trim failed.", true);
+          }
+        });
+        addActionButton("End At " + formatTime(splitrSelectedSeconds), async function () {
+          try {
+            await splitrProcess("trim_sample_end", { seconds: splitrSelectedSeconds });
+            setStatus("Trimmed end.");
+          } catch (e) {
+            setStatus(e.message || "Trim failed.", true);
+          }
+        });
+        return;
+      }
+
+      (processingCatalog.actions || [])
+        .filter(function (action) { return action.type === splitrActiveProcessingType; })
+        .forEach(function (action) {
+          addActionButton(action.label, async function () {
+            try {
+              await splitrProcess(action.command, action.params || {});
+              setStatus("Applied " + action.label + ".");
+            } catch (e) {
+              setStatus(e.message || "Process failed.", true);
+            }
+          });
+        });
     }
 
     function formatTime(seconds) {
@@ -963,11 +1425,27 @@
         progressColor: "#ec4e20",
         cursorColor: "#ff9505",
         height: 88,
-        backend: "MediaElement",
+        backend: "MediaElement"
       });
       splitrWaveSurfer.load(item.url);
       splitrWaveSurfer.on("ready", function () {
         splitrDuration.innerText = formatTime(splitrWaveSurfer.getDuration());
+        splitrDurationSeconds = splitrWaveSurfer.getDuration() || 0;
+        splitrMarkers = defaultMarkersFromDuration(splitrDurationSeconds);
+        renderSplitOverlay();
+      });
+      splitrWaveSurfer.on("seeking", function (currentTime) {
+        splitrSelectedSeconds = currentTime || 0;
+        if (splitrActiveProcessingType === "cut") renderSplitrActions();
+        renderSplitOverlay();
+      });
+      splitrWaveSurfer.on("interaction", function (time) {
+        splitrSelectedSeconds = Number(time) || splitrSelectedSeconds;
+        if (splitrPlacementMode) {
+          splitrMarkers.push(splitrSelectedSeconds);
+          splitrMarkers = sanitizeMarkers(splitrMarkers, splitrDurationSeconds);
+          renderSplitOverlay();
+        }
       });
       splitrWaveSurfer.on("play", function () {
         splitrPlayBtn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause';
@@ -980,6 +1458,8 @@
       splitrWaveSurfer.on("finish", function () {
         splitrPlayBtn.innerHTML = '<i class="fa-solid fa-play"></i> Play';
       });
+      renderSplitSelectionControls();
+      renderSplitOverlay();
     }
 
     function goToSplitrDelta(delta) {
@@ -999,6 +1479,21 @@
         setStatus("Recordings loaded.");
       } catch (e) {
         setStatus("Could not load previous recordings.", true);
+      }
+    }
+
+    async function loadSplitrConfig() {
+      try {
+        var res = await fetch("/api/folysplitr/processing-actions");
+        var payload = await res.json();
+        if (!res.ok || !payload.ok) throw new Error(payload.error || "Failed to load actions");
+        processingCatalog.types = payload.types || [];
+        processingCatalog.actions = payload.actions || [];
+        splitCategories = payload.splitCategories || [];
+        renderSplitrActions();
+        renderSplitrOrganizeButtons();
+      } catch (e) {
+        setStatus("Could not load split actions: " + e.message, true);
       }
     }
 
@@ -1054,6 +1549,22 @@
         splitrWaveSurfer.play();
       }
     });
+    splitrTrashBtn.addEventListener("click", async function () {
+      try {
+        await splitrOrganize("trash");
+        setStatus("Moved to trash.");
+      } catch (e) {
+        setStatus(e.message || "Move failed.", true);
+      }
+    });
+    splitrArchiveBtn.addEventListener("click", async function () {
+      try {
+        await splitrOrganize("archive");
+        setStatus("Moved to archive.");
+      } catch (e) {
+        setStatus(e.message || "Move failed.", true);
+      }
+    });
 
     async function boot() {
       playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
@@ -1071,6 +1582,7 @@
       } catch (err) {
         setStatus("Microphone access denied or unavailable: " + err.message, true);
       }
+      await loadSplitrConfig();
       await loadLatestRecording();
     }
 

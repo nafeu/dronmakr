@@ -19,6 +19,7 @@ from process_sample import (
     apply_flanger_mild_to_sample,
     apply_highpass_to_sample,
     apply_lowpass_to_sample,
+    apply_noise_gate_to_sample,
     apply_overdrive_heavy_to_sample,
     apply_overdrive_medium_to_sample,
     apply_overdrive_mild_to_sample,
@@ -37,6 +38,7 @@ from process_sample import (
     fade_sample_end,
     fade_sample_start,
     increase_sample_gain,
+    normalize_sample,
 )
 
 PROCESSING_TYPES = [
@@ -44,6 +46,8 @@ PROCESSING_TYPES = [
     {"key": "eq", "label": "EQ"},
     {"key": "gain", "label": "Gain"},
     {"key": "filter", "label": "Filter"},
+    {"key": "normalize", "label": "Normalize"},
+    {"key": "noisegate", "label": "Noisegate"},
     {"key": "stretch", "label": "Stretch"},
     {"key": "pitch", "label": "Pitch"},
     {"key": "reverb", "label": "Reverb"},
@@ -67,7 +71,11 @@ PROCESSING_ACTIONS = [
     {"token": "eq:highs +5db", "type": "eq", "label": "Highs +5dB", "command": "eq_highs_sample", "params": {"db": 5}},
     {"token": "eq:highs -5db", "type": "eq", "label": "Highs -5dB", "command": "eq_highs_sample", "params": {"db": -5}},
     {"token": "gain:+2db", "type": "gain", "label": "+2db", "command": "increase_sample_gain", "params": {"db": 2}},
+    {"token": "gain:+5db", "type": "gain", "label": "+5db", "command": "increase_sample_gain", "params": {"db": 5}},
+    {"token": "gain:+10db", "type": "gain", "label": "+10db", "command": "increase_sample_gain", "params": {"db": 10}},
     {"token": "gain:-2db", "type": "gain", "label": "-2db", "command": "decrease_sample_gain", "params": {"db": 2}},
+    {"token": "gain:-5db", "type": "gain", "label": "-5db", "command": "decrease_sample_gain", "params": {"db": 5}},
+    {"token": "gain:-10db", "type": "gain", "label": "-10db", "command": "decrease_sample_gain", "params": {"db": 10}},
     {"token": "filter:lpf", "type": "filter", "label": "LPF", "command": "lpf_sample", "params": {}},
     {"token": "filter:lpf-", "type": "filter", "label": "LPF-", "command": "lpf_sample", "params": {"cutoff_hz": 2500}},
     {"token": "filter:lpf--", "type": "filter", "label": "LPF--", "command": "lpf_sample", "params": {"cutoff_hz": 800}},
@@ -79,6 +87,10 @@ PROCESSING_ACTIONS = [
     {"token": "filter:bpf--", "type": "filter", "label": "BPF--", "command": "bpf_sample", "params": {"low_hz": 100, "high_hz": 1000}},
     {"token": "filter:bpf+", "type": "filter", "label": "BPF+", "command": "bpf_sample", "params": {"low_hz": 500, "high_hz": 10000}},
     {"token": "filter:bpf++", "type": "filter", "label": "BPF++", "command": "bpf_sample", "params": {"low_hz": 1200, "high_hz": 16000}},
+    {"token": "normalize", "type": "normalize", "label": "Normalize", "command": "normalize_sample", "params": {}},
+    {"token": "noisegate:fast", "type": "noisegate", "label": "Fast", "command": "noisegate_sample", "params": {"threshold_db": -30, "attack_ms": 2, "release_ms": 50}},
+    {"token": "noisegate:medium", "type": "noisegate", "label": "Medium", "command": "noisegate_sample", "params": {"threshold_db": -30, "attack_ms": 8, "release_ms": 140}},
+    {"token": "noisegate:slow", "type": "noisegate", "label": "Slow", "command": "noisegate_sample", "params": {"threshold_db": -30, "attack_ms": 20, "release_ms": 280}},
     {"token": "stretch:50% speed", "type": "stretch", "label": "50% Speed", "command": "stretch_sample", "params": {"stretch_factor": 2.0}},
     {"token": "stretch:125% speed", "type": "stretch", "label": "125% Speed", "command": "stretch_sample", "params": {"stretch_factor": 0.8}},
     {"token": "stretch:175% speed", "type": "stretch", "label": "175% Speed", "command": "stretch_sample", "params": {"stretch_factor": 0.5714286}},
@@ -218,6 +230,15 @@ def apply_processing_command(file_path: str, command: str, params: dict | None =
                 file_path,
                 low_hz=p.get("low_hz", 300),
                 high_hz=p.get("high_hz", 6000),
+            )
+        case "normalize_sample":
+            normalize_sample(file_path)
+        case "noisegate_sample":
+            apply_noise_gate_to_sample(
+                file_path,
+                threshold_db=p.get("threshold_db", -30),
+                attack_ms=p.get("attack_ms", 8),
+                release_ms=p.get("release_ms", 140),
             )
         case "eq_lows_sample":
             apply_eq_lows_to_sample(file_path, p.get("db", 0))
