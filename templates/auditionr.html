@@ -1159,6 +1159,17 @@
       }));
       actions.appendChild(reverseButton);
 
+      var normalizeButton = document.createElement("div");
+      normalizeButton.innerHTML = "<i class=\"fa-solid fa-wave-square\"></i>";
+      normalizeButton.classList.add("button", "icon-btn");
+      normalizeButton.title = "Normalize";
+      normalizeButton.addEventListener("click", () => processSample({
+        path: filePath,
+        command: "normalize_sample",
+        files: getCurrentFiles()
+      }));
+      actions.appendChild(normalizeButton);
+
       var deleteButton = document.createElement("div");
       var duplicateButton = document.createElement("div");
       duplicateButton.innerHTML = "<i class=\"fa-solid fa-copy\"></i>";
@@ -1183,7 +1194,8 @@
       var processingTypes = [{ key: "cut", label: "Cut" }]
         .concat((processingCatalog.types || []).map(function (type) {
           return { key: type.key, label: type.label };
-        }));
+        }))
+        .filter(function (type) { return type.key !== "normalize"; });
 
       function clearProcessingActions() {
         processingActionButtons.forEach(function (btn) { actions.removeChild(btn); });

@@ -572,17 +572,17 @@
             <div id="splitr-overlay" class="splitr-overlay"></div>
           </div>
           <div class="playback-controls splitr-compact">
-            <button id="splitr-play-btn" class="playback-btn"><i class="fa-solid fa-play"></i> Play</button>
+            <button id="splitr-play-btn" class="playback-btn" title="play/pause"><i class="fa-solid fa-play"></i></button>
             <button id="splitr-trash-btn" class="playback-btn" title="move to trash"><i
                 class="fa-solid fa-trash-can"></i></button>
             <button id="splitr-archive-btn" class="playback-btn" title="move to archive"><i
                 class="fa-solid fa-box-archive"></i></button>
           </div>
-          <div class="splitr-subtitle">split</div>
+          <div class="splitr-subtitle">split sample with markers</div>
           <div id="splitr-select-tools" class="splitr-select-tools"></div>
-          <div class="splitr-subtitle">post procressing</div>
+          <div class="splitr-subtitle">process audio</div>
           <div id="splitr-actions" class="splitr-actions"></div>
-          <div class="splitr-subtitle">organize</div>
+          <div class="splitr-subtitle">move sample into</div>
           <div id="splitr-organize" class="splitr-organize"></div>
         </div>
         <div id="splitr-empty" class="empty-state">No recordings available yet. Record a sample first.</div>
@@ -800,28 +800,26 @@
 
     function renderSplitSelectionControls() {
       splitrSelectToolsEl.innerHTML = "";
-      function addBtn(label, onClick, active) {
+      function addBtn(iconHtml, title, onClick, active) {
         var btn = document.createElement("button");
-        btn.textContent = label;
+        btn.innerHTML = iconHtml + " " + title;
+        btn.title = title;
         if (active) btn.classList.add("splitr-btn-active");
         btn.addEventListener("click", onClick);
         splitrSelectToolsEl.appendChild(btn);
         return btn;
       }
-      addBtn("Preview Mode", function () {
-        splitrPlacementMode = false;
-        renderSplitSelectionControls();
-      }, !splitrPlacementMode);
-      addBtn("Placement Mode", function () {
-        splitrPlacementMode = true;
+      addBtn('<i class="fa-solid fa-location-crosshairs"></i>', "Place Markers", function () {
+        splitrPlacementMode = !splitrPlacementMode;
         renderSplitSelectionControls();
       }, splitrPlacementMode);
-      addBtn("Add Marker", function () {
+      var addMarkerBtn = addBtn('<i class="fa-solid fa-plus"></i>', "Insert Marker At Playhead", function () {
         splitrMarkers.push(splitrSelectedSeconds);
         splitrMarkers = sanitizeMarkers(splitrMarkers, splitrDurationSeconds);
         renderSplitOverlay();
       });
-      addBtn("Delete Marker", function () {
+      addMarkerBtn.disabled = splitrPlacementMode;
+      addBtn('<i class="fa-solid fa-minus"></i>', "Remove Marker", function () {
         var bestIdx = -1;
         var bestDist = Infinity;
         splitrMarkers.forEach(function (m, i) {
@@ -836,11 +834,11 @@
         splitrMarkers = sanitizeMarkers(splitrMarkers, splitrDurationSeconds);
         renderSplitOverlay();
       });
-      addBtn("Clear Markers", function () {
+      addBtn('<i class="fa-solid fa-eraser"></i>', "Clear All Markers", function () {
         splitrMarkers = defaultMarkersFromDuration(splitrDurationSeconds);
         renderSplitOverlay();
       });
-      addBtn("Split", async function () {
+      addBtn('<i class="fa-solid fa-scissors"></i>', "Split", async function () {
         try {
           await splitUsingMarkers();
           setStatus("Split created. Loaded left-most new slice.");
@@ -848,6 +846,9 @@
           setStatus(e.message || "Split failed.", true);
         }
       });
+      var divider = document.createElement("div");
+      divider.className = "splitr-actions-divider";
+      splitrSelectToolsEl.appendChild(divider);
       var thresholdWrap = document.createElement("label");
       thresholdWrap.className = "splitr-threshold";
       thresholdWrap.innerHTML = 'threshold <input id="splitr-threshold-input" type="number" min="0.01" max="1" step="0.01" value="' + splitrAutoThreshold + '">';
@@ -859,7 +860,7 @@
         splitrAutoThreshold = Math.max(0.01, Math.min(1, v));
         thresholdInput.value = String(splitrAutoThreshold);
       });
-      addBtn("Autodetect", async function () {
+      addBtn('<i class="fa-solid fa-wand-magic-sparkles"></i>', "Autodetect Markers", async function () {
         try {
           await autodetectMarkers();
           setStatus("Markers autodetected.");
@@ -913,7 +914,8 @@
       var processingTypes = [{ key: "cut", label: "Cut" }]
         .concat((processingCatalog.types || []).map(function (type) {
           return { key: type.key, label: type.label };
-        }));
+        }))
+        .filter(function (type) { return type.key !== "normalize"; });
 
       function addActionButton(label, onClick) {
         var btn = document.createElement("button");
@@ -937,6 +939,14 @@
           setStatus("Applied reverse.");
         } catch (e) {
           setStatus(e.message || "Reverse failed.", true);
+        }
+      });
+      addActionButton("Normalize", async function () {
+        try {
+          await splitrProcess("normalize_sample");
+          setStatus("Applied normalize.");
+        } catch (e) {
+          setStatus(e.message || "Normalize failed.", true);
         }
       });
 
@@ -1413,7 +1423,7 @@
       splitrShell.style.display = "block";
       splitrTitle.innerText = item.filename || item.url;
       splitrDuration.innerText = "--:--";
-      splitrPlayBtn.innerHTML = '<i class="fa-solid fa-play"></i> Play';
+      splitrPlayBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
 
       if (splitrWaveSurfer) {
         try { splitrWaveSurfer.destroy(); } catch (e) { }
@@ -1448,15 +1458,15 @@
         }
       });
       splitrWaveSurfer.on("play", function () {
-        splitrPlayBtn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause';
+        splitrPlayBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
       });
       splitrWaveSurfer.on("pause", function () {
         if (!splitrWaveSurfer.isPlaying()) {
-          splitrPlayBtn.innerHTML = '<i class="fa-solid fa-play"></i> Play';
+          splitrPlayBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
         }
       });
       splitrWaveSurfer.on("finish", function () {
-        splitrPlayBtn.innerHTML = '<i class="fa-solid fa-play"></i> Play';
+        splitrPlayBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
       });
       renderSplitSelectionControls();
       renderSplitOverlay();
