@@ -9,6 +9,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import hashlib
 from datetime import datetime
 from pathlib import Path
 
@@ -22,6 +23,7 @@ from processing_actions import apply_processing_command, get_processing_actions_
 ROOT_DIR = Path(__file__).resolve().parent
 RECORDINGS_DIR = ROOT_DIR / "recordings"
 SPLITS_DIR = ROOT_DIR / "splits"
+FOLYSPLITR_UNDO_DIR = ROOT_DIR / "temp" / "folysplitr_undo"
 MAX_RECORDING_BYTES = 300 * 1024 * 1024
 SPLIT_CATEGORIES = [
     "kick",
@@ -137,6 +139,24 @@ def _sanitize_markers(markers: list[float], duration_s: float) -> list[float]:
         if not dedup or abs(t - dedup[-1]) > 0.005:
             dedup.append(t)
     return dedup
+
+
+def _ensure_folysplitr_undo_dir() -> Path:
+    FOLYSPLITR_UNDO_DIR.mkdir(parents=True, exist_ok=True)
+    return FOLYSPLITR_UNDO_DIR
+
+
+def _undo_snapshot_path_for(file_path: Path) -> Path:
+    _ensure_folysplitr_undo_dir()
+    key = hashlib.sha1(str(file_path.resolve()).encode("utf-8")).hexdigest()
+    return FOLYSPLITR_UNDO_DIR / f"{key}.wav"
+
+
+def _save_undo_snapshot(file_path: Path) -> None:
+    if not file_path.exists() or not file_path.is_file():
+        return
+    snapshot = _undo_snapshot_path_for(file_path)
+    shutil.copy2(file_path, snapshot)
 
 
 def _guess_extension(filename: str, content_type: str) -> str:
@@ -292,6 +312,7 @@ def register_folysplitr(app):
         if not command:
             return jsonify({"ok": False, "error": "Missing command"}), 400
         try:
+            _save_undo_snapshot(source)
             if command == "trim_sample_start":
                 trim_sample_start(str(source), float(params.get("seconds", 0)))
             elif command == "trim_sample_end":
@@ -304,6 +325,22 @@ def register_folysplitr(app):
             return jsonify({"ok": False, "error": str(exc)}), 400
         except Exception as exc:  # noqa: BLE001
             return jsonify({"ok": False, "error": f"Failed to process sample: {exc}"}), 500
+        return jsonify({"ok": True, "file": _public_audio_payload(source)})
+
+    @app.route("/api/folysplitr/undo", methods=["POST"])
+    def api_folysplitr_undo():
+        params = request.get_json(silent=True) or {}
+        source = _resolve_audio_path(params.get("path", ""))
+        if source is None or not source.exists() or not source.is_file():
+            return jsonify({"ok": False, "error": "File does not exist"}), 404
+        snapshot = _undo_snapshot_path_for(source)
+        if not snapshot.exists():
+            return jsonify({"ok": False, "error": "No audio undo available"}), 400
+        try:
+            shutil.copy2(snapshot, source)
+            snapshot.unlink(missing_ok=True)
+        except OSError as exc:
+            return jsonify({"ok": False, "error": f"Undo failed: {exc}"}), 500
         return jsonify({"ok": True, "file": _public_audio_payload(source)})
 
     @app.route("/api/folysplitr/organize", methods=["POST"])
@@ -400,11 +437,28 @@ def register_folysplitr(app):
         source = _resolve_audio_path(params.get("path", ""))
         if source is None or not source.exists() or not source.is_file():
             return jsonify({"ok": False, "error": "File does not exist"}), 404
+        mode = str(params.get("mode", "transient")).strip().lower()
         try:
             threshold = float(params.get("threshold", 0.35))
         except (TypeError, ValueError):
             threshold = 0.35
         threshold = max(0.01, min(1.0, threshold))
+        try:
+            min_gap_ms = float(params.get("min_gap_ms", 60))
+        except (TypeError, ValueError):
+            min_gap_ms = 60.0
+        min_gap_ms = max(10.0, min(500.0, min_gap_ms))
+        try:
+            beat_division = int(params.get("beat_division", 4))
+        except (TypeError, ValueError):
+            beat_division = 4
+        if beat_division not in (1, 2, 4, 8, 16):
+            beat_division = 4
+        try:
+            tempo_bpm = float(params.get("tempo_bpm", 120))
+        except (TypeError, ValueError):
+            tempo_bpm = 120.0
+        tempo_bpm = max(40.0, min(260.0, tempo_bpm))
 
         try:
             audio, sample_rate = sf.read(str(source), always_2d=True)
@@ -413,27 +467,58 @@ def register_folysplitr(app):
         if audio.size == 0:
             return jsonify({"ok": False, "markers": []})
 
-        mono = np.mean(np.abs(audio), axis=1)
+        mono = np.mean(np.abs(audio), axis=1).astype(np.float32)
         peak = float(np.max(mono)) if mono.size else 0.0
         if peak <= 1e-12:
             return jsonify({"ok": True, "markers": []})
         norm = mono / peak
-
-        smooth_window = max(1, int(sample_rate * 0.01))
-        if smooth_window > 1:
-            kernel = np.ones(smooth_window, dtype=np.float32) / smooth_window
-            norm = np.convolve(norm, kernel, mode="same")
-
-        refractory = max(1, int(sample_rate * 0.06))
+        refractory = max(1, int(sample_rate * (min_gap_ms / 1000.0)))
         marker_indexes: list[int] = []
-        i = 0
-        n = norm.shape[0]
-        while i < n:
-            if norm[i] >= threshold:
-                marker_indexes.append(i)
-                i += refractory
-                continue
-            i += 1
+        duration = audio.shape[0] / float(sample_rate)
+
+        if mode == "level":
+            smooth_window = max(1, int(sample_rate * 0.02))
+            if smooth_window > 1:
+                kernel = np.ones(smooth_window, dtype=np.float32) / smooth_window
+                norm = np.convolve(norm, kernel, mode="same")
+            i = 0
+            n = norm.shape[0]
+            while i < n:
+                if norm[i] >= threshold:
+                    marker_indexes.append(i)
+                    i += refractory
+                    continue
+                i += 1
+        elif mode == "transient":
+            flux = np.diff(norm, prepend=norm[0])
+            flux = np.maximum(flux, 0.0)
+            flux_peak = float(np.max(flux)) if flux.size else 0.0
+            if flux_peak > 1e-12:
+                flux = flux / flux_peak
+            i = 1
+            n = flux.shape[0]
+            while i < n:
+                if flux[i] >= threshold:
+                    marker_indexes.append(i)
+                    i += refractory
+                    continue
+                i += 1
+        elif mode == "beat":
+            envelope = np.abs(np.diff(norm, prepend=norm[0]))
+            env_peak = float(np.max(envelope)) if envelope.size else 0.0
+            if env_peak > 1e-12:
+                envelope = envelope / env_peak
+            energy = float(np.mean(envelope)) if envelope.size else 0.0
+            if energy <= 1e-6:
+                marker_indexes = []
+            else:
+                beats_per_second = tempo_bpm / 60.0
+                seconds_per_beat = 1.0 / max(1e-6, beats_per_second)
+                step_seconds = seconds_per_beat / max(1, beat_division)
+                step = max(1, int(round(sample_rate * step_seconds)))
+                marker_indexes = list(range(0, len(norm), step))
+        else:
+            return jsonify({"ok": False, "error": f"Unknown autodetect mode: {mode}"}), 400
 
         duration = audio.shape[0] / float(sample_rate)
         markers = [0.0]
@@ -449,3 +534,35 @@ def register_folysplitr(app):
             if not cleaned or abs(t - cleaned[-1]) > 0.02:
                 cleaned.append(float(t))
         return jsonify({"ok": True, "markers": cleaned})
+
+    @app.route("/api/folysplitr/trash/empty", methods=["POST"])
+    def api_folysplitr_empty_trash():
+        ensure_splits_dirs()
+        trash_dir = SPLITS_DIR / "trash"
+        removed = 0
+        for wav in trash_dir.glob("*.wav"):
+            try:
+                wav.unlink()
+                removed += 1
+            except OSError:
+                continue
+        return jsonify({"ok": True, "removed": removed})
+
+    @app.route("/api/folysplitr/archive/unarchive", methods=["POST"])
+    def api_folysplitr_unarchive():
+        ensure_recordings_dir()
+        ensure_splits_dirs()
+        archive_dir = SPLITS_DIR / "archive"
+        moved = 0
+        for wav in sorted(archive_dir.glob("*.wav"), key=lambda p: p.stat().st_mtime):
+            target = RECORDINGS_DIR / wav.name
+            counter = 2
+            while target.exists():
+                target = RECORDINGS_DIR / f"{wav.stem}-{counter}{wav.suffix}"
+                counter += 1
+            try:
+                shutil.move(str(wav), str(target))
+                moved += 1
+            except OSError:
+                continue
+        return jsonify({"ok": True, "moved": moved})

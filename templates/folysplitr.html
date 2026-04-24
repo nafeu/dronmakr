@@ -435,14 +435,31 @@
     }
 
     .splitr-threshold input {
-      width: 5rem;
+      width: 4.2rem;
       font-family: inherit;
-      font-size: 0.8rem;
+      font-size: 0.74rem;
       border-radius: 4px;
       border: 1px solid var(--theme-a);
       background: #121211;
       color: var(--primary);
-      padding: 0.38rem 0.45rem;
+      padding: 0.34rem 0.4rem;
+      height: 2rem;
+      box-sizing: border-box;
+      min-width: auto;
+    }
+
+    .splitr-threshold select {
+      width: 6.4rem;
+      min-width: auto;
+      font-family: inherit;
+      font-size: 0.74rem;
+      border-radius: 4px;
+      border: 1px solid var(--theme-a);
+      background: #121211;
+      color: var(--primary);
+      padding: 0.34rem 0.4rem;
+      height: 2rem;
+      box-sizing: border-box;
     }
 
     .splitr-subtitle {
@@ -561,6 +578,8 @@
           <button id="splitr-prev-btn"><i class="fa-solid fa-chevron-left"></i></button>
           <span id="splitr-index" class="splitr-index">0 / 0</span>
           <button id="splitr-next-btn"><i class="fa-solid fa-chevron-right"></i></button>
+          <button id="splitr-empty-trash-btn"><i class="fa-solid fa-trash-can"></i> empty trash</button>
+          <button id="splitr-unarchive-btn"><i class="fa-solid fa-box-open"></i> unarchive samples</button>
         </div>
         <div id="splitr-shell" class="waveform-wrapper" style="display: none;">
           <div class="waveform-header">
@@ -607,6 +626,8 @@
     var panelSplitr = document.getElementById("panel-splitr");
     var splitrPrevBtn = document.getElementById("splitr-prev-btn");
     var splitrNextBtn = document.getElementById("splitr-next-btn");
+    var splitrEmptyTrashBtn = document.getElementById("splitr-empty-trash-btn");
+    var splitrUnarchiveBtn = document.getElementById("splitr-unarchive-btn");
     var splitrPlayBtn = document.getElementById("splitr-play-btn");
     var splitrTrashBtn = document.getElementById("splitr-trash-btn");
     var splitrArchiveBtn = document.getElementById("splitr-archive-btn");
@@ -649,6 +670,11 @@
     var splitrDurationSeconds = 0;
     var splitrPlacementMode = false;
     var splitrAutoThreshold = 0.35;
+    var splitrAutoMode = "transient";
+    var splitrAutoMinGapMs = 60;
+    var splitrAutoBeatDivision = 4;
+    var splitrAutoTempoBpm = 120;
+    var splitrMarkerHistory = [];
 
     function showTab(tabName) {
       var recorderActive = tabName === "recorder";
@@ -734,6 +760,11 @@
       return dedup;
     }
 
+    function pushMarkerHistory() {
+      splitrMarkerHistory.push((splitrMarkers || []).slice());
+      if (splitrMarkerHistory.length > 100) splitrMarkerHistory.shift();
+    }
+
     function renderSplitOverlay() {
       if (!splitrOverlayEl) return;
       splitrOverlayEl.innerHTML = "";
@@ -789,13 +820,45 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           path: item.path,
-          threshold: splitrAutoThreshold
+          threshold: splitrAutoThreshold,
+          mode: splitrAutoMode,
+          min_gap_ms: splitrAutoMinGapMs,
+          beat_division: splitrAutoBeatDivision,
+          tempo_bpm: splitrAutoTempoBpm
         })
       });
       var payload = await res.json();
       if (!res.ok || !payload.ok) throw new Error(payload.error || "Autodetect failed");
+      pushMarkerHistory();
       splitrMarkers = sanitizeMarkers(payload.markers || [], splitrDurationSeconds);
       renderSplitOverlay();
+    }
+
+    async function undoLastSplitrAction() {
+      if (splitrMarkerHistory.length > 0) {
+        splitrMarkers = sanitizeMarkers(splitrMarkerHistory.pop(), splitrDurationSeconds);
+        renderSplitSelectionControls();
+        renderSplitOverlay();
+        setStatus("Undid marker change.");
+        return;
+      }
+      var item = getActiveSplitrItem();
+      if (!item) throw new Error("No active sample");
+      var res = await fetch("/api/folysplitr/undo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: item.path })
+      });
+      var payload = await res.json();
+      if (!res.ok || !payload.ok) throw new Error(payload.error || "Nothing to undo");
+      await refreshRecordingsList();
+      var current = payload.file && payload.file.path;
+      if (current) {
+        splitrIndex = recordingsList.findIndex(function (r) { return r.path === current; });
+        if (splitrIndex < 0) splitrIndex = 0;
+      }
+      renderSplitrCurrent();
+      setStatus("Undid audio processing.");
     }
 
     function renderSplitSelectionControls() {
@@ -814,12 +877,14 @@
         renderSplitSelectionControls();
       }, splitrPlacementMode);
       var addMarkerBtn = addBtn('<i class="fa-solid fa-plus"></i>', "Insert Marker At Playhead", function () {
+        pushMarkerHistory();
         splitrMarkers.push(splitrSelectedSeconds);
         splitrMarkers = sanitizeMarkers(splitrMarkers, splitrDurationSeconds);
         renderSplitOverlay();
       });
       addMarkerBtn.disabled = splitrPlacementMode;
       addBtn('<i class="fa-solid fa-minus"></i>', "Remove Marker", function () {
+        pushMarkerHistory();
         var bestIdx = -1;
         var bestDist = Infinity;
         splitrMarkers.forEach(function (m, i) {
@@ -835,8 +900,16 @@
         renderSplitOverlay();
       });
       addBtn('<i class="fa-solid fa-eraser"></i>', "Clear All Markers", function () {
+        pushMarkerHistory();
         splitrMarkers = defaultMarkersFromDuration(splitrDurationSeconds);
         renderSplitOverlay();
+      });
+      addBtn('<i class="fa-solid fa-rotate-left"></i>', "Undo Last Action", async function () {
+        try {
+          await undoLastSplitrAction();
+        } catch (e) {
+          setStatus(e.message || "Undo failed.", true);
+        }
       });
       addBtn('<i class="fa-solid fa-scissors"></i>', "Split", async function () {
         try {
@@ -860,6 +933,50 @@
         splitrAutoThreshold = Math.max(0.01, Math.min(1, v));
         thresholdInput.value = String(splitrAutoThreshold);
       });
+      var modeWrap = document.createElement("label");
+      modeWrap.className = "splitr-threshold";
+      modeWrap.innerHTML = 'mode <select id="splitr-mode-select"><option value="transient">transient hits</option><option value="level">level gate</option><option value="beat">beat grid</option></select>';
+      splitrSelectToolsEl.appendChild(modeWrap);
+      var modeSelect = document.getElementById("splitr-mode-select");
+      modeSelect.value = splitrAutoMode;
+      modeSelect.addEventListener("change", function () {
+        splitrAutoMode = modeSelect.value || "transient";
+        renderSplitSelectionControls();
+      });
+      if (splitrAutoMode === "beat") {
+        var beatWrap = document.createElement("label");
+        beatWrap.className = "splitr-threshold";
+        beatWrap.innerHTML = 'division <select id="splitr-beat-division"><option value="1">1/1</option><option value="2">1/2</option><option value="4">1/4</option><option value="8">1/8</option><option value="16">1/16</option></select>';
+        splitrSelectToolsEl.appendChild(beatWrap);
+        var beatDivisionSelect = document.getElementById("splitr-beat-division");
+        beatDivisionSelect.value = String(splitrAutoBeatDivision);
+        beatDivisionSelect.addEventListener("change", function () {
+          splitrAutoBeatDivision = parseInt(beatDivisionSelect.value || "4", 10);
+        });
+        var tempoWrap = document.createElement("label");
+        tempoWrap.className = "splitr-threshold";
+        tempoWrap.innerHTML = 'tempo <input id="splitr-tempo-input" type="number" min="40" max="260" step="1" value="' + splitrAutoTempoBpm + '">';
+        splitrSelectToolsEl.appendChild(tempoWrap);
+        var tempoInput = document.getElementById("splitr-tempo-input");
+        tempoInput.addEventListener("change", function () {
+          var t = Number(tempoInput.value);
+          if (!Number.isFinite(t)) return;
+          splitrAutoTempoBpm = Math.max(40, Math.min(260, t));
+          tempoInput.value = String(splitrAutoTempoBpm);
+        });
+      } else {
+        var gapWrap = document.createElement("label");
+        gapWrap.className = "splitr-threshold";
+        gapWrap.innerHTML = 'min gap <input id="splitr-min-gap-input" type="number" min="10" max="500" step="5" value="' + splitrAutoMinGapMs + '">';
+        splitrSelectToolsEl.appendChild(gapWrap);
+        var minGapInput = document.getElementById("splitr-min-gap-input");
+        minGapInput.addEventListener("change", function () {
+          var vGap = Number(minGapInput.value);
+          if (!Number.isFinite(vGap)) return;
+          splitrAutoMinGapMs = Math.max(10, Math.min(500, vGap));
+          minGapInput.value = String(splitrAutoMinGapMs);
+        });
+      }
       addBtn('<i class="fa-solid fa-wand-magic-sparkles"></i>', "Autodetect Markers", async function () {
         try {
           await autodetectMarkers();
@@ -1442,6 +1559,7 @@
         splitrDuration.innerText = formatTime(splitrWaveSurfer.getDuration());
         splitrDurationSeconds = splitrWaveSurfer.getDuration() || 0;
         splitrMarkers = defaultMarkersFromDuration(splitrDurationSeconds);
+        splitrMarkerHistory = [];
         renderSplitOverlay();
       });
       splitrWaveSurfer.on("seeking", function (currentTime) {
@@ -1452,6 +1570,7 @@
       splitrWaveSurfer.on("interaction", function (time) {
         splitrSelectedSeconds = Number(time) || splitrSelectedSeconds;
         if (splitrPlacementMode) {
+          pushMarkerHistory();
           splitrMarkers.push(splitrSelectedSeconds);
           splitrMarkers = sanitizeMarkers(splitrMarkers, splitrDurationSeconds);
           renderSplitOverlay();
@@ -1550,6 +1669,29 @@
     });
     splitrNextBtn.addEventListener("click", function () {
       goToSplitrDelta(1);
+    });
+    splitrEmptyTrashBtn.addEventListener("click", async function () {
+      try {
+        var res = await fetch("/api/folysplitr/trash/empty", { method: "POST" });
+        var payload = await res.json();
+        if (!res.ok || !payload.ok) throw new Error(payload.error || "Empty trash failed");
+        setStatus("Trash emptied.");
+      } catch (e) {
+        setStatus(e.message || "Empty trash failed.", true);
+      }
+    });
+    splitrUnarchiveBtn.addEventListener("click", async function () {
+      try {
+        var res = await fetch("/api/folysplitr/archive/unarchive", { method: "POST" });
+        var payload = await res.json();
+        if (!res.ok || !payload.ok) throw new Error(payload.error || "Unarchive failed");
+        await refreshRecordingsList();
+        if (splitrIndex >= recordingsList.length) splitrIndex = Math.max(0, recordingsList.length - 1);
+        renderSplitrCurrent();
+        setStatus("Archived samples restored to queue.");
+      } catch (e) {
+        setStatus(e.message || "Unarchive failed.", true);
+      }
     });
     splitrPlayBtn.addEventListener("click", function () {
       if (!splitrWaveSurfer) return;
