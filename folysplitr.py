@@ -548,6 +548,13 @@ def register_folysplitr(app):
                 continue
         return jsonify({"ok": True, "removed": removed})
 
+    @app.route("/api/folysplitr/trash/count", methods=["GET"])
+    def api_folysplitr_trash_count():
+        ensure_splits_dirs()
+        trash_dir = SPLITS_DIR / "trash"
+        count = sum(1 for wav in trash_dir.glob("*.wav") if wav.is_file())
+        return jsonify({"ok": True, "count": count})
+
     @app.route("/api/folysplitr/archive/unarchive", methods=["POST"])
     def api_folysplitr_unarchive():
         ensure_recordings_dir()
