@@ -87,7 +87,7 @@ README_HTML = _render_readme_html()
 
 
 @socketio.on("connect")
-def handle_connect():
+def handle_connect(auth=None):
     """Unified connect: send auditionr exports/configs; beatbuildr requests its kit over the socket."""
     if DEBUG_WEBSOCKETS:
         print("Client connected via WebSocket")

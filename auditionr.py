@@ -608,7 +608,7 @@ def _run_generate_drone():
     """One iteration of drone generation. Returns list of paths. Logs to server stdout."""
     if not os.path.exists(get_managed_file("presets", "presets.json")):
         raise FileNotFoundError(
-            "presets/presets.json does not exist, please run build_preset.py"
+            "config/presets.json does not exist, please run build_preset.py"
         )
     filters = {}
     midi_file, selected_chart = generate_drone_midi(

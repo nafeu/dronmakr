@@ -441,7 +441,7 @@ def generate_drone(
     if not os.path.exists(PRESETS_PATH):
         print(
             with_prompt(
-                "'presets/presets.json' does not exist, please run 'build_preset.py'"
+                "'config/presets.json' does not exist, please run 'build_preset.py'"
             )
         )
         sys.exit(1)

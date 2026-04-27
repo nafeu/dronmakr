@@ -20,7 +20,6 @@ from pedalboard.io import AudioFile
 from mido import MidiFile, Message
 
 from generate_midi import get_beat_patterns
-from paths import get_managed_file
 from utils import (
     CYAN,
     RESET,
@@ -29,10 +28,9 @@ from utils import (
     GREEN,
     with_generate_beat_prompt,
     with_generate_drone_sample_prompt as with_prompt,
+    PRESETS_PATH,
+    resolve_presets_index_path,
 )
-
-PRESETS_PATH = get_managed_file("presets", "presets.json")
-
 
 # Convert MIDI file to MIDI messages
 def midi_to_messages(midi_file_path):
@@ -75,6 +73,7 @@ def generate_drone_sample(
     effect=None,
 ):
     print(generate_drone_sample_header())
+    presets_path = presets_path or resolve_presets_index_path() or PRESETS_PATH
 
     loaded_effects = []
 

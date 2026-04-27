@@ -23,7 +23,8 @@ ARCHIVE_DIR = get_managed_dir("archive")
 EXPORTS_DIR = get_managed_dir("exports")
 MIDI_DIR = get_managed_dir("midi")
 PRESETS_DIR = get_managed_dir("presets")
-PRESETS_PATH = get_managed_file("presets", "presets.json")
+PRESETS_PATH = get_managed_file("config", "presets.json")
+LEGACY_PRESETS_PATH = get_managed_file("presets", "presets.json")
 SAVED_DIR = get_managed_dir("saved")
 TEMP_DIR = get_managed_dir("temp")
 TRASH_DIR = get_managed_dir("trash")
@@ -1027,7 +1028,10 @@ def get_auditionr_folder_counts():
 
 
 def get_presets():
-    with open(PRESETS_PATH, "r") as file:
+    presets_path = resolve_presets_index_path()
+    if not presets_path:
+        return {"instruments": [], "effects": []}
+    with open(presets_path, "r") as file:
         presets = json.load(file)
 
     instrument_presets = []
@@ -1043,6 +1047,24 @@ def get_presets():
         "instruments": sorted(instrument_presets),
         "effects": sorted(effect_chain_presets),
     }
+
+
+def resolve_presets_index_path() -> str:
+    """
+    Resolve presets index path with migration support.
+    Preferred location is config/presets.json. If a legacy presets/presets.json
+    exists, copy it forward.
+    """
+    if os.path.exists(PRESETS_PATH):
+        return PRESETS_PATH
+    if os.path.exists(LEGACY_PRESETS_PATH):
+        os.makedirs(os.path.dirname(PRESETS_PATH), exist_ok=True)
+        try:
+            shutil.copy2(LEGACY_PRESETS_PATH, PRESETS_PATH)
+            return PRESETS_PATH
+        except OSError:
+            return LEGACY_PRESETS_PATH
+    return ""
 
 
 def _infer_saved_sample_type(filename):

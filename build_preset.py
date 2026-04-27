@@ -19,6 +19,7 @@ from utils import (
     RESET,
     TEMP_DIR,
     PRESETS_DIR,
+    PRESETS_PATH,
 )
 from generate_midi import SUPPORTED_PATTERNS_INFO
 
@@ -330,7 +331,8 @@ def preview_preset(plugin, effect_chain):
 
 def save_preset(name, desc, uid, plugin_path, plugin_name, preset_path, effect_chain):
     """Saves the preset to `presets.json`"""
-    preset_index_file = os.path.join(PRESETS_DIR, PRESET_JSON)
+    preset_index_file = PRESETS_PATH
+    os.makedirs(os.path.dirname(preset_index_file), exist_ok=True)
 
     if os.path.exists(preset_index_file):
         with open(preset_index_file, "r") as f:
@@ -449,7 +451,7 @@ def edit_preset_with_ui(plugin, effect_chain, selected_plugin, selected_plugin_n
 
 
 def list_presets(show_chain_plugins=False, show_patterns=False):
-    preset_index_file = os.path.join(PRESETS_DIR, PRESET_JSON)
+    preset_index_file = PRESETS_PATH
 
     if not os.path.exists(preset_index_file):
         print("No presets found.")
@@ -528,7 +530,7 @@ def list_presets(show_chain_plugins=False, show_patterns=False):
 
 def name_exists(name):
     """Checks the collection at `presets.json` and sees if any entry has that name already"""
-    preset_index_file = os.path.join(PRESETS_DIR, PRESET_JSON)
+    preset_index_file = PRESETS_PATH
 
     if not os.path.exists(preset_index_file):
         return False
