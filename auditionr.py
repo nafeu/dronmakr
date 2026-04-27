@@ -120,6 +120,7 @@ _socketio = None
 UNDO_DIR = os.path.join(TEMP_DIR, "auditionr_undo")
 PITCH_DIR = os.path.join(TEMP_DIR, "auditionr_pitch")
 PITCH_STATE_FILE = os.path.join(PITCH_DIR, "state.json")
+_MANAGED_AUDIO_ROOTS = [EXPORTS_DIR, ARCHIVE_DIR, SAVED_DIR, TRASH_DIR]
 
 
 def _ensure_undo_dir():
@@ -217,14 +218,39 @@ def _has_undo_snapshot(file_path: str) -> bool:
 def _undo_availability_for_files(files):
     availability = {}
     for file in files:
-        normalized = file.lstrip("./")
-        availability[file] = _has_undo_snapshot(f"./{normalized}")
+        resolved = _resolve_managed_audio_path(file)
+        availability[file] = _has_undo_snapshot(resolved) if resolved else False
     return availability
 
 
 def _emit_folder_counts():
     if _socketio:
         _socketio.emit("folder_counts", get_auditionr_folder_counts())
+
+
+def _resolve_managed_audio_path(path_value: str) -> str | None:
+    """Resolve UI/API path tokens to a concrete managed audio file path."""
+    raw = str(path_value or "").strip()
+    if not raw:
+        return None
+
+    if raw.startswith("/exports/"):
+        candidate = os.path.join(EXPORTS_DIR, os.path.basename(raw))
+    elif raw.startswith("/archive/"):
+        candidate = os.path.join(ARCHIVE_DIR, os.path.basename(raw))
+    elif raw.startswith("/saved/"):
+        candidate = os.path.join(SAVED_DIR, os.path.basename(raw))
+    elif raw.startswith("/trash/"):
+        candidate = os.path.join(TRASH_DIR, os.path.basename(raw))
+    else:
+        candidate = raw
+
+    abs_candidate = os.path.abspath(candidate)
+    for root in _MANAGED_AUDIO_ROOTS:
+        abs_root = os.path.abspath(root)
+        if abs_candidate == abs_root or abs_candidate.startswith(abs_root + os.sep):
+            return abs_candidate
+    return None
 
 
 def _open_files_with_default_player(file_paths):
@@ -252,7 +278,9 @@ def skip_file():
     if not params["path"]:
         return jsonify({"error": "File path is required."}), 400
 
-    file_path = f".{params['path']}"
+    file_path = _resolve_managed_audio_path(params["path"])
+    if not file_path:
+        return jsonify({"error": "File path is not allowed."}), 400
 
     if not os.path.exists(file_path):
         return jsonify({"error": "File does not exist."}), 404
@@ -260,7 +288,7 @@ def skip_file():
     if not os.path.exists(ARCHIVE_DIR):
         os.makedirs(ARCHIVE_DIR)
 
-    file_name = file_path.split(f"{EXPORTS_DIR}/")[1]
+    file_name = os.path.basename(file_path)
     _clear_undo_snapshot(file_path)
     _clear_pitch_state_for_file(file_path)
 
@@ -300,7 +328,9 @@ def reprocess():
     if not params["path"]:
         return jsonify({"error": "File path is required."}), 400
 
-    file_path = f".{params['path']}"
+    file_path = _resolve_managed_audio_path(params["path"])
+    if not file_path:
+        return jsonify({"error": "File path is not allowed."}), 400
 
     if not os.path.exists(file_path):
         return jsonify({"error": "File does not exist."}), 404
@@ -328,7 +358,9 @@ def delete_file():
     if not params["path"]:
         return jsonify({"error": "File path is required."}), 400
 
-    file_path = f".{params['path']}"
+    file_path = _resolve_managed_audio_path(params["path"])
+    if not file_path:
+        return jsonify({"error": "File path is not allowed."}), 400
 
     if not os.path.exists(file_path):
         return jsonify({"error": "File does not exist."}), 404
@@ -336,7 +368,7 @@ def delete_file():
     if not os.path.exists(TRASH_DIR):
         os.makedirs(TRASH_DIR)
 
-    file_name = file_path.split(f"{EXPORTS_DIR}/")[1]
+    file_name = os.path.basename(file_path)
     _clear_undo_snapshot(file_path)
     _clear_pitch_state_for_file(file_path)
 
@@ -352,7 +384,9 @@ def duplicate_file():
     if not params.get("path"):
         return jsonify({"error": "File path is required."}), 400
 
-    file_path = f".{params['path']}"
+    file_path = _resolve_managed_audio_path(params["path"])
+    if not file_path:
+        return jsonify({"error": "File path is not allowed."}), 400
     if not os.path.exists(file_path):
         return jsonify({"error": "File does not exist."}), 404
 
@@ -392,7 +426,9 @@ def save_file():
     if not params["path"]:
         return jsonify({"error": "File path is required."}), 400
 
-    file_path = f".{params['path']}"
+    file_path = _resolve_managed_audio_path(params["path"])
+    if not file_path:
+        return jsonify({"error": "File path is not allowed."}), 400
 
     if not os.path.exists(file_path):
         return jsonify({"error": "File does not exist."}), 404
@@ -400,7 +436,7 @@ def save_file():
     if not os.path.exists(SAVED_DIR):
         os.makedirs(SAVED_DIR)
 
-    file_name = file_path.split(f"{EXPORTS_DIR}/")[1]
+    file_name = os.path.basename(file_path)
     _clear_undo_snapshot(file_path)
     _clear_pitch_state_for_file(file_path)
 
@@ -416,7 +452,9 @@ def process_file():
     if not params["path"]:
         return jsonify({"error": "File path is required."}), 400
 
-    file_path = f".{params['path']}"
+    file_path = _resolve_managed_audio_path(params["path"])
+    if not file_path:
+        return jsonify({"error": "File path is not allowed."}), 400
 
     if not os.path.exists(file_path):
         return jsonify({"error": "File does not exist."}), 404
@@ -552,7 +590,9 @@ def process_file():
         "exports",
         {
             "files": files,
-            "updated_path": params["path"].lstrip("./"),
+            # Keep updated_path in the same shape as entries returned by get_latest_exports()
+            # so the frontend can detect and refresh the modified waveform.
+            "updated_path": file_path,
             "undo_available": undo_available,
         },
     )
@@ -565,7 +605,9 @@ def undo_status():
     if not params.get("path"):
         return jsonify({"error": "File path is required."}), 400
 
-    file_path = f".{params['path']}"
+    file_path = _resolve_managed_audio_path(params["path"])
+    if not file_path:
+        return jsonify({"error": "File path is not allowed."}), 400
     return jsonify({"can_undo": _has_undo_snapshot(file_path)}), 200
 
 
@@ -575,7 +617,9 @@ def reveal_in_explorer():
     if not params.get("path"):
         return jsonify({"error": "File path is required."}), 400
 
-    file_path = os.path.abspath(f".{params['path']}")
+    file_path = _resolve_managed_audio_path(params["path"])
+    if not file_path:
+        return jsonify({"error": "File path is not allowed."}), 400
 
     if not os.path.exists(file_path):
         return jsonify({"error": "File does not exist."}), 404
