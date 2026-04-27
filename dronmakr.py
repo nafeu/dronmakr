@@ -1727,6 +1727,7 @@ def webui(
         False, "--debug", "-d", help="Enable debug logs in the web server"
     ),
     port: int = typer.Option(3766, "--port", "-p", help="Port for the unified web UI"),
+    host: str = typer.Option("0.0.0.0", "--host", "-H", help="Host interface for the unified web UI"),
     open_browser: bool = typer.Option(
         True,
         "--open-browser/--no-open-browser",
@@ -1734,7 +1735,7 @@ def webui(
     ),
 ):
     """Run the unified web UI (auditionr + beatbuildr on one server)."""
-    run_webui(debug=debug, port=port, open_browser=open_browser)
+    run_webui(debug=debug, port=port, open_browser=open_browser, host=host)
 
 
 @cli.command()

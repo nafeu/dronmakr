@@ -449,6 +449,12 @@ def api_settings_pick_folder():
     )
 
 
+@app.route("/api/health", methods=["GET"])
+def api_health():
+    """Lightweight readiness probe for desktop bootstrap."""
+    return jsonify({"ok": True})
+
+
 # Register auditionr and beatbuildr routes and socket handlers on the unified app.
 register_auditionr(app, socketio)
 register_beatbuildr(app, socketio)
@@ -523,28 +529,57 @@ def start_server(
     debug: bool = False,
     port: int = 3766,
     host: str = "127.0.0.1",
+    build_sample_cache: bool = True,
 ) -> threading.Thread:
     """Start web server in a background thread for desktop runtime."""
     global DEBUG_WEBSOCKETS
     DEBUG_WEBSOCKETS = debug
+    print(with_prompt("[desktop] startup: ensure settings"))
     ensure_settings()
     if has_configured_files_root():
+        print(with_prompt("[desktop] startup: ensure managed files root"))
         ensure_managed_files_root()
+    print(with_prompt("[desktop] startup: ensure beat patterns"))
     ensure_beat_patterns()
+    print(with_prompt("[desktop] startup: ensure drum kits"))
     ensure_drum_kits()
+    print(with_prompt("[desktop] startup: ensure recordings dir"))
     ensure_recordings_dir()
+    print(with_prompt("[desktop] startup: ensure splits dirs"))
     ensure_splits_dirs()
-    ensure_all_sample_caches()
+    if build_sample_cache:
+        print(with_prompt("[desktop] startup: build sample cache (blocking)"))
+        ensure_all_sample_caches()
+    else:
+        print(with_prompt("[desktop] startup: sample cache warmup in background"))
 
     def _run_server():
-        socketio.run(
-            app,
-            host=host,
-            port=int(port),
-            debug=debug,
-            use_reloader=False,
-        )
+        try:
+            print(with_prompt(f"[desktop] server thread: binding http://{host}:{port}"))
+            socketio.run(
+                app,
+                host=host,
+                port=int(port),
+                debug=debug,
+                use_reloader=False,
+            )
+        except Exception as e:
+            print(with_prompt(f"[desktop] server thread error: {e}"))
+            raise
 
     server_thread = threading.Thread(target=_run_server, daemon=True)
     server_thread.start()
+
+    if not build_sample_cache:
+        def _warm_cache_background():
+            try:
+                print(with_prompt("[desktop] cache thread: warmup started"))
+                ensure_all_sample_caches()
+                print(with_prompt("[desktop] cache thread: warmup completed"))
+            except Exception:
+                # Keep desktop startup resilient even if cache warmup fails.
+                print(with_prompt("[desktop] cache thread: warmup failed"))
+
+        threading.Thread(target=_warm_cache_background, daemon=True).start()
+
     return server_thread
