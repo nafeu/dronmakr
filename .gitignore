@@ -46,6 +46,7 @@ config.py
 *.idea
 .DS_Store
 Thumbs.db
+node_modules/
 
 # Testing
 .coverage
