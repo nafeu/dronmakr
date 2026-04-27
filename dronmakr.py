@@ -13,6 +13,7 @@ from settings import ensure_settings
 from settings import get_active_drum_path_preset_name, set_active_drum_path_preset
 from config_validation import validate_server_config_names
 from build_preset import list_presets
+from desktop_app import main as run_desktop_app
 from webui import run as run_webui
 from beatbuildr import generate_random_drum_kit
 from processing_actions import parse_post_processing_spec, apply_post_processing_actions
@@ -52,8 +53,10 @@ from utils import (
     delete_all_files,
     EXPORTS_DIR,
     MIDI_DIR,
+    PRESETS_PATH,
     TRASH_DIR,
 )
+from paths import get_managed_file
 from version import __version__
 
 GENERATED_LABEL = f"{RED}...{RESET}"
@@ -435,7 +438,7 @@ def generate_drone(
     if not log_server:
         print(get_version())
 
-    if not os.path.exists("presets/presets.json"):
+    if not os.path.exists(PRESETS_PATH):
         print(
             with_prompt(
                 "'presets/presets.json' does not exist, please run 'build_preset.py'"
@@ -497,7 +500,7 @@ def generate_drone(
 
     if dry_run:
         print(f"{RED}■ dry run completed{RESET}")
-        return ["midi/dry_run_example.mid", "exports/dry_run_export.wav"]
+        return [os.path.join(MIDI_DIR, "dry_run_example.mid"), os.path.join(EXPORTS_DIR, "dry_run_export.wav")]
 
     filters = {}
 
@@ -568,7 +571,7 @@ def generate_drone(
 
 def _load_drum_kits_for_cli():
     """Load drum kits from config/drum-kits.json for CLI use."""
-    path = "config/drum-kits.json"
+    path = get_managed_file("config", "drum-kits.json")
     if not os.path.exists(path):
         return {}
     with open(path, "r") as f:
@@ -662,7 +665,7 @@ def generate_beat(
 
     # Load available patterns from config
     try:
-        with open("config/beat-patterns.json", "r") as f:
+        with open(get_managed_file("config", "beat-patterns.json"), "r") as f:
             beat_patterns_data = json.load(f)
             available_patterns = (
                 builtins.list(beat_patterns_data.keys()) if beat_patterns_data else []
@@ -1732,6 +1735,12 @@ def webui(
 ):
     """Run the unified web UI (auditionr + beatbuildr on one server)."""
     run_webui(debug=debug, port=port, open_browser=open_browser)
+
+
+@cli.command()
+def desktop():
+    """Run the packaged desktop-style app window (pywebview)."""
+    run_desktop_app()
 
 
 @cli.command()

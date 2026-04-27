@@ -19,8 +19,9 @@ from flask import jsonify, request, send_from_directory
 from werkzeug.utils import secure_filename
 from process_sample import trim_sample_start, trim_sample_end, reverse_sample
 from processing_actions import apply_processing_command, get_processing_actions_payload
+from paths import get_files_root_path
 
-ROOT_DIR = Path(__file__).resolve().parent
+ROOT_DIR = get_files_root_path()
 RECORDINGS_DIR = ROOT_DIR / "recordings"
 SPLITS_DIR = ROOT_DIR / "splits"
 FOLYSPLITR_UNDO_DIR = ROOT_DIR / "temp" / "folysplitr_undo"

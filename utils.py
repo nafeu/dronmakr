@@ -8,6 +8,7 @@ import sys
 import uuid
 
 from version import __version__
+from paths import get_managed_dir, get_managed_file
 
 BLUE = "\033[34m"
 CYAN = "\033[36m"
@@ -18,15 +19,15 @@ YELLOW = "\033[33m"
 RESET = "\033[0m"
 
 APP_NAME = "dronmakr"
-ARCHIVE_DIR = "archive"
-EXPORTS_DIR = "exports"
-MIDI_DIR = "midi"
-PRESETS_DIR = "presets"
-PRESETS_PATH = f"{PRESETS_DIR}/presets.json"
-SAVED_DIR = "saved"
-TEMP_DIR = "temp"
-TRASH_DIR = "trash"
-PACKAGES_DIR = "packages"
+ARCHIVE_DIR = get_managed_dir("archive")
+EXPORTS_DIR = get_managed_dir("exports")
+MIDI_DIR = get_managed_dir("midi")
+PRESETS_DIR = get_managed_dir("presets")
+PRESETS_PATH = get_managed_file("presets", "presets.json")
+SAVED_DIR = get_managed_dir("saved")
+TEMP_DIR = get_managed_dir("temp")
+TRASH_DIR = get_managed_dir("trash")
+PACKAGES_DIR = get_managed_dir("packages")
 
 
 def get_cli_version():

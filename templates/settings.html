@@ -442,6 +442,15 @@
         <textarea id="IMKLogLevel" name="IMKLogLevel" rows="1"
           placeholder="e.g. none">{{ settings.get('IMKLogLevel', 'none') }}</textarea>
       </div>
+      <div class="section-title">Storage</div>
+      <div class="field-group" data-key="FILES_ROOT" data-is-path="true">
+        <label for="FILES_ROOT">FILES_ROOT</label>
+        <div class="field-row">
+          <textarea id="FILES_ROOT" name="FILES_ROOT" rows="2"
+            placeholder="Path to dronmakr-files root directory">{{ settings.get('FILES_ROOT', '') }}</textarea>
+          <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
+        </div>
+      </div>
       <div class="section-title">Drum Sample Paths</div>
       <div class="preset-toolbar">
         <div class="field-group">

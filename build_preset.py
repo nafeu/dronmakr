@@ -26,7 +26,7 @@ PRESET_JSON = "presets.json"
 PREVIEW_NUM_BARS = 1
 PREVIEW_SAMPLE = "resources/CDEFGABC.wav"
 PREVIEW_SAMPLE_RATE = 44100
-PREVIEW_TEMP_PATH = "temp/preset_preview.wav"
+PREVIEW_TEMP_PATH = os.path.join(TEMP_DIR, "preset_preview.wav")
 PREVIEW_TEMPO_BPM = 120
 PREVIEW_TIME_SIGNATURE = "4/4"
 

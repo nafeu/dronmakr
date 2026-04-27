@@ -7,6 +7,23 @@ import json
 import os
 
 SETTINGS_PATH = "config/settings.json"
+DEFAULT_FILES_ROOT_DIRNAME = "dronmakr-files"
+FILES_ROOT_KEY = "FILES_ROOT"
+MANAGED_SUBDIRS = [
+    "presets",
+    "midi",
+    "exports",
+    "archive",
+    "saved",
+    "recordings",
+    "splits",
+    "trash",
+    "packages",
+    "history",
+    "temp",
+    "vst-preset-files",
+    "config",
+]
 DRUM_PATH_KEYS = [
     "DRUM_KICK_PATHS",
     "DRUM_HIHAT_PATHS",
@@ -29,6 +46,7 @@ DEFAULT_KEYS = [
     *DRUM_PATH_KEYS,
     "ACTIVE_DRUM_PATH_PRESET",
     "DRUM_PATH_PRESETS",
+    FILES_ROOT_KEY,
 ]
 
 _default_values = {
@@ -53,6 +71,7 @@ _default_values = {
             **{key: "" for key in DRUM_PATH_KEYS},
         }
     ],
+    FILES_ROOT_KEY: "",
 }
 
 
@@ -200,6 +219,52 @@ def _migrate_from_env() -> dict:
     return result
 
 
+def _default_files_root() -> str:
+    return os.path.abspath(os.path.join(os.path.expanduser("~"), DEFAULT_FILES_ROOT_DIRNAME))
+
+
+def normalize_files_root(path: str | None) -> str:
+    if not isinstance(path, str):
+        return ""
+    cleaned = path.strip()
+    if not cleaned:
+        return ""
+    return os.path.abspath(os.path.expanduser(cleaned))
+
+
+def get_files_root(settings: dict | None = None, allow_default: bool = False) -> str:
+    src = settings if isinstance(settings, dict) else load_settings()
+    normalized = normalize_files_root(src.get(FILES_ROOT_KEY, ""))
+    if normalized:
+        return normalized
+    return _default_files_root() if allow_default else ""
+
+
+def has_configured_files_root(settings: dict | None = None) -> bool:
+    return bool(get_files_root(settings=settings, allow_default=False))
+
+
+def ensure_managed_files_root(root: str | None = None) -> str:
+    resolved_root = normalize_files_root(root) if root is not None else get_files_root(allow_default=True)
+    if not resolved_root:
+        raise ValueError("FILES_ROOT is not configured")
+    os.makedirs(resolved_root, exist_ok=True)
+    for subdir in MANAGED_SUBDIRS:
+        os.makedirs(os.path.join(resolved_root, subdir), exist_ok=True)
+    return resolved_root
+
+
+def set_files_root(path: str) -> str:
+    resolved = normalize_files_root(path)
+    if not resolved:
+        raise ValueError("A valid files root path is required")
+    ensure_managed_files_root(resolved)
+    settings = load_settings()
+    settings[FILES_ROOT_KEY] = resolved
+    save_settings(settings)
+    return resolved
+
+
 def _ensure_settings_file() -> None:
     """Ensure config/settings.json exists. Create from .env or defaults if missing."""
     if os.path.exists(SETTINGS_PATH):
@@ -218,7 +283,9 @@ def load_settings() -> dict:
     # Merge with defaults so new keys get default values
     out = dict(_default_values)
     for k, v in data.items():
-        if isinstance(v, str) or (
+        if k == FILES_ROOT_KEY and isinstance(v, str):
+            out[k] = normalize_files_root(v)
+        elif isinstance(v, str) or (
             k == "DRUM_PATH_PRESETS" and isinstance(v, (dict, list))
         ):
             out[k] = v
@@ -241,6 +308,7 @@ def get_setting(key: str, default: str = "") -> str:
 def save_settings(settings: dict) -> None:
     """Save settings to config/settings.json."""
     _normalize_drum_presets_inplace(settings)
+    settings[FILES_ROOT_KEY] = normalize_files_root(settings.get(FILES_ROOT_KEY, ""))
     os.makedirs(os.path.dirname(SETTINGS_PATH), exist_ok=True)
     with open(SETTINGS_PATH, "w") as f:
         json.dump(settings, f, indent=2)

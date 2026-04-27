@@ -1,6 +1,8 @@
 import json
 import re
 
+from paths import get_managed_file
+
 VALID_NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
@@ -100,8 +102,8 @@ def validate_server_config_names() -> None:
     Raises ValueError with actionable, line-specific messages on failure.
     """
     validation_targets = [
-        ("config/beat-patterns.json", "config/beat-patterns.json"),
-        ("config/drum-kits.json", "config/drum-kits.json"),
+        (get_managed_file("config", "beat-patterns.json"), "config/beat-patterns.json"),
+        (get_managed_file("config", "drum-kits.json"), "config/drum-kits.json"),
     ]
     errors: list[str] = []
 

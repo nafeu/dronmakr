@@ -14,10 +14,11 @@ from utils import (
     format_name,
     MIDI_DIR,
 )
+from paths import get_managed_file
 from print_midi import print_midi
 
 CHORD_SCALE_LIST = "resources/chord-scale-data.json"
-BEAT_PATTERNS_FILE = "config/beat-patterns.json"
+BEAT_PATTERNS_FILE = get_managed_file("config", "beat-patterns.json")
 BEAT_PATTERNS_SAMPLE_FILE = "resources/beat-patterns-sample.json"
 _BEAT_PATTERNS_CACHE = None
 

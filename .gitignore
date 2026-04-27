@@ -4,6 +4,8 @@ __pycache__/
 *.so
 .Python
 build/
+dist/
+dist-artifacts/
 
 # Virtual Environment
 venv/
@@ -83,3 +85,4 @@ generated*.wav
 vst-preset-files/
 output.wav
 config/
+dronmakr-files/

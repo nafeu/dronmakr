@@ -11,7 +11,7 @@ import time
 import webbrowser
 from pathlib import Path
 
-from flask import Flask, jsonify, render_template, request, send_from_directory
+from flask import Flask, jsonify, redirect, render_template, request, send_from_directory, url_for
 from flask_socketio import SocketIO
 from markdown_it import MarkdownIt
 
@@ -33,9 +33,13 @@ from settings import (
     get_active_drum_path_preset_name,
     get_drum_path_presets,
     get_setting,
+    get_files_root,
+    has_configured_files_root,
     load_settings,
+    set_files_root,
     save_settings,
     set_active_drum_path_preset,
+    ensure_managed_files_root,
 )
 
 # Helpers for unified socket connect
@@ -102,6 +106,8 @@ def handle_connect():
 @app.route("/")
 def index():
     """Landing page with app links and rendered README content."""
+    if not has_configured_files_root():
+        return redirect(url_for("onboarding_page"))
     page_html = render_template("index.html", version=__version__)
     readme_block = (
         '<section id="readme-content" style="margin-top: 2rem;">'
@@ -114,12 +120,16 @@ def index():
 @app.route("/auditionr")
 def auditionr_page():
     """Auditionr single-page app."""
+    if not has_configured_files_root():
+        return redirect(url_for("onboarding_page"))
     return render_template("auditionr.html", version=__version__)
 
 
 @app.route("/beatbuildr")
 def beatbuildr_page():
     """Beatbuildr single-page app."""
+    if not has_configured_files_root():
+        return redirect(url_for("onboarding_page"))
     return render_template("beatbuildr.html", version=__version__)
 
 
@@ -127,18 +137,34 @@ def beatbuildr_page():
 def settings_page():
     """Settings page for editing config/settings.json values."""
     settings = load_settings()
+    settings["FILES_ROOT"] = get_files_root(settings=settings, allow_default=False)
     return render_template("settings.html", version=__version__, settings=settings)
+
+
+@app.route("/onboarding")
+def onboarding_page():
+    """First-run onboarding to select the dronmakr files root."""
+    settings = load_settings()
+    return render_template(
+        "onboarding.html",
+        version=__version__,
+        files_root=get_files_root(settings=settings, allow_default=False),
+    )
 
 
 @app.route("/collections")
 def collections_page():
     """Collections view: saved folder as waveform grid with filters and packaging sidebar."""
+    if not has_configured_files_root():
+        return redirect(url_for("onboarding_page"))
     return render_template("collections.html", version=__version__)
 
 
 @app.route("/folysplitr")
 def folysplitr_page():
     """Folysplitr recorder + split workflow page."""
+    if not has_configured_files_root():
+        return redirect(url_for("onboarding_page"))
     return render_template("folysplitr.html", version=__version__)
 
 
@@ -214,7 +240,9 @@ app.add_url_rule(
 @app.route("/api/settings", methods=["GET"])
 def api_settings_get():
     """Return current settings as JSON."""
-    return jsonify(load_settings())
+    settings = load_settings()
+    settings["FILES_ROOT"] = get_files_root(settings=settings, allow_default=False)
+    return jsonify(settings)
 
 
 @app.route("/api/settings", methods=["POST"])
@@ -231,6 +259,11 @@ def api_settings_save():
         if isinstance(v, str):
             if k in DRUM_PATH_KEYS:
                 active_paths[k] = v
+            elif k == "FILES_ROOT":
+                try:
+                    settings["FILES_ROOT"] = set_files_root(v)
+                except ValueError as e:
+                    return jsonify({"error": str(e)}), 400
             else:
                 settings[k] = v
     drum_presets[active_preset] = active_paths
@@ -238,6 +271,22 @@ def api_settings_save():
     settings["ACTIVE_DRUM_PATH_PRESET"] = active_preset
     save_settings(settings)
     return jsonify({"ok": True})
+
+
+@app.route("/api/settings/files-root", methods=["POST"])
+def api_settings_files_root():
+    """Persist files root and ensure required directories exist."""
+    data = request.get_json(silent=True) or {}
+    root = data.get("path")
+    if not isinstance(root, str):
+        return jsonify({"ok": False, "error": "path must be a string"}), 400
+    try:
+        resolved = set_files_root(root)
+    except ValueError as e:
+        return jsonify({"ok": False, "error": str(e)}), 400
+    except OSError as e:
+        return jsonify({"ok": False, "error": f"Could not create folders: {e}"}), 400
+    return jsonify({"ok": True, "path": resolved})
 
 
 @app.route("/api/drum-path-presets", methods=["GET"])
@@ -410,6 +459,7 @@ def run(
     debug: bool = False,
     port: int = 3766,
     open_browser: bool = True,
+    host: str = "0.0.0.0",
 ):
     """Run the unified web server (auditionr + beatbuildr on one port)."""
     global DEBUG_WEBSOCKETS
@@ -420,6 +470,8 @@ def run(
 
     print(get_version())
     ensure_settings()
+    if has_configured_files_root():
+        ensure_managed_files_root()
     ensure_beat_patterns()
     ensure_drum_kits()
     ensure_recordings_dir()
@@ -447,7 +499,7 @@ def run(
     def _run_server():
         socketio.run(
             app,
-            host="0.0.0.0",
+            host=host,
             port=int(port),
             debug=debug,
             use_reloader=False,
@@ -465,3 +517,34 @@ def run(
             pass
 
     server_thread.join()
+
+
+def start_server(
+    debug: bool = False,
+    port: int = 3766,
+    host: str = "127.0.0.1",
+) -> threading.Thread:
+    """Start web server in a background thread for desktop runtime."""
+    global DEBUG_WEBSOCKETS
+    DEBUG_WEBSOCKETS = debug
+    ensure_settings()
+    if has_configured_files_root():
+        ensure_managed_files_root()
+    ensure_beat_patterns()
+    ensure_drum_kits()
+    ensure_recordings_dir()
+    ensure_splits_dirs()
+    ensure_all_sample_caches()
+
+    def _run_server():
+        socketio.run(
+            app,
+            host=host,
+            port=int(port),
+            debug=debug,
+            use_reloader=False,
+        )
+
+    server_thread = threading.Thread(target=_run_server, daemon=True)
+    server_thread.start()
+    return server_thread

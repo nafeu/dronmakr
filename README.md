@@ -110,6 +110,44 @@ python dronmakr.py
 
 Open `http://0.0.0.0:3766` in a browser.
 
+### Desktop runtime (local app window)
+
+You can run the desktop window mode locally (same backend, wrapped with `pywebview`):
+
+```sh
+python dronmakr.py desktop
+```
+
+On first run, you will be prompted to choose a `dronmakr-files` location. The app creates and manages:
+
+- `presets/`, `midi/`, `exports/`, `archive/`, `saved/`
+- `recordings/`, `splits/`, `trash/`, `packages/`, `history/`
+- `temp/`, `vst-preset-files/`, `config/`
+
+You can change this location later from the Settings page (`FILES_ROOT`).
+
+### Desktop build artifacts (PyInstaller)
+
+macOS/Linux:
+
+```sh
+./build_desktop.sh
+```
+
+Windows (PowerShell):
+
+```powershell
+.\build_desktop.ps1
+```
+
+Build outputs are produced in `dist/` and compressed artifacts in `dist-artifacts/`.
+
+### Desktop updates (GitHub Releases)
+
+- Desktop mode checks GitHub Releases at startup.
+- If a newer version is found, the app prompts to download the matching platform artifact.
+- The downloaded package is revealed in your file manager for install/relaunch.
+
 #### Web UI previews
 
 ##### auditionr

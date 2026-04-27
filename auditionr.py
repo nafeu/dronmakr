@@ -44,6 +44,7 @@ from processing_actions import (
     apply_post_processing_actions,
 )
 from generate_sample import apply_effect, generate_drone_sample, generate_beat_sample
+from paths import get_managed_file
 from generate_transition import (
     generate_closh_sample,
     generate_kickboom_sample,
@@ -605,7 +606,7 @@ def reveal_in_explorer():
 
 def _run_generate_drone():
     """One iteration of drone generation. Returns list of paths. Logs to server stdout."""
-    if not os.path.exists("presets/presets.json"):
+    if not os.path.exists(get_managed_file("presets", "presets.json")):
         raise FileNotFoundError(
             "presets/presets.json does not exist, please run build_preset.py"
         )
@@ -752,7 +753,7 @@ def _run_generate_transition(subcommand: str):
 
 
 def _load_beat_patterns_for_generate() -> dict:
-    path = "config/beat-patterns.json"
+    path = get_managed_file("config", "beat-patterns.json")
     if not os.path.exists(path):
         return {}
     with open(path, "r") as f:
@@ -761,7 +762,7 @@ def _load_beat_patterns_for_generate() -> dict:
 
 
 def _load_drum_kits_for_generate() -> dict:
-    path = "config/drum-kits.json"
+    path = get_managed_file("config", "drum-kits.json")
     if not os.path.exists(path):
         return {}
     with open(path, "r") as f:
