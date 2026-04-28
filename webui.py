@@ -6,10 +6,13 @@ import eventlet
 
 eventlet.monkey_patch()
 
+import subprocess
+import sys
 import threading
 import time
 import webbrowser
 from pathlib import Path
+from urllib.parse import urlparse
 
 from flask import Flask, jsonify, redirect, render_template, request, send_from_directory, url_for
 from flask_socketio import SocketIO
@@ -462,6 +465,130 @@ register_beatbuildr(app, socketio)
 register_folysplitr(app)
 
 
+def _browser_url_origins(url: str) -> tuple[str, ...]:
+    """Return URL origin(s) to match existing tabs (localhost vs 127.0.0.1 aliases)."""
+    parsed = urlparse(url)
+    if not parsed.scheme or not parsed.netloc:
+        return (url.rstrip("/"),)
+    scheme = parsed.scheme
+    host = (parsed.hostname or "").lower()
+    port = parsed.port
+    if port:
+        primary = f"{scheme}://{host}:{port}".rstrip("/")
+        alts = [primary]
+        if host == "localhost":
+            alts.append(f"{scheme}://127.0.0.1:{port}".rstrip("/"))
+        elif host == "127.0.0.1":
+            alts.append(f"{scheme}://localhost:{port}".rstrip("/"))
+    else:
+        primary = f"{scheme}://{parsed.netloc}".rstrip("/")
+        alts = [primary]
+    out: list[str] = []
+    for a in alts:
+        if a not in out:
+            out.append(a)
+    return tuple(out)
+
+
+def _macos_applescript_escape(text: str) -> str:
+    return text.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def _macos_open_or_focus_tab_chrome(open_url: str, prefix_a: str, prefix_b: str) -> bool:
+    script = f'''
+    tell application "Google Chrome"
+      if (count of windows) = 0 then
+        make new window with properties {{URL:"{_macos_applescript_escape(open_url)}"}}
+        activate
+        return
+      end if
+      repeat with w in windows
+        set i to 1
+        repeat with t in tabs of w
+          set u to URL of t as text
+          if u starts with "{_macos_applescript_escape(prefix_a)}" or u starts with "{_macos_applescript_escape(prefix_b)}" then
+            set active tab index of w to i
+            set index of w to 1
+            activate
+            return
+          end if
+          set i to i + 1
+        end repeat
+      end repeat
+      tell window 1 to make new tab with properties {{URL:"{_macos_applescript_escape(open_url)}"}}
+      activate
+    end tell
+    '''
+    try:
+        r = subprocess.run(
+            ["osascript", "-e", script],
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+        return r.returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+def _macos_open_or_focus_tab_safari(open_url: str, prefix_a: str, prefix_b: str) -> bool:
+    script = f'''
+    tell application "Safari"
+      if (count of windows) = 0 then
+        make new document
+        set URL of current tab of front window to "{_macos_applescript_escape(open_url)}"
+        activate
+        return
+      end if
+      repeat with w in windows
+        repeat with t in tabs of w
+          set u to URL of t as text
+          if u starts with "{_macos_applescript_escape(prefix_a)}" or u starts with "{_macos_applescript_escape(prefix_b)}" then
+            set current tab of w to t
+            set index of w to 1
+            activate
+            return
+          end if
+        end repeat
+      end repeat
+      tell front window to make new tab with properties {{URL:"{_macos_applescript_escape(open_url)}"}}
+      activate
+    end tell
+    '''
+    try:
+        r = subprocess.run(
+            ["osascript", "-e", script],
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+        return r.returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+def open_webui_in_browser(url: str) -> None:
+    """
+    Open the web UI in the default browser, reusing a tab when possible.
+    On macOS, tries Google Chrome then Safari to activate a tab whose URL starts
+    with the same origin (including localhost vs 127.0.0.1). Otherwise falls back
+    to the standard library (typically opens a new tab).
+    """
+    origins = _browser_url_origins(url)
+    prefix_a = origins[0]
+    prefix_b = origins[1] if len(origins) > 1 else origins[0]
+
+    if sys.platform == "darwin":
+        if _macos_open_or_focus_tab_chrome(url, prefix_a, prefix_b):
+            return
+        if _macos_open_or_focus_tab_safari(url, prefix_a, prefix_b):
+            return
+    try:
+        webbrowser.open(url, new=0, autoraise=True)
+    except Exception:
+        pass
+
+
 def run(
     debug: bool = False,
     port: int = 3766,
@@ -518,10 +645,7 @@ def run(
     time.sleep(1)
 
     if open_browser and server_thread.is_alive():
-        try:
-            webbrowser.open(f"http://localhost:{port}")
-        except Exception:
-            pass
+        open_webui_in_browser(f"http://localhost:{port}")
 
     server_thread.join()
 
