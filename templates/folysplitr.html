@@ -762,7 +762,7 @@
             <div class="splitr-collection-preview-row">
               <div class="splitr-collection-input-wrap">
                 <label class="splitr-organize-field-label" for="splitr-collection-name">Collection name</label>
-                <input type="text" id="splitr-collection-name" placeholder="collection name" value="folysplitr"
+                <input type="text" id="splitr-collection-name" placeholder="collection name" value="split"
                   autocomplete="off" spellcheck="false" autocapitalize="none" autocorrect="off">
               </div>
               <div class="splitr-organize-preview-inline">
@@ -1207,7 +1207,7 @@
     }
 
     function sanitizeSplitrCollectionName(raw) {
-      return restrictSplitrCollectionNameInputValue(raw) || "folysplitr";
+      return restrictSplitrCollectionNameInputValue(raw) || "split";
     }
 
     function onSplitrCollectionNameInput() {
@@ -1220,8 +1220,8 @@
       updateSplitrOrganizePreview();
     }
 
-    function buildSplitrOrganizeStem(destination, collectionSanitized) {
-      return destination + "__" + collectionSanitized;
+    function buildSplitrOrganizeExportPreviewFilename(destination, collectionSanitized) {
+      return "folysplitr___" + destination + "___" + collectionSanitized + "___0.wav";
     }
 
     function updateSplitrOrganizePreview() {
@@ -1232,7 +1232,7 @@
         return c !== "trash" && c !== "archive";
       });
       var dest = cats.length ? cats[0] : "kick";
-      var line = buildSplitrOrganizeStem(dest, coll) + "__0.wav";
+      var line = buildSplitrOrganizeExportPreviewFilename(dest, coll);
       el.textContent = line;
       el.title = line;
     }

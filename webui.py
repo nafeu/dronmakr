@@ -49,7 +49,7 @@ from utils import (
     get_auditionr_folder_counts,
     get_latest_exports,
     get_presets,
-    get_saved_files,
+    get_collections_files,
     trash_selected_saved_samples,
     validate_saved_paths_for_package,
 )
@@ -170,14 +170,14 @@ def folysplitr_page():
 
 @app.route("/api/collections/saved")
 def api_collections_saved():
-    """Return list of saved .wav files with name, path, and type for collections."""
-    return jsonify({"files": get_saved_files()})
+    """Return saved/ plus splits/**/*.wav for collections (name, path, type)."""
+    return jsonify({"files": get_collections_files()})
 
 
 @app.route("/api/collections/package-selection", methods=["POST"])
 def api_collections_package_selection():
     """
-    Validate a list of /saved/... paths for packaging (must exist on disk).
+    Validate a list of /saved/... or /splits/... paths for packaging (must exist on disk).
     Used by the collections packaging UI and future export flows.
     """
     data = request.get_json(silent=True) or {}
@@ -206,6 +206,7 @@ def api_collections_export_package():
         include_generated=bool(data.get("includeGeneratedName")),
         include_style=bool(data.get("includeStyle")),
         trash_on_save=bool(data.get("trashOnSave")),
+        package_layout=data.get("packageLayout") or data.get("package_layout"),
     )
     if not result.get("ok"):
         return jsonify(result), 400

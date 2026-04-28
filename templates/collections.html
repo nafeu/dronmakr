@@ -252,7 +252,8 @@
     /* Waveform box outline color by sample type */
     .collection-card.type-drone,
     .collection-card.type-bass,
-    .collection-card.type-other {
+    .collection-card.type-other,
+    .collection-card.type-folysplitr {
       border-color: var(--primary);
     }
 
@@ -600,6 +601,33 @@
       cursor: pointer;
     }
 
+    .packaging-layout-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      margin-top: 0.35rem;
+      padding-top: 0.65rem;
+      border-top: 1px solid var(--theme-a);
+    }
+
+    .packaging-radio {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.72rem;
+      color: var(--primary);
+      cursor: pointer;
+    }
+
+    .packaging-radio input {
+      width: 1rem;
+      height: 1rem;
+      margin: 0;
+      accent-color: var(--primary);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
     .packaging-preview-label {
       font-size: 0.65rem;
       color: var(--theme-a);
@@ -815,6 +843,7 @@
           <option value="closh">closh</option>
           <option value="drumpattern">drumpattern</option>
           <option value="transition">transition</option>
+          <option value="folysplitr">folysplitr</option>
           <option value="other">other</option>
         </select>
         <button type="button" id="select-all-packaging" class="collections-filter-btn collections-filter-btn--icon"
@@ -858,15 +887,30 @@
           <div class="packaging-options-row">
             <label class="packaging-option">
               <input type="checkbox" id="pkg-include-generated">
-              <span>Include generated name</span>
+              <span>Include collection name or generated name</span>
             </label>
             <label class="packaging-option">
               <input type="checkbox" id="pkg-include-style">
-              <span>Include style meta</span>
+              <span>Include style information</span>
             </label>
             <label class="packaging-option">
               <input type="checkbox" id="pkg-trash-on-save">
               <span>Trash source files on save</span>
+            </label>
+          </div>
+          <div class="packaging-layout-group">
+            <div class="packaging-preview-label">Package layout</div>
+            <label class="packaging-radio">
+              <input type="radio" name="pkg-layout" value="root" checked>
+              <span>Save all in root folder</span>
+            </label>
+            <label class="packaging-radio">
+              <input type="radio" name="pkg-layout" value="collection">
+              <span>Create collection subfolders</span>
+            </label>
+            <label class="packaging-radio">
+              <input type="radio" name="pkg-layout" value="style">
+              <span>Create style subfolders</span>
             </label>
           </div>
           <div>
@@ -917,6 +961,7 @@
       function progressColorForType(type) {
         if (type === "drumpattern") return "#016fb9";
         if (type === "transition" || type === "closh") return "#ec4e20";
+        if (type === "folysplitr") return "#2e8b57";
         return "#ff9505";
       }
 
@@ -931,7 +976,9 @@
         var nameQ = (document.getElementById("filter-name").value || "").trim().toLowerCase();
         var typeQ = (document.getElementById("filter-type").value || "").trim();
         return allFiles.filter(function (f) {
-          if (typeQ && f.type !== typeQ) return false;
+          if (typeQ === "folysplitr") {
+            if (f.name.toLowerCase().indexOf("folysplitr") === -1) return false;
+          } else if (typeQ && f.type !== typeQ) return false;
           if (nameQ && f.name.toLowerCase().indexOf(nameQ) === -1) return false;
           return true;
         });
@@ -1037,6 +1084,42 @@
         return chunks.filter(function (x) { return x !== ""; }).join("__");
       }
 
+      function getPackagingLayoutMode() {
+        var el = document.querySelector("input[name=\"pkg-layout\"]:checked");
+        return el ? el.value : "root";
+      }
+
+      function subfolderKeyForStem(stem, layoutMode) {
+        if (layoutMode !== "collection" && layoutMode !== "style") {
+          return "";
+        }
+        var p = parseSampleStem(stem);
+        var raw = layoutMode === "collection"
+          ? String(p.generated || "").trim()
+          : String(p.style || "").trim();
+        if (!raw) return "";
+        var slug = normalizePiece(raw);
+        return slug || "";
+      }
+
+      function countSubfolderKeys(stems, layoutMode) {
+        var counts = {};
+        stems.forEach(function (stem) {
+          var k = subfolderKeyForStem(stem, layoutMode);
+          if (k) counts[k] = (counts[k] || 0) + 1;
+        });
+        return counts;
+      }
+
+      function relativeExportPathPreview(pkg, auth, sampleIndex, totalSelected, stem, includeGen, includeStyle, layoutMode, allStems) {
+        var base = buildExportBasenamePreview(pkg, auth, sampleIndex, totalSelected, stem, includeGen, includeStyle) + ".wav";
+        if (layoutMode === "root") return base;
+        var counts = countSubfolderKeys(allStems, layoutMode);
+        var key = subfolderKeyForStem(stem, layoutMode);
+        if (key && counts[key] >= 2) return key + "/" + base;
+        return base;
+      }
+
       function selectedStemsSorted() {
         var names = [];
         selectedForPackage.forEach(function (meta) {
@@ -1054,6 +1137,7 @@
         var auth = document.getElementById("pkg-author-name").value;
         var ig = document.getElementById("pkg-include-generated").checked;
         var ist = document.getElementById("pkg-include-style").checked;
+        var layoutMode = getPackagingLayoutMode();
         var stems = selectedStemsSorted();
         var n = Math.max(selectedForPackage.size, 1);
         if (stems.length === 0) {
@@ -1062,7 +1146,7 @@
         var lines = [];
         var show = Math.min(2, stems.length);
         for (var i = 0; i < show; i++) {
-          lines.push(buildExportBasenamePreview(pkg, auth, i + 1, Math.max(selectedForPackage.size, 1), stems[i], ig, ist) + ".wav");
+          lines.push(relativeExportPathPreview(pkg, auth, i + 1, Math.max(selectedForPackage.size, 1), stems[i], ig, ist, layoutMode, stems));
         }
         if (selectedForPackage.size > 2) {
           lines.push("… +" + (selectedForPackage.size - 2) + " more");
@@ -1141,7 +1225,8 @@
           authorName: document.getElementById("pkg-author-name").value.trim(),
           includeGeneratedName: document.getElementById("pkg-include-generated").checked,
           includeStyle: document.getElementById("pkg-include-style").checked,
-          trashOnSave: document.getElementById("pkg-trash-on-save").checked
+          trashOnSave: document.getElementById("pkg-trash-on-save").checked,
+          packageLayout: getPackagingLayoutMode()
         };
         var btn = document.getElementById("pkg-export-btn");
         btn.disabled = true;
@@ -1269,6 +1354,11 @@
           updatePackagingPreview();
         });
       });
+      document.querySelectorAll("input[name=\"pkg-layout\"]").forEach(function (radio) {
+        radio.addEventListener("change", function () {
+          updatePackagingPreview();
+        });
+      });
       document.getElementById("collections-error-close").addEventListener("click", hideCollectionsError);
       document.getElementById("pkg-export-btn").addEventListener("click", function () {
         if (needsPackagingExportConfirm()) {
@@ -1307,7 +1397,7 @@
         if (slice.length === 0) {
           var empty = document.createElement("div");
           empty.className = "collections-empty";
-          empty.textContent = total === 0 ? "No saved samples. Save files from auditionr to see them here." : "No matches for the current filters.";
+          empty.textContent = total === 0 ? "No samples yet. Save from auditionr or add files via folysplitr to see them here." : "No matches for the current filters.";
           empty.style.gridColumn = "1 / -1";
           grid.appendChild(empty);
         } else {

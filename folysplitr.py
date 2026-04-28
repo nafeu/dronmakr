@@ -41,6 +41,8 @@ SPLIT_CATEGORIES = [
     "synth",
     "instrument",
     "misc",
+    "vox",
+    "soundscape",
     "trash",
     "archive",
 ]
@@ -102,22 +104,26 @@ def _resolve_audio_path(file_ref: str) -> Path | None:
 
 
 def _sanitize_folysplitr_collection_name(name: str) -> str:
-    """Lowercase kebab-case: only a-z and hyphen; default folysplitr."""
+    """Lowercase kebab-case: only a-z and hyphen; default split."""
     s = (name or "").strip().lower()
     s = re.sub(r"[^a-z-]+", "-", s)
     s = re.sub(r"-+", "-", s).strip("-")
-    return s or "folysplitr"
+    return s or "split"
 
 
-def _organize_export_stem(destination: str, collection_kebab: str) -> str:
-    return f"{destination}__{collection_kebab}"
+def _folysplitr_export_stem_prefix(destination: str, collection_kebab: str) -> str:
+    """Stem before numeric id: folysplitr___kick___split___"""
+    return f"folysplitr___{destination}___{collection_kebab}___"
 
 
-def _next_organize_export_path(target_dir: Path, stem_base: str, ext: str) -> Path:
-    """Pick stem_base__0, stem_base__1, ... ext in target_dir (ext includes dot)."""
+def _next_organize_export_path(
+    target_dir: Path, destination: str, collection_kebab: str, ext: str
+) -> Path:
+    """Pick folysplitr___dest___collection___0, ___1, ... in target_dir."""
+    prefix = _folysplitr_export_stem_prefix(destination, collection_kebab)
     n = 0
     while True:
-        candidate = target_dir / f"{stem_base}__{n}{ext}"
+        candidate = target_dir / f"{prefix}{n}{ext}"
         if not candidate.exists():
             return candidate
         n += 1
@@ -394,12 +400,11 @@ def register_folysplitr(app):
                 target = target_dir / f"{stem}-{counter}{ext_legacy}"
                 counter += 1
         else:
-            raw_collection = params.get("collectionName", params.get("collection_name", "folysplitr"))
+            raw_collection = params.get("collectionName", params.get("collection_name", "split"))
             collection_kebab = _sanitize_folysplitr_collection_name(
-                raw_collection if isinstance(raw_collection, str) else "folysplitr"
+                raw_collection if isinstance(raw_collection, str) else "split"
             )
-            stem_base = _organize_export_stem(destination, collection_kebab)
-            target = _next_organize_export_path(target_dir, stem_base, ext)
+            target = _next_organize_export_path(target_dir, destination, collection_kebab, ext)
 
         shutil.move(str(source), str(target))
         return jsonify({"ok": True, "file": _public_audio_payload(target)})

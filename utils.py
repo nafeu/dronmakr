@@ -26,6 +26,7 @@ PRESETS_DIR = get_managed_dir("presets")
 PRESETS_PATH = get_managed_file("config", "presets.json")
 LEGACY_PRESETS_PATH = get_managed_file("presets", "presets.json")
 SAVED_DIR = get_managed_dir("saved")
+SPLITS_DIR = get_managed_dir("splits")
 TEMP_DIR = get_managed_dir("temp")
 TRASH_DIR = get_managed_dir("trash")
 PACKAGES_DIR = get_managed_dir("packages")
@@ -1068,8 +1069,10 @@ def resolve_presets_index_path() -> str:
 
 
 def _infer_saved_sample_type(filename):
-    """Infer sample type from filename for collections display. Returns one of: drone, bass, closh, drumpattern, transition, other."""
+    """Infer sample type from filename for collections display. Returns one of: drone, bass, closh, drumpattern, transition, folysplitr, other."""
     name = filename.replace(".wav", "").lower()
+    if "folysplitr" in name:
+        return "folysplitr"
     if name.startswith("drumpattern___"):
         return "drumpattern"
     if name.startswith("transition"):
@@ -1098,12 +1101,48 @@ def get_saved_files():
     ]
 
 
+def _infer_splits_entry_type(stem: str) -> str:
+    """Type for a file under splits/: folysplitr if marked in name, else other."""
+    if "folysplitr" in (stem or "").lower():
+        return "folysplitr"
+    return "other"
+
+
+def get_splits_wav_files():
+    """Return list of .wav files under splits/ (recursive) for collections."""
+    if not os.path.isdir(SPLITS_DIR):
+        return []
+    out: list[dict] = []
+    for root, _, files in os.walk(SPLITS_DIR):
+        for f in files:
+            if not f.lower().endswith(".wav"):
+                continue
+            abs_path = os.path.join(root, f)
+            rel = os.path.relpath(abs_path, SPLITS_DIR).replace(os.sep, "/")
+            path = f"/splits/{rel}"
+            stem = f.replace(".wav", "")
+            out.append(
+                {
+                    "name": stem,
+                    "path": path,
+                    "type": _infer_splits_entry_type(stem),
+                }
+            )
+    out.sort(key=lambda x: x["name"].lower())
+    return out
+
+
+def get_collections_files():
+    """All samples shown in collections: saved/ plus every .wav under splits/ (recursive)."""
+    return list(get_saved_files()) + list(get_splits_wav_files())
+
+
 def validate_saved_paths_for_package(paths: list) -> tuple[list[dict], list[str]]:
     """
-    Given URL paths like /saved/foo.wav, return entries that exist in saved/
-    (same shape as get_saved_files) and a list of paths that were not allowed.
+    Given URL paths like /saved/foo.wav or /splits/kick/foo.wav, return entries
+    that exist (same shape as get_collections_files) and paths that were not allowed.
     """
-    allowed = {item["path"]: item for item in get_saved_files()}
+    allowed = {item["path"]: item for item in get_collections_files()}
     valid: list[dict] = []
     invalid: list[str] = []
     seen: set[str] = set()
@@ -1167,6 +1206,40 @@ def _normalize_name_piece(text: str) -> str:
     return s.strip("_")
 
 
+def _package_layout_mode(raw: str | None) -> str:
+    """Normalize API layout value: root | collection | style."""
+    m = (raw or "").strip().lower()
+    if m in ("collection", "collection_subfolders", "generated", "generated_subfolders"):
+        return "collection"
+    if m in ("style", "style_subfolders"):
+        return "style"
+    return "root"
+
+
+def _export_subfolder_slug_from_stem(stem: str, mode: str) -> str:
+    """Normalized folder slug from sample stem; empty if none (file stays in package root)."""
+    if mode not in ("collection", "style"):
+        return ""
+    gen, style, _uid = parse_saved_sample_stem(stem)
+    raw = (gen or "").strip() if mode == "collection" else (style or "").strip()
+    if not raw:
+        return ""
+    slug = _normalize_name_piece(raw)
+    if not slug or slug in (".", "..") or os.sep in slug or "/" in slug or "\\" in slug:
+        return ""
+    return slug
+
+
+def _export_subfolder_counts(ordered: list[dict], mode: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for entry in ordered:
+        slug = _export_subfolder_slug_from_stem(entry.get("name") or "", mode)
+        if not slug:
+            continue
+        counts[slug] = counts.get(slug, 0) + 1
+    return counts
+
+
 def build_package_export_basename(
     package_name: str,
     author_name: str,
@@ -1202,17 +1275,35 @@ def build_package_export_basename(
     return "__".join([c for c in chunks if c])
 
 
-def _saved_url_to_abs(path: str) -> str | None:
-    if not isinstance(path, str) or not path.startswith("/saved/"):
+def _collections_audio_url_to_abs(path: str) -> str | None:
+    """Resolve /saved/... or /splits/... URL to an absolute file path under managed roots."""
+    if not isinstance(path, str):
         return None
-    rel = path[len("/saved/") :].lstrip("/")
-    if not rel or ".." in rel.split("/"):
+    if path.startswith("/saved/"):
+        rel = path[len("/saved/") :].lstrip("/")
+        if not rel or ".." in rel.split("/"):
+            return None
+        base = os.path.abspath(SAVED_DIR)
+        root = SAVED_DIR
+    elif path.startswith("/splits/"):
+        rel = path[len("/splits/") :].lstrip("/")
+        if not rel or ".." in rel.split("/"):
+            return None
+        base = os.path.abspath(SPLITS_DIR)
+        root = SPLITS_DIR
+    else:
         return None
-    base = os.path.abspath(SAVED_DIR)
-    abs_path = os.path.abspath(os.path.join(SAVED_DIR, rel))
+    abs_path = os.path.abspath(os.path.join(root, rel))
     if not abs_path.startswith(base + os.sep) and abs_path != base:
         return None
     return abs_path if os.path.isfile(abs_path) else None
+
+
+def _saved_url_to_abs(path: str) -> str | None:
+    """Legacy alias: only /saved/ paths (use _collections_audio_url_to_abs for both)."""
+    if not isinstance(path, str) or not path.startswith("/saved/"):
+        return None
+    return _collections_audio_url_to_abs(path)
 
 
 def _unique_dest_path(dest_path: str) -> str:
@@ -1248,7 +1339,7 @@ def trash_selected_saved_samples(paths_in_order: list[str]) -> dict:
     if not isinstance(paths_in_order, list) or not paths_in_order:
         return {"ok": False, "error": "Select at least one sample to trash."}
 
-    allowed = {item["path"]: item for item in get_saved_files()}
+    allowed = {item["path"]: item for item in get_collections_files()}
     ordered: list[dict] = []
     seen: set[str] = set()
     for p in paths_in_order:
@@ -1268,7 +1359,7 @@ def trash_selected_saved_samples(paths_in_order: list[str]) -> dict:
     trashed: list[str] = []
     try:
         for entry in ordered:
-            abs_src = _saved_url_to_abs(entry["path"])
+            abs_src = _collections_audio_url_to_abs(entry["path"])
             if not abs_src:
                 return {"ok": False, "error": f"Could not resolve path: {entry['path']}"}
             base_fn = os.path.basename(abs_src)
@@ -1289,9 +1380,10 @@ def export_collections_package(
     include_generated: bool,
     include_style: bool,
     trash_on_save: bool,
+    package_layout: str | None = None,
 ) -> dict:
     """
-    Copy selected /saved/... files into packages/{author}_-_{package}/ with
+    Copy selected /saved/... or /splits/... files into packages/{author}_-_{package}/ with
     renamed baselines. Optionally move originals to trash/ after successful copy.
 
     paths_in_order: URL paths in export order (1..n numbering follows this list).
@@ -1305,7 +1397,7 @@ def export_collections_package(
     if not isinstance(paths_in_order, list) or not paths_in_order:
         return {"ok": False, "error": "Select at least one sample to export."}
 
-    allowed = {item["path"]: item for item in get_saved_files()}
+    allowed = {item["path"]: item for item in get_collections_files()}
     ordered: list[dict] = []
     seen: set[str] = set()
     for p in paths_in_order:
@@ -1331,6 +1423,10 @@ def export_collections_package(
         }
 
     os.makedirs(package_dir, exist_ok=True)
+    layout = _package_layout_mode(package_layout)
+    subfolder_counts = (
+        _export_subfolder_counts(ordered, layout) if layout != "root" else {}
+    )
     total = len(ordered)
     exported_names: list[str] = []
     abs_sources: list[str] = []
@@ -1339,7 +1435,7 @@ def export_collections_package(
         for i, entry in enumerate(ordered):
             src_url = entry["path"]
             stem = entry["name"]
-            abs_src = _saved_url_to_abs(src_url)
+            abs_src = _collections_audio_url_to_abs(src_url)
             if not abs_src:
                 raise ValueError(f"Could not resolve path: {src_url}")
             abs_sources.append(abs_src)
@@ -1352,9 +1448,20 @@ def export_collections_package(
                 include_generated,
                 include_style,
             )
-            dest = _unique_dest_path(os.path.join(package_dir, base + ".wav"))
+            slug = _export_subfolder_slug_from_stem(stem, layout)
+            if (
+                layout != "root"
+                and slug
+                and subfolder_counts.get(slug, 0) >= 2
+            ):
+                dest_subdir = os.path.join(package_dir, slug)
+                os.makedirs(dest_subdir, exist_ok=True)
+            else:
+                dest_subdir = package_dir
+            dest = _unique_dest_path(os.path.join(dest_subdir, base + ".wav"))
             shutil.copy2(abs_src, dest)
-            exported_names.append(os.path.basename(dest))
+            rel_out = os.path.relpath(dest, package_dir).replace("\\", "/")
+            exported_names.append(rel_out)
 
         if trash_on_save:
             os.makedirs(TRASH_DIR, exist_ok=True)
