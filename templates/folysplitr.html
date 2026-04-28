@@ -431,6 +431,114 @@
       align-items: center;
     }
 
+    .splitr-organize-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      margin-bottom: 0.5rem;
+      padding: 0.65rem 0 0.35rem;
+      border-top: 1px solid var(--theme-a);
+    }
+
+    .splitr-collection-preview-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 0.75rem 1rem;
+    }
+
+    .splitr-collection-input-wrap {
+      flex: 1 1 11rem;
+      min-width: 8rem;
+    }
+
+    .splitr-organize-form label.splitr-organize-field-label {
+      font-size: 0.65rem;
+      color: var(--theme-b);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      display: block;
+      margin-bottom: 0.2rem;
+    }
+
+    .splitr-organize-form input[type="text"] {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.4rem 0.5rem;
+      font-family: inherit;
+      font-size: 0.74rem;
+      background: #121211;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      color: var(--primary);
+    }
+
+    .splitr-organize-form input[type="text"]:focus {
+      outline: none;
+      border-color: var(--theme-b);
+    }
+
+    .splitr-organize-preview-inline {
+      flex: 1 1 12rem;
+      min-width: 10rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .splitr-organize-preview-label {
+      font-size: 0.65rem;
+      color: var(--theme-b);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .splitr-organize-preview-line {
+      margin: 0;
+      padding: 0.4rem 0.5rem;
+      font-family: inherit;
+      font-size: 0.72rem;
+      color: var(--theme-b);
+      background: #0a0a0a;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.35;
+    }
+
+    .splitr-organize-feedback {
+      font-size: 0.76rem;
+      color: var(--theme-b);
+      line-height: 1.5;
+      margin: 0;
+      padding: 0.45rem 0.55rem;
+      border-radius: 4px;
+      background: rgba(1, 111, 185, 0.12);
+      border: 1px solid rgba(1, 111, 185, 0.35);
+    }
+
+    .splitr-organize-feedback strong {
+      color: var(--primary);
+      font-weight: 600;
+    }
+
+    .splitr-organize-feedback[hidden] {
+      display: none !important;
+    }
+
+    .splitr-organize-reveal-link {
+      color: var(--theme-b);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+      cursor: pointer;
+    }
+
+    .splitr-organize-reveal-link:hover {
+      color: var(--primary);
+    }
+
     .splitr-actions {
       margin-bottom: 1rem;
     }
@@ -649,8 +757,23 @@
           <div id="splitr-select-tools" class="splitr-select-tools"></div>
           <div class="splitr-subtitle">process audio</div>
           <div id="splitr-actions" class="splitr-actions"></div>
-          <div class="splitr-subtitle">move sample into</div>
+          <div class="splitr-subtitle">categorize edited audio</div>
+          <div id="splitr-organize-form" class="splitr-organize-form">
+            <div class="splitr-collection-preview-row">
+              <div class="splitr-collection-input-wrap">
+                <label class="splitr-organize-field-label" for="splitr-collection-name">Collection name</label>
+                <input type="text" id="splitr-collection-name" placeholder="collection name" value="folysplitr"
+                  autocomplete="off" spellcheck="false" autocapitalize="none" autocorrect="off">
+              </div>
+              <div class="splitr-organize-preview-inline">
+                <span class="splitr-organize-preview-label">Export name preview</span>
+                <p class="splitr-organize-preview-line" id="splitr-organize-preview" aria-live="polite" title="">—</p>
+              </div>
+            </div>
+          </div>
+          <div class="splitr-subtitle">move into folder</div>
           <div id="splitr-organize" class="splitr-organize"></div>
+          <div id="splitr-organize-feedback" class="splitr-organize-feedback" hidden aria-live="polite"></div>
         </div>
         <div id="splitr-empty" class="empty-state">No recordings available yet. Record a sample first.</div>
       </div>
@@ -1077,16 +1200,112 @@
       updateSplitActionButtonState();
     }
 
+    function restrictSplitrCollectionNameInputValue(raw) {
+      var s = String(raw || "").trim().toLowerCase().replace(/[^a-z-]+/g, "-").replace(/-+/g, "-");
+      /* Strip leading hyphens only; trailing "-" must stay so kebab (e.g. "my-") can be typed. */
+      return s.replace(/^-+/g, "");
+    }
+
+    function sanitizeSplitrCollectionName(raw) {
+      return restrictSplitrCollectionNameInputValue(raw) || "folysplitr";
+    }
+
+    function onSplitrCollectionNameInput() {
+      var el = document.getElementById("splitr-collection-name");
+      if (!el) return;
+      var next = restrictSplitrCollectionNameInputValue(el.value);
+      if (el.value !== next) {
+        el.value = next;
+      }
+      updateSplitrOrganizePreview();
+    }
+
+    function buildSplitrOrganizeStem(destination, collectionSanitized) {
+      return destination + "__" + collectionSanitized;
+    }
+
+    function updateSplitrOrganizePreview() {
+      var el = document.getElementById("splitr-organize-preview");
+      if (!el) return;
+      var coll = sanitizeSplitrCollectionName(document.getElementById("splitr-collection-name").value);
+      var cats = splitCategories.filter(function (c) {
+        return c !== "trash" && c !== "archive";
+      });
+      var dest = cats.length ? cats[0] : "kick";
+      var line = buildSplitrOrganizeStem(dest, coll) + "__0.wav";
+      el.textContent = line;
+      el.title = line;
+    }
+
+    function clearSplitrOrganizeFeedback() {
+      var el = document.getElementById("splitr-organize-feedback");
+      if (!el) return;
+      el.hidden = true;
+      el.textContent = "";
+    }
+
+    function setSplitrOrganizeSuccess(file) {
+      var el = document.getElementById("splitr-organize-feedback");
+      if (!el || !file) return;
+      var name = file.filename || "";
+      if (!name && file.path) {
+        var parts = file.path.split("/");
+        name = parts[parts.length - 1] || "file.wav";
+      }
+      if (!name) name = "file.wav";
+      var relPath = file.path || "";
+      el.hidden = false;
+      el.textContent = "";
+      el.appendChild(document.createTextNode("Saved "));
+      var strong = document.createElement("strong");
+      strong.textContent = name;
+      el.appendChild(strong);
+      el.appendChild(document.createTextNode(" successfully. "));
+      var link = document.createElement("a");
+      link.href = "#";
+      link.className = "splitr-organize-reveal-link";
+      link.textContent = "Show in folder";
+      link.setAttribute("aria-label", "Reveal " + name + " in file manager");
+      link.addEventListener("click", function (e) {
+        e.preventDefault();
+        revealSplitrInFileManager(relPath);
+      });
+      el.appendChild(link);
+    }
+
+    async function revealSplitrInFileManager(relPath) {
+      if (!relPath) return;
+      try {
+        var res = await fetch("/api/folysplitr/reveal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: relPath })
+        });
+        var data = await res.json();
+        if (!res.ok || !data.ok) {
+          setStatus(data.error || "Could not open folder.", true);
+        }
+      } catch (e) {
+        setStatus(e.message || "Could not open folder.", true);
+      }
+    }
+
     async function splitrOrganize(destination) {
       var item = getActiveSplitrItem();
       if (!item) return;
+      clearSplitrOrganizeFeedback();
+      var body = { path: item.path, destination: destination };
+      if (destination !== "trash" && destination !== "archive") {
+        body.collectionName = document.getElementById("splitr-collection-name").value;
+      }
       var res = await fetch("/api/folysplitr/organize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: item.path, destination: destination })
+        body: JSON.stringify(body)
       });
       var payload = await res.json();
       if (!res.ok || !payload.ok) throw new Error(payload.error || "Move failed");
+      setSplitrOrganizeSuccess(payload.file);
       await refreshRecordingsList();
       var current = payload.file && payload.file.path;
       if (current) {
@@ -1139,13 +1358,13 @@
           btn.addEventListener("click", async function () {
             try {
               await splitrOrganize(category);
-              setStatus("Moved to " + category + ".");
             } catch (e) {
               setStatus(e.message || "Move failed.", true);
             }
           });
           splitrOrganizeEl.appendChild(btn);
         });
+      updateSplitrOrganizePreview();
     }
 
     function renderSplitrActions() {
@@ -1863,7 +2082,6 @@
     splitrTrashBtn.addEventListener("click", async function () {
       try {
         await splitrOrganize("trash");
-        setStatus("Moved to trash.");
       } catch (e) {
         setStatus(e.message || "Move failed.", true);
       }
@@ -1871,7 +2089,6 @@
     splitrArchiveBtn.addEventListener("click", async function () {
       try {
         await splitrOrganize("archive");
-        setStatus("Moved to archive.");
       } catch (e) {
         setStatus(e.message || "Move failed.", true);
       }
@@ -1899,6 +2116,10 @@
     }
 
     document.addEventListener("DOMContentLoaded", function () {
+      var splitrCollectionNameInput = document.getElementById("splitr-collection-name");
+      if (splitrCollectionNameInput) {
+        splitrCollectionNameInput.addEventListener("input", onSplitrCollectionNameInput);
+      }
       boot();
       if (window.__pageReady) window.__pageReady();
     });

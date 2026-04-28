@@ -6,8 +6,10 @@ from __future__ import annotations
 
 import mimetypes
 import os
+import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import hashlib
 from datetime import datetime
@@ -97,6 +99,28 @@ def _resolve_audio_path(file_ref: str) -> Path | None:
     if not str(resolved).startswith(str(ROOT_DIR.resolve())):
         return None
     return resolved
+
+
+def _sanitize_folysplitr_collection_name(name: str) -> str:
+    """Lowercase kebab-case: only a-z and hyphen; default folysplitr."""
+    s = (name or "").strip().lower()
+    s = re.sub(r"[^a-z-]+", "-", s)
+    s = re.sub(r"-+", "-", s).strip("-")
+    return s or "folysplitr"
+
+
+def _organize_export_stem(destination: str, collection_kebab: str) -> str:
+    return f"{destination}__{collection_kebab}"
+
+
+def _next_organize_export_path(target_dir: Path, stem_base: str, ext: str) -> Path:
+    """Pick stem_base__0, stem_base__1, ... ext in target_dir (ext includes dot)."""
+    n = 0
+    while True:
+        candidate = target_dir / f"{stem_base}__{n}{ext}"
+        if not candidate.exists():
+            return candidate
+        n += 1
 
 
 def _public_audio_payload(file_path: Path) -> dict:
@@ -357,15 +381,52 @@ def register_folysplitr(app):
             return jsonify({"ok": False, "error": "Invalid split destination"}), 400
         target_dir = SPLITS_DIR / destination
         target_dir.mkdir(parents=True, exist_ok=True)
-        target_name = secure_filename(source.name) or source.name
-        target = target_dir / target_name
-        counter = 2
-        while target.exists():
-            stem, ext = os.path.splitext(target_name)
-            target = target_dir / f"{stem}-{counter}{ext}"
-            counter += 1
+        ext = source.suffix.lower() if source.suffix else ".wav"
+        if ext not in _ALLOWED_EXTENSIONS:
+            ext = ".wav"
+
+        if destination in ("trash", "archive"):
+            target_name = secure_filename(source.name) or source.name
+            target = target_dir / target_name
+            counter = 2
+            while target.exists():
+                stem, ext_legacy = os.path.splitext(target_name)
+                target = target_dir / f"{stem}-{counter}{ext_legacy}"
+                counter += 1
+        else:
+            raw_collection = params.get("collectionName", params.get("collection_name", "folysplitr"))
+            collection_kebab = _sanitize_folysplitr_collection_name(
+                raw_collection if isinstance(raw_collection, str) else "folysplitr"
+            )
+            stem_base = _organize_export_stem(destination, collection_kebab)
+            target = _next_organize_export_path(target_dir, stem_base, ext)
+
         shutil.move(str(source), str(target))
         return jsonify({"ok": True, "file": _public_audio_payload(target)})
+
+    @app.route("/api/folysplitr/reveal", methods=["POST"])
+    def api_folysplitr_reveal():
+        """Reveal a recordings/ or splits/ file in the system file manager."""
+        params = request.get_json(silent=True) or {}
+        source = _resolve_audio_path(params.get("path", ""))
+        if source is None or not source.exists() or not source.is_file():
+            return jsonify({"ok": False, "error": "File does not exist"}), 404
+        file_path = str(source.resolve())
+        try:
+            if sys.platform == "darwin":
+                subprocess.run(["open", "-R", file_path], check=True)
+            elif sys.platform == "win32":
+                subprocess.run(
+                    ["explorer", "/select," + file_path],
+                    check=True,
+                    shell=False,
+                )
+            else:
+                parent = os.path.dirname(file_path)
+                subprocess.run(["xdg-open", parent], check=True)
+        except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+            return jsonify({"ok": False, "error": f"Could not reveal file: {exc}"}), 500
+        return jsonify({"ok": True})
 
     @app.route("/api/folysplitr/split", methods=["POST"])
     def api_folysplitr_split():
