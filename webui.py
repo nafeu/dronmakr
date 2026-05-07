@@ -19,7 +19,6 @@ import sys
 import threading
 import time
 import webbrowser
-from urllib.parse import urlparse
 
 from flask import Flask, jsonify, redirect, render_template, request, send_from_directory, url_for
 from flask_socketio import SocketIO
@@ -462,124 +461,52 @@ register_beatbuildr(app, socketio)
 register_folysplitr(app)
 
 
-def _browser_url_origins(url: str) -> tuple[str, ...]:
-    """Return URL origin(s) to match existing tabs (localhost vs 127.0.0.1 aliases)."""
-    parsed = urlparse(url)
-    if not parsed.scheme or not parsed.netloc:
-        return (url.rstrip("/"),)
-    scheme = parsed.scheme
-    host = (parsed.hostname or "").lower()
-    port = parsed.port
-    if port:
-        primary = f"{scheme}://{host}:{port}".rstrip("/")
-        alts = [primary]
-        if host == "localhost":
-            alts.append(f"{scheme}://127.0.0.1:{port}".rstrip("/"))
-        elif host == "127.0.0.1":
-            alts.append(f"{scheme}://localhost:{port}".rstrip("/"))
-    else:
-        primary = f"{scheme}://{parsed.netloc}".rstrip("/")
-        alts = [primary]
-    out: list[str] = []
-    for a in alts:
-        if a not in out:
-            out.append(a)
-    return tuple(out)
-
-
-def _macos_applescript_escape(text: str) -> str:
-    return text.replace("\\", "\\\\").replace('"', '\\"')
-
-
-def _macos_open_or_focus_tab_chrome(open_url: str, prefix_a: str, prefix_b: str) -> bool:
-    script = f'''
-    tell application "Google Chrome"
-      if (count of windows) = 0 then
-        make new window with properties {{URL:"{_macos_applescript_escape(open_url)}"}}
-        activate
-        return
-      end if
-      repeat with w in windows
-        set i to 1
-        repeat with t in tabs of w
-          set u to URL of t as text
-          if u starts with "{_macos_applescript_escape(prefix_a)}" or u starts with "{_macos_applescript_escape(prefix_b)}" then
-            set active tab index of w to i
-            set index of w to 1
-            activate
-            return
-          end if
-          set i to i + 1
-        end repeat
-      end repeat
-      tell window 1 to make new tab with properties {{URL:"{_macos_applescript_escape(open_url)}"}}
-      activate
-    end tell
-    '''
+def _macos_default_http_handler_app_path() -> str | None:
+    """Path to the .app bundle Launch Services uses for http: URLs (macOS only)."""
+    if sys.platform != "darwin":
+        return None
     try:
-        r = subprocess.run(
-            ["osascript", "-e", script],
-            capture_output=True,
-            text=True,
-            timeout=20,
-        )
-        return r.returncode == 0
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-
-
-def _macos_open_or_focus_tab_safari(open_url: str, prefix_a: str, prefix_b: str) -> bool:
-    script = f'''
-    tell application "Safari"
-      if (count of windows) = 0 then
-        make new document
-        set URL of current tab of front window to "{_macos_applescript_escape(open_url)}"
-        activate
-        return
-      end if
-      repeat with w in windows
-        repeat with t in tabs of w
-          set u to URL of t as text
-          if u starts with "{_macos_applescript_escape(prefix_a)}" or u starts with "{_macos_applescript_escape(prefix_b)}" then
-            set current tab of w to t
-            set index of w to 1
-            activate
-            return
-          end if
-        end repeat
-      end repeat
-      tell front window to make new tab with properties {{URL:"{_macos_applescript_escape(open_url)}"}}
-      activate
-    end tell
-    '''
+        from AppKit import NSWorkspace  # type: ignore[import-not-found]
+        from Foundation import NSURL  # type: ignore[import-not-found]
+    except ImportError:
+        return None
     try:
-        r = subprocess.run(
-            ["osascript", "-e", script],
-            capture_output=True,
-            text=True,
-            timeout=20,
-        )
-        return r.returncode == 0
-    except (OSError, subprocess.TimeoutExpired):
-        return False
+        ws = NSWorkspace.sharedWorkspace()
+        ns_url = NSURL.URLWithString_("http://127.0.0.1/")
+        app_url = ws.URLForApplicationToOpenURL_(ns_url)
+        if app_url is None:
+            return None
+        return str(app_url.path())
+    except Exception:
+        return None
 
 
 def open_webui_in_browser(url: str) -> None:
     """
-    Open the web UI in the default browser, reusing a tab when possible.
-    On macOS, tries Google Chrome then Safari to activate a tab whose URL starts
-    with the same origin (including localhost vs 127.0.0.1). Otherwise falls back
-    to the standard library (typically opens a new tab).
-    """
-    origins = _browser_url_origins(url)
-    prefix_a = origins[0]
-    prefix_b = origins[1] if len(origins) > 1 else origins[0]
+    Open the web UI in the system default browser.
 
+    On macOS, uses ``open URL`` so Launch Services picks the user's default
+    (Chrome, Safari, etc.). Logs the resolved http handler when available.
+    """
     if sys.platform == "darwin":
-        if _macos_open_or_focus_tab_chrome(url, prefix_a, prefix_b):
-            return
-        if _macos_open_or_focus_tab_safari(url, prefix_a, prefix_b):
-            return
+        handler = _macos_default_http_handler_app_path()
+        if handler:
+            print(with_prompt(f"Default http browser: {handler}"), flush=True)
+        try:
+            result = subprocess.run(
+                ["open", url],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+            if result.returncode == 0:
+                print(with_prompt(f"Opened via: open {url!r}"), flush=True)
+                return
+            err = (result.stderr or result.stdout or "").strip()
+            if err:
+                print(with_prompt(f"open(1) failed ({result.returncode}): {err}"), flush=True)
+        except (OSError, subprocess.TimeoutExpired) as e:
+            print(with_prompt(f"open(1) error: {e}"), flush=True)
     try:
         webbrowser.open(url, new=0, autoraise=True)
     except Exception:

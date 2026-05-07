@@ -23,7 +23,9 @@ from updater import UpdateInfo, check_for_update, download_update, reveal_file
 from webui import open_webui_in_browser, start_server
 
 _HEALTH_PATH = "/api/health"
-_ICON_REL = Path("static") / "branding" / "favicon-32x32.png"
+_SOURCE_ICON = Path("static") / "branding" / "favicon-32x32.png"
+_TRAY_ICON_LIGHT_MODE = Path("static") / "branding" / "tray-icon-light-mode.png"
+_TRAY_ICON_DARK_MODE = Path("static") / "branding" / "tray-icon-dark-mode.png"
 
 
 def _find_open_port() -> int:
@@ -40,10 +42,39 @@ def _bundle_root() -> Path:
     return Path(__file__).resolve().parent
 
 
+def _macos_menu_bar_prefers_white_icon() -> bool:
+    """Dark menu bar (macOS dark / dark-aqua chrome) needs a white glyph."""
+    if sys.platform != "darwin":
+        return False
+    try:
+        from Foundation import NSUserDefaults  # type: ignore[import-not-found]
+    except ImportError:
+        return False
+    try:
+        style = NSUserDefaults.standardUserDefaults().stringForKey_("AppleInterfaceStyle")
+        return style == "Dark"
+    except Exception:
+        return False
+
+
+def _tray_icon_path() -> Path:
+    root = _bundle_root()
+    if sys.platform == "darwin":
+        if _macos_menu_bar_prefers_white_icon():
+            return root / _TRAY_ICON_LIGHT_MODE
+        return root / _TRAY_ICON_DARK_MODE
+    # Windows/Linux: typical systray background is light; use black glyph.
+    return root / _TRAY_ICON_DARK_MODE
+
+
 def _load_tray_image() -> Image.Image:
-    path = _bundle_root() / _ICON_REL
+    path = _tray_icon_path()
     if path.is_file():
         with Image.open(path) as im:
+            return im.copy()
+    fallback = _bundle_root() / _SOURCE_ICON
+    if fallback.is_file():
+        with Image.open(fallback) as im:
             return im.copy()
     img = Image.new("RGBA", (64, 64), (255, 149, 5, 255))
     return img
@@ -234,7 +265,7 @@ def main(debug: bool = False) -> None:
         icon_.stop()
 
     items: list[MenuItem] = [
-        MenuItem("Open in browser", open_home),
+        MenuItem("Open dronmakr in browser", open_home),
         MenuItem("Settings", open_settings),
     ]
     if getattr(sys, "frozen", False):
