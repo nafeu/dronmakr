@@ -1,0 +1,38 @@
+<header id="toolbar">
+  <div class="toolbar-left">
+    <a href="{{ url_for('index') }}" id="toolbar-brand" title="dronmakr">
+      <img src="/static/branding/android-chrome-192x192.png" alt="">
+    </a>
+    <nav class="toolbar-nav" aria-label="Apps">
+      <a href="{{ url_for('auditionr_page') }}"
+        class="{% if request.path.startswith('/auditionr') %}active{% endif %}"
+        title="auditionr" aria-label="auditionr">
+        <i class="fa-solid fa-wave-square" aria-hidden="true"></i>
+        <span class="toolbar-nav-label">auditionr</span>
+      </a>
+      <a href="{{ url_for('beatbuildr_page') }}"
+        class="{% if request.path.startswith('/beatbuildr') %}active{% endif %}"
+        title="beatbuildr" aria-label="beatbuildr">
+        <i class="fa-solid fa-drum" aria-hidden="true"></i>
+        <span class="toolbar-nav-label">beatbuildr</span>
+      </a>
+      <a href="{{ url_for('collections_page') }}"
+        class="{% if request.path.startswith('/collections') %}active{% endif %}"
+        title="collections" aria-label="collections">
+        <i class="fa-solid fa-folder-open" aria-hidden="true"></i>
+        <span class="toolbar-nav-label">collections</span>
+      </a>
+      <a href="{{ url_for('folysplitr_page') }}"
+        class="{% if request.path.startswith('/folysplitr') %}active{% endif %}"
+        title="folysplitr" aria-label="folysplitr">
+        <i class="fa-solid fa-seedling" aria-hidden="true"></i>
+        <span class="toolbar-nav-label">folysplitr</span>
+      </a>
+    </nav>
+  </div>
+  <a href="{{ url_for('settings_page') }}"
+    class="toolbar-settings{% if request.path.startswith('/settings') %} active{% endif %}"
+    title="Settings" aria-label="Settings">
+    <i class="fa-solid fa-gear" aria-hidden="true"></i>
+  </a>
+</header>

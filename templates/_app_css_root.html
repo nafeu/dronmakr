@@ -10,6 +10,21 @@
       /* Width of the row/sample label column (header + each row); change to resize. */
       --grid-label-width: 280px;
       --grid-meta-col-width: 122px;
+      /* Set on auditionr only; used by loading overlay + layout */
+      --subtoolbar-offset: 0px;
+    }
+
+    html {
+      /*scrollbar-gutter: stable;*/
+    }
+
+    body {
+      margin: 0;
+      background-color: var(--secondary);
+      color: var(--primary);
+      font-family: "Fragment Mono", monospace;
+      padding: 1rem;
+      padding-top: calc(var(--toolbar-height) + 0.5rem);
     }
 
     #toolbar-brand {
@@ -20,6 +35,7 @@
       height: 28px;
       flex-shrink: 0;
       text-decoration: none;
+      border-radius: 4px;
       overflow: hidden;
     }
 
@@ -33,4 +49,113 @@
     #toolbar-brand:focus,
     #toolbar-brand:visited {
       text-decoration: none;
+    }
+
+    #toolbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--toolbar-height);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding: 0 1rem;
+      padding-right: 0.5rem;
+      background-color: var(--secondary);
+      z-index: 1000;
+      box-sizing: border-box;
+    }
+
+    .toolbar-left {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      min-width: 0;
+      flex: 1;
+    }
+
+    .toolbar-nav {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.85rem;
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+
+    .toolbar-nav a {
+      color: var(--primary);
+      text-decoration: none;
+      padding: 0.35rem 0.65rem;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      background: var(--theme-a);
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      white-space: nowrap;
+    }
+
+    .toolbar-nav a:hover {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.15);
+    }
+
+    .toolbar-nav a:active {
+      background: rgba(255, 149, 5, 0.25);
+    }
+
+    .toolbar-nav a.active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: var(--secondary);
+    }
+
+    .toolbar-nav a.active:hover {
+      background: #ff8900;
+      border-color: #ff8900;
+    }
+
+    .toolbar-nav a.active:active {
+      background: #e67e00;
+      border-color: #e67e00;
+    }
+
+    .toolbar-settings {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      text-decoration: none;
+      padding: 0.35rem 0.65rem;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      background: var(--theme-a);
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+      flex-shrink: 0;
+    }
+
+    .toolbar-settings:hover {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.15);
+    }
+
+    .toolbar-settings.active {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: var(--secondary);
+    }
+
+    @media (max-width: 760px) {
+      .toolbar-nav-label {
+        display: none;
+      }
+
+      .toolbar-nav a {
+        padding: 0.35rem 0.45rem;
+        gap: 0;
+      }
     }

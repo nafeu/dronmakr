@@ -1,0 +1,23 @@
+<aside id="auditionr-actions-chip" class="auditionr-floating-chip" aria-label="Queue and library actions">
+  <span class="auditionr-chip-seg auditionr-chip-stat" id="status-queue" title="Files in queue to review">
+    <i class="fa-solid fa-inbox" aria-hidden="true"></i>
+    <span id="queue-num">0</span>
+  </span>
+  <span class="auditionr-chip-sep" aria-hidden="true"></span>
+  <span class="auditionr-chip-seg auditionr-chip-stat" id="status-saved" title="Saved files">
+    <i class="fa-solid fa-heart" aria-hidden="true"></i>
+    <span id="saved-num">0</span>
+  </span>
+  <span class="auditionr-chip-sep" aria-hidden="true"></span>
+  <button type="button" class="auditionr-chip-seg auditionr-chip-btn" id="unarchive-samples-button" title="Unarchive samples"
+    onclick="unarchiveSamples()" aria-label="Unarchive samples">
+    <i class="fa-solid fa-box-open" aria-hidden="true"></i>
+    <span id="unarchive-count">0</span>
+  </button>
+  <span class="auditionr-chip-sep" aria-hidden="true"></span>
+  <button type="button" class="auditionr-chip-seg auditionr-chip-btn" id="empty-trash-button" title="Empty trash"
+    onclick="emptyTrash()" aria-label="Empty trash">
+    <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+    <span id="trash-count">0</span>
+  </button>
+</aside>
