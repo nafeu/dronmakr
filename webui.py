@@ -111,7 +111,9 @@ def index():
     """Landing page with app links and rendered README content."""
     if not has_configured_files_root():
         return redirect(url_for("onboarding_page"))
-    page_html = render_template("index.html", version=__version__)
+    page_html = render_template(
+        "index.html", version=__version__, pagename="home"
+    )
     readme_block = (
         '<section id="readme-content" style="margin-top: 2rem;">'
         f"{README_HTML}"
@@ -125,7 +127,9 @@ def auditionr_page():
     """Auditionr single-page app."""
     if not has_configured_files_root():
         return redirect(url_for("onboarding_page"))
-    return render_template("auditionr.html", version=__version__)
+    return render_template(
+        "auditionr.html", version=__version__, pagename="auditionr"
+    )
 
 
 @app.route("/beatbuildr")
@@ -133,7 +137,9 @@ def beatbuildr_page():
     """Beatbuildr single-page app."""
     if not has_configured_files_root():
         return redirect(url_for("onboarding_page"))
-    return render_template("beatbuildr.html", version=__version__)
+    return render_template(
+        "beatbuildr.html", version=__version__, pagename="beatbuildr"
+    )
 
 
 @app.route("/settings")
@@ -141,7 +147,12 @@ def settings_page():
     """Settings page for editing config/settings.json values."""
     settings = load_settings()
     settings["FILES_ROOT"] = get_files_root(settings=settings, allow_default=False)
-    return render_template("settings.html", version=__version__, settings=settings)
+    return render_template(
+        "settings.html",
+        version=__version__,
+        pagename="settings",
+        settings=settings,
+    )
 
 
 @app.route("/onboarding")
@@ -151,6 +162,7 @@ def onboarding_page():
     return render_template(
         "onboarding.html",
         version=__version__,
+        pagename="onboarding",
         files_root=get_files_root(settings=settings, allow_default=False),
     )
 
@@ -160,7 +172,9 @@ def collections_page():
     """Collections view: saved folder as waveform grid with filters and packaging sidebar."""
     if not has_configured_files_root():
         return redirect(url_for("onboarding_page"))
-    return render_template("collections.html", version=__version__)
+    return render_template(
+        "collections.html", version=__version__, pagename="collections"
+    )
 
 
 @app.route("/folysplitr")
@@ -168,7 +182,9 @@ def folysplitr_page():
     """Folysplitr recorder + split workflow page."""
     if not has_configured_files_root():
         return redirect(url_for("onboarding_page"))
-    return render_template("folysplitr.html", version=__version__)
+    return render_template(
+        "folysplitr.html", version=__version__, pagename="folysplitr"
+    )
 
 
 @app.route("/api/collections/saved")
