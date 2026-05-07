@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 import os
+
+if __name__ == "__main__":
+    os.environ["DRONMAKR_ASYNC_MODE"] = "threading"
+
 import socket
 import subprocess
 import sys
@@ -182,7 +186,7 @@ def _maybe_offer_update_on_startup() -> None:
     _install_after_download_confirm(update)
 
 
-def main() -> None:
+def main(debug: bool = False) -> None:
     print("[desktop] launcher: startup begin", flush=True)
     port = _find_open_port()
     print(f"[desktop] launcher: selected port {port}", flush=True)
@@ -190,7 +194,12 @@ def main() -> None:
     launch_url = base_url if has_configured_files_root() else f"{base_url}/onboarding"
     settings_url = f"{base_url}/settings"
 
-    start_server(debug=False, port=port, host="127.0.0.1", build_sample_cache=True)
+    start_server(
+        debug=debug,
+        port=port,
+        host="127.0.0.1",
+        build_sample_cache=True,
+    )
     print("[desktop] launcher: waiting for backend readiness", flush=True)
     ready = _wait_for_health(base_url, timeout_s=30.0)
 

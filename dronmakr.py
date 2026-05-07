@@ -7,6 +7,9 @@ import random
 import builtins
 import subprocess
 
+if len(sys.argv) >= 2 and sys.argv[1] == "desktop":
+    os.environ["DRONMAKR_ASYNC_MODE"] = "threading"
+
 import typer
 
 from settings import ensure_settings
@@ -1739,9 +1742,16 @@ def webui(
 
 
 @cli.command()
-def desktop():
+def desktop(
+    debug: bool = typer.Option(
+        False,
+        "--debug",
+        "-d",
+        help="Verbose stderr logging (DEBUG) for the embedded web server",
+    ),
+):
     """Run menu bar / system tray launcher (local server + open in browser)."""
-    run_desktop_app()
+    run_desktop_app(debug=debug)
 
 
 @cli.command()

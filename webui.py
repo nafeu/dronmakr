@@ -2,10 +2,18 @@
 Unified Flask web UI for dronmakr: serves auditionr and beatbuildr on a single server.
 """
 
-import eventlet
+import os
 
-eventlet.monkey_patch()
+# Tray/desktop launcher runs the server in a worker thread while pystray owns the main
+# thread. Eventlet + monkey_patch in that layout deadlocks/hangs HTTP; use threading mode.
+_DESKTOP_THREADING = os.environ.get("DRONMAKR_ASYNC_MODE", "").lower() == "threading"
 
+if not _DESKTOP_THREADING:
+    import eventlet
+
+    eventlet.monkey_patch()
+
+import logging
 import subprocess
 import sys
 import threading
@@ -60,7 +68,10 @@ from processing_actions import get_processing_actions_payload
 from folysplitr import ensure_recordings_dir, ensure_splits_dirs, register_folysplitr
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
-socketio = SocketIO(app, cors_allowed_origins="*")
+if _DESKTOP_THREADING:
+    socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
+else:
+    socketio = SocketIO(app, cors_allowed_origins="*")
 
 DEBUG_WEBSOCKETS = False
 
@@ -636,15 +647,55 @@ def run(
     server_thread.join()
 
 
+_DESKTOP_STDERR_LOGGING_CONFIGURED = False
+
+
+def configure_desktop_process_logging(level: int = logging.INFO) -> None:
+    """
+    Send Werkzeug/Flask/Socket.IO logs to stderr so desktop mode shows HTTP
+    and engine traffic in the terminal (or PyInstaller console window).
+    """
+    global _DESKTOP_STDERR_LOGGING_CONFIGURED
+    if _DESKTOP_STDERR_LOGGING_CONFIGURED:
+        return
+    _DESKTOP_STDERR_LOGGING_CONFIGURED = True
+
+    fmt = "%(asctime)s %(levelname)s [%(name)s] %(message)s"
+    datefmt = "%H:%M:%S"
+    root = logging.getLogger()
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setFormatter(logging.Formatter(fmt, datefmt=datefmt))
+    root.addHandler(handler)
+    root.setLevel(level)
+    for name in (
+        "werkzeug",
+        "flask.app",
+        "engineio.server",
+        "socketio.server",
+        "geventwebsocket.handler",
+    ):
+        logging.getLogger(name).setLevel(level)
+
+
 def start_server(
     debug: bool = False,
     port: int = 3766,
     host: str = "127.0.0.1",
     build_sample_cache: bool = True,
+    stderr_logging: bool = True,
 ) -> threading.Thread:
     """Start web server in a background thread for desktop runtime."""
     global DEBUG_WEBSOCKETS
     DEBUG_WEBSOCKETS = debug
+    if stderr_logging:
+        configure_desktop_process_logging(
+            logging.DEBUG if debug else logging.INFO
+        )
+        app.logger.setLevel(logging.DEBUG if debug else logging.INFO)
+        print(
+            with_prompt("[desktop] process logging: stderr (werkzeug/flask/socketio)"),
+            flush=True,
+        )
     print(with_prompt("[desktop] startup: ensure settings"))
     ensure_settings()
     if has_configured_files_root():
@@ -673,6 +724,7 @@ def start_server(
                 port=int(port),
                 debug=debug,
                 use_reloader=False,
+                allow_unsafe_werkzeug=True,
             )
         except Exception as e:
             print(with_prompt(f"[desktop] server thread error: {e}"))
