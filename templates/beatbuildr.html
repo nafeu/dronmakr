@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>dronmakr v{{ version }} ■ {{ pagename }}</title>
+  <title>{{ pagename }} | dronmakr v{{ version }}</title>
   <script src="/static/vendor/socket.io.min.js"></script>
   {% include '_app_favicons.html' %}
   <link rel="stylesheet" href="/static/vendor/fonts/fragment-mono.css">
@@ -1756,7 +1756,7 @@
   {% include '_loading_overlay.html' %}
   {% include '_app_toolbar.html' %}
 
-  <main id="app-layout">
+  <main id="app-layout" class="page-layout">
     <section id="main-column">
       <div class="controls-tab">
         <button type="button" id="play-toggle" class="transport-btn transport-btn-primary" title="Play">

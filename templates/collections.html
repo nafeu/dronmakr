@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>dronmakr v{{ version }} ■ {{ pagename }}</title>
+  <title>{{ pagename }} | dronmakr v{{ version }}</title>
   <script src="/static/vendor/wavesurfer.min.js"></script>
   {% include '_app_favicons.html' %}
   <link rel="stylesheet" href="/static/vendor/fonts/fragment-mono.css">
@@ -712,7 +712,7 @@
   {% include '_loading_overlay.html' %}
   {% include '_app_toolbar.html' %}
 
-  <main id="collections-layout">
+  <main id="collections-layout" class="page-layout">
     <section class="collections-main">
       <div class="collections-filters">
         <input type="text" id="filter-name" placeholder="Filter by sample name…" aria-label="Filter by name">

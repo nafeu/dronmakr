@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>dronmakr v{{ version }} ■ {{ pagename }}</title>
+  <title>{{ pagename }} | dronmakr v{{ version }}</title>
   <script src="/static/vendor/socket.io.min.js"></script>
   <script src="/static/vendor/wavesurfer.min.js"></script>
   {% include '_app_favicons.html' %}
@@ -12,6 +12,16 @@
   <link rel="stylesheet" href="/static/vendor/fontawesome/css/all.min.css">
   <style>
     {% include '_app_css_root.html' %}
+
+    body {
+      height: 100%;
+      box-sizing: border-box;
+      overflow: hidden;
+      padding-top: calc(var(--toolbar-height) + 0.1rem);
+      padding-right: 0;
+      display: flex;
+      flex-direction: column;
+    }
 
     /* Themed scrollbar */
     * {
@@ -112,19 +122,23 @@
       width: 100%;
       max-width: 100%;
       gap: 0;
-      height: calc(100vh - var(--toolbar-height) - 2rem);
+      flex: 1 1 auto;
+      min-height: 0;
     }
 
     .auditionr-main {
       flex: 1 1 auto;
       min-width: 0;
-      height: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
       overflow: hidden;
     }
 
     #waveforms {
       max-width: 100%;
-      height: 100%;
+      flex: 1 1 auto;
+      min-height: 0;
       overflow-y: auto;
       padding-right: 0.5rem;
       box-sizing: border-box;
@@ -152,11 +166,9 @@
     }
 
     .auditionr-sidebar {
-      width: 500px;
-      flex-shrink: 0;
-      border-left: 1px solid var(--theme-a);
-      height: 100vh;
-      background: #050505;
+      width: 600px;
+      flex: 1 1 auto;
+      min-height: 0;
       display: flex;
       flex-direction: column;
       transition: width 0.2s ease, min-width 0.2s ease;
@@ -167,11 +179,15 @@
       width: 0;
       min-width: 0;
       border-left-width: 0;
+      overflow: hidden;
     }
 
     .auditionr-sidebar-content {
       min-width: 500px;
+      flex: 1 1 auto;
+      min-height: 0;
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
     .sidebar-toggle {
@@ -202,10 +218,15 @@
       flex-shrink: 0;
       min-width: 20px;
       height: 100%;
+      min-height: 0;
+      align-self: stretch;
+      display: flex;
+      flex-direction: column;
     }
 
     .generatr-card {
       padding: 1rem;
+      padding-left: 2rem;
     }
 
     .generatr-card h2 {
@@ -554,7 +575,7 @@
   {% include '_app_toolbar.html' %}
   {% include '_auditionr_subtoolbar.html' %}
 
-  <div class="auditionr-layout">
+  <div class="auditionr-layout page-layout">
     <div class="auditionr-main">
       <main id="waveforms">
         <div id="waveform-container"></div>
