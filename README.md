@@ -110,9 +110,9 @@ python dronmakr.py
 
 Open `http://0.0.0.0:3766` in a browser.
 
-### Desktop runtime (local app window)
+### Desktop runtime (menu bar / tray + local server)
 
-You can run the desktop window mode locally (same backend, wrapped with `pywebview`):
+You can run the desktop launcher locally: it starts the same Flask server in the background and shows a **menu bar** icon (macOS) or **system tray** icon (Windows). Use the menu to **Open in browser** or open **Settings** directly. There is no embedded webview; the UI runs in your default browser.
 
 ```sh
 python dronmakr.py desktop
@@ -125,6 +125,8 @@ On first run, you will be prompted to choose a `dronmakr-files` location. The ap
 - `temp/`, `vst-preset-files/`, `config/`
 
 You can change this location later from the Settings page (`FILES_ROOT`).
+
+On **Linux**, the tray icon depends on your desktop environment (GTK AppIndicator / `libappindicator` or compatible packages may be required for `pystray`).
 
 ### Desktop build artifacts (PyInstaller)
 
@@ -144,7 +146,7 @@ Build outputs are produced in `dist/` and compressed artifacts in `dist-artifact
 
 ### Desktop updates (GitHub Releases)
 
-- Desktop mode checks GitHub Releases at startup.
+- The **packaged** desktop app checks GitHub Releases at startup (and offers **Check for updates…** in the tray/menu).
 - If a newer version is found, the app prompts to download the matching platform artifact.
 - The downloaded package is revealed in your file manager for install/relaunch.
 

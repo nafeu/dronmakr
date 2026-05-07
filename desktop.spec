@@ -2,7 +2,7 @@
 
 from PyInstaller.utils.hooks import collect_submodules
 
-hiddenimports = collect_submodules("eventlet")
+hiddenimports = collect_submodules("eventlet") + collect_submodules("pystray")
 
 a = Analysis(
     ["desktop_app.py"],

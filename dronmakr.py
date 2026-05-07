@@ -1740,7 +1740,7 @@ def webui(
 
 @cli.command()
 def desktop():
-    """Run the packaged desktop-style app window (pywebview)."""
+    """Run menu bar / system tray launcher (local server + open in browser)."""
     run_desktop_app()
 
 
