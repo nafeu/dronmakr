@@ -147,6 +147,16 @@ def onboarding_page():
     )
 
 
+@app.route("/about")
+def about_page():
+    """Desktop-friendly about / credits (also valid when opened from the web UI)."""
+    return render_template(
+        "about.html",
+        version=__version__,
+        pagename="about",
+    )
+
+
 @app.route("/collections")
 def collections_page():
     """Collections view: saved folder as waveform grid with filters and packaging sidebar."""

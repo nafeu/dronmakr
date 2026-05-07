@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ pagename }} | dronmakr v{{ version }}</title>
+  {% include '_app_favicons.html' %}
+  <link rel="stylesheet" href="/static/vendor/fonts/fragment-mono.css">
+  <link rel="stylesheet" href="/static/vendor/fontawesome/css/all.min.css">
+  <style>
+    {% include '_app_css_root.html' %}
+
+    main {
+      max-width: 38rem;
+      margin: 0 auto;
+    }
+
+    .about-hero {
+      text-align: center;
+      margin-bottom: 1.75rem;
+    }
+
+    .about-logo {
+      display: block;
+      width: min(88px, 40vw);
+      height: auto;
+      margin: 0 auto 1rem;
+    }
+
+    .about-card {
+      border: 1px solid var(--theme-a);
+      padding: 1rem 1.1rem;
+      border-radius: 4px;
+      background: #050505;
+      font-size: 0.78rem;
+      line-height: 1.65;
+      color: var(--primary);
+    }
+
+    .about-card h1 {
+      margin: 0 0 0.6rem 0;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--theme-a);
+    }
+
+    .about-meta {
+      margin: 1rem 0 0 0;
+      padding-top: 0.85rem;
+      border-top: 1px solid rgba(255, 149, 5, 0.25);
+      font-size: 0.72rem;
+      color: var(--theme-a);
+    }
+
+    .about-meta a {
+      color: var(--primary);
+      text-decoration: none;
+      opacity: 0.92;
+    }
+
+    .about-meta a:hover {
+      opacity: 1;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body>
+  {% include '_loading_overlay.html' %}
+  {% include '_app_toolbar.html' %}
+
+  <main>
+    <header class="about-hero">
+      <img class="about-logo" src="/static/logo.png" alt="dronmakr logo">
+    </header>
+    <article class="about-card">
+      <h1>About dronmakr</h1>
+      <p>
+        dronmakr is a local Python toolkit for <strong>sample generation</strong>, editing,
+        and packaging. Build drones and beats, audition and process audio, organize saved work,
+        and export packs—all from your browser with a Flask UI backed by your own files on disk.
+      </p>
+      <p>
+        This release is version <strong>{{ version }}</strong>. Sources and updates live on GitHub;
+        thanks for using the project.
+      </p>
+      <p class="about-meta">
+        <strong>Author:</strong> Nafeu ·
+        <a href="https://github.com/nafeu/dronmakr" rel="noopener noreferrer" target="_blank">github.com/nafeu/dronmakr</a>
+      </p>
+    </article>
+  </main>
+  <script>document.addEventListener('DOMContentLoaded', function () { if (window.__pageReady) window.__pageReady(); });</script>
+</body>
+
+</html>

@@ -9,6 +9,7 @@ import socket
 import subprocess
 import sys
 import tarfile
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -18,7 +19,7 @@ from pathlib import Path
 from PIL import Image
 from pystray import Icon, Menu, MenuItem
 
-from settings import has_configured_files_root
+from settings import get_files_root, has_configured_files_root
 from updater import UpdateInfo, check_for_update, download_update, reveal_file
 from webui import open_webui_in_browser, start_server
 
@@ -224,6 +225,7 @@ def main(debug: bool = False) -> None:
     base_url = f"http://127.0.0.1:{port}"
     launch_url = base_url if has_configured_files_root() else f"{base_url}/onboarding"
     settings_url = f"{base_url}/settings"
+    about_url = f"{base_url}/about"
 
     start_server(
         debug=debug,
@@ -246,11 +248,40 @@ def main(debug: bool = False) -> None:
 
     image = _load_tray_image()
 
+    health_probe = base_url.rstrip("/") + _HEALTH_PATH
+
+    def tray_status_label(_item: MenuItem) -> str:
+        try:
+            with urllib.request.urlopen(health_probe, timeout=1.2) as resp:
+                if resp.getcode() == 200:
+                    return f"Server running · {base_url}"
+        except Exception:
+            pass
+        return f"Server not responding · {base_url}"
+
     def open_home(icon_: Icon, item_: object) -> None:
         open_webui_in_browser(launch_url)
 
     def open_settings(icon_: Icon, item_: object) -> None:
         open_webui_in_browser(settings_url)
+
+    def open_about(icon_: Icon, item_: object) -> None:
+        open_webui_in_browser(about_url)
+
+    def browse_files(icon_: Icon, item_: object) -> None:
+        root = get_files_root(allow_default=False)
+        if not root or not os.path.isdir(root):
+            return
+        if sys.platform == "darwin":
+            subprocess.Popen(["open", root])
+        elif sys.platform == "win32":
+            os.startfile(root)  # type: ignore[attr-defined]
+        else:
+            subprocess.Popen(["xdg-open", root])
+
+    def browse_files_enabled(_item: MenuItem) -> bool:
+        path = get_files_root(allow_default=False)
+        return bool(path and os.path.isdir(path))
 
     def check_updates(icon_: Icon, item_: object) -> None:
         if not getattr(sys, "frozen", False):
@@ -261,12 +292,30 @@ def main(debug: bool = False) -> None:
             return
         _run_update_download_flow()
 
+    stop_menu_poll = threading.Event()
+
     def on_quit(icon_: Icon, item_: object) -> None:
+        stop_menu_poll.set()
         icon_.stop()
 
+    def poll_menu_for_refresh(tray_icon: Icon) -> None:
+        while not stop_menu_poll.wait(4.0):
+            try:
+                tray_icon.update_menu()
+            except Exception:
+                break
+
     items: list[MenuItem] = [
+        MenuItem(tray_status_label, None, enabled=False),
+        Menu.SEPARATOR,
         MenuItem("Open dronmakr in browser", open_home),
+        MenuItem(
+            "Browse files",
+            browse_files,
+            enabled=browse_files_enabled,
+        ),
         MenuItem("Settings", open_settings),
+        MenuItem("About", open_about),
     ]
     if getattr(sys, "frozen", False):
         items.append(MenuItem("Check for updates…", check_updates))
@@ -280,10 +329,12 @@ def main(debug: bool = False) -> None:
         title="dronmakr",
         menu=menu,
     )
+    threading.Thread(target=poll_menu_for_refresh, args=(icon,), daemon=True).start()
     print("[desktop] launcher: tray/menu bar icon running", flush=True)
     try:
         icon.run()
     finally:
+        stop_menu_poll.set()
         # Eventlet/Flask shutdown is best-effort; exiting the process stops the daemon server thread.
         print("[desktop] launcher: exiting", flush=True)
 
