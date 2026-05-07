@@ -145,9 +145,12 @@
     /* Waveform box outline color by sample type */
     .collection-card.type-drone,
     .collection-card.type-bass,
-    .collection-card.type-other,
-    .collection-card.type-folysplitr {
+    .collection-card.type-other {
       border-color: var(--primary);
+    }
+
+    .collection-card.type-folysplitr {
+      border-color: #2e8b57;
     }
 
     .collection-card.type-drumpattern {
@@ -286,6 +289,16 @@
     .collection-card.type-closh .card-play:hover {
       border-color: var(--theme-c);
       background: rgba(236, 78, 32, 0.15);
+    }
+
+    .collection-card.type-folysplitr .card-name,
+    .collection-card.type-folysplitr .card-duration {
+      color: #2e8b57;
+    }
+
+    .collection-card.type-folysplitr .card-play:hover {
+      border-color: #2e8b57;
+      background: rgba(46, 139, 87, 0.15);
     }
 
     .collections-filters .collections-pagination {
