@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>dronmakr ■ {{ pagename }}</title>
+  <title>dronmakr v{{ version }} ■ {{ pagename }}</title>
   {% include '_app_favicons.html' %}
   <link rel="stylesheet" href="/static/vendor/fonts/fragment-mono.css">
   <link rel="stylesheet" href="/static/vendor/fontawesome/css/all.min.css">
@@ -102,23 +102,31 @@
       margin: 0 auto;
     }
 
-    h1 {
-      font-size: 1.25rem;
-      margin-bottom: 0.5rem;
+    .home-hero {
+      text-align: center;
+      margin-bottom: 2rem;
     }
 
-    p {
+    .home-logo {
+      display: block;
+      width: min(100px, 55vw);
+      height: auto;
+      margin: 0 auto 1rem;
+    }
+
+    .home-intro {
       font-size: 0.85rem;
-      line-height: 1.6;
+      line-height: 1.65;
       color: var(--primary);
-      margin-bottom: 1rem;
+      max-width: 34rem;
+      margin: 0 auto;
+      opacity: 0.92;
     }
 
     .card-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
       gap: 1rem;
-      margin-top: 2rem;
     }
 
     .card {
@@ -148,19 +156,6 @@
     .card p {
       margin: 0;
       font-size: 0.8rem;
-    }
-
-    pre {
-      padding: 1rem;
-      border: 1px solid var(--theme-a);
-      border-radius: 4px;
-      color: var(--theme-d);
-      font-size: 0.8rem;
-      overflow-x: auto;
-    }
-
-    code {
-      color: var(--theme-d);
     }
 
     #app-version-chip {
@@ -210,6 +205,12 @@
   </header>
 
   <main>
+    <header class="home-hero">
+      <img class="home-logo" src="/static/logo.png" alt="dronmakr">
+      <p class="home-intro">
+        dronmakr is a local Python toolkit for sample generation and drum workflows. Generate ideas, edit audio, organize your library, and package exports, all from this browser.
+      </p>
+    </header>
     <div class="card-grid">
       <a href="/auditionr" class="card">
         <h2><i class="fa-solid fa-wave-square"></i> auditionr</h2>
