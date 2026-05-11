@@ -16,17 +16,17 @@
         <i class="fa-solid fa-drum" aria-hidden="true"></i>
         <span class="toolbar-nav-label">beatbuildr</span>
       </a>
-      <a href="{{ url_for('collections_page') }}"
-        class="{% if request.path.startswith('/collections') %}active{% endif %}"
-        title="collections" aria-label="collections">
-        <i class="fa-solid fa-folder-open" aria-hidden="true"></i>
-        <span class="toolbar-nav-label">collections</span>
-      </a>
       <a href="{{ url_for('folysplitr_page') }}"
         class="{% if request.path.startswith('/folysplitr') %}active{% endif %}"
         title="folysplitr" aria-label="folysplitr">
         <i class="fa-solid fa-seedling" aria-hidden="true"></i>
         <span class="toolbar-nav-label">folysplitr</span>
+      </a>
+      <a href="{{ url_for('collections_page') }}"
+        class="{% if request.path.startswith('/collections') %}active{% endif %}"
+        title="collections" aria-label="collections">
+        <i class="fa-solid fa-folder-open" aria-hidden="true"></i>
+        <span class="toolbar-nav-label">collections</span>
       </a>
     </nav>
   </div>
