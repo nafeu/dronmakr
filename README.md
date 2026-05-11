@@ -1,17 +1,21 @@
 <p align="center">
-  <img src="static/logo.png" alt="dronmakr" width="220" />
+  <img src="static/branding/logo.png" alt="dronmakr" width="100" />
 </p>
 
 <p align="center"><em>pronounced “drone maker”</em></p>
 
-<p align="center">Python-based suite of sample generation, editing, and packaging tools—use the browser UI for auditioning, beatbuilding, collections, and more.</p>
+<p align="center">Python-based suite of sample generation, editing, and packaging tools with browser-ui for auditioning, beatbuilding, collections, and more.</p>
 
 <p align="center">
   <a href="https://discord.gg/BysAyRje57"><img src="https://img.shields.io/discord/1358944581873307871?label=discord&logo=discord&style=for-the-badge" alt="Discord" /></a>
   <a href="https://www.patreon.com/phrakture"><img src="https://img.shields.io/badge/Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white" alt="Patreon" /></a>
 </p>
 
-For **advanced command-line usage** (batch generators, packaging presets, local PyInstaller builds), see **[CLI.md on GitHub](https://github.com/nafeu/dronmakr/blob/main/CLI.md)**.
+![Auditionr Preview](preview-auditionr.png)
+
+![Beatbuildr Preview](preview-beatbuildr.png)
+
+![Collections Preview](preview-collections.png)
 
 ## Made Using `dronmakr`
 
@@ -34,14 +38,6 @@ For **advanced command-line usage** (batch generators, packaging presets, local 
 4. A **console window** may stay open (useful for logs). The **menu bar** (macOS) or **system tray** (Windows) icon lets you open the app in your browser, browse your `dronmakr-files` folder, settings, and about page. On first launch, choose where to store `dronmakr-files`.
 
 Packaged desktop builds also check **GitHub Releases** for updates: use **Check for updates…** or **Download v…** in the tray when a newer version is available (menu checks the API at most once per hour).
-
-**Maintainers:** publishing a **GitHub Release** (not only a tag) runs [`.github/workflows/release-desktop.yml`](.github/workflows/release-desktop.yml) on macOS, Windows, and Linux and uploads the matching archives to that release.
-
-On **Linux**, the tray icon may require GTK AppIndicator / `libappindicator` (or compatible) for `pystray`.
-
-### Manual setup (from this repository)
-
-Use this path if you want to run from source or contribute.
 
 **Requirements**
 
@@ -68,31 +64,21 @@ IGNORE_PLUGINS=""
 CUSTOM_PLUGINS=""
 ```
 
-**Run the web UI** from the repo root:
+### Usage
+
+**Open the web UI** by clicking on the app tray icon and clicking `open dronmakr in browser` or if manually running server use:
 
 ```sh
 python dronmakr.py
 ```
 
-Then open the URL shown in the terminal (defaults to the unified web UI on port **3766**). Tray/desktop from source: `python dronmakr.py desktop` — details in [CLI.md](https://github.com/nafeu/dronmakr/blob/main/CLI.md).
+Then open the URL shown in the terminal (defaults to the unified web UI on port **3766**).
 
-## Web UI
-
-### auditionr
-
-![Auditionr Preview](preview-auditionr.png)
-
-### beatbuildr
-
-![Beatbuildr Preview](preview-beatbuildr.png)
-
-### collections
-
-![Collections Preview](preview-collections.png)
+For **advanced command-line usage** (batch generators, packaging presets, local PyInstaller builds), see **[CLI.md on GitHub](https://github.com/nafeu/dronmakr/blob/main/CLI.md)**.
 
 ## Project Limitations
 
-This project is built ontop of [pedalboard.io](https://spotify.github.io/pedalboard/reference/pedalboard.io.html) which is a python wrapper on the [JUCE framework](https://juce.com/). There are [known compatibility issues](https://spotify.github.io/pedalboard/reference/pedalboard.html#pedalboard.VST3Plugin) with many VST and AU plugins. Some of the ones that I've been able to get working are as follows:
+The VST/AU running functionality of this project is built ontop of [pedalboard.io](https://spotify.github.io/pedalboard/reference/pedalboard.io.html) which is a python wrapper on the [JUCE framework](https://juce.com/). There are [known compatibility issues](https://spotify.github.io/pedalboard/reference/pedalboard.html#pedalboard.VST3Plugin). Some of the ones that I've been able to get working are as follows:
 
 _* All testing was done on `macOS Sequoia 15.1` on an `Apple M4 Pro` machine._
 
@@ -124,6 +110,14 @@ You can use the `ASSERT_INSTRUMENT` env var to list any plugins that you want to
 ## Contributing
 
 - Contributors welcome! Open PRs or Github Issues
+
+**Maintainers:** publishing a **GitHub Release** (not only a tag) runs [`.github/workflows/release-desktop.yml`](.github/workflows/release-desktop.yml) on macOS, Windows, and Linux and uploads the matching archives to that release.
+
+On **Linux**, the tray icon may require GTK AppIndicator / `libappindicator` (or compatible) for `pystray`.
+
+### Manual setup (from this repository)
+
+Use this path if you want to run from source or contribute.
 
 ## License
 
