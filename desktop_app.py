@@ -20,7 +20,13 @@ from PIL import Image
 from pystray import Icon, Menu, MenuItem
 
 from settings import get_files_root, has_configured_files_root
-from updater import UpdateInfo, check_for_update, download_update, reveal_file
+from updater import (
+    UpdateInfo,
+    download_update,
+    fetch_update_info_throttled,
+    peek_cached_update_info,
+    reveal_file,
+)
 from webui import open_webui_in_browser, start_server
 
 _HEALTH_PATH = "/api/health"
@@ -28,11 +34,32 @@ _SOURCE_ICON = Path("static") / "branding" / "favicon-32x32.png"
 _TRAY_ICON_LIGHT_MODE = Path("static") / "branding" / "tray-icon-light-mode.png"
 _TRAY_ICON_DARK_MODE = Path("static") / "branding" / "tray-icon-dark-mode.png"
 
+# Tried in order so the browser sees a stable origin (incl. port) for permissions.
+_DESKTOP_PREFERRED_PORTS: tuple[int, ...] = (3766, 3767, 3768, 3769)
+
 
 def _find_open_port() -> int:
+    """Ask the OS for any free port (last resort)."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("127.0.0.1", 0))
         return int(s.getsockname()[1])
+
+
+def _can_bind_desktop_port(host: str, port: int) -> bool:
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            s.bind((host, int(port)))
+    except OSError:
+        return False
+    return True
+
+
+def _select_desktop_listen_port(host: str = "127.0.0.1") -> int:
+    for p in _DESKTOP_PREFERRED_PORTS:
+        if _can_bind_desktop_port(host, p):
+            return p
+    return _find_open_port()
 
 
 def _bundle_root() -> Path:
@@ -192,7 +219,7 @@ def _install_after_download_confirm(update: UpdateInfo) -> None:
 
 
 def _run_update_download_flow() -> None:
-    update = check_for_update()
+    update = fetch_update_info_throttled(force=True)
     if not update:
         _messagebox_showinfo("dronmakr", "You are on the latest release.")
         return
@@ -207,7 +234,7 @@ def _run_update_download_flow() -> None:
 def _maybe_offer_update_on_startup() -> None:
     if not getattr(sys, "frozen", False):
         return
-    update = check_for_update()
+    update = fetch_update_info_throttled(force=True)
     if not update:
         return
     if not _messagebox_askyesno(
@@ -220,7 +247,7 @@ def _maybe_offer_update_on_startup() -> None:
 
 def main(debug: bool = False) -> None:
     print("[desktop] launcher: startup begin", flush=True)
-    port = _find_open_port()
+    port = _select_desktop_listen_port("127.0.0.1")
     print(f"[desktop] launcher: selected port {port}", flush=True)
     base_url = f"http://127.0.0.1:{port}"
     launch_url = base_url if has_configured_files_root() else f"{base_url}/onboarding"
@@ -292,6 +319,24 @@ def main(debug: bool = False) -> None:
             return
         _run_update_download_flow()
 
+    def download_update_now(icon_: Icon, item_: object) -> None:
+        info = peek_cached_update_info()
+        if not info:
+            return
+        if not _messagebox_askyesno(
+            "Update available",
+            f"Download {info.tag} now?",
+        ):
+            return
+        _install_after_download_confirm(info)
+
+    def download_update_visible(_item: MenuItem) -> bool:
+        return peek_cached_update_info() is not None
+
+    def download_update_label(_item: MenuItem) -> str:
+        info = peek_cached_update_info()
+        return f"Download {info.tag}…" if info else "Download update…"
+
     stop_menu_poll = threading.Event()
 
     def on_quit(icon_: Icon, item_: object) -> None:
@@ -301,6 +346,8 @@ def main(debug: bool = False) -> None:
     def poll_menu_for_refresh(tray_icon: Icon) -> None:
         while not stop_menu_poll.wait(4.0):
             try:
+                if getattr(sys, "frozen", False):
+                    fetch_update_info_throttled(force=False)
                 tray_icon.update_menu()
             except Exception:
                 break
@@ -318,7 +365,16 @@ def main(debug: bool = False) -> None:
         MenuItem("About", open_about),
     ]
     if getattr(sys, "frozen", False):
-        items.append(MenuItem("Check for updates…", check_updates))
+        items.extend(
+            [
+                MenuItem(
+                    download_update_label,
+                    download_update_now,
+                    visible=download_update_visible,
+                ),
+                MenuItem("Check for updates…", check_updates),
+            ]
+        )
     items.append(Menu.SEPARATOR)
     items.append(MenuItem("Quit", on_quit))
 

@@ -1,0 +1,120 @@
+# Build PyInstaller desktop bundles and attach them to the GitHub Release that triggered this workflow.
+# Create a release (or publish a draft) with a tag matching version.py before assets appear.
+
+name: Release desktop builds
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  desktop-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies and PyInstaller
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+
+      - name: Build with PyInstaller
+        run: |
+          source venv/bin/activate
+          pyinstaller --noconfirm --clean desktop.spec
+
+      - name: Create archive
+        run: |
+          source venv/bin/activate
+          VERSION=$(python -c "from version import __version__; print(__version__)")
+          mkdir -p dist-artifacts
+          tar -czf "dist-artifacts/dronmakr-v${VERSION}-macos-arm64.tar.gz" -C dist dronmakr
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist-artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  desktop-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies and PyInstaller
+        shell: pwsh
+        run: |
+          python -m venv venv
+          .\venv\Scripts\python -m pip install --upgrade pip
+          .\venv\Scripts\python -m pip install -r requirements.txt pyinstaller
+
+      - name: Build with PyInstaller
+        shell: pwsh
+        run: |
+          .\venv\Scripts\pyinstaller --noconfirm --clean desktop.spec
+
+      - name: Create zip
+        shell: pwsh
+        run: |
+          $v = .\venv\Scripts\python -c "from version import __version__; print(__version__)"
+          New-Item -ItemType Directory -Path dist-artifacts -Force | Out-Null
+          if (Test-Path "dist-artifacts\dronmakr-v$v-windows-x64.zip") { Remove-Item "dist-artifacts\dronmakr-v$v-windows-x64.zip" -Force }
+          Compress-Archive -Path "dist\dronmakr\*" -DestinationPath "dist-artifacts\dronmakr-v$v-windows-x64.zip"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist-artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  desktop-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsndfile1
+
+      - name: Install dependencies and PyInstaller
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+
+      - name: Build with PyInstaller
+        run: |
+          source venv/bin/activate
+          pyinstaller --noconfirm --clean desktop.spec
+
+      - name: Create archive
+        run: |
+          source venv/bin/activate
+          VERSION=$(python -c "from version import __version__; print(__version__)")
+          mkdir -p dist-artifacts
+          tar -czf "dist-artifacts/dronmakr-v${VERSION}-linux-x64.tar.gz" -C dist dronmakr
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist-artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

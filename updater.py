@@ -4,6 +4,7 @@ import os
 import platform
 import subprocess
 import sys
+import time
 from dataclasses import dataclass
 
 import requests
@@ -65,6 +66,34 @@ def check_for_update(timeout: int = 5) -> UpdateInfo | None:
                 asset_url=url,
             )
     return None
+
+
+_UPDATE_CHECK_MIN_INTERVAL_S = 3600.0
+_cached_update_info: UpdateInfo | None = None
+_cached_update_check_monotonic: float = 0.0
+
+
+def peek_cached_update_info() -> UpdateInfo | None:
+    """Last result from :func:`fetch_update_info_throttled` without hitting the network."""
+    return _cached_update_info
+
+
+def fetch_update_info_throttled(
+    force: bool = False,
+    min_interval_s: float = _UPDATE_CHECK_MIN_INTERVAL_S,
+    timeout: int = 5,
+) -> UpdateInfo | None:
+    """
+    Query GitHub Releases at most once per ``min_interval_s`` unless ``force`` is True.
+    Caches the latest result (including \"no update\") for tray menu state.
+    """
+    global _cached_update_info, _cached_update_check_monotonic
+    now = time.monotonic()
+    if not force and (now - _cached_update_check_monotonic) < min_interval_s:
+        return _cached_update_info
+    _cached_update_info = check_for_update(timeout=timeout)
+    _cached_update_check_monotonic = now
+    return _cached_update_info
 
 
 def download_update(info: UpdateInfo, destination_dir: str) -> str:

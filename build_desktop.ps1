@@ -1,5 +1,7 @@
 $ErrorActionPreference = "Stop"
 
+# Archive name must include windows-x64 so updater.py can match GitHub release assets.
+
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $root
 
