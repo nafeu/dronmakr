@@ -3,10 +3,45 @@ Central settings management. Uses config/settings.json instead of .env.
 On startup, migrates from .env if settings.json does not exist.
 """
 
+from __future__ import annotations
+
 import json
 import os
+import sys
+from pathlib import Path
 
-SETTINGS_PATH = "config/settings.json"
+
+def _user_data_root() -> Path:
+    """Writable location for bundled (PyInstaller) app — cwd is unreliable."""
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "dronmakr"
+    if sys.platform.startswith("win"):
+        appdata = os.environ.get("APPDATA")
+        base = Path(appdata) if appdata else Path.home() / "AppData" / "Roaming"
+        return base / "dronmakr"
+    return Path.home() / ".local" / "share" / "dronmakr"
+
+
+def _compute_settings_path() -> str:
+    """
+    Resolve config/settings.json relative to this package, not process cwd.
+
+    CLI and web must read the same file; Flask/desktop are often launched with a
+    cwd that is not the repository root (empty PLUGIN_PATHS in the UI otherwise).
+    """
+    if getattr(sys, "frozen", False):
+        cfg = _user_data_root() / "config"
+    else:
+        cfg = Path(__file__).resolve().parent / "config"
+    return str(cfg / "settings.json")
+
+
+SETTINGS_PATH = _compute_settings_path()
+
+
+def _settings_env_example_path() -> Path:
+    """Repository .env template for migration — next to settings.py."""
+    return Path(__file__).resolve().parent / ".env"
 DEFAULT_FILES_ROOT_DIRNAME = "dronmakr-files"
 FILES_ROOT_KEY = "FILES_ROOT"
 MANAGED_SUBDIRS = [
@@ -199,7 +234,7 @@ def _normalize_drum_presets_inplace(settings: dict) -> None:
 def _migrate_from_env() -> dict:
     """Load values from .env file if it exists."""
     result = dict(_default_values)
-    env_path = ".env"
+    env_path = str(_settings_env_example_path())
     if not os.path.exists(env_path):
         return result
     try:

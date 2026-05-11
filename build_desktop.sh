@@ -13,6 +13,11 @@ source "venv/bin/activate"
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt pyinstaller
 
+if ! python -c "import tkinter" >/dev/null 2>&1; then
+  echo "Warning: tkinter unavailable in this venv — Patchcraftr may be broken in the built app." >&2
+  echo "  Fix: use Python from python.org, or brew install python-tk@MATCH (same major.minor as this venv's Python)." >&2
+fi
+
 pyinstaller --noconfirm --clean desktop.spec
 
 UNAME_S="$(uname -s | tr '[:upper:]' '[:lower:]')"

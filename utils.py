@@ -56,8 +56,8 @@ def with_final_main_prompt(text):
     return f"{RED}■{RESET}   {text}"
 
 
-def with_build_preset_prompt(text):
-    return f"{MAGENTA}┌ {APP_NAME} ■ preset builder {MAGENTA}┐{RESET} {text}"
+def with_patchcraftr_prompt(text):
+    return f"{MAGENTA}┌ {APP_NAME} ■ patchcraftr {MAGENTA}┐{RESET} {text}"
 
 
 def with_generate_drone_midi_prompt(text):
@@ -76,8 +76,8 @@ def with_generate_beat_prompt(text):
     return f"{CYAN}│{RESET}   {text}"
 
 
-def build_preset_header():
-    return f"{MAGENTA}┌ {APP_NAME} ■ preset builder{RESET}"
+def patchcraftr_header():
+    return f"{MAGENTA}┌ {APP_NAME} ■ patchcraftr{RESET}"
 
 
 def generate_drone_midi_header():

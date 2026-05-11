@@ -15,7 +15,7 @@ import typer
 from settings import ensure_settings
 from settings import get_active_drum_path_preset_name, set_active_drum_path_preset
 from config_validation import validate_server_config_names
-from build_preset import list_presets
+from preset_authoring import list_presets
 from desktop_app import main as run_desktop_app
 from webui import run as run_webui
 from beatbuildr import generate_random_drum_kit
@@ -381,7 +381,7 @@ def generate_drone(
         None, "--instrument", "-i", help="Name of the instrument."
     ),
     effect: str = typer.Option(
-        None, "--effect", "-e", help="Name of the effect or chain."
+        None, "--effect", "-e", help="Name of a saved single effect or FX chain."
     ),
     tags: str = typer.Option(
         None,
@@ -444,7 +444,7 @@ def generate_drone(
     if not os.path.exists(PRESETS_PATH):
         print(
             with_prompt(
-                "'config/presets.json' does not exist, please run 'build_preset.py'"
+                "'config/presets.json' does not exist — open Patchcraftr from the desktop tray (Launch patchcraftr)."
             )
         )
         sys.exit(1)

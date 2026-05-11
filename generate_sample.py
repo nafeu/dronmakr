@@ -65,6 +65,20 @@ def midi_to_messages(midi_file_path):
 SAMPLE_RATE = 44100
 
 
+def effect_slot_entries(effect_preset: dict) -> list[dict]:
+    """Expand a preset row into ordered effect steps for loading plug-ins."""
+    if effect_preset.get("type") == "effect":
+        return [
+            {
+                "plugin_path": effect_preset["plugin_path"],
+                "plugin_name": effect_preset.get("plugin_name") or "",
+                "preset_path": effect_preset["preset_path"],
+                "name": effect_preset.get("name", "effect"),
+            }
+        ]
+    return list(effect_preset.get("effects") or [])
+
+
 def generate_drone_sample(
     input_path="input.mid",
     output_path="generated_sample.wav",
@@ -81,36 +95,33 @@ def generate_drone_sample(
     with open(presets_path, "r") as f:
         presets = json.load(f)
 
-    # Separate instruments and effects
+    # Separate instruments and effects (standalone effect or chains)
     instruments = [p for p in presets if p["type"] == "instrument"]
-    effects = [p for p in presets if p["type"] == "effect_chain"]
+    fx_presets = [p for p in presets if p["type"] in ("effect", "effect_chain")]
 
-    if not instruments or not effects:
+    if not instruments or not fx_presets:
         raise ValueError(f"No valid instruments or effects found in {presets_path}")
 
     if not instrument:
         instrument_preset = random.choice(instruments)
     else:
-        # Try to find a matching instrument by name
         for preset in instruments:
             if preset["name"] == instrument:
                 instrument_preset = preset
                 break
         else:
-            # If no match found, raise an error
             raise ValueError(f"No instrument found with the name '{instrument}'")
 
     if not effect:
-        effect_preset = random.choice(effects)
+        effect_preset = random.choice(fx_presets)
     else:
-        # Try to find a matching instrument by name
-        for preset in effects:
-            if preset["name"] == effect:
-                effect_preset = preset
-                break
-        else:
-            # If no match found, raise an error
-            raise ValueError(f"No effect chain found with the name '{effect}'")
+        effect_preset = next((p for p in fx_presets if p["name"] == effect), None)
+        if effect_preset is None:
+            raise ValueError(f"No saved effect named '{effect}'")
+
+    slots = effect_slot_entries(effect_preset)
+    if not slots:
+        raise ValueError(f"Effect preset '{effect_preset['name']}' has no processors to load.")
 
     print(
         with_prompt(
@@ -119,7 +130,7 @@ def generate_drone_sample(
     )
 
     # Load the instrument plugin with `plugin_name` if available
-    if instrument_preset["plugin_name"]:
+    if instrument_preset.get("plugin_name"):
         print(
             with_prompt(
                 f"loading instrument {GREEN}{extract_plugin(instrument_preset['plugin_path'])}{RESET} as {GREEN}{instrument_preset['plugin_name']}{RESET}"
@@ -137,51 +148,39 @@ def generate_drone_sample(
         )
         instrument_plugin = pedalboard.load_plugin(instrument_preset["plugin_path"])
 
-    # Load the instrument's preset data
     with open(instrument_preset["preset_path"], "rb") as f:
-        print(
-            with_prompt(
-                f"using preset {GREEN}{instrument_preset['name']}{RESET} ({instrument_preset['desc']})"
-            )
-        )
-        instrument_plugin.preset_data = f.read()
+        ins_blob = f.read()
+        print(with_prompt(f"using instrument preset {GREEN}{instrument_preset['name']}{RESET}"))
+        if hasattr(instrument_plugin, "preset_data"):
+            instrument_plugin.preset_data = ins_blob
+        else:
+            instrument_plugin.raw_state = ins_blob
 
-    # Load the effect plugin with `plugin_name` if available
-    print(
-        with_prompt(
-            f"loading fx chain {GREEN}{effect_preset['name']}{RESET} ({effect_preset['desc']})"
-        )
-    )
+    print(with_prompt(f"loading effect {GREEN}{effect_preset['name']}{RESET}"))
 
-    for effect in effect_preset["effects"]:
-        if effect["plugin_name"]:
+    for eff in slots:
+        if eff.get("plugin_name"):
             print(
                 with_prompt(
-                    f"inserting {GREEN}{extract_plugin(effect['plugin_path'])}{RESET} as {effect['plugin_name']}"
+                    f"inserting {GREEN}{extract_plugin(eff['plugin_path'])}{RESET} as {GREEN}{eff['plugin_name']}{RESET}"
                 )
             )
-            effect_plugin = pedalboard.load_plugin(
-                effect["plugin_path"], plugin_name=effect["plugin_name"]
-            )
+            effect_plugin = pedalboard.load_plugin(eff["plugin_path"], plugin_name=eff["plugin_name"])
         else:
             print(
                 with_prompt(
-                    f"inserting {GREEN}{extract_plugin(effect['plugin_path'])}{RESET}"
+                    f"inserting {GREEN}{extract_plugin(eff['plugin_path'])}{RESET}"
                 )
             )
-            effect_plugin = pedalboard.load_plugin(effect["plugin_path"])
+            effect_plugin = pedalboard.load_plugin(eff["plugin_path"])
 
-        # Load the effect's preset data
-        with open(effect["preset_path"], "rb") as f:
-            print(
-                with_prompt(
-                    f"using preset {GREEN}{effect['name']}{RESET} ({effect['desc']})"
-                )
-            )
+        with open(eff["preset_path"], "rb") as f:
+            eblob = f.read()
+            print(with_prompt(f"using effect step {GREEN}{eff['name']}{RESET}"))
             if hasattr(effect_plugin, "preset_data"):
-                effect_plugin.preset_data = f.read()
+                effect_plugin.preset_data = eblob
             else:
-                effect_plugin.raw_state = f.read()
+                effect_plugin.raw_state = eblob
 
         loaded_effects.append(effect_plugin)
 
@@ -227,50 +226,50 @@ def apply_effect(input_path, effect_chain, presets_path=PRESETS_PATH):
     with open(presets_path, "r") as f:
         presets = json.load(f)
 
-    effects = [p for p in presets if p["type"] == "effect_chain"]
+    fx_pool = [p for p in presets if p["type"] in ("effect", "effect_chain")]
 
     if effect_chain == "":
-        effect_preset = random.choice(effects)
+        effect_preset = random.choice(fx_pool)
     else:
-        # Find the requested effect chain
         effect_preset = next(
             (
                 p
                 for p in presets
-                if p["type"] == "effect_chain" and p["name"] == effect_chain
+                if p["type"] in ("effect", "effect_chain") and p["name"] == effect_chain
             ),
             None,
         )
 
     if not effect_preset:
-        raise ValueError(f"Effect chain '{effect_chain}' not found in presets.")
+        raise ValueError(f"Effect preset '{effect_chain}' not found in presets.")
+
+    slot_list = effect_slot_entries(effect_preset)
+    if not slot_list:
+        raise ValueError(f"Effect preset '{effect_preset['name']}' has no processors to load.")
 
     output_path = input_path.replace(".wav", f"_{effect_preset['name']}.wav")
 
-    print(f"Applying effect chain: {effect_preset['name']}")
+    print(f"Applying effect: {effect_preset['name']}")
 
-    # Load effect plugins
     loaded_effects = []
 
-    for effect in effect_preset["effects"]:
-        if effect["plugin_name"]:
+    for eff in slot_list:
+        if eff.get("plugin_name"):
             print(
-                f"inserting {extract_plugin(effect['plugin_path'])} as {effect['plugin_name']}"
+                f"inserting {extract_plugin(eff['plugin_path'])} as {eff['plugin_name']}"
             )
-            effect_plugin = pedalboard.load_plugin(
-                effect["plugin_path"], plugin_name=effect["plugin_name"]
-            )
+            effect_plugin = pedalboard.load_plugin(eff["plugin_path"], plugin_name=eff["plugin_name"])
         else:
-            print(f"inserting {extract_plugin(effect['plugin_path'])}")
-            effect_plugin = pedalboard.load_plugin(effect["plugin_path"])
+            print(f"inserting {extract_plugin(eff['plugin_path'])}")
+            effect_plugin = pedalboard.load_plugin(eff["plugin_path"])
 
-        # Load the effect's preset data
-        with open(effect["preset_path"], "rb") as f:
-            print(f"using preset {effect['name']} ({effect['desc']})")
+        with open(eff["preset_path"], "rb") as f:
+            eblob = f.read()
+            print(f"using preset {eff['name']}")
             if hasattr(effect_plugin, "preset_data"):
-                effect_plugin.preset_data = f.read()
+                effect_plugin.preset_data = eblob
             else:
-                effect_plugin.raw_state = f.read()
+                effect_plugin.raw_state = eblob
 
         loaded_effects.append(effect_plugin)
 
@@ -298,7 +297,7 @@ def apply_effect(input_path, effect_chain, presets_path=PRESETS_PATH):
     ) as f:
         f.write(processed_audio)
 
-    print(f"Effect chain '{effect_chain}' applied and saved: {input_path}")
+    print(f"Effect '{effect_chain}' applied and saved: {input_path}")
 
 
 # --- Beat sample helpers (drum loops) ---

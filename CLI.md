@@ -42,13 +42,23 @@ Commands:
   generate-transition  Generate transition sounds (sweeps, risers, etc.).
 ```
 
-## Build presets from your VST/AU library
+## Patchcraftr (instrument & FX chains)
+
+Author presets from the **desktop app tray**: **Launch patchcraftr** opens the Patchcraftr window (Pedalboard). Outputs go to your managed files (`config/presets.json` plus `.vstpreset` files under `presets/`).
+
+Use **`python dronmakr.py list`** to print instrument and FX chain names for **`generate-drone`** (`--instrument` / `--effect`).
+
+**macOS — Homebrew Python without Tk:** If Patchcraftr fails with `No module named '_tkinter'`, install bindings for your Python version (same major.minor), for example:
 
 ```sh
-python build_preset.py
+brew install python-tk@3.10
 ```
 
-When a plugin editor is open, you can press **spacebar** in the terminal to export and play a preview sample in the background (preset workflow tip).
+The official **python.org** macOS installers include Tk by default.
+
+While a plug‑in editor is open, Patchcraftr streams a **simple live preview**: the same plug‑in instance is rendered in a background loop (`sounddevice`), so **parameter changes in the editor are heard on the next blocks**. Instruments use **built‑in MIDI** (a repeating middle‑C-style preview) instead of an external keyboard or MIDI port. FX slots hear a faint noise bed.
+
+**Desktop build (PyInstaller):** The distributed app bundles Tcl/Tk via `collect_all('tkinter')` and does **not** require `brew install python-tk` on the machine where you **run** the app. Install `python-tk` only on the **build** host if its Python lacks `_tkinter` (so PyInstaller can copy the libraries into the bundle).
 
 ## Run the unified web UI
 

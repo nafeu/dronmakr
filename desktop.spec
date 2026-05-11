@@ -1,22 +1,33 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_all, collect_submodules
 
-hiddenimports = collect_submodules("eventlet") + collect_submodules("pystray")
+hiddenimports_base = collect_submodules("eventlet") + collect_submodules("pystray")
+tk_datas, tk_bins, tk_hidden = collect_all("tkinter")
 
 a = Analysis(
     ["desktop_app.py"],
     pathex=[],
-    binaries=[],
+    binaries=tk_bins,
     datas=[
         ("templates", "templates"),
         ("static", "static"),
         ("resources", "resources"),
-    ],
-    hiddenimports=hiddenimports,
+        ("patchcraftr_gui.py", "."),
+    ]
+    + tk_datas,
+    hiddenimports=hiddenimports_base
+    + [
+        "preset_authoring",
+        "patchcraftr_gui",
+        "patchcraftr_live_monitor",
+        "tkinter",
+        "_tkinter",
+    ]
+    + tk_hidden,
     hookspath=[],
     hooksconfig={},
-    runtime_hooks=[],
+    runtime_hooks=["patchcraftr_rth_tk.py"],
     excludes=[],
     noarchive=False,
 )

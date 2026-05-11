@@ -1,13 +1,21 @@
 from __future__ import annotations
 
 import os
+import sys
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "--run-patchcraftr":
+        from settings import ensure_settings
+
+        ensure_settings()
+        from patchcraftr_gui import main as _patchcraftr_main
+
+        _patchcraftr_main()
+        raise SystemExit(0)
     os.environ["DRONMAKR_ASYNC_MODE"] = "threading"
 
 import socket
 import subprocess
-import sys
 import tarfile
 import threading
 import time
@@ -68,6 +76,25 @@ def _bundle_root() -> Path:
         if meipass:
             return Path(meipass)
     return Path(__file__).resolve().parent
+
+
+def _patchcraftr_work_dir() -> Path:
+    """Directory so ``resources/`` and managed paths resolve like the repo root."""
+    if getattr(sys, "frozen", False):
+        return _bundle_root()
+    return Path(__file__).resolve().parent
+
+
+def _launch_patchcraftr_gui() -> None:
+    work_dir = _patchcraftr_work_dir()
+    if getattr(sys, "frozen", False):
+        argv = [sys.executable, "--run-patchcraftr"]
+    else:
+        script = work_dir / "patchcraftr_gui.py"
+        if not script.is_file():
+            raise RuntimeError(f"Missing patchcraftr_gui.py at {script}")
+        argv = [sys.executable, str(script)]
+    subprocess.Popen(argv, cwd=str(work_dir), start_new_session=True)
 
 
 def _macos_menu_bar_prefers_white_icon() -> bool:
@@ -310,6 +337,12 @@ def main(debug: bool = False) -> None:
         path = get_files_root(allow_default=False)
         return bool(path and os.path.isdir(path))
 
+    def launch_patchcraftr(_icon: Icon, _item: object) -> None:
+        try:
+            _launch_patchcraftr_gui()
+        except Exception as e:  # noqa: BLE001
+            _messagebox_error("patchcraftr", str(e))
+
     def check_updates(icon_: Icon, item_: object) -> None:
         if not getattr(sys, "frozen", False):
             _messagebox_showinfo(
@@ -361,6 +394,7 @@ def main(debug: bool = False) -> None:
             browse_files,
             enabled=browse_files_enabled,
         ),
+        MenuItem("Launch patchcraftr", launch_patchcraftr),
         MenuItem("Settings", open_settings),
         MenuItem("About", open_about),
     ]
