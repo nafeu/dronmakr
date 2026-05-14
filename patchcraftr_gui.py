@@ -24,7 +24,9 @@ except ModuleNotFoundError as exc:
         )
         raise SystemExit(1) from exc
     raise
+from collections import defaultdict
 from dataclasses import dataclass
+import tkinter.font as tkfont
 from tkinter import messagebox, ttk
 from typing import Any
 
@@ -86,9 +88,10 @@ class PatchcraftrApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("dronmakr · patchcraftr")
-        self.geometry("760x780")
-        self.minsize(680, 700)
+        self.geometry("1120x900")
+        self.minsize(960, 820)
 
+        self._init_mono_font_family()
         self._configure_patchcraftr_theme()
 
         _, self._assert_instrument, _, _ = plugin_settings_tuple()
@@ -128,6 +131,23 @@ class PatchcraftrApp(tk.Tk):
 
         ensure_authoring_dirs()
 
+    def _init_mono_font_family(self) -> None:
+        try:
+            available = {str(f).lower() for f in tkfont.families()}
+        except tk.TclError:
+            available = set()
+        for cand in ("Menlo", "Consolas", "SF Mono", "Monaco", "Courier New", "DejaVu Sans Mono"):
+            if cand.lower() in available:
+                self._mono_family: str = cand
+                return
+        self._mono_family = "Courier New"
+
+    def _mono(self, pts: int, *, bold: bool = False):
+        """UI monospace font tuple for ttk / tk widgets."""
+        if bold:
+            return (self._mono_family, pts, "bold")
+        return (self._mono_family, pts)
+
     def _configure_patchcraftr_theme(self) -> None:
         """Approximate templates/_app_css_root.html using ttk (clam/alt) + themed tk dialogs."""
         C = WEB_UI_THEME
@@ -156,13 +176,13 @@ class PatchcraftrApp(tk.Tk):
             "AccentTitle.TLabel",
             background=secondary,
             foreground=primary,
-            font=("Helvetica", 16, "bold"),
+            font=self._mono(19, bold=True),
         )
         style.configure(
             "Hint.TLabel",
             background=secondary,
             foreground="#a8a8a8",
-            font=("Helvetica", 10),
+            font=self._mono(11),
         )
 
         style.configure("TFrame", background=theme_a)
@@ -178,9 +198,9 @@ class PatchcraftrApp(tk.Tk):
             "TLabelframe.Label",
             background=theme_a,
             foreground=primary,
-            font=("Helvetica", 10, "bold"),
+            font=self._mono(12, bold=True),
         )
-        style.configure("TLabel", background=theme_a, foreground=fg)
+        style.configure("TLabel", background=theme_a, foreground=fg, font=self._mono(12))
 
         style.configure(
             "TEntry",
@@ -190,6 +210,7 @@ class PatchcraftrApp(tk.Tk):
             insertcolor=fg,
             lightcolor=theme_b,
             darkcolor=theme_a,
+            font=self._mono(12),
         )
         style.map(
             "TEntry",
@@ -207,7 +228,7 @@ class PatchcraftrApp(tk.Tk):
             lightcolor=theme_a,
             darkcolor=theme_a,
             padding=(10, 4),
-            font=("Helvetica", 10),
+            font=self._mono(11),
         )
         style.map(
             "TButton",
@@ -225,7 +246,7 @@ class PatchcraftrApp(tk.Tk):
             lightcolor=primary,
             darkcolor=primary,
             padding=(14, 6),
-            font=("Helvetica", 11, "bold"),
+            font=self._mono(12, bold=True),
         )
         style.map(
             "Accent.TButton",
@@ -239,7 +260,7 @@ class PatchcraftrApp(tk.Tk):
             background=theme_a,
             foreground=fg,
             focuscolor=theme_a,
-            font=("Helvetica", 10),
+            font=self._mono(11),
         )
         style.map(
             "TRadiobutton",
@@ -273,7 +294,7 @@ class PatchcraftrApp(tk.Tk):
             highlightcolor=C["primary"],
             borderwidth=0,
             relief="flat",
-            font=("Helvetica", 11),
+            font=self._mono(12),
         )
 
     def _build_ui(self) -> None:
@@ -287,7 +308,7 @@ class PatchcraftrApp(tk.Tk):
             "Build an instrument or FX chain to use in dronmakr UI or `generate-drone` CLI"
         )
         ttk.Label(
-            main, text=hint, style="Hint.TLabel", wraplength=720, justify="left"
+            main, text=hint, style="Hint.TLabel", wraplength=1000, justify="left"
         ).pack(
             anchor="w", pady=(0, 12)
         )
@@ -313,7 +334,7 @@ class PatchcraftrApp(tk.Tk):
 
         prev_lf = ttk.LabelFrame(inst_fr, text="Preview settings", padding=(6, 4))
         prev_lf.pack(fill=tk.X, pady=(10, 0))
-        ttk.Label(prev_lf, text="Instrument MIDI preview", font=("Helvetica", 9)).pack(
+        ttk.Label(prev_lf, text="Instrument MIDI preview", font=self._mono(11)).pack(
             anchor="w"
         )
         pc = ttk.Frame(prev_lf)
@@ -330,7 +351,7 @@ class PatchcraftrApp(tk.Tk):
         ttk.Label(
             prev_lf,
             text="FX-only dry signal (used when no instrument is loaded)",
-            font=("Helvetica", 9),
+            font=self._mono(11),
         ).pack(anchor="w", pady=(10, 0))
         fx_pc = ttk.Frame(prev_lf)
         fx_pc.pack(fill=tk.X)
@@ -351,18 +372,20 @@ class PatchcraftrApp(tk.Tk):
         for i in range(MAX_CHAIN_SLOTS):
             row = ttk.Frame(fx_fr)
             row.pack(fill=tk.X, pady=4)
-            ttk.Label(row, text=f"{i + 1}.", width=3).pack(side=tk.LEFT, anchor="n", pady=2)
-            lb = ttk.Label(row, text="(empty)", width=50)
-            lb.pack(side=tk.LEFT, padx=(4, 8), anchor="w")
+            ttk.Label(row, text=f"{i + 1}.", width=3).pack(side=tk.LEFT, anchor="nw", pady=2)
+            lb = ttk.Label(row, text="(empty)")
+            lb.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(6, 8), anchor="w")
             self._slot_labels.append(lb)
-            ttk.Button(row, text="Select plugin", width=10, command=lambda ix=i: self._fx_set_slot(ix)).pack(
-                side=tk.LEFT, padx=2
+            btn_row = ttk.Frame(row)
+            btn_row.pack(side=tk.RIGHT)
+            ttk.Button(btn_row, text="Select FX", command=lambda ix=i: self._fx_set_slot(ix)).pack(
+                side=tk.LEFT, padx=(0, 4)
             )
-            ttk.Button(row, text="Open plugin", width=10, command=lambda ix=i: self._fx_edit_slot(ix)).pack(
-                side=tk.LEFT, padx=2
+            ttk.Button(btn_row, text="Open plugin", command=lambda ix=i: self._fx_edit_slot(ix)).pack(
+                side=tk.LEFT, padx=(0, 4)
             )
-            ttk.Button(row, text="Clear", width=8, command=lambda ix=i: self._fx_clear_slot(ix)).pack(
-                side=tk.LEFT, padx=2
+            ttk.Button(btn_row, text="Clear", command=lambda ix=i: self._fx_clear_slot(ix)).pack(
+                side=tk.LEFT, padx=0
             )
 
         nm_fr = ttk.LabelFrame(main, text="Patch Name", padding=10)
@@ -507,7 +530,7 @@ class PatchcraftrApp(tk.Tk):
         self._theme_dialog_shell(dlg)
         dlg.title(title)
         dlg.transient(self)
-        dlg.geometry("420x420")
+        dlg.geometry("560x560")
         dlg.grab_set()
 
         filt = tk.StringVar()
@@ -553,82 +576,183 @@ class PatchcraftrApp(tk.Tk):
     def _saved_effect_presets_rows(self) -> list[dict]:
         return [p for p in load_presets_json() if p.get("type") == "effect"]
 
-    def _pick_saved_effect_preset(self, slot_idx: int) -> dict | None:
+    def _saved_effect_preset_display_rows(self) -> list[tuple[str, dict]]:
         rows = self._saved_effect_presets_rows()
         if not rows:
-            messagebox.showinfo(
-                "patchcraftr",
-                "No saved single-FX presets yet. Save one with one FX slot, or use Browse plug-ins.",
-                parent=self,
-            )
-            return None
-
-        dlg = tk.Toplevel(self)
-        self._theme_dialog_shell(dlg)
-        dlg.title(f"Saved effect for slot {slot_idx + 1}")
-        dlg.transient(self)
-        dlg.grab_set()
-
-        lb = tk.Listbox(dlg, width=54, height=14)
-        self._theme_listbox(lb)
+            return []
+        name_counts = defaultdict(int)
+        for r in rows:
+            nm_raw = str(r.get("name", "") or "").strip()
+            canon = nm_raw if nm_raw else "(unnamed)"
+            name_counts[canon] += 1
+        display_data: list[tuple[str, dict]] = []
         for r in sorted(rows, key=lambda x: str(x.get("name", "")).lower()):
-            lb.insert(tk.END, r["name"])
-        lb.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
-
-        picked: list[dict | None] = [None]
-
-        def ok() -> None:
-            sel = lb.curselection()
-            if sel:
-                name = lb.get(sel[0])
-                for r in rows:
-                    if r.get("name") == name:
-                        picked[0] = r
-                        break
-            dlg.destroy()
-
-        bf = ttk.Frame(dlg)
-        bf.pack(fill=tk.X, pady=(0, 8))
-        ttk.Button(bf, text="Cancel", command=dlg.destroy).pack(side=tk.RIGHT, padx=8)
-        ttk.Button(bf, text="OK", command=ok).pack(side=tk.RIGHT)
-        dlg.wait_window()
-        return picked[0]
+            nm_raw = str(r.get("name", "") or "").strip()
+            canon = nm_raw if nm_raw else "(unnamed)"
+            disp = canon
+            if name_counts[canon] > 1:
+                rid = str(r.get("id", ""))[:8]
+                disp = f"{disp} [{rid}]"
+            display_data.append((disp, r))
+        return display_data
 
     def _fx_set_slot(self, idx: int) -> None:
+        self._refresh_plugin_map()
+
+        plugins_ok = bool(self._plugin_labels_sorted)
+        presets_ready = bool(self._saved_effect_presets_rows())
+        if not plugins_ok and not presets_ready:
+            messagebox.showwarning(
+                "patchcraftr",
+                "No plug-ins discovered under PLUGIN_PATHS and no saved single-effect presets.",
+                parent=self,
+            )
+            return
+
         dlg = tk.Toplevel(self)
         self._theme_dialog_shell(dlg)
-        dlg.title(f"FX slot {idx + 1}")
+        dlg.title(f"FX slot {idx + 1} — plug-ins or saved presets")
         dlg.transient(self)
+        dlg.geometry("980x640")
+        dlg.minsize(760, 480)
         dlg.grab_set()
-        chosen: list[str | None] = [None]
 
-        def pick_saved() -> None:
-            chosen[0] = "saved"
-            dlg.destroy()
+        root = ttk.Frame(dlg, padding=10)
+        root.pack(fill=tk.BOTH, expand=True)
+        root.columnconfigure(0, weight=1)
+        root.columnconfigure(1, weight=1)
+        root.rowconfigure(2, weight=1)
 
-        def pick_browse() -> None:
-            chosen[0] = "browse"
-            dlg.destroy()
-
-        ttk.Label(dlg, text="Load a saved single effect, or browse the system for a plug-in.", wraplength=420).pack(
-            padx=12, pady=12
+        ttk.Label(root, text="VST/AU plug-ins", font=self._mono(11, bold=True)).grid(
+            row=0, column=0, sticky="nw"
         )
+        ttk.Label(root, text="Saved single-effect presets", font=self._mono(11, bold=True)).grid(
+            row=0, column=1, sticky="nw", padx=(14, 0)
+        )
+
+        filt_pl = tk.StringVar()
+        filt_pr = tk.StringVar()
+        ttk.Entry(root, textvariable=filt_pl).grid(row=1, column=0, sticky="ew", padx=(0, 8), pady=(4, 6))
+        ttk.Entry(root, textvariable=filt_pr).grid(row=1, column=1, sticky="ew", padx=(14, 0), pady=(4, 6))
+
+        left_sf = ttk.Frame(root)
+        left_sf.grid(row=2, column=0, sticky="nsew", padx=(0, 8))
+        lb_pl_sb = ttk.Scrollbar(left_sf)
+        lb_pl = tk.Listbox(
+            left_sf, height=24, width=44, yscrollcommand=lb_pl_sb.set, exportselection=False
+        )
+        lb_pl_sb.config(command=lb_pl.yview)
+        self._theme_listbox(lb_pl)
+        lb_pl.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        lb_pl_sb.pack(side=tk.RIGHT, fill=tk.Y)
+
+        right_sf = ttk.Frame(root)
+        right_sf.grid(row=2, column=1, sticky="nsew", padx=(14, 0))
+        lb_pr_sb = ttk.Scrollbar(right_sf)
+        lb_pr = tk.Listbox(
+            right_sf, height=24, width=46, yscrollcommand=lb_pr_sb.set, exportselection=False
+        )
+        lb_pr_sb.config(command=lb_pr.yview)
+        self._theme_listbox(lb_pr)
+        lb_pr.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        lb_pr_sb.pack(side=tk.RIGHT, fill=tk.Y)
+
+        all_plugin_labels = list(self._plugin_labels_sorted)
+        preset_pairs = self._saved_effect_preset_display_rows()
+        preset_visible: list[dict] = []
+
+        def refill_plugins(filter_txt: str = "") -> None:
+            lb_pl.delete(0, tk.END)
+            ft = filter_txt.strip().lower()
+            for lab in all_plugin_labels:
+                if ft in lab.lower():
+                    lb_pl.insert(tk.END, lab)
+
+        def refill_presets(filter_txt: str = "") -> None:
+            lb_pr.delete(0, tk.END)
+            preset_visible.clear()
+            ft = filter_txt.strip().lower()
+            for lbl, row in preset_pairs:
+                pname = format_plugin_name(str(row.get("plugin_path", "") or ""))
+                blob = " ".join(
+                    filter(
+                        None,
+                        [
+                            lbl.lower(),
+                            str(row.get("name", "")).lower(),
+                            pname.lower(),
+                            str(row.get("plugin_path", "")).lower(),
+                        ],
+                    )
+                )
+                if not ft or ft in blob:
+                    lb_pr.insert(tk.END, lbl)
+                    preset_visible.append(row)
+
+        refill_plugins()
+        refill_presets()
+
+        def on_filt_pl(*_a: Any) -> None:
+            refill_plugins(filt_pl.get())
+
+        def on_filt_pr(*_a: Any) -> None:
+            refill_presets(filt_pr.get())
+
+        filt_pl.trace_add("write", on_filt_pl)
+        filt_pr.trace_add("write", on_filt_pr)
+
+        def on_sel_pl(*_ignored: Any) -> None:
+            if lb_pl.curselection():
+                lb_pr.selection_clear(0, tk.END)
+
+        def on_sel_pr(*_ignored: Any) -> None:
+            if lb_pr.curselection():
+                lb_pl.selection_clear(0, tk.END)
+
+        lb_pl.bind("<<ListboxSelect>>", on_sel_pl)
+        lb_pr.bind("<<ListboxSelect>>", on_sel_pr)
+
         bf = ttk.Frame(dlg)
-        bf.pack(pady=(0, 16))
-        ttk.Button(bf, text="Saved effect preset…", command=pick_saved).pack(side=tk.LEFT, padx=8)
-        ttk.Button(bf, text="Browse plug-ins…", command=pick_browse).pack(side=tk.LEFT, padx=8)
-        ttk.Button(bf, text="Cancel", command=dlg.destroy).pack(side=tk.LEFT, padx=8)
+        bf.pack(fill=tk.X, pady=(8, 8), padx=10)
+
+        browse_path_holder: dict[str, str | None] = {"path": None}
+        preset_row_holder: dict[str, Any | None] = {"row": None}
+
+        def ok_pick() -> None:
+            psi = lb_pl.curselection()
+            pri = lb_pr.curselection()
+            if psi and pri:
+                messagebox.showinfo(
+                    "patchcraftr",
+                    "Pick either one plug-in (left) or one saved preset (right).",
+                    parent=dlg,
+                )
+                return
+            if psi:
+                lab = lb_pl.get(psi[0])
+                browse_path_holder["path"] = self._plugin_map.get(lab)
+            elif pri:
+                ix = pri[0]
+                if ix < len(preset_visible):
+                    preset_row_holder["row"] = preset_visible[ix]
+            else:
+                messagebox.showwarning("patchcraftr", "Choose a plug-in or a preset.", parent=dlg)
+                return
+            dlg.destroy()
+
+        ttk.Button(bf, text="OK", command=ok_pick).pack(side=tk.RIGHT, padx=(0, 8))
+        ttk.Button(bf, text="Cancel", command=dlg.destroy).pack(side=tk.RIGHT)
 
         dlg.wait_window()
-        mode = chosen[0]
-        if mode == "saved":
-            row = self._pick_saved_effect_preset(idx)
-            if row:
-                self._fx_apply_saved_effect_row(idx, row)
-        elif mode == "browse":
-            self._fx_apply_browse_path(idx)
 
-    def _fx_apply_saved_effect_row(self, idx: int, row: dict) -> None:
+        if browse_path_holder["path"]:
+            p = browse_path_holder["path"]
+            self.after(120, lambda i=idx, pa=p: self._fx_apply_browse_path(i, pa))
+        elif preset_row_holder["row"] is not None:
+            prow = preset_row_holder["row"]
+            self.after(120, lambda i=idx, r=prow: self._fx_apply_saved_effect_row(i, r))
+
+    def _fx_apply_saved_effect_row(self, idx: int, row: dict, *, open_editor: bool = True) -> None:
         try:
             loaded = self._load_plugin_with_variants(
                 row["plugin_path"], row.get("plugin_name") or None
@@ -654,11 +778,16 @@ class PatchcraftrApp(tk.Tk):
                 preset_path=row.get("preset_path"),
             )
             self._refresh_slot_labels()
+            if open_editor:
+                self.after(120, lambda i=idx: self._fx_edit_slot(i))
         except Exception as e:
             self._enqueue_msg("error", str(e))
 
-    def _fx_apply_browse_path(self, idx: int) -> None:
-        path = self._pick_plugin_path(f"FX slot {idx + 1}")
+    def _fx_apply_browse_path(
+        self, idx: int, path: str | None = None, *, open_editor: bool = True
+    ) -> None:
+        if path is None:
+            path = self._pick_plugin_path(f"FX slot {idx + 1}")
         if not path:
             return
         try:
@@ -685,6 +814,8 @@ class PatchcraftrApp(tk.Tk):
                 preset_path=None,
             )
             self._refresh_slot_labels()
+            if open_editor:
+                self.after(120, lambda i=idx: self._fx_edit_slot(i))
         except Exception as e:
             self._enqueue_msg("error", str(e))
 
@@ -711,6 +842,7 @@ class PatchcraftrApp(tk.Tk):
             self._inst_plugin_lbl.configure(
                 text=f"{format_plugin_name(path)} · {self._inst_plugin_name or 'default'}"
             )
+            self.after(120, self._inst_edit_plugin)
         except Exception as e:
             self._enqueue_msg("error", str(e))
 
