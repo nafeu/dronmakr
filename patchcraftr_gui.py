@@ -48,6 +48,7 @@ from preset_authoring import (
     effect_chain_tuple_to_json_effects,
     ensure_authoring_dirs,
     format_plugin_name,
+    list_installed_plugins,
     load_pedalboard_plugin,
     load_presets_json,
     name_exists,
@@ -58,7 +59,7 @@ from preset_authoring import (
     upsert_preset_entry,
     write_plugin_state_to_vstpreset,
 )
-from settings import ensure_settings
+from settings import ensure_settings, load_settings, save_settings
 from utils import PRESETS_DIR, generate_id
 
 
@@ -301,9 +302,15 @@ class PatchcraftrApp(tk.Tk):
         main = ttk.Frame(self, padding=10, style="Chrome.TFrame")
         main.pack(fill=tk.BOTH, expand=True)
 
-        ttk.Label(main, text="patchcraftr", style="AccentTitle.TLabel").pack(
-            anchor="w", pady=(0, 8)
+        head = ttk.Frame(main, style="Chrome.TFrame")
+        head.pack(fill=tk.X, pady=(0, 4))
+        ttk.Label(head, text="patchcraftr", style="AccentTitle.TLabel").pack(
+            side=tk.LEFT, anchor="w"
         )
+        ttk.Button(head, text="+ new patch", command=self._confirm_new_patch).pack(
+            side=tk.RIGHT, anchor="e", padx=(12, 0)
+        )
+
         hint = (
             "Build an instrument or FX chain to use in dronmakr UI or `generate-drone` CLI"
         )
@@ -329,8 +336,13 @@ class PatchcraftrApp(tk.Tk):
             side=tk.LEFT, padx=(0, 8)
         )
         ttk.Button(bf_inst, text="Edit instrument", command=self._inst_edit_plugin).pack(
-            side=tk.LEFT
+            side=tk.LEFT, padx=(0, 8)
         )
+        ttk.Button(
+            bf_inst,
+            text="Configure plugin list",
+            command=self._open_ignore_plugins_dialog,
+        ).pack(side=tk.LEFT)
 
         prev_lf = ttk.LabelFrame(inst_fr, text="Preview settings", padding=(6, 4))
         prev_lf.pack(fill=tk.X, pady=(10, 0))
@@ -451,6 +463,41 @@ class PatchcraftrApp(tk.Tk):
     def _refresh_plugin_map(self) -> None:
         self._plugin_map = build_plugin_label_map()
         self._plugin_labels_sorted = sorted(self._plugin_map.keys(), key=str.lower)
+
+    def _validate_loaded_plugin_as_instrument(self, plug: Any) -> str | None:
+        """Return a user-facing error string if ``plug`` cannot be used as an instrument slot."""
+        if getattr(plug, "is_instrument", False):
+            return None
+        if getattr(plug, "is_effect", False):
+            return (
+                "This plug-in loads as an effect processor, not as an instrument. "
+                'Add it with “Select FX” instead of “Choose instrument”.'
+            )
+        return (
+            "This plug-in does not report an instrument interface. Pick a synth or sampler."
+        )
+
+    def _validate_loaded_plugin_as_fx_chain(self, plug: Any, pname: str) -> str | None:
+        """Return a user-facing error if ``plug`` cannot be used in an FX chain slot."""
+        if slot_allowed_as_chain_effect(plug, pname, self._assert_instrument):
+            return None
+        pn_st = (pname or "").strip()
+        if getattr(plug, "is_effect", False) and pn_st and pn_st in self._assert_instrument:
+            return (
+                "That plug-in variant is listed under ASSERT_INSTRUMENT in Settings and is treated "
+                "as an instrument here. It cannot be placed in an FX slot."
+            )
+        if getattr(plug, "is_instrument", False) and not getattr(plug, "is_effect", False):
+            return (
+                "This plug-in reports as an instrument only. "
+                'Use “Choose instrument” instead of “Select FX”.'
+            )
+        if not getattr(plug, "is_effect", False):
+            return (
+                "This plug-in does not report as an effect processor here. Choose a different FX, "
+                "or assign it via “Choose instrument” if it is a synth."
+            )
+        return "This plug-in cannot be used as an FX chain step with the current Settings."
 
     def _refresh_slot_labels(self) -> None:
         for i in range(MAX_CHAIN_SLOTS):
@@ -760,12 +807,9 @@ class PatchcraftrApp(tk.Tk):
             if loaded is None:
                 return
             plug, pname = loaded
-            if not slot_allowed_as_chain_effect(plug, pname, self._assert_instrument):
-                messagebox.showwarning(
-                    "patchcraftr",
-                    "That plug-in cannot be used as an FX chain step with current settings.",
-                    parent=self,
-                )
+            err = self._validate_loaded_plugin_as_fx_chain(plug, pname)
+            if err:
+                messagebox.showwarning("patchcraftr", err, parent=self)
                 return
             with open(row["preset_path"], "rb") as f:
                 apply_vstpreset_bytes_to_plugin(plug, f.read())
@@ -795,12 +839,9 @@ class PatchcraftrApp(tk.Tk):
             if loaded is None:
                 return
             plug, pname = loaded
-            if not slot_allowed_as_chain_effect(plug, pname, self._assert_instrument):
-                messagebox.showwarning(
-                    "patchcraftr",
-                    "That plug-in is not usable as an FX step with ASSERT_INSTRUMENT settings.",
-                    parent=self,
-                )
+            err = self._validate_loaded_plugin_as_fx_chain(plug, pname)
+            if err:
+                messagebox.showwarning("patchcraftr", err, parent=self)
                 return
             disp = format_plugin_name(path)
             if pname:
@@ -828,12 +869,9 @@ class PatchcraftrApp(tk.Tk):
             if loaded is None:
                 return
             plug, pname = loaded
-            if not plug.is_instrument:
-                messagebox.showwarning(
-                    "patchcraftr",
-                    "That plug-in is not an instrument. Use FX slots for effects.",
-                    parent=self,
-                )
+            err = self._validate_loaded_plugin_as_instrument(plug)
+            if err:
+                messagebox.showwarning("patchcraftr", err, parent=self)
                 return
             self._inst_plugin_path = path
             self._inst_plugin_name = pname or ""
@@ -918,12 +956,9 @@ class PatchcraftrApp(tk.Tk):
                     f"{e}",
                 )
                 return
-            if not wp.is_instrument:
-                messagebox.showwarning(
-                    "patchcraftr",
-                    "That plug-in is not an instrument.",
-                    parent=self,
-                )
+            ierr = self._validate_loaded_plugin_as_instrument(wp)
+            if ierr:
+                messagebox.showwarning("patchcraftr", ierr, parent=self)
                 return
             self._inst_plugin = wp
             self._inst_plugin_name = pname or ""
@@ -976,15 +1011,32 @@ class PatchcraftrApp(tk.Tk):
                 parent=self,
             )
             return
-        if has_inst and not nm_inst:
-            messagebox.showwarning(
-                "patchcraftr", "Instrument name is required when an instrument is selected.", parent=self
-            )
-            return
+        if has_inst:
+            if self._inst_plugin is None:
+                messagebox.showwarning(
+                    "patchcraftr",
+                    "Instrument plug-in instance is missing. Choose the instrument again.",
+                    parent=self,
+                )
+                return
+            if not str(self._inst_plugin_path).strip():
+                messagebox.showwarning(
+                    "patchcraftr",
+                    "Instrument plug-in path is missing; pick again.",
+                    parent=self,
+                )
+                return
+            if not nm_inst:
+                messagebox.showwarning(
+                    "patchcraftr",
+                    "Enter a patch name under “Instrument name” (cannot be blank).",
+                    parent=self,
+                )
+                return
         if has_fx and not nm_fx:
             messagebox.showwarning(
                 "patchcraftr",
-                "Effect / FX chain name is required when any FX slot is used.",
+                "Enter a name under “Effect name” — it cannot be blank when saving FX.",
                 parent=self,
             )
             return
@@ -1057,6 +1109,197 @@ class PatchcraftrApp(tk.Tk):
             parts.append(f"effect “{nm_fx}”" + (" [chain]" if len(tuples) > 1 else " [single FX]"))
 
         self._enqueue_msg("info", "Saved " + " and ".join(parts) + ".")
+        self._refresh_plugin_map()
+
+    @staticmethod
+    def _parse_ignore_plugins_setting(raw: str) -> list[str]:
+        items = [x.strip() for x in (raw or "").split(",") if x.strip()]
+        seen: set[str] = set()
+        ordered: list[str] = []
+        for x in items:
+            if x not in seen:
+                seen.add(x)
+                ordered.append(x)
+        return ordered
+
+    @staticmethod
+    def _label_matches_ignore_pattern(label: str, patterns: list[str]) -> bool:
+        return any(p and p in label for p in patterns)
+
+    def _open_ignore_plugins_dialog(self) -> None:
+        plugin_dirs, _, _, custom_plugins = plugin_settings_tuple()
+        if not plugin_dirs or plugin_dirs == [""]:
+            messagebox.showwarning(
+                "patchcraftr",
+                "PLUGIN_PATHS is empty. Configure plug-in scan directories in Settings first.",
+                parent=self,
+            )
+            return
+
+        all_paths = list_installed_plugins(plugin_dirs, custom_plugins)
+        labels_by_display: dict[str, str] = {}
+        for p in all_paths:
+            lab = format_plugin_name(p)
+            labels_by_display.setdefault(lab, p)
+
+        dlg = tk.Toplevel(self)
+        self._theme_dialog_shell(dlg)
+        dlg.title("Configure plugin list (IGNORE_PLUGINS)")
+        dlg.transient(self)
+        dlg.geometry("940x620")
+        dlg.minsize(720, 480)
+        dlg.grab_set()
+
+        intro = (
+            "Left: plug-ins offered in selectors. Right: ignore substrings saved to IGNORE_PLUGINS "
+            "(same matching as preset authoring: a pattern hides any plug-in whose display name contains it). "
+            "Double-click or use the arrows to move items. Save writes settings.json."
+        )
+        ttk.Label(dlg, text=intro, wraplength=900, justify="left").pack(
+            anchor="w", padx=12, pady=(10, 6)
+        )
+
+        root = ttk.Frame(dlg, padding=(10, 0))
+        root.pack(fill=tk.BOTH, expand=True)
+        root.columnconfigure(0, weight=1)
+        root.columnconfigure(1, weight=0)
+        root.columnconfigure(2, weight=1)
+        root.rowconfigure(1, weight=1)
+
+        ttk.Label(root, text="Available plug-ins", font=self._mono(11, bold=True)).grid(
+            row=0, column=0, sticky="nw"
+        )
+        ttk.Label(root, text="Ignored (IGNORE_PLUGINS)", font=self._mono(11, bold=True)).grid(
+            row=0, column=2, sticky="nw", padx=(12, 0)
+        )
+
+        left_sf = ttk.Frame(root)
+        left_sf.grid(row=1, column=0, sticky="nsew", pady=(4, 0))
+        sb_l = ttk.Scrollbar(left_sf)
+        lb_avail = tk.Listbox(
+            left_sf, height=24, exportselection=False, yscrollcommand=sb_l.set
+        )
+        sb_l.config(command=lb_avail.yview)
+        self._theme_listbox(lb_avail)
+        lb_avail.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        sb_l.pack(side=tk.RIGHT, fill=tk.Y)
+
+        mid = ttk.Frame(root)
+        mid.grid(row=1, column=1, padx=8, pady=(4, 0))
+
+        right_sf = ttk.Frame(root)
+        right_sf.grid(row=1, column=2, sticky="nsew", padx=(0, 0), pady=(4, 0))
+        sb_r = ttk.Scrollbar(right_sf)
+        lb_ign = tk.Listbox(
+            right_sf, height=24, exportselection=False, yscrollcommand=sb_r.set
+        )
+        sb_r.config(command=lb_ign.yview)
+        self._theme_listbox(lb_ign)
+        lb_ign.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        sb_r.pack(side=tk.RIGHT, fill=tk.Y)
+
+        ignored: list[str] = list(
+            self._parse_ignore_plugins_setting(load_settings().get("IGNORE_PLUGINS", ""))
+        )
+        dirty: list[bool] = [False]
+
+        def refresh_lists() -> None:
+            lbls = sorted(labels_by_display.keys(), key=str.lower)
+            lb_avail.delete(0, tk.END)
+            for lab in lbls:
+                if not self._label_matches_ignore_pattern(lab, ignored):
+                    lb_avail.insert(tk.END, lab)
+            lb_ign.delete(0, tk.END)
+            for pat in sorted(ignored, key=str.lower):
+                lb_ign.insert(tk.END, pat)
+
+        def mark_dirty() -> None:
+            dirty[0] = True
+
+        def move_selection_to_ignored(_evt: Any = None) -> None:
+            sel = lb_avail.curselection()
+            if not sel:
+                return
+            lab = lb_avail.get(sel[0])
+            if lab not in ignored:
+                ignored.append(lab)
+                mark_dirty()
+                refresh_lists()
+
+        def move_selection_to_allowed(_evt: Any = None) -> None:
+            sel = lb_ign.curselection()
+            if not sel:
+                return
+            pat = lb_ign.get(sel[0])
+            if pat in ignored:
+                ignored.remove(pat)
+                mark_dirty()
+                refresh_lists()
+
+        def ignore_all() -> None:
+            merged = sorted(set(ignored) | set(labels_by_display.keys()), key=str.lower)
+            ignored.clear()
+            ignored.extend(merged)
+            mark_dirty()
+            refresh_lists()
+
+        def allow_all() -> None:
+            if ignored:
+                ignored.clear()
+                mark_dirty()
+                refresh_lists()
+
+        refresh_lists()
+
+        ttk.Button(mid, text="Ignore →", width=14, command=move_selection_to_ignored).pack(
+            pady=(0, 6)
+        )
+        ttk.Button(mid, text="← Allow", width=14, command=move_selection_to_allowed).pack(
+            pady=(0, 6)
+        )
+        ttk.Button(mid, text="Ignore all", width=14, command=ignore_all).pack(pady=(0, 6))
+        ttk.Button(mid, text="Allow all", width=14, command=allow_all).pack()
+
+        lb_avail.bind("<Double-Button-1>", move_selection_to_ignored)
+        lb_ign.bind("<Double-Button-1>", move_selection_to_allowed)
+
+        bf = ttk.Frame(dlg)
+        bf.pack(fill=tk.X, pady=(10, 12), padx=12)
+
+        def save_ignores() -> None:
+            settings = load_settings()
+            settings["IGNORE_PLUGINS"] = ",".join(ignored)
+            save_settings(settings)
+            self._refresh_plugin_map()
+            dirty[0] = False
+            dlg.destroy()
+            messagebox.showinfo(
+                "patchcraftr",
+                "IGNORE_PLUGINS saved. Plug-in pickers will use the updated list.",
+                parent=self,
+            )
+
+        def cancel_dialog() -> None:
+            if dirty[0] and not messagebox.askyesno(
+                "patchcraftr",
+                "Discard changes to IGNORE_PLUGINS?",
+                parent=dlg,
+            ):
+                return
+            dlg.destroy()
+
+        ttk.Button(bf, text="Save", command=save_ignores).pack(side=tk.RIGHT, padx=(8, 0))
+        ttk.Button(bf, text="Cancel", command=cancel_dialog).pack(side=tk.RIGHT)
+        dlg.protocol("WM_DELETE_WINDOW", cancel_dialog)
+
+    def _confirm_new_patch(self) -> None:
+        if not messagebox.askyesno(
+            "patchcraftr · new patch",
+            "Discard the current form and start blank?\n\n"
+            "Instrument, FX slots, and patch names will be cleared.",
+            parent=self,
+        ):
+            return
         self._reset_patch_form()
 
 
