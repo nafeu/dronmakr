@@ -314,7 +314,9 @@ class PatchcraftrLiveMonitor:
         plugin = self._plugin
         bs = self._buffer_size_arg(frames)
         inp = np.ascontiguousarray(np.nan_to_num(inp, copy=False), dtype=np.float32)
-        reset_effects = idx == 0
+        # Never pass reset=True from this thread: live and offline preview run off the UI
+        # thread, and many AUs report "must be reloaded on the main thread" if reset runs here.
+        reset_effects = False
 
         # When an instrument feeds the chain, step through each ExternalPlugin so latency /
         # PDC behaviour matches offline renders and avoids rare Chain edge-cases with
@@ -426,3 +428,77 @@ class PatchcraftrLiveMonitor:
                     pass
                 with self._stream_gate:
                     self._playback_stream = None
+
+    def render_offline_clip(self, duration_sec: float) -> np.ndarray:
+        """
+        Synthesize the same audio path as the live monitor, without sounddevice (for file playback).
+        """
+        plugin = self._plugin
+        sr = SAMPLE_RATE
+        block_dur = BLOCK_DUR_SEC
+        frames = max(128, int(round(sr * block_dur)))
+        block_dur = frames / sr
+        rng = np.random.default_rng()
+        total_frames = max(frames, int(round(duration_sec * sr)))
+        chunks: list[np.ndarray] = []
+        idx = 0
+        max_blocks = 50000
+
+        while sum(c.shape[0] for c in chunks) < total_frames and idx < max_blocks:
+            upstream = self._upstream_instrument
+
+            if upstream is not None and (
+                getattr(plugin, "is_effect", False) or isinstance(plugin, Pedalboard)
+            ):
+                midi_dry = self._synth_upstream_block(idx, frames, block_dur, sr)
+                wet = self._pass_through_effects_chain(idx, frames, sr, midi_dry)
+                buf = wet + (_UPSTREAM_DRY_BLEND * midi_dry)
+                buf = self._shape_outputs_to_stream(buf, frames)
+                buf = np.clip(buf, -1.0, 1.0)
+            elif getattr(plugin, "is_instrument", False) and upstream is None:
+                midis = self._preview_midi_for_block(idx, block_dur)
+                try:
+                    arr = plugin(
+                        midis,
+                        duration=block_dur,
+                        sample_rate=sr,
+                        num_channels=CHANNELS,
+                        buffer_size=self._buffer_size_arg(frames),
+                        reset=False,
+                    )
+                except Exception:
+                    arr = np.zeros((frames, CHANNELS), dtype=np.float32)
+                buf = self._shape_outputs_to_stream(arr, frames)
+            elif getattr(plugin, "is_effect", False) or isinstance(plugin, Pedalboard):
+                inp = self._next_fx_only_dry_block(rng, frames)
+                buf = self._pass_through_effects_chain(idx, frames, sr, inp)
+            else:
+                buf = np.zeros((frames, CHANNELS), dtype=np.float32)
+
+            chunks.append(np.ascontiguousarray(buf, dtype=np.float32))
+            idx += 1
+
+        if not chunks:
+            return np.zeros((total_frames, CHANNELS), dtype=np.float32)
+        out = np.vstack(chunks)
+        if out.shape[0] > total_frames:
+            out = out[:total_frames]
+        return out
+
+
+def render_preview_clip(
+    plugin: Any,
+    *,
+    duration_sec: float = 4.0,
+    midi_style_ref: list[str] | None = None,
+    upstream_instrument: Any | None = None,
+    fx_preview_source_ref: list[str] | None = None,
+) -> np.ndarray:
+    """Offline clip with the same routing as :class:`PatchcraftrLiveMonitor`."""
+    mon = PatchcraftrLiveMonitor(
+        plugin,
+        midi_style_ref=midi_style_ref,
+        upstream_instrument=upstream_instrument,
+        fx_preview_source_ref=fx_preview_source_ref,
+    )
+    return mon.render_offline_clip(duration_sec)

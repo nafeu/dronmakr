@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import os
 import queue
+import subprocess
 import sys
+import tempfile
 import threading
 
 try:
@@ -37,6 +39,8 @@ from patchcraftr_live_monitor import (
     FX_PREVIEW_SOURCES,
     MIDI_PREVIEW_STYLES,
     PatchcraftrLiveMonitor,
+    SAMPLE_RATE,
+    render_preview_clip,
 )
 from preset_authoring import (
     MAX_CHAIN_SLOTS,
@@ -83,6 +87,8 @@ class FxSlotState:
     effect_display_name: str
     effect_uid: str | None = None
     preset_path: str | None = None
+    # After closing show_editor once, some VST3/AUs stop processing preview audio until reloaded.
+    editor_opened_before: bool = False
 
 
 class PatchcraftrApp(tk.Tk):
@@ -344,38 +350,6 @@ class PatchcraftrApp(tk.Tk):
             command=self._open_ignore_plugins_dialog,
         ).pack(side=tk.LEFT)
 
-        prev_lf = ttk.LabelFrame(inst_fr, text="Preview settings", padding=(6, 4))
-        prev_lf.pack(fill=tk.X, pady=(10, 0))
-        ttk.Label(prev_lf, text="Instrument MIDI preview", font=self._mono(11)).pack(
-            anchor="w"
-        )
-        pc = ttk.Frame(prev_lf)
-        pc.pack(fill=tk.X)
-        for ix, (sid, label) in enumerate(MIDI_PREVIEW_STYLES):
-            ttk.Radiobutton(
-                pc,
-                text=label,
-                value=sid,
-                variable=self._midi_preview_style,
-                command=self._sync_editor_midi_style_ref,
-            ).grid(row=ix // 2, column=ix % 2, sticky="w", padx=(0, 12), pady=2)
-
-        ttk.Label(
-            prev_lf,
-            text="FX-only dry signal (used when no instrument is loaded)",
-            font=self._mono(11),
-        ).pack(anchor="w", pady=(10, 0))
-        fx_pc = ttk.Frame(prev_lf)
-        fx_pc.pack(fill=tk.X)
-        for jx, (sid, label) in enumerate(FX_PREVIEW_SOURCES):
-            ttk.Radiobutton(
-                fx_pc,
-                text=label,
-                value=sid,
-                variable=self._fx_preview_source,
-                command=self._sync_editor_fx_dry_source_ref,
-            ).grid(row=jx // 2, column=jx % 2, sticky="w", padx=(0, 12), pady=2)
-
         fx_fr = ttk.LabelFrame(
             main, text=f"FX chain ({MAX_CHAIN_SLOTS})", padding=10
         )
@@ -399,6 +373,51 @@ class PatchcraftrApp(tk.Tk):
             ttk.Button(btn_row, text="Clear", command=lambda ix=i: self._fx_clear_slot(ix)).pack(
                 side=tk.LEFT, padx=0
             )
+
+        prev_fr = ttk.LabelFrame(main, text="Preview Settings", padding=10)
+        prev_fr.pack(fill=tk.X, pady=(0, 8))
+        ttk.Label(prev_fr, text="Instrument MIDI preview", font=self._mono(11)).pack(
+            anchor="w"
+        )
+        pc = ttk.Frame(prev_fr)
+        pc.pack(fill=tk.X)
+        for ix, (sid, label) in enumerate(MIDI_PREVIEW_STYLES):
+            ttk.Radiobutton(
+                pc,
+                text=label,
+                value=sid,
+                variable=self._midi_preview_style,
+                command=self._sync_editor_midi_style_ref,
+            ).grid(row=ix // 2, column=ix % 2, sticky="w", padx=(0, 12), pady=2)
+
+        ttk.Label(
+            prev_fr,
+            text="FX-only dry signal (used when no instrument is loaded)",
+            font=self._mono(11),
+        ).pack(anchor="w", pady=(10, 0))
+        fx_pc = ttk.Frame(prev_fr)
+        fx_pc.pack(fill=tk.X)
+        for jx, (sid, label) in enumerate(FX_PREVIEW_SOURCES):
+            ttk.Radiobutton(
+                fx_pc,
+                text=label,
+                value=sid,
+                variable=self._fx_preview_source,
+                command=self._sync_editor_fx_dry_source_ref,
+            ).grid(row=jx // 2, column=jx % 2, sticky="w", padx=(0, 12), pady=2)
+
+        ttk.Button(
+            prev_fr,
+            text="Rendered preview (offline WAV playback)",
+            command=self._rendered_preview_fallback,
+        ).pack(anchor="w", pady=(10, 4))
+        ttk.Label(
+            prev_fr,
+            text="Uses the MIDI / FX dry choices above. Handy when live monitor audio glitches.",
+            style="Hint.TLabel",
+            wraplength=1000,
+            justify="left",
+        ).pack(anchor="w")
 
         nm_fr = ttk.LabelFrame(main, text="Patch Name", padding=10)
         nm_fr.pack(fill=tk.X, pady=(0, 8))
@@ -456,6 +475,114 @@ class PatchcraftrApp(tk.Tk):
 
     def _sync_editor_fx_dry_source_ref(self) -> None:
         self._editor_fx_source_ref[0] = self._fx_preview_source.get()
+
+    def _rendered_preview_fallback(self) -> None:
+        thr = getattr(self, "_offline_preview_thread", None)
+        if thr is not None and thr.is_alive():
+            messagebox.showinfo(
+                "patchcraftr",
+                "A preview is already rendering.",
+                parent=self,
+            )
+            return
+        self._sync_editor_midi_style_ref()
+        self._sync_editor_fx_dry_source_ref()
+        has_inst = self._inst_plugin is not None and bool(self._inst_plugin_path)
+        has_fx = any(s is not None for s in self._fx_slots)
+        if not has_inst and not has_fx:
+            messagebox.showwarning(
+                "patchcraftr",
+                "Choose an instrument plug-in and/or fill at least one FX slot.",
+                parent=self,
+            )
+            return
+        if has_inst:
+            if self._inst_plugin is None:
+                messagebox.showwarning(
+                    "patchcraftr",
+                    "Instrument plug-in instance is missing. Choose the instrument again.",
+                    parent=self,
+                )
+                return
+            if not str(self._inst_plugin_path).strip():
+                messagebox.showwarning(
+                    "patchcraftr",
+                    "Instrument plug-in path is missing; pick again.",
+                    parent=self,
+                )
+                return
+
+        self._offline_preview_thread = threading.Thread(
+            target=self._rendered_preview_worker,
+            args=(has_inst,),
+            daemon=True,
+        )
+        self._offline_preview_thread.start()
+
+    def _rendered_preview_worker(self, has_inst: bool) -> None:
+        path = ""
+        try:
+            import soundfile as sf  # noqa: WPS433
+
+            chain = self._ordered_fx_chain_plugins()
+            if has_inst:
+                # Same routing as live preview: synth → every FX slot (including empty chain).
+                plugin = Pedalboard(chain)
+                upstream = self._inst_plugin
+            else:
+                plugin = Pedalboard(chain)
+                upstream = None
+
+            arr = render_preview_clip(
+                plugin,
+                duration_sec=5.0,
+                midi_style_ref=self._editor_midi_style_ref,
+                upstream_instrument=upstream,
+                fx_preview_source_ref=self._editor_fx_source_ref,
+            )
+            fd, path = tempfile.mkstemp(suffix=".wav")
+            os.close(fd)
+            sf.write(path, arr, SAMPLE_RATE, subtype="PCM_16")
+            self._play_wav_path(path)
+        except Exception as e:
+            self.after(
+                0,
+                lambda err=str(e): self._enqueue_msg(
+                    "error", f"Rendered preview failed:\n{err}"
+                ),
+            )
+        finally:
+            if path:
+                try:
+                    os.unlink(path)
+                except OSError:
+                    pass
+
+    def _play_wav_path(self, path: str) -> None:
+        if sys.platform == "darwin":
+            subprocess.run(["afplay", path], check=False)
+        elif sys.platform.startswith("win"):
+            env = os.environ.copy()
+            env["PATCHCRAFTR_WAV"] = path
+            subprocess.run(
+                [
+                    "powershell",
+                    "-NoProfile",
+                    "-Command",
+                    (
+                        '$p = $env:PATCHCRAFTR_WAV; '
+                        "$s = New-Object System.Media.SoundPlayer($p); "
+                        "$s.PlaySync()"
+                    ),
+                ],
+                env=env,
+                check=False,
+                capture_output=True,
+            )
+        else:
+            r = subprocess.run(["aplay", path], check=False, capture_output=True)
+            if r.returncode != 0:
+                subprocess.run(["xdg-open", path], check=False)
 
     def _enqueue_msg(self, kind: str, text: str) -> None:
         self._msg_q.put((kind, text))
@@ -890,6 +1017,7 @@ class PatchcraftrApp(tk.Tk):
         *,
         instrument_editor: bool = False,
         audio_engine: Any | None = None,
+        fx_slot_index: int | None = None,
     ) -> None:
         if self._editor_active:
             messagebox.showwarning(
@@ -899,9 +1027,17 @@ class PatchcraftrApp(tk.Tk):
             )
             return
 
-        monitor_target = editor_plugin if audio_engine is None else audio_engine
+        audio_engine_effective = audio_engine
+        if instrument_editor:
+            # Preview always runs instrument MIDI through the full FX chain (empty chain = pass-through).
+            audio_engine_effective = Pedalboard(self._ordered_fx_chain_plugins())
+
+        if audio_engine_effective is None:
+            monitor_target = editor_plugin
+        else:
+            monitor_target = audio_engine_effective
         upstream_inst = None
-        if audio_engine is not None and self._inst_plugin is not None:
+        if audio_engine_effective is not None and self._inst_plugin is not None:
             upstream_inst = self._inst_plugin
 
         close_evt = threading.Event()
@@ -924,6 +1060,10 @@ class PatchcraftrApp(tk.Tk):
             self._editor_active = False
             if instrument_editor:
                 self._inst_editor_was_shown_before = True
+            if fx_slot_index is not None:
+                reopened = self._fx_slots[fx_slot_index]
+                if reopened is not None:
+                    reopened.editor_opened_before = True
 
     def _inst_edit_plugin(self) -> None:
         if self._inst_plugin is None:
@@ -968,6 +1108,49 @@ class PatchcraftrApp(tk.Tk):
 
         self._run_plugin_editor(self._inst_plugin, instrument_editor=True)
 
+    def _reload_fx_slot_preserving_editor_reopen(self, idx: int) -> bool:
+        """Re-instantiate the slot plug-in if its editor has been opened before (VST preview fix)."""
+        st = self._fx_slots[idx]
+        if st is None or not st.editor_opened_before:
+            return True
+        old = st.plugin
+        blob = serialize_plugin_preset_bytes(old)
+        try:
+            wp, pname = reload_pedalboard_plugin_preserving_state(
+                st.plugin_path,
+                st.plugin_name or None,
+                old,
+            )
+        except PluginVariantRequired as e:
+            pick = self._resolve_variant(e.plugin_path, e.variants)
+            if pick is None:
+                return False
+            wp, pname = load_pedalboard_plugin(st.plugin_path, pick)
+            apply_vstpreset_bytes_to_plugin(wp, blob)
+        except Exception as e:
+            self._enqueue_msg(
+                "error",
+                f"Could not refresh FX plug-in before reopening editor:\n{e}",
+            )
+            return False
+
+        eff_err = self._validate_loaded_plugin_as_fx_chain(wp, pname or "")
+        if eff_err:
+            messagebox.showwarning("patchcraftr", eff_err, parent=self)
+            return False
+
+        self._fx_slots[idx] = FxSlotState(
+            plugin_path=st.plugin_path,
+            plugin_name=(pname or st.plugin_name or "").strip(),
+            plugin=wp,
+            effect_display_name=st.effect_display_name,
+            effect_uid=st.effect_uid,
+            preset_path=st.preset_path,
+            editor_opened_before=st.editor_opened_before,
+        )
+        self._refresh_slot_labels()
+        return True
+
     def _ordered_fx_chain_plugins(self) -> list[Any]:
         return [s.plugin for s in self._fx_slots if s is not None]
 
@@ -976,10 +1159,19 @@ class PatchcraftrApp(tk.Tk):
         if st is None:
             messagebox.showwarning("patchcraftr", "Slot is empty.", parent=self)
             return
+        if not self._reload_fx_slot_preserving_editor_reopen(idx):
+            return
+        st = self._fx_slots[idx]
+        assert st is not None
         chain = self._ordered_fx_chain_plugins()
         audio_engine = Pedalboard(chain)
 
-        self._run_plugin_editor(st.plugin, instrument_editor=False, audio_engine=audio_engine)
+        self._run_plugin_editor(
+            st.plugin,
+            instrument_editor=False,
+            audio_engine=audio_engine,
+            fx_slot_index=idx,
+        )
 
     def _fx_clear_slot(self, idx: int) -> None:
         self._fx_slots[idx] = None
@@ -1303,10 +1495,58 @@ class PatchcraftrApp(tk.Tk):
         self._reset_patch_form()
 
 
+def _patchcraftr_clear_topmost(root: tk.Tk) -> None:
+    try:
+        root.attributes("-topmost", False)
+    except tk.TclError:
+        pass
+
+
+def _raise_patchcraftr_window(root: tk.Tk) -> None:
+    """When launched from the tray or another app, bring this Tk window to the foreground."""
+    if sys.platform == "darwin":
+        try:
+            from AppKit import NSApplication  # type: ignore[import-not-found]
+
+            NSApplication.sharedApplication().activateIgnoringOtherApps_(True)
+        except Exception:
+            pass
+        try:
+            pid = os.getpid()
+            subprocess.run(
+                [
+                    "osascript",
+                    "-e",
+                    (
+                        'tell application "System Events" to '
+                        f"set frontmost of first process whose unix id is {pid} to true"
+                    ),
+                ],
+                check=False,
+                capture_output=True,
+                timeout=5,
+            )
+        except Exception:
+            pass
+    try:
+        root.update_idletasks()
+        root.deiconify()
+        root.lift()
+        root.attributes("-topmost", True)
+        root.after(100, lambda r=root: _patchcraftr_clear_topmost(r))
+    except tk.TclError:
+        pass
+    try:
+        root.focus_force()
+    except tk.TclError:
+        pass
+
+
 def main() -> None:
     ensure_settings()
     ensure_authoring_dirs()
     app = PatchcraftrApp()
+    app.after(50, lambda: _raise_patchcraftr_window(app))
     app.mainloop()
 
 
