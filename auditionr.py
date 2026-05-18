@@ -12,6 +12,7 @@ import hashlib
 import json
 import random
 import fnmatch
+import tempfile
 
 from flask import request, jsonify, send_from_directory
 from settings import (
@@ -20,6 +21,7 @@ from settings import (
     set_active_drum_path_preset,
 )
 from utils import (
+    BLUE,
     get_latest_exports,
     get_auditionr_folder_counts,
     get_presets,
@@ -34,14 +36,19 @@ from utils import (
     generate_drone_name,
     generate_id,
     with_main_prompt as with_prompt,
+    process_drone_sample_header,
+    with_process_drone_sample_prompt,
     RED,
     RESET,
+    PRESETS_PATH,
 )
 from generate_midi import get_patterns, generate_drone_midi, get_pattern_config
 from processing_actions import (
     get_processing_actions_payload,
     parse_post_processing_spec,
     apply_post_processing_actions,
+    apply_processing_command,
+    actions_without_normalize,
 )
 from generate_sample import apply_effect, generate_drone_sample, generate_beat_sample
 from paths import get_managed_file
@@ -665,32 +672,192 @@ def reveal_in_explorer():
 # ---------------------------------------------------------------------------
 
 
-def _run_generate_drone():
-    """One iteration of drone generation. Returns list of paths. Logs to server stdout."""
-    if not os.path.exists(get_managed_file("presets", "presets.json")):
+def _apply_drone_post_processing_to_wavs(
+    wav_paths: list[str], post_processing: str | None
+) -> None:
+    if not post_processing or not str(post_processing).strip():
+        return
+    try:
+        actions = parse_post_processing_spec(post_processing)
+    except ValueError as e:
+        raise ValueError(str(e)) from e
+    if not actions:
+        return
+
+    def _pp_step_banner(i: int, total: int, action: dict) -> None:
+        label = action.get("token") or action.get("command", "")
+        print(with_process_drone_sample_prompt(f"[{i}/{total}] {label}"))
+
+    def _pp_normalize_banner() -> None:
+        print(with_process_drone_sample_prompt("normalize"))
+
+    for wav_path in wav_paths:
+        print(process_drone_sample_header())
+        print(with_process_drone_sample_prompt(os.path.basename(wav_path)))
+        apply_post_processing_actions(
+            wav_path,
+            actions,
+            on_before_chain_step=_pp_step_banner,
+            on_before_finalize_normalize=_pp_normalize_banner,
+        )
+        print(f"{BLUE}│{RESET}")
+
+
+def _export_split_drone_post_processing_variants(
+    output_stem: str, source_wav: str, actions: list[dict]
+) -> list[str]:
+    chain = actions_without_normalize(actions)
+    n = len(chain) + 1
+    first_path = f"{output_stem}_1of{n}.wav"
+    stem_short = os.path.basename(output_stem)
+
+    print(process_drone_sample_header())
+    print(
+        with_process_drone_sample_prompt(
+            f"split-processing ({n} milestones) — {stem_short}"
+        )
+    )
+
+    os.replace(source_wav, first_path)
+    paths: list[str] = [first_path]
+    print(with_process_drone_sample_prompt(f"[1/{n}] _1of{n} baseline → normalize"))
+    apply_processing_command(first_path, "normalize_sample", {})
+
+    if not chain:
+        print(f"{BLUE}│{RESET}")
+        return paths
+
+    out_dir = os.path.dirname(os.path.abspath(first_path)) or os.getcwd()
+    fd, work_path = tempfile.mkstemp(suffix=".wav", dir=out_dir)
+    os.close(fd)
+    try:
+        shutil.copy2(first_path, work_path)
+        for i, action in enumerate(chain):
+            tok = action.get("token") or action.get("command", "")
+            milestone = i + 2
+            step_path = f"{output_stem}_{milestone}of{n}.wav"
+            print(
+                with_process_drone_sample_prompt(
+                    f"[{milestone}/{n}] {tok} → _{milestone}of{n} → normalize"
+                )
+            )
+            apply_processing_command(
+                work_path,
+                action.get("command", ""),
+                action.get("params", {}),
+            )
+            shutil.copy2(work_path, step_path)
+            apply_processing_command(step_path, "normalize_sample", {})
+            paths.append(step_path)
+    finally:
+        if os.path.exists(work_path):
+            try:
+                os.remove(work_path)
+            except OSError:
+                pass
+    print(f"{BLUE}│{RESET}")
+    return paths
+
+
+def _run_generate_drone(payload: dict) -> list[str]:
+    """`generate-drone` CLI parity (omits UI for --shift-octave-down, --shift-root-note, --dry-run, --log-server, --play)."""
+    if not os.path.exists(PRESETS_PATH):
         raise FileNotFoundError(
             "config/presets.json does not exist — open Patchcraftr from the desktop tray (Launch patchcraftr)."
         )
+
+    name = (payload.get("name") or "").strip() or None
+    notes_raw = (payload.get("notes") or "").strip()
+    notes_list = None
+    if notes_raw:
+        _nl = [n.strip() for n in notes_raw.split(",") if n.strip()]
+        if _nl:
+            notes_list = _nl
+
+    chart_name = (payload.get("chartName") or "").strip() or None
+    instrument = (payload.get("instrument") or "").strip() or None
+    effect = (payload.get("effect") or "").strip() or None
+    tags_raw = (payload.get("tags") or "").strip() or None
+    roots_raw = (payload.get("roots") or "").strip() or None
+    chart_type = (payload.get("chartType") or "").strip().lower() or None
+    pattern_raw = (payload.get("pattern") or "").strip()
+    pattern = pattern_raw or None
+    if pattern:
+        allowed = set(get_patterns())
+        if pattern not in allowed:
+            raise ValueError(f"Unknown MIDI pattern '{pattern}'")
+
+    try:
+        iterations = max(1, int(payload.get("iterations", 1)))
+    except (TypeError, ValueError):
+        iterations = 1
+
+    post_processing = payload.get("postProcessing")
+    if isinstance(post_processing, list):
+        post_processing_spec = ",".join(
+            str(p).strip() for p in post_processing if str(p).strip()
+        )
+    else:
+        post_processing_spec = (post_processing or "").strip() or None
+
+    split_processing = bool(payload.get("splitProcessing"))
+    split_actions: list[dict] | None = None
+    if split_processing:
+        if not post_processing_spec:
+            raise ValueError(
+                "Split processing requires post-processing with at least one action."
+            )
+        try:
+            split_actions = parse_post_processing_spec(post_processing_spec)
+        except ValueError as e:
+            raise ValueError(str(e)) from e
+        if not split_actions:
+            raise ValueError(
+                "Split processing requires at least one post-processing action."
+            )
+
     filters = {}
-    midi_file, selected_chart = generate_drone_midi(
-        pattern=None,
-        shift_octave_down=None,
-        shift_root_note=None,
-        filters=filters,
-        notes=None,
-    )
-    base_sample_name = (
-        f"{generate_drone_name()}_-_{selected_chart}_-_{generate_id()}"
-    )
-    sample_name = format_name(f"drone___{base_sample_name}")
-    output_path = f"{EXPORTS_DIR}/{sample_name}"
-    generated_sample = generate_drone_sample(
-        input_path=midi_file,
-        output_path=f"{output_path}.wav",
-        instrument=None,
-        effect=None,
-    )
-    return [midi_file, generated_sample]
+    if tags_raw:
+        filters["tags"] = [t.strip() for t in tags_raw.split(",") if t.strip()]
+    if roots_raw:
+        filters["roots"] = [r.strip() for r in roots_raw.split(",") if r.strip()]
+    if chart_type:
+        filters["type"] = chart_type
+    if chart_name:
+        filters["name"] = chart_name
+
+    results: list[str] = []
+    for _ in range(iterations):
+        midi_file, selected_chart = generate_drone_midi(
+            pattern=pattern,
+            shift_octave_down=None,
+            shift_root_note=None,
+            filters=filters,
+            notes=notes_list,
+        )
+        base_sample_name = f"{name or generate_drone_name()}_-_{selected_chart}_-_{generate_id()}"
+        sample_name = format_name(f"drone___{base_sample_name}")
+        output_path = f"{EXPORTS_DIR}/{sample_name}"
+        generated_sample = generate_drone_sample(
+            input_path=midi_file,
+            output_path=f"{output_path}.wav",
+            instrument=instrument,
+            effect=effect,
+        )
+        results.append(midi_file)
+        if split_actions is not None:
+            variant_paths = _export_split_drone_post_processing_variants(
+                output_path, generated_sample, split_actions
+            )
+            results.extend(variant_paths)
+        else:
+            results.append(generated_sample)
+
+    wav_files = [f for f in results if f.endswith(".wav")]
+    if split_actions is None:
+        _apply_drone_post_processing_to_wavs(wav_files, post_processing_spec)
+
+    return results
 
 
 def _run_generate_bass(subcommand: str):
@@ -990,11 +1157,15 @@ def _run_generate_beat(payload: dict):
 
 def _handle_api_generate_options():
     ensure_settings()
+    preset_index = get_presets()
     return jsonify(
         {
             "patterns": sorted(_load_beat_patterns_for_generate().keys()),
             "kits": sorted(_load_drum_kits_for_generate().keys()),
             "processingActions": get_processing_actions_payload(),
+            "droneMidiPatterns": get_patterns(),
+            "droneInstruments": preset_index.get("instruments", []),
+            "droneEffects": preset_index.get("effects", []),
         }
     )
 
@@ -1024,7 +1195,7 @@ def _handle_api_generate():
     try:
         print(f"{RED}│{RESET} generate: {gen_type}" + (f" {subcommand}" if subcommand else ""))
         if gen_type == "drone":
-            paths = _run_generate_drone()
+            paths = _run_generate_drone(data)
         elif gen_type == "bass":
             paths = _run_generate_bass(subcommand)
         elif gen_type == "transition":

@@ -227,6 +227,8 @@
     .generatr-card {
       padding: 1rem;
       padding-left: 2rem;
+      overflow-y: scroll;
+      max-height: 85vh;
     }
 
     .generatr-card h2 {
@@ -567,6 +569,10 @@
     #app-version-chip a:hover {
       opacity: 1;
     }
+
+    #generatr-beat-variants-list label input {
+      margin-right: 5px;
+    }
   </style>
 </head>
 
@@ -598,10 +604,10 @@
               <div class="form-row">
                 <label for="generatr-type">Type</label>
                 <select id="generatr-type" name="type">
+                  <option value="beat">beat</option>
                   <option value="drone">drone</option>
                   <option value="bass">bass</option>
                   <option value="transition">transition</option>
-                  <option value="beat">beat</option>
                 </select>
               </div>
               <div class="form-row form-row-subcommand hidden" id="generatr-subcommand-row">
@@ -621,6 +627,56 @@
                   <option value="riser">riser</option>
                   <option value="drop">drop</option>
                 </select>
+              </div>
+              <div class="form-row hidden" id="generatr-drone-name-row">
+                <label for="generatr-drone-name">Sample name</label>
+                <input type="text" id="generatr-drone-name" placeholder="omit for random">
+              </div>
+              <div class="form-row hidden" id="generatr-drone-notes-row">
+                <label for="generatr-drone-notes">Notes</label>
+                <input type="text" id="generatr-drone-notes" placeholder="e.g. C2,D#3,F#3 (overrides chord/scale picks)">
+              </div>
+              <div class="form-row hidden" id="generatr-drone-chart-name-row">
+                <label for="generatr-drone-chart-name">Chart name</label>
+                <input type="text" id="generatr-drone-chart-name" placeholder="filter by chart name substring">
+              </div>
+              <div class="form-row hidden" id="generatr-drone-chart-type-row">
+                <label for="generatr-drone-chart-type">Chart type</label>
+                <select id="generatr-drone-chart-type" name="drone_chart_type">
+                  <option value="">(any)</option>
+                  <option value="chord">chord</option>
+                  <option value="scale">scale</option>
+                </select>
+              </div>
+              <div class="form-row hidden" id="generatr-drone-tags-row">
+                <label for="generatr-drone-tags">Tags</label>
+                <input type="text" id="generatr-drone-tags" placeholder="comma-separated">
+              </div>
+              <div class="form-row hidden" id="generatr-drone-roots-row">
+                <label for="generatr-drone-roots">Roots</label>
+                <input type="text" id="generatr-drone-roots" placeholder="comma-separated">
+              </div>
+              <div class="form-row hidden" id="generatr-drone-pattern-row">
+                <label for="generatr-drone-pattern">MIDI pattern</label>
+                <select id="generatr-drone-pattern"></select>
+              </div>
+              <div class="form-row hidden" id="generatr-drone-instrument-row">
+                <label for="generatr-drone-instrument">Instrument</label>
+                <select id="generatr-drone-instrument"></select>
+              </div>
+              <div class="form-row hidden" id="generatr-drone-effect-row">
+                <label for="generatr-drone-effect">Effect / FX chain</label>
+                <select id="generatr-drone-effect"></select>
+              </div>
+              <div class="form-row hidden" id="generatr-drone-iterations-row">
+                <label for="generatr-drone-iterations">Iterations</label>
+                <input type="number" id="generatr-drone-iterations" min="1" value="1">
+              </div>
+              <div class="form-row hidden" id="generatr-drone-split-row">
+                <label for="generatr-drone-split">Render Options</label>
+                <div>
+                  <label><input type="checkbox" id="generatr-drone-split"> Milestone WAVs</label>
+                </div>
               </div>
               <div class="form-row hidden" id="generatr-beat-tempo-row">
                 <label for="generatr-beat-tempo">Tempo</label>
@@ -651,11 +707,11 @@
                 <input type="number" id="generatr-beat-iterations" min="1" value="1">
               </div>
               <div class="form-row hidden" id="generatr-beat-variants-row">
-                <label>Variants</label>
+                <label>Render Variants</label>
                 <div id="generatr-beat-variants-list">
-                  <label><input type="checkbox" value="1/2"> Include 1/2 Tempo Variation</label>
-                  <label><input type="checkbox" value="1/4"> Include 1/4 Tempo Variation</label>
-                  <label><input type="checkbox" value="3/4"> Include 3/4 Tempo Variation</label>
+                  <label><input type="checkbox" value="1/2">1/2 Tempo</label>
+                  <label><input type="checkbox" value="1/4">1/4 Tempo</label>
+                  <label><input type="checkbox" value="3/4">3/4 Tempo</label>
                 </div>
               </div>
               <div class="form-row form-row-post-processing hidden" id="generatr-beat-post-processing-row">
@@ -1317,7 +1373,7 @@
       /**
        * Feature flags (auditionr only): ?flags=FLAG_A,FLAG_B
        * Flags are trimmed, lowercased, and stored in a Set for quick lookup.
-       * Example: ?flags=all_cli_options — shows drone / bass / transition in Generate Samples.
+       * Example: ?flags=all_cli_options — also shows bass and transition in Generate Samples.
        */
       function parseAuditionrFeatureFlags() {
         try {
@@ -1338,7 +1394,7 @@
 
       var typeSelect = document.getElementById("generatr-type");
       if (typeSelect && !auditionrFeatureFlags.has(FLAG_ALL_CLI_OPTIONS)) {
-        var gatedTypeValues = { drone: true, bass: true, transition: true };
+        var gatedTypeValues = { bass: true, transition: true };
         var toRemove = [];
         Array.from(typeSelect.options).forEach(function (opt) {
           if (gatedTypeValues[opt.value]) toRemove.push(opt);
@@ -1350,6 +1406,19 @@
 
       var subcommandRow = document.getElementById("generatr-subcommand-row");
       var transitionSubcommandRow = document.getElementById("generatr-transition-subcommand-row");
+      var droneRows = [
+        document.getElementById("generatr-drone-name-row"),
+        document.getElementById("generatr-drone-notes-row"),
+        document.getElementById("generatr-drone-chart-name-row"),
+        document.getElementById("generatr-drone-chart-type-row"),
+        document.getElementById("generatr-drone-tags-row"),
+        document.getElementById("generatr-drone-roots-row"),
+        document.getElementById("generatr-drone-pattern-row"),
+        document.getElementById("generatr-drone-instrument-row"),
+        document.getElementById("generatr-drone-effect-row"),
+        document.getElementById("generatr-drone-iterations-row"),
+        document.getElementById("generatr-drone-split-row")
+      ];
       var beatRows = [
         document.getElementById("generatr-beat-tempo-row"),
         document.getElementById("generatr-beat-loops-row"),
@@ -1358,9 +1427,9 @@
         document.getElementById("generatr-beat-randomization-config-row"),
         document.getElementById("generatr-beat-swing-row"),
         document.getElementById("generatr-beat-iterations-row"),
-        document.getElementById("generatr-beat-variants-row"),
-        document.getElementById("generatr-beat-post-processing-row")
+        document.getElementById("generatr-beat-variants-row")
       ];
+      var generatrPostProcessingRow = document.getElementById("generatr-beat-post-processing-row");
       var beatTempoInput = document.getElementById("generatr-beat-tempo");
       var beatLoopsInput = document.getElementById("generatr-beat-loops");
       var beatPatternInput = document.getElementById("generatr-beat-pattern");
@@ -1370,6 +1439,17 @@
       var beatIterationsInput = document.getElementById("generatr-beat-iterations");
       var beatVariantsList = document.getElementById("generatr-beat-variants-list");
       var beatPostProcessingList = document.getElementById("generatr-beat-post-processing-list");
+      var droneNameInput = document.getElementById("generatr-drone-name");
+      var droneNotesInput = document.getElementById("generatr-drone-notes");
+      var droneChartNameInput = document.getElementById("generatr-drone-chart-name");
+      var droneChartTypeSelect = document.getElementById("generatr-drone-chart-type");
+      var droneTagsInput = document.getElementById("generatr-drone-tags");
+      var droneRootsInput = document.getElementById("generatr-drone-roots");
+      var dronePatternSelect = document.getElementById("generatr-drone-pattern");
+      var droneInstrumentSelect = document.getElementById("generatr-drone-instrument");
+      var droneEffectSelect = document.getElementById("generatr-drone-effect");
+      var droneIterationsInput = document.getElementById("generatr-drone-iterations");
+      var droneSplitCheckbox = document.getElementById("generatr-drone-split");
       var form = document.getElementById("generatr-form");
       var btnGenerate = document.getElementById("generatr-btn");
       var loadingEl = document.getElementById("generatr-loading");
@@ -1379,7 +1459,7 @@
       var sidebar = document.getElementById("auditionr-sidebar");
       var sidebarToggle = document.getElementById("sidebar-toggle");
       var sidebarToggleIcon = document.getElementById("sidebar-toggle-icon");
-      var beatGenerateOptionsLoaded = false;
+      var generatrSidebarOptionsLoaded = false;
 
       function setSelectOptions(selectEl, values, includeRandom) {
         var current = selectEl.value;
@@ -1429,8 +1509,8 @@
         });
       }
 
-      function loadBeatGenerateOptions() {
-        if (beatGenerateOptionsLoaded) return Promise.resolve();
+      function loadGeneratrSidebarOptions() {
+        if (generatrSidebarOptionsLoaded) return Promise.resolve();
         return Promise.all([
           fetch("/api/generatr/options").then(function (res) { return res.json(); }),
           fetch("/api/drum-path-presets").then(function (res) { return res.json(); })
@@ -1447,11 +1527,14 @@
             if (presetData.activePreset) {
               beatRandomizationConfigSelect.value = presetData.activePreset;
             }
+            setSelectOptions(dronePatternSelect, data.droneMidiPatterns || [], true);
+            setSelectOptions(droneInstrumentSelect, data.droneInstruments || [], true);
+            setSelectOptions(droneEffectSelect, data.droneEffects || [], true);
             renderBeatPostProcessing(data.processingActions || { actions: [] });
-            beatGenerateOptionsLoaded = true;
+            generatrSidebarOptionsLoaded = true;
           })
           .catch(function (err) {
-            console.error("Failed to load beat options:", err);
+            console.error("Failed to load generate options:", err);
           });
       }
 
@@ -1462,8 +1545,17 @@
         beatRows.forEach(function (row) {
           row.classList.toggle("hidden", type !== "beat");
         });
-        if (type === "beat") {
-          loadBeatGenerateOptions();
+        droneRows.forEach(function (row) {
+          row.classList.toggle("hidden", type !== "drone");
+        });
+        if (generatrPostProcessingRow) {
+          generatrPostProcessingRow.classList.toggle(
+            "hidden",
+            type !== "beat" && type !== "drone"
+          );
+        }
+        if (type === "beat" || type === "drone") {
+          loadGeneratrSidebarOptions();
         }
       }
       typeSelect.addEventListener("change", updateGeneratrSubcommandVisibility);
@@ -1509,6 +1601,22 @@
             beatVariantsList.querySelectorAll("input[type='checkbox']:checked")
           ).map(function (el) { return el.value; });
           body.postProcessing = checkedPost;
+        } else if (type === "drone") {
+          var dronePost = Array.from(
+            beatPostProcessingList.querySelectorAll("input[type='checkbox']:checked")
+          ).map(function (el) { return el.value; });
+          body.name = (droneNameInput.value || "").trim();
+          body.notes = (droneNotesInput.value || "").trim();
+          body.chartName = (droneChartNameInput.value || "").trim();
+          body.chartType = (droneChartTypeSelect.value || "").trim();
+          body.tags = (droneTagsInput.value || "").trim();
+          body.roots = (droneRootsInput.value || "").trim();
+          body.pattern = (dronePatternSelect.value || "").trim();
+          body.instrument = (droneInstrumentSelect.value || "").trim();
+          body.effect = (droneEffectSelect.value || "").trim();
+          body.iterations = Math.max(1, parseInt(droneIterationsInput.value || "1", 10) || 1);
+          body.splitProcessing = !!droneSplitCheckbox.checked;
+          body.postProcessing = dronePost;
         }
 
         btnGenerate.disabled = true;
