@@ -452,6 +452,16 @@
       padding: 10px;
       margin-bottom: 1rem;
       /* border-radius: 10px; */
+      transition: opacity 0.2s ease;
+    }
+
+    .waveform-wrapper.waveform-processing {
+      opacity: 0.52;
+      pointer-events: none;
+    }
+
+    .waveform-processing .waveform-duration {
+      color: var(--theme-b);
     }
 
     .waveform-title {
@@ -743,6 +753,7 @@
     var selectedWaveformTimestamps = {};
     var currentDisplayedFiles = [];
     var waveformInstances = {};
+    var processingGuardMs = 120000;
     var db = 2;
     var lastEdited = "";
     var sharedAudioContext = null;
@@ -878,14 +889,82 @@
         .catch(error => console.error("Error:", error));
     }
 
+    function resolveDisplayedFileFromProcessPath(pathToken) {
+      if (!pathToken || typeof pathToken !== "string") return null;
+      pathToken = pathToken.trim();
+      if (!pathToken) return null;
+      if (waveformInstances[pathToken]) return pathToken;
+      var slug = pathToken.indexOf("/exports/") === 0
+        ? pathToken.slice("/exports/".length)
+        : auditionrBasename(pathToken);
+      try {
+        slug = decodeURIComponent(slug);
+      } catch (e) {}
+      var i;
+      for (i = 0; i < currentDisplayedFiles.length; i++) {
+        var abs = currentDisplayedFiles[i];
+        if (auditionrBasename(abs) === slug || auditionrExportsApiPath(abs) === pathToken) return abs;
+      }
+      return null;
+    }
+
+    function endWaveformProcessing(absPath, opts) {
+      opts = opts || {};
+      var inst = waveformInstances[absPath];
+      if (!inst) return;
+      inst.pendingProcessingReveal = false;
+      if (inst.processingSafetyTimer) {
+        clearTimeout(inst.processingSafetyTimer);
+        inst.processingSafetyTimer = null;
+      }
+      if (inst.wrapper) inst.wrapper.classList.remove("waveform-processing");
+      if (!opts.skipDurationRepair && inst.wavesurfer && inst.durationEl) {
+        var d = inst.wavesurfer.getDuration();
+        if (typeof d === "number" && !isNaN(d) && d > 0) {
+          inst.durationEl.textContent = formatTimestamp(d);
+        }
+      }
+    }
+
+    function beginWaveformProcessing(absPath) {
+      var inst = waveformInstances[absPath];
+      if (!inst || !inst.wrapper || !inst.durationEl) return;
+      if (typeof inst.stopPlayback === "function") {
+        try { inst.stopPlayback(); } catch (err) {}
+      }
+      inst.pendingProcessingReveal = true;
+      inst.wrapper.classList.add("waveform-processing");
+      inst.durationEl.textContent = "processing...";
+      if (inst.processingSafetyTimer) clearTimeout(inst.processingSafetyTimer);
+      inst.processingSafetyTimer = setTimeout(function () {
+        if (!waveformInstances[absPath] || !waveformInstances[absPath].pendingProcessingReveal) return;
+        endWaveformProcessing(absPath);
+      }, processingGuardMs);
+    }
+
     function processSample(params) {
+      var fileAbs = resolveDisplayedFileFromProcessPath(params.path);
+      if (fileAbs) beginWaveformProcessing(fileAbs);
       fetch("/process", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(params)
-      }).then(response => response.json())
-        .then(data => console.log(data))
-        .catch(error => console.error("Error:", error));
+      })
+        .then(function (response) {
+          return response.json().then(function (data) {
+            return { ok: response.ok, data: data };
+          });
+        })
+        .then(function (pack) {
+          if (!pack.ok || (pack.data && pack.data.error)) {
+            if (fileAbs) endWaveformProcessing(fileAbs);
+          }
+          console.log(pack.data);
+        })
+        .catch(function (error) {
+          if (fileAbs) endWaveformProcessing(fileAbs);
+          console.error("Error:", error);
+        });
     }
 
     function fetchUndoStatus(path) {
@@ -939,6 +1018,10 @@
     function removeWaveform(file) {
       var inst = waveformInstances[file];
       if (!inst) return;
+      if (inst.processingSafetyTimer) {
+        clearTimeout(inst.processingSafetyTimer);
+        inst.processingSafetyTimer = null;
+      }
       if (inst.stopPlayback) inst.stopPlayback();
       if (inst.wavesurfer) {
         try { inst.wavesurfer.destroy(); } catch (e) { }
@@ -954,7 +1037,7 @@
       var inst = waveformInstances[file];
       if (!inst || !inst.wavesurfer) return;
       var url = auditionrExportsMediaUrl(file, true);
-      inst.durationEl.textContent = "loading...";
+      inst.durationEl.textContent = inst.pendingProcessingReveal ? "processing..." : "loading...";
       inst.wavesurfer.load(url);
     }
 
@@ -1248,6 +1331,13 @@
 
       wavesurfer.load(mediaUrl);
 
+      wavesurfer.on("error", function () {
+        var pinnedErr = waveformInstances[file];
+        if (pinnedErr && pinnedErr.pendingProcessingReveal) {
+          endWaveformProcessing(file);
+        }
+      });
+
       wavesurfer.on("seeking", function (currentTime) {
         selectedWaveformTimestamps[file] = currentTime;
         if (trimStartButton) trimStartButton.innerText = `Start At ${formatTimestamp(selectedWaveformTimestamps[file])}`;
@@ -1262,6 +1352,10 @@
 
       wavesurfer.on("ready", function () {
         duration.innerText = `${formatTimestamp(wavesurfer.getDuration())}`;
+        var pinnedReady = waveformInstances[file];
+        if (pinnedReady && pinnedReady.pendingProcessingReveal) {
+          endWaveformProcessing(file, { skipDurationRepair: true });
+        }
         if (isDrumpattern) {
           fetch(mediaUrl)
             .then(function (r) { return r.arrayBuffer(); })
@@ -1365,7 +1459,9 @@
         wavesurfer: wavesurfer,
         durationEl: duration,
         stopPlayback: stopPlayback,
-        undoButton: undoButton
+        undoButton: undoButton,
+        pendingProcessingReveal: false,
+        processingSafetyTimer: null
       };
     }
 
