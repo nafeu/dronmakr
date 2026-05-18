@@ -788,6 +788,21 @@
       return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
     }
 
+    function auditionrBasename(absPath) {
+      return absPath.split("/").pop();
+    }
+
+    /** GET /exports/... — encode #, ?, etc. so the path is not truncated as a URL fragment. */
+    function auditionrExportsMediaUrl(absPath, cacheBust) {
+      var u = "/exports/" + encodeURIComponent(auditionrBasename(absPath));
+      return cacheBust ? u + "?v=" + Date.now() : u;
+    }
+
+    /** POST body path token; keeps literal characters (e.g. #) for server basename resolution. */
+    function auditionrExportsApiPath(absPath) {
+      return "/exports/" + auditionrBasename(absPath);
+    }
+
     function revealSample(path) {
       fetch("/reveal", {
         method: "POST",
@@ -882,9 +897,9 @@
     function refreshWaveform(file) {
       var inst = waveformInstances[file];
       if (!inst || !inst.wavesurfer) return;
-      var filePath = "/exports/" + file.split("/").pop() + "?v=" + Date.now();
+      var url = auditionrExportsMediaUrl(file, true);
       inst.durationEl.textContent = "loading...";
-      inst.wavesurfer.load(filePath);
+      inst.wavesurfer.load(url);
     }
 
     function setUndoButtonState(file, canUndo) {
@@ -962,8 +977,10 @@
     }
 
     function createSingleWaveform(file, onReady) {
-      var filePath = "/exports/" + file.split("/").pop();
-      var displayName = filePath.replace("/exports/", "").replace(".wav", "");
+      var basename = auditionrBasename(file);
+      var apiPath = auditionrExportsApiPath(file);
+      var mediaUrl = auditionrExportsMediaUrl(file, false);
+      var displayName = basename.replace(/\.wav$/i, "");
       var isDrumpattern = displayName.startsWith("drumpattern___");
       var isTransition = displayName.startsWith("transition");
 
@@ -1007,21 +1024,21 @@
       skipButton.innerHTML = "<i class=\"fa-solid fa-box-archive\"></i>";
       skipButton.classList.add("button", "icon-btn");
       skipButton.title = "Archive";
-      skipButton.addEventListener("click", () => skipSample(filePath));
+      skipButton.addEventListener("click", () => skipSample(apiPath));
       actions.appendChild(skipButton);
 
       var saveButton = document.createElement("div");
       saveButton.innerHTML = "<i class=\"fa-solid fa-floppy-disk\"></i>";
       saveButton.classList.add("button", "icon-btn");
       saveButton.title = "Save";
-      saveButton.addEventListener("click", () => saveSample(filePath));
+      saveButton.addEventListener("click", () => saveSample(apiPath));
       actions.appendChild(saveButton);
 
       var revealButton = document.createElement("div");
       revealButton.innerHTML = "<i class=\"fa-solid fa-folder-open\"></i>";
       revealButton.classList.add("button", "icon-btn");
       revealButton.title = "Reveal in folder";
-      revealButton.addEventListener("click", () => revealSample(filePath));
+      revealButton.addEventListener("click", () => revealSample(apiPath));
       actions.appendChild(revealButton);
 
       var undoButton = document.createElement("div");
@@ -1032,7 +1049,7 @@
       undoButton.addEventListener("click", () => {
         if (undoButton.classList.contains("disabled")) return;
         processSample({
-          path: filePath,
+          path: apiPath,
           command: "undo_last_edit",
           files: getCurrentFiles()
         });
@@ -1044,7 +1061,7 @@
       reverseButton.classList.add("button", "icon-btn");
       reverseButton.title = "Reverse";
       reverseButton.addEventListener("click", () => processSample({
-        path: filePath,
+        path: apiPath,
         command: "reverse_sample",
         files: getCurrentFiles()
       }));
@@ -1055,7 +1072,7 @@
       normalizeButton.classList.add("button", "icon-btn");
       normalizeButton.title = "Normalize";
       normalizeButton.addEventListener("click", () => processSample({
-        path: filePath,
+        path: apiPath,
         command: "normalize_sample",
         files: getCurrentFiles()
       }));
@@ -1066,13 +1083,13 @@
       duplicateButton.innerHTML = "<i class=\"fa-solid fa-copy\"></i>";
       duplicateButton.classList.add("button", "icon-btn");
       duplicateButton.title = "Duplicate";
-      duplicateButton.addEventListener("click", () => duplicateSample(filePath));
+      duplicateButton.addEventListener("click", () => duplicateSample(apiPath));
       actions.appendChild(duplicateButton);
 
       deleteButton.innerHTML = "<i class=\"fa-solid fa-trash-can\"></i>";
       deleteButton.classList.add("button", "icon-btn");
       deleteButton.title = "Delete";
-      deleteButton.addEventListener("click", () => deleteSample(filePath));
+      deleteButton.addEventListener("click", () => deleteSample(apiPath));
       actions.appendChild(deleteButton);
 
       var trimStartButton = null;
@@ -1100,7 +1117,7 @@
         btn.innerText = label;
         btn.classList.add("button");
         btn.addEventListener("click", () => processSample(Object.assign({
-          path: filePath,
+          path: apiPath,
           command: command,
           files: getCurrentFiles()
         }, extraParams || {})));
@@ -1159,7 +1176,7 @@
 
       wrapper.appendChild(actions);
 
-      fetchUndoStatus(filePath).then(function (canUndo) {
+      fetchUndoStatus(apiPath).then(function (canUndo) {
         undoButton.classList.toggle("disabled", !canUndo);
       });
 
@@ -1173,7 +1190,7 @@
         height: 80
       });
 
-      wavesurfer.load(filePath);
+      wavesurfer.load(mediaUrl);
 
       wavesurfer.on("seeking", function (currentTime) {
         selectedWaveformTimestamps[file] = currentTime;
@@ -1190,7 +1207,7 @@
       wavesurfer.on("ready", function () {
         duration.innerText = `${formatTimestamp(wavesurfer.getDuration())}`;
         if (isDrumpattern) {
-          fetch(filePath)
+          fetch(mediaUrl)
             .then(function (r) { return r.arrayBuffer(); })
             .then(function (ab) {
               return getAudioContext().decodeAudioData(ab);

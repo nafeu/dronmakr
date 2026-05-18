@@ -1,4 +1,5 @@
 import copy
+import re
 
 from process_sample import (
     apply_bandpass_to_sample,
@@ -27,12 +28,16 @@ from process_sample import (
     apply_phaser_medium_to_sample,
     apply_phaser_mild_to_sample,
     apply_pitch_shift_preserve_length,
+    apply_transpose_pitch_by_resampling_inplace,
+    apply_paulstretch_to_sample,
     apply_reverb_amphitheatre_to_sample,
     apply_reverb_bedroom_to_sample,
     apply_reverb_hall_to_sample,
     apply_reverb_large_to_sample,
     apply_reverb_room_to_sample,
     apply_reverb_space_to_sample,
+    apply_reverb_void_to_sample,
+    apply_reverb_distant_to_sample,
     apply_time_stretch_simple,
     decrease_sample_gain,
     fade_sample_end,
@@ -95,18 +100,79 @@ PROCESSING_ACTIONS = [
     {"token": "stretch:125% speed", "type": "stretch", "label": "125% Speed", "command": "stretch_sample", "params": {"stretch_factor": 0.8}},
     {"token": "stretch:175% speed", "type": "stretch", "label": "175% Speed", "command": "stretch_sample", "params": {"stretch_factor": 0.5714286}},
     {"token": "stretch:200% speed", "type": "stretch", "label": "200% Speed", "command": "stretch_sample", "params": {"stretch_factor": 0.5}},
+    {
+        "token": "stretch:paul8s2.5w",
+        "type": "stretch",
+        "label": "Paul 8× · 2.5s window",
+        "command": "paul_stretch_sample",
+        "params": {"stretch": 8.0, "window_size": 2.5},
+    },
+    {
+        "token": "stretch:paul12s4w",
+        "type": "stretch",
+        "label": "Paul 12× · 4s window",
+        "command": "paul_stretch_sample",
+        "params": {"stretch": 12.0, "window_size": 4.0},
+    },
+    {
+        "token": "stretch:paul5s1w",
+        "type": "stretch",
+        "label": "Paul 5× · 1s window",
+        "command": "paul_stretch_sample",
+        "params": {"stretch": 5.0, "window_size": 1.0},
+    },
     {"token": "pitch:+1", "type": "pitch", "label": "+1", "command": "pitch_shift_sample", "params": {"semitones": 1}},
     {"token": "pitch:+2", "type": "pitch", "label": "+2", "command": "pitch_shift_sample", "params": {"semitones": 2}},
+    {"token": "pitch:+3", "type": "pitch", "label": "+3", "command": "pitch_shift_sample", "params": {"semitones": 3}},
+    {"token": "pitch:+5", "type": "pitch", "label": "+5", "command": "pitch_shift_sample", "params": {"semitones": 5}},
+    {"token": "pitch:+6", "type": "pitch", "label": "+6", "command": "pitch_shift_sample", "params": {"semitones": 6}},
+    {"token": "pitch:+7", "type": "pitch", "label": "+7", "command": "pitch_shift_sample", "params": {"semitones": 7}},
     {"token": "pitch:+12", "type": "pitch", "label": "+12", "command": "pitch_shift_sample", "params": {"semitones": 12}},
+    {"token": "pitch:+24", "type": "pitch", "label": "+24", "command": "pitch_shift_sample", "params": {"semitones": 24}},
     {"token": "pitch:-1", "type": "pitch", "label": "-1", "command": "pitch_shift_sample", "params": {"semitones": -1}},
     {"token": "pitch:-2", "type": "pitch", "label": "-2", "command": "pitch_shift_sample", "params": {"semitones": -2}},
+    {"token": "pitch:-3", "type": "pitch", "label": "-3", "command": "pitch_shift_sample", "params": {"semitones": -3}},
+    {"token": "pitch:-5", "type": "pitch", "label": "-5", "command": "pitch_shift_sample", "params": {"semitones": -5}},
+    {"token": "pitch:-6", "type": "pitch", "label": "-6", "command": "pitch_shift_sample", "params": {"semitones": -6}},
+    {"token": "pitch:-7", "type": "pitch", "label": "-7", "command": "pitch_shift_sample", "params": {"semitones": -7}},
     {"token": "pitch:-12", "type": "pitch", "label": "-12", "command": "pitch_shift_sample", "params": {"semitones": -12}},
+    {"token": "pitch:-24", "type": "pitch", "label": "-24", "command": "pitch_shift_sample", "params": {"semitones": -24}},
+    {
+        "token": "pitch:-12raw",
+        "type": "pitch",
+        "label": "-12 raw (Resample transpose)",
+        "command": "pitch_shift_transpose_sample",
+        "params": {"semitones": -12},
+    },
+    {
+        "token": "pitch:+12raw",
+        "type": "pitch",
+        "label": "+12 raw (Resample transpose)",
+        "command": "pitch_shift_transpose_sample",
+        "params": {"semitones": 12},
+    },
+    {
+        "token": "pitch:-6raw",
+        "type": "pitch",
+        "label": "-6 raw (Resample transpose)",
+        "command": "pitch_shift_transpose_sample",
+        "params": {"semitones": -6},
+    },
+    {
+        "token": "pitch:+6raw",
+        "type": "pitch",
+        "label": "+6 raw (Resample transpose)",
+        "command": "pitch_shift_transpose_sample",
+        "params": {"semitones": 6},
+    },
     {"token": "reverb:bedroom", "type": "reverb", "label": "Bedroom", "command": "reverb_bedroom_sample", "params": {}},
     {"token": "reverb:classroom", "type": "reverb", "label": "Classroom", "command": "reverb_room_sample", "params": {}},
     {"token": "reverb:warehouse", "type": "reverb", "label": "Warehouse", "command": "reverb_hall_sample", "params": {}},
     {"token": "reverb:large", "type": "reverb", "label": "Large", "command": "reverb_large_sample", "params": {}},
     {"token": "reverb:ampitheatre", "type": "reverb", "label": "Ampitheatre", "command": "reverb_amphitheatre_sample", "params": {}},
     {"token": "reverb:space", "type": "reverb", "label": "Space", "command": "reverb_space_sample", "params": {}},
+    {"token": "reverb:void", "type": "reverb", "label": "Void", "command": "reverb_void_sample", "params": {}},
+    {"token": "reverb:distant", "type": "reverb", "label": "Distant (late bloom)", "command": "reverb_distant_sample", "params": {}},
     {"token": "compress:mild", "type": "compress", "label": "Mild", "command": "compress_mild_sample", "params": {}},
     {"token": "compress:medium", "type": "compress", "label": "Medium", "command": "compress_medium_sample", "params": {}},
     {"token": "compress:heavy", "type": "compress", "label": "Heavy", "command": "compress_heavy_sample", "params": {}},
@@ -129,6 +195,9 @@ PROCESSING_ACTIONS = [
 
 PROCESSING_ACTIONS_BY_TOKEN = {a["token"]: a for a in PROCESSING_ACTIONS}
 
+PAUL_STRETCH_TOKEN_RE = re.compile(r"^stretch:paul(\d+(?:\.\d+)?)s(\d+(?:\.\d+)?)w$")
+PITCH_RAW_TOKEN_RE = re.compile(r"^pitch:([+-]?\d+(?:\.\d+)?)raw$")
+
 
 def get_processing_actions_payload() -> dict:
     return {
@@ -145,10 +214,33 @@ def parse_post_processing_spec(spec: str | None) -> list[dict]:
     unknown: list[str] = []
     for token in tokens:
         action = PROCESSING_ACTIONS_BY_TOKEN.get(token)
-        if not action:
-            unknown.append(token)
+        if action:
+            actions.append(action)
             continue
-        actions.append(action)
+        paul_m = PAUL_STRETCH_TOKEN_RE.match(token)
+        if paul_m:
+            actions.append(
+                {
+                    "token": token,
+                    "command": "paul_stretch_sample",
+                    "params": {
+                        "stretch": float(paul_m.group(1)),
+                        "window_size": float(paul_m.group(2)),
+                    },
+                }
+            )
+            continue
+        pr_m = PITCH_RAW_TOKEN_RE.match(token)
+        if pr_m:
+            actions.append(
+                {
+                    "token": token,
+                    "command": "pitch_shift_transpose_sample",
+                    "params": {"semitones": float(pr_m.group(1))},
+                }
+            )
+            continue
+        unknown.append(token)
     if unknown:
         raise ValueError(
             "Unknown post-processing action(s): "
@@ -173,6 +265,16 @@ def apply_processing_command(file_path: str, command: str, params: dict | None =
             apply_time_stretch_simple(file_path, p.get("stretch_factor", 1.0))
         case "pitch_shift_sample":
             apply_pitch_shift_preserve_length(file_path, p.get("semitones", 0))
+        case "pitch_shift_transpose_sample":
+            apply_transpose_pitch_by_resampling_inplace(
+                file_path, p.get("semitones", 0)
+            )
+        case "paul_stretch_sample":
+            apply_paulstretch_to_sample(
+                file_path,
+                stretch=p.get("stretch", 8.0),
+                window_size=p.get("window_size", 2.5),
+            )
         case "reverb_bedroom_sample":
             apply_reverb_bedroom_to_sample(file_path)
         case "reverb_room_sample":
@@ -185,6 +287,10 @@ def apply_processing_command(file_path: str, command: str, params: dict | None =
             apply_reverb_amphitheatre_to_sample(file_path)
         case "reverb_space_sample":
             apply_reverb_space_to_sample(file_path)
+        case "reverb_void_sample":
+            apply_reverb_void_to_sample(file_path)
+        case "reverb_distant_sample":
+            apply_reverb_distant_to_sample(file_path)
         case "compress_mild_sample":
             apply_compress_mild_to_sample(file_path)
         case "compress_medium_sample":
@@ -250,10 +356,30 @@ def apply_processing_command(file_path: str, command: str, params: dict | None =
             raise ValueError(f"Unsupported processing command: {command}")
 
 
-def apply_post_processing_actions(file_path: str, actions: list[dict]) -> None:
-    for action in actions:
+def actions_without_normalize(actions: list[dict]) -> list[dict]:
+    """Drop user-supplied normalization; we always finalize exports with normalization once."""
+    return [a for a in actions if (a.get("command") or "") != "normalize_sample"]
+
+
+def apply_post_processing_actions(
+    file_path: str,
+    actions: list[dict],
+    *,
+    on_before_chain_step=None,
+    on_before_finalize_normalize=None,
+) -> None:
+    if not actions:
+        return
+    chain = actions_without_normalize(actions)
+    for i, action in enumerate(chain, start=1):
+        if on_before_chain_step is not None:
+            on_before_chain_step(i, len(chain), action)
         apply_processing_command(
             file_path,
             action.get("command", ""),
             action.get("params", {}),
         )
+    if on_before_finalize_normalize is not None:
+        on_before_finalize_normalize()
+    normalize_sample(file_path)
+

@@ -1,8 +1,10 @@
 import fnmatch
 import time
 import os
+import shutil
 import sys
 import json
+import tempfile
 import random
 import builtins
 import subprocess
@@ -19,7 +21,12 @@ from preset_authoring import list_presets
 from desktop_app import main as run_desktop_app
 from webui import run as run_webui
 from beatbuildr import generate_random_drum_kit
-from processing_actions import parse_post_processing_spec, apply_post_processing_actions
+from processing_actions import (
+    parse_post_processing_spec,
+    apply_post_processing_actions,
+    apply_processing_command,
+    actions_without_normalize,
+)
 from generate_midi import generate_drone_midi, get_pattern_config
 from generate_sample import generate_drone_sample, generate_beat_sample
 from generate_transition import (
@@ -38,8 +45,8 @@ from generate_bass import (
     parse_donk_config,
     parse_reese_config,
 )
-from process_sample import process_drone_sample
 from utils import (
+    BLUE,
     format_name,
     generate_beat_header,
     generate_beat_name,
@@ -48,10 +55,12 @@ from utils import (
     generate_transition_header,
     get_cli_version,
     get_version,
+    process_drone_sample_header,
     RED,
     rename_samples,
     RESET,
     with_main_prompt as with_prompt,
+    with_process_drone_sample_prompt,
     with_generate_beat_prompt,
     delete_all_files,
     EXPORTS_DIR,
@@ -92,9 +101,82 @@ def apply_post_processing_to_wavs(wav_paths: list[str], post_processing: str | N
         sys.exit(1)
     if not actions:
         return
+
+    def _pp_step_banner(i: int, total: int, action: dict) -> None:
+        label = action.get("token") or action.get("command", "")
+        print(with_process_drone_sample_prompt(f"[{i}/{total}] {label}"))
+
+    def _pp_normalize_banner() -> None:
+        print(with_process_drone_sample_prompt("normalize"))
+
     for wav_path in wav_paths:
-        print(with_prompt(f"post-processing      {wav_path}"))
-        apply_post_processing_actions(wav_path, actions)
+        print(process_drone_sample_header())
+        print(with_process_drone_sample_prompt(os.path.basename(wav_path)))
+        apply_post_processing_actions(
+            wav_path,
+            actions,
+            on_before_chain_step=_pp_step_banner,
+            on_before_finalize_normalize=_pp_normalize_banner,
+        )
+        print(f"{BLUE}│{RESET}")
+
+
+def _export_split_post_processing_variants(
+    output_stem: str, source_wav: str, actions: list[dict]
+) -> list[str]:
+    """
+    Rename source_wav to {stem}_1ofN.wav, then for each action apply in place on a
+    temp copy and write {stem}_2ofN.wav … {stem}_NofN.wav (cumulative chain).
+    Normalize is not part of the cumulative chain user steps; each milestone file is
+    normalized once after that step's audio is exported.
+    """
+    chain = actions_without_normalize(actions)
+    n = len(chain) + 1
+    first_path = f"{output_stem}_1of{n}.wav"
+    stem_short = os.path.basename(output_stem)
+
+    print(process_drone_sample_header())
+    print(with_process_drone_sample_prompt(f"split-processing ({n} milestones) — {stem_short}"))
+
+    os.replace(source_wav, first_path)
+    paths: list[str] = [first_path]
+    print(with_process_drone_sample_prompt(f"[1/{n}] _1of{n} baseline → normalize"))
+    apply_processing_command(first_path, "normalize_sample", {})
+
+    if not chain:
+        print(f"{BLUE}│{RESET}")
+        return paths
+
+    out_dir = os.path.dirname(os.path.abspath(first_path)) or os.getcwd()
+    fd, work_path = tempfile.mkstemp(suffix=".wav", dir=out_dir)
+    os.close(fd)
+    try:
+        shutil.copy2(first_path, work_path)
+        for i, action in enumerate(chain):
+            tok = action.get("token") or action.get("command", "")
+            milestone = i + 2
+            step_path = f"{output_stem}_{milestone}of{n}.wav"
+            print(
+                with_process_drone_sample_prompt(
+                    f"[{milestone}/{n}] {tok} → _{milestone}of{n} → normalize"
+                )
+            )
+            apply_processing_command(
+                work_path,
+                action.get("command", ""),
+                action.get("params", {}),
+            )
+            shutil.copy2(work_path, step_path)
+            apply_processing_command(step_path, "normalize_sample", {})
+            paths.append(step_path)
+    finally:
+        if os.path.exists(work_path):
+            try:
+                os.remove(work_path)
+            except OSError:
+                pass
+    print(f"{BLUE}│{RESET}")
+    return paths
 
 
 def version_callback(ctx: typer.Context, value: bool):
@@ -434,6 +516,14 @@ def generate_drone(
         "-x",
         help="Comma-separated post-processing actions to apply to each generated WAV.",
     ),
+    split_processing: bool = typer.Option(
+        False,
+        "--split-processing",
+        help=(
+            "With --post-processing, write cumulative WAVs named _1ofN … _NofN after "
+            "each step (original, then after each action in order) instead of one in-place chain."
+        ),
+    ),
 ):
     """Generate n iterations of samples (.wav) with parameters"""
     start_time = time.time()
@@ -498,8 +588,31 @@ def generate_drone(
         )
     )
     print(with_prompt(f"post-processing      {post_processing if post_processing else GENERATED_LABEL}"))
+    print(with_prompt(f"split-processing       {split_processing}"))
     print(with_prompt(f"play when done        {play}"))
     print(f"{RED}│{RESET}")
+
+    split_actions: list[dict] | None = None
+    if split_processing:
+        if not post_processing or not post_processing.strip():
+            print(
+                with_prompt(
+                    "Error: --split-processing requires --post-processing with at least one action."
+                )
+            )
+            sys.exit(1)
+        try:
+            split_actions = parse_post_processing_spec(post_processing)
+        except ValueError as e:
+            print(with_prompt(f"Error: {e}"))
+            sys.exit(1)
+        if not split_actions:
+            print(
+                with_prompt(
+                    "Error: --split-processing requires at least one post-processing action."
+                )
+            )
+            sys.exit(1)
 
     if dry_run:
         print(f"{RED}■ dry run completed{RESET}")
@@ -540,16 +653,14 @@ def generate_drone(
             instrument=instrument,
             effect=effect,
         )
-        (
-            generated_sample_stretched,
-            generated_sample_stretched_reverberated,
-            generated_sample_stretched_reverberated_transposed,
-        ) = process_drone_sample(input_path=generated_sample)
         results.append(midi_file)
-        results.append(generated_sample)
-        results.append(generated_sample_stretched)
-        results.append(generated_sample_stretched_reverberated)
-        results.append(generated_sample_stretched_reverberated_transposed)
+        if split_actions is not None:
+            variant_paths = _export_split_post_processing_variants(
+                output_path, generated_sample, split_actions
+            )
+            results.extend(variant_paths)
+        else:
+            results.append(generated_sample)
 
     end_time = time.time()
     time_elapsed = round(end_time - start_time)
@@ -562,7 +673,8 @@ def generate_drone(
             print(with_prompt(f"           {result}"))
 
     wav_files = [f for f in results if f.endswith(".wav")]
-    apply_post_processing_to_wavs(wav_files, post_processing)
+    if split_actions is None:
+        apply_post_processing_to_wavs(wav_files, post_processing)
 
     # Open all generated .wav files if play is enabled
     if play and results:

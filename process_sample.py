@@ -1,4 +1,5 @@
 import os
+import tempfile
 import numpy as np
 import soundfile as sf
 import librosa
@@ -26,69 +27,12 @@ from pedalboard import (
 )
 from pedalboard.io import AudioFile
 from paulstretch import paulstretch
-from utils import (
-    process_drone_sample_header,
-    with_process_drone_sample_prompt as with_prompt,
-    BLUE,
-    RESET,
-)
+from utils import with_process_drone_sample_prompt
 
 
-def apply_long_wet_reverb(input_path):
-    """
-    Apply high-quality offline convolution reverb using our custom IR builder
-    in dsp.make_reverb_ir. Designed for long, stadium-style tails for drones.
-    """
-    from dsp import make_reverb_ir
-
-    print(with_prompt("applying HQ convolution reverb (stadium)"))
-
-    # Construct output filename
-    dir_name, base_name = os.path.split(input_path)
-    name, ext = os.path.splitext(base_name)
-    output_path = os.path.join(dir_name, f"{name}_reverbed{ext}")
-
-    # Load audio
-    with AudioFile(input_path) as f:
-        audio = f.read(f.frames)
-        sample_rate = f.samplerate
-
-    # Build a long, stadium-style IR:
-    # - length_sec: long tail for big space
-    # - decay_sec: slow decay
-    # - early_reflections: richer early field
-    # - highpass_cutoff_hz: keep low-end clean
-    # - tail_diffusion: high for smooth stadium tail
-    ir = make_reverb_ir(
-        sample_rate=sample_rate,
-        length_sec=3.5,
-        decay_sec=3.0,
-        early_reflections=8,
-        highpass_cutoff_hz=120.0,
-        tail_diffusion=0.85,
-        early_diffuse=True,
-    )
-
-    # Convolve per channel
-    n_channels, n_samples = audio.shape
-    wet = np.zeros_like(audio)
-    for ch in range(n_channels):
-        wet[ch] = fftconvolve(audio[ch], ir, mode="full")[:n_samples]
-
-    # Match dry peak and mix heavily wet for drone vibe
-    wet_peak = np.max(np.abs(wet)) + 1e-12
-    dry_peak = np.max(np.abs(audio)) + 1e-12
-    wet = wet * (dry_peak / wet_peak)
-    wet_level = 0.9
-    mix = wet_level * wet + (1.0 - wet_level) * audio
-
-    # Write out reverbed file
-    with AudioFile(
-        output_path, "w", samplerate=sample_rate, num_channels=n_channels
-    ) as f:
-        f.write(mix)
-
-    return output_path
+def log_sample_processing_line(message: str) -> None:
+    """Indented blue detail line aligned with CLI ■ processing sample blocks."""
+    print(with_process_drone_sample_prompt(message))
 
 
 def apply_normalization(input_path):
@@ -117,36 +61,6 @@ def apply_normalization(input_path):
         f.write(processed_audio)
 
 
-def apply_transposition(input_path, semitones):
-    print(with_prompt(f"applying pedalboard transposition"))
-    output_path = input_path.replace(".wav", f"_-_{semitones}st.wav")
-
-    with AudioFile(input_path) as f:
-        audio = f.read(f.frames)
-        sample_rate = f.samplerate
-
-    # Calculate new sample rate based on pitch shift
-    pitch_factor = 2 ** (semitones / 12.0)
-    new_sample_rate = int(sample_rate * pitch_factor)
-
-    # Resampling to new pitch (changes speed naturally)
-    board = Pedalboard([Resample(new_sample_rate)])
-
-    # Apply pitch shift
-    processed_audio = board(audio, sample_rate)
-
-    # Save the new transposed file
-    with AudioFile(
-        output_path,
-        "w",
-        samplerate=new_sample_rate,
-        num_channels=processed_audio.shape[0],
-    ) as f:
-        f.write(processed_audio)
-
-    return output_path
-
-
 def trim_sample_start(input_path, start_time_s):
     """Trims the start of the audio file at `start_time_s` and overwrites the file."""
     audio, sample_rate = sf.read(input_path)
@@ -157,7 +71,7 @@ def trim_sample_start(input_path, start_time_s):
 
     trimmed_audio = audio[start_sample:]
     sf.write(input_path, trimmed_audio, sample_rate)
-    print(f"Trimmed start at {start_time_s}s: {input_path}")
+    log_sample_processing_line(f"Trimmed start at {start_time_s}s")
 
 
 def trim_sample_end(input_path, end_time_s):
@@ -170,7 +84,7 @@ def trim_sample_end(input_path, end_time_s):
 
     trimmed_audio = audio[:end_sample]
     sf.write(input_path, trimmed_audio, sample_rate)
-    print(f"Trimmed end at {end_time_s}s: {input_path}")
+    log_sample_processing_line(f"Trimmed end at {end_time_s}s")
 
 
 def fade_sample_start(input_path, fade_in_time_s):
@@ -192,7 +106,7 @@ def fade_sample_start(input_path, fade_in_time_s):
     audio[:fade_samples] *= fade_curve
 
     sf.write(input_path, audio, sample_rate)
-    print(f"Applied fade-in ({fade_in_time_s}s) to: {input_path}")
+    log_sample_processing_line(f"Applied fade-in ({fade_in_time_s}s)")
 
 
 def fade_sample_end(input_path, fade_out_time_s):
@@ -214,7 +128,7 @@ def fade_sample_end(input_path, fade_out_time_s):
     audio[-fade_samples:] *= fade_curve[::-1]
 
     sf.write(input_path, audio, sample_rate)
-    print(f"Applied fade-out ({fade_out_time_s}s) to: {input_path}")
+    log_sample_processing_line(f"Applied fade-out ({fade_out_time_s}s)")
 
 
 def increase_sample_gain(input_path, db):
@@ -225,7 +139,7 @@ def increase_sample_gain(input_path, db):
     audio *= gain_factor
 
     sf.write(input_path, audio, sample_rate)
-    print(f"Increased gain by {db} dB: {input_path}")
+    log_sample_processing_line(f"Gain +{db} dB")
 
 
 def decrease_sample_gain(input_path, db):
@@ -236,7 +150,7 @@ def decrease_sample_gain(input_path, db):
     audio *= gain_factor
 
     sf.write(input_path, audio, sample_rate)
-    print(f"Decreased gain by {db} dB: {input_path}")
+    log_sample_processing_line(f"Gain -{db} dB")
 
 
 def normalize_sample(input_path, target_peak_db=-1.0):
@@ -251,7 +165,7 @@ def normalize_sample(input_path, target_peak_db=-1.0):
     scale = target_linear / peak
     normalized = np.clip(audio * scale, -1.0, 1.0)
     sf.write(input_path, normalized, sample_rate)
-    print(f"Normalized sample to {target_peak_db} dBFS: {input_path}")
+    log_sample_processing_line(f"Normalize to {target_peak_db} dBFS peak")
 
 
 def apply_noise_gate_to_sample(
@@ -278,9 +192,9 @@ def apply_noise_gate_to_sample(
         input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
     ) as out:
         out.write(processed)
-    print(
+    log_sample_processing_line(
         "Applied noise gate "
-        f"(threshold={threshold_db}dB, attack={attack_ms}ms, release={release_ms}ms): {input_path}"
+        f"(threshold={threshold_db} dB, attack={attack_ms} ms, release={release_ms} ms)"
     )
 
 
@@ -292,7 +206,7 @@ def reverse_sample(input_path):
     reversed_audio = audio[::-1]
 
     sf.write(input_path, reversed_audio, sample_rate)
-    print(f"Reversed sample saved to: {input_path}")
+    log_sample_processing_line("Applied reverse")
 
 
 def apply_time_stretch_simple(input_path, stretch_factor):
@@ -325,7 +239,7 @@ def apply_time_stretch_simple(input_path, stretch_factor):
         stretched = np.stack(channels, axis=1)
 
     sf.write(input_path, stretched, sample_rate)
-    print(f"Applied simple time stretch ({stretch_factor}x) to: {input_path}")
+    log_sample_processing_line(f"Applied time stretch (factor={stretch_factor})")
 
 
 def apply_pitch_shift_preserve_length(input_path, semitones):
@@ -412,7 +326,66 @@ def apply_pitch_shift_preserve_length(input_path, semitones):
         input_path, "w", samplerate=sample_rate, num_channels=shifted.shape[0]
     ) as f:
         f.write(shifted)
-    print(f"Applied pitch shift ({semitones:+g} st) to: {input_path}")
+    log_sample_processing_line(f"Applied pitch shift ({semitones:+g} semitones)")
+
+
+def apply_transpose_pitch_by_resampling_inplace(input_path: str, semitones: float) -> None:
+    """Pedalboard Resample transpose: shifts pitch by changing nominal sample rate (duration follows)."""
+    semitones = float(semitones)
+    if semitones == 0:
+        return
+
+    with AudioFile(input_path) as f:
+        audio = f.read(f.frames)
+        sample_rate = f.samplerate
+
+    pitch_factor = 2 ** (semitones / 12.0)
+    new_sample_rate = int(round(sample_rate * pitch_factor))
+
+    board = Pedalboard([Resample(new_sample_rate)])
+    processed_audio = board(audio, sample_rate)
+
+    with AudioFile(
+        input_path,
+        "w",
+        samplerate=new_sample_rate,
+        num_channels=processed_audio.shape[0],
+    ) as f:
+        f.write(processed_audio)
+    log_sample_processing_line(
+        f"Applied resampling transpose ({semitones:+g} semitones, SR {sample_rate}→{new_sample_rate})"
+    )
+
+
+def apply_paulstretch_to_sample(
+    input_path: str, stretch: float = 8.0, window_size: float = 2.5
+) -> None:
+    stretch = float(stretch)
+    window_size = float(window_size)
+    out_dir = os.path.dirname(os.path.abspath(input_path))
+    if not out_dir:
+        out_dir = os.getcwd()
+
+    fd, tmp_path = tempfile.mkstemp(suffix=".wav", dir=out_dir)
+    os.close(fd)
+    try:
+        paulstretch(
+            input_path,
+            output_path=tmp_path,
+            stretch=stretch,
+            window_size=window_size,
+            show_logs=False,
+        )
+        os.replace(tmp_path, input_path)
+    finally:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+    log_sample_processing_line(
+        f"Applied Paulstretch (stretch={stretch}, window={window_size}s)"
+    )
 
 
 def apply_reverb_to_sample(
@@ -421,6 +394,10 @@ def apply_reverb_to_sample(
     reverb_length_sec=0.7,
     decay_sec=0.5,
     reverb_highpass_hz=100.0,
+    *,
+    early_reflections=None,
+    tail_diffusion=None,
+    early_diffuse=None,
 ):
     """
     Apply high-quality convolution reverb (offline). Uses a generated IR with
@@ -432,12 +409,20 @@ def apply_reverb_to_sample(
         audio = f.read(f.frames)
         sample_rate = f.samplerate
     n_channels, n_samples = audio.shape
-    ir = dsp.make_reverb_ir(
-        sample_rate,
-        length_sec=reverb_length_sec,
-        decay_sec=decay_sec,
-        highpass_cutoff_hz=reverb_highpass_hz,
-    )
+
+    ir_kwargs = {
+        "length_sec": reverb_length_sec,
+        "decay_sec": decay_sec,
+        "highpass_cutoff_hz": reverb_highpass_hz,
+    }
+    if early_reflections is not None:
+        ir_kwargs["early_reflections"] = early_reflections
+    if tail_diffusion is not None:
+        ir_kwargs["tail_diffusion"] = tail_diffusion
+    if early_diffuse is not None:
+        ir_kwargs["early_diffuse"] = early_diffuse
+
+    ir = dsp.make_reverb_ir(sample_rate, **ir_kwargs)
     wet = np.zeros_like(audio)
     for ch in range(n_channels):
         wet[ch] = fftconvolve(audio[ch], ir, mode="full")[:n_samples]
@@ -449,11 +434,11 @@ def apply_reverb_to_sample(
         input_path, "w", samplerate=sample_rate, num_channels=n_channels
     ) as out:
         out.write(mix)
-    msg = f"Applied convolution reverb (wet={wet_level}, {reverb_length_sec}s IR"
+    msg = f"Applied convolution reverb (wet={wet_level}, IR {reverb_length_sec}s"
     if reverb_highpass_hz > 0:
         msg += f", HPF {reverb_highpass_hz} Hz"
-    msg += f") to: {input_path}"
-    print(msg)
+    msg += ")"
+    log_sample_processing_line(msg)
 
 
 def apply_reverb_room_to_sample(input_path):
@@ -522,6 +507,34 @@ def apply_reverb_space_to_sample(input_path):
     )
 
 
+def apply_reverb_void_to_sample(input_path):
+    """Denser, longer diffuse tail than Space (ambient wash)."""
+    apply_reverb_to_sample(
+        input_path,
+        wet_level=0.74,
+        reverb_length_sec=14.0,
+        decay_sec=12.0,
+        reverb_highpass_hz=38.0,
+        early_reflections=11,
+        tail_diffusion=0.93,
+        early_diffuse=True,
+    )
+
+
+def apply_reverb_distant_to_sample(input_path):
+    """Sparse early field with a smoother late bloom."""
+    apply_reverb_to_sample(
+        input_path,
+        wet_level=0.53,
+        reverb_length_sec=11.5,
+        decay_sec=10.5,
+        reverb_highpass_hz=62.0,
+        early_reflections=3,
+        tail_diffusion=0.95,
+        early_diffuse=False,
+    )
+
+
 def apply_distortion_to_sample(input_path, drive_db=6.0):
     """Apply pedalboard Distortion and overwrite the file."""
     with AudioFile(input_path) as f:
@@ -533,7 +546,7 @@ def apply_distortion_to_sample(input_path, drive_db=6.0):
         input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
     ) as out:
         out.write(processed)
-    print(f"Applied distortion (drive={drive_db} dB) to: {input_path}")
+    log_sample_processing_line(f"Applied distortion (drive={drive_db} dB)")
 
 
 def apply_compress_to_sample(
@@ -560,7 +573,7 @@ def apply_compress_to_sample(
         input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
     ) as out:
         out.write(processed)
-    print(f"Applied aggressive compression to: {input_path}")
+    log_sample_processing_line("Applied compression")
 
 
 def apply_compress_mild_to_sample(input_path):
@@ -610,7 +623,7 @@ def apply_overdrive_mids_to_sample(
         input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
     ) as out:
         out.write(processed)
-    print(f"Applied mid-focused overdrive to: {input_path}")
+    log_sample_processing_line("Applied mid-focused overdrive")
 
 
 def apply_overdrive_mild_to_sample(input_path):
@@ -664,7 +677,7 @@ def apply_chorus_to_sample(
         input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
     ) as out:
         out.write(processed)
-    print(f"Applied chorus to: {input_path}")
+    log_sample_processing_line("Applied chorus")
 
 
 def apply_chorus_mild_to_sample(input_path):
@@ -719,7 +732,7 @@ def apply_flanger_to_sample(
         input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
     ) as out:
         out.write(processed)
-    print(f"Applied flanger to: {input_path}")
+    log_sample_processing_line("Applied flanger")
 
 
 def apply_flanger_mild_to_sample(input_path):
@@ -774,7 +787,7 @@ def apply_phaser_to_sample(
         input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
     ) as out:
         out.write(processed)
-    print(f"Applied phaser to: {input_path}")
+    log_sample_processing_line("Applied phaser")
 
 
 def apply_phaser_mild_to_sample(input_path):
@@ -825,7 +838,7 @@ def apply_lowpass_to_sample(input_path, cutoff_hz=6000, order=6):
         input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
     ) as out:
         out.write(processed)
-    print(f"Applied LPF ({cutoff_hz} Hz) to: {input_path}")
+    log_sample_processing_line(f"Applied low-pass filter ({cutoff_hz} Hz)")
 
 
 def apply_highpass_to_sample(input_path, cutoff_hz=100, order=6):
@@ -838,7 +851,7 @@ def apply_highpass_to_sample(input_path, cutoff_hz=100, order=6):
         input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
     ) as out:
         out.write(processed)
-    print(f"Applied HPF ({cutoff_hz} Hz) to: {input_path}")
+    log_sample_processing_line(f"Applied high-pass filter ({cutoff_hz} Hz)")
 
 
 def apply_bandpass_to_sample(
@@ -855,7 +868,9 @@ def apply_bandpass_to_sample(
         input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
     ) as out:
         out.write(processed)
-    print(f"Applied BPF ({low_hz}–{high_hz} Hz, order {order}) to: {input_path}")
+    log_sample_processing_line(
+        f"Applied band-pass filter ({low_hz}–{high_hz} Hz, order {order})"
+    )
 
 
 def apply_eq_lows_to_sample(input_path, gain_db, cutoff_hz=250):
@@ -871,7 +886,7 @@ def apply_eq_lows_to_sample(input_path, gain_db, cutoff_hz=250):
         input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
     ) as out:
         out.write(processed)
-    print(f"Applied Lows {gain_db:+.0f} dB to: {input_path}")
+    log_sample_processing_line(f"EQ lows {gain_db:+.0f} dB")
 
 
 def apply_eq_mids_to_sample(input_path, gain_db, centre_hz=1000):
@@ -887,7 +902,7 @@ def apply_eq_mids_to_sample(input_path, gain_db, centre_hz=1000):
         input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
     ) as out:
         out.write(processed)
-    print(f"Applied Mids {gain_db:+.0f} dB to: {input_path}")
+    log_sample_processing_line(f"EQ mids {gain_db:+.0f} dB")
 
 
 def apply_eq_highs_to_sample(input_path, gain_db, cutoff_hz=4000):
@@ -903,7 +918,7 @@ def apply_eq_highs_to_sample(input_path, gain_db, cutoff_hz=4000):
         input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
     ) as out:
         out.write(processed)
-    print(f"Applied Highs {gain_db:+.0f} dB to: {input_path}")
+    log_sample_processing_line(f"EQ highs {gain_db:+.0f} dB")
 
 
 def apply_granular_synthesis(
@@ -979,35 +994,3 @@ def apply_granular_synthesis(
 
     # Overwrite the original file with the processed audio
     sf.write(input_file, processed_audio, sr)
-
-
-def process_drone_sample(
-    input_path,
-    stretch=8.0,  # Default stretch amount
-    window_size=0.25,  # Default window size (seconds)
-    start_frame=0,
-    end_frame=None,
-):
-    print(process_drone_sample_header())
-    print(
-        with_prompt(
-            f"applying paulstretch (stretch={stretch}, window_size={window_size})"
-        )
-    )
-    stretch_output = paulstretch(
-        input_path,
-        stretch=stretch,
-        window_size=window_size,
-        start_frame=start_frame,
-        end_frame=end_frame,
-        show_logs=False,
-    )
-    stretch_reverb_output = apply_long_wet_reverb(stretch_output)
-    stretch_reverb_transpose_output = apply_transposition(stretch_reverb_output, -12)
-    print(with_prompt("normalizing audio"))
-    apply_normalization(input_path)
-    apply_normalization(stretch_output)
-    apply_normalization(stretch_reverb_output)
-    print(f"{BLUE}│{RESET}")
-
-    return stretch_output, stretch_reverb_output, stretch_reverb_transpose_output

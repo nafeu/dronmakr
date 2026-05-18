@@ -63,7 +63,8 @@ from generate_bass import (
 )
 from beatbuildr import generate_random_drum_kit
 from process_sample import (
-    process_drone_sample,
+    apply_paulstretch_to_sample,
+    apply_transpose_pitch_by_resampling_inplace,
     trim_sample_start,
     trim_sample_end,
     fade_sample_start,
@@ -81,6 +82,8 @@ from process_sample import (
     apply_reverb_large_to_sample,
     apply_reverb_amphitheatre_to_sample,
     apply_reverb_space_to_sample,
+    apply_reverb_void_to_sample,
+    apply_reverb_distant_to_sample,
     apply_distortion_to_sample,
     apply_distortion_mild_to_sample,
     apply_distortion_medium_to_sample,
@@ -485,8 +488,18 @@ def process_file():
             reverse_sample(file_path)
         case "stretch_sample":
             apply_time_stretch_simple(file_path, params.get("stretch_factor", 1.0))
+        case "paul_stretch_sample":
+            apply_paulstretch_to_sample(
+                file_path,
+                stretch=params.get("stretch", 8.0),
+                window_size=params.get("window_size", 2.5),
+            )
         case "pitch_shift_sample":
             _apply_pitch_with_fixed_base(file_path, params.get("semitones", 0))
+        case "pitch_shift_transpose_sample":
+            apply_transpose_pitch_by_resampling_inplace(
+                file_path, params.get("semitones", 0)
+            )
         case "granularize_sample":
             apply_granular_synthesis(file_path)
         case "reverb_sample":
@@ -503,6 +516,10 @@ def process_file():
             apply_reverb_amphitheatre_to_sample(file_path)
         case "reverb_space_sample":
             apply_reverb_space_to_sample(file_path)
+        case "reverb_void_sample":
+            apply_reverb_void_to_sample(file_path)
+        case "reverb_distant_sample":
+            apply_reverb_distant_to_sample(file_path)
         case "compress_sample":
             apply_compress_to_sample(file_path)
         case "compress_mild_sample":
@@ -673,18 +690,7 @@ def _run_generate_drone():
         instrument=None,
         effect=None,
     )
-    (
-        generated_sample_stretched,
-        generated_sample_stretched_reverberated,
-        generated_sample_stretched_reverberated_transposed,
-    ) = process_drone_sample(input_path=generated_sample)
-    return [
-        midi_file,
-        generated_sample,
-        generated_sample_stretched,
-        generated_sample_stretched_reverberated,
-        generated_sample_stretched_reverberated_transposed,
-    ]
+    return [midi_file, generated_sample]
 
 
 def _run_generate_bass(subcommand: str):
