@@ -155,26 +155,106 @@ def apply_butter_filter(
     return apply_iir_per_channel(audio, sample_rate, b, a)
 
 
-def apply_steep_lowpass(audio: np.ndarray, sample_rate: float, cutoff_hz: float) -> np.ndarray:
+def _cheby2_order_for_steepness(steepness: float, *, base: int, span: int, cap: int) -> int:
+    """Map 0..1 steepness to filter order; steepness=0 keeps legacy base order."""
+    s = float(np.clip(steepness, 0.0, 1.0))
+    if s <= 1e-9:
+        return base
+    return int(max(base, min(cap, round(base + s * span))))
+
+
+def _apply_resonance_peak(
+    audio: np.ndarray,
+    sample_rate: float,
+    centre_hz: float,
+    resonance: float,
+) -> np.ndarray:
+    """Narrow peaking boost at cutoff / band centre (0..1 maps to modest DJ-style resonance)."""
+    r = float(np.clip(resonance, 0.0, 1.0))
+    if r <= 1e-6:
+        return audio
+    gain_db = min(18.0, (r**1.35) * 15.0)
+    qpk = max(0.9, 38.0 / (r * 34.0 + 0.45))
+    return apply_peaking_eq(audio, sample_rate, centre_hz, gain_db, qpk)
+
+
+def apply_steep_lowpass(
+    audio: np.ndarray,
+    sample_rate: float,
+    cutoff_hz: float,
+    *,
+    resonance: float = 0.0,
+    steepness: float = 0.0,
+) -> np.ndarray:
     """
-    Apply aggressive low-pass with steep cutoff (Chebyshev Type II, order 10).
-    Truly cuts high frequencies rather than gently rolling off.
+    Low-pass with a sharp transition (Chebyshev type II by default order 10 when steepness=0).
+    steepness in 0..1 increases order (stronger brick-wall feel). resonance 0..1 adds a peak at cutoff.
     """
     nyq = 0.5 * sample_rate
     fc = np.clip(cutoff_hz / nyq, 0.02, 0.98)
-    sos = cheby2(N=10, rs=60, Wn=fc, btype="low", output="sos")
-    return _apply_sos_per_channel(audio, sos)
+    n_order = _cheby2_order_for_steepness(steepness, base=10, span=24, cap=36)
+    if n_order % 2:
+        n_order = min(36, n_order + 1)
+    rs = float(np.clip(52.0 + float(np.clip(resonance, 0.0, 1.0)) * 34.0, 48.0, 92.0))
+    sos = cheby2(N=n_order, rs=rs, Wn=fc, btype="low", output="sos")
+    out = _apply_sos_per_channel(audio, sos)
+    return _apply_resonance_peak(out, sample_rate, float(cutoff_hz), resonance)
 
 
-def apply_steep_highpass(audio: np.ndarray, sample_rate: float, cutoff_hz: float) -> np.ndarray:
+def apply_steep_highpass(
+    audio: np.ndarray,
+    sample_rate: float,
+    cutoff_hz: float,
+    *,
+    resonance: float = 0.0,
+    steepness: float = 0.0,
+) -> np.ndarray:
     """
-    Apply aggressive high-pass with steep cutoff (Chebyshev Type II, order 10).
-    Truly cuts low frequencies rather than gently rolling off.
+    High-pass with sharp transition; same steepness/resonance semantics as low-pass.
     """
     nyq = 0.5 * sample_rate
     fc = np.clip(cutoff_hz / nyq, 0.02, 0.98)
-    sos = cheby2(N=10, rs=60, Wn=fc, btype="high", output="sos")
-    return _apply_sos_per_channel(audio, sos)
+    n_order = _cheby2_order_for_steepness(steepness, base=10, span=24, cap=36)
+    if n_order % 2:
+        n_order = min(36, n_order + 1)
+    rs = float(np.clip(52.0 + float(np.clip(resonance, 0.0, 1.0)) * 34.0, 48.0, 92.0))
+    sos = cheby2(N=n_order, rs=rs, Wn=fc, btype="high", output="sos")
+    out = _apply_sos_per_channel(audio, sos)
+    return _apply_resonance_peak(out, sample_rate, float(cutoff_hz), resonance)
+
+
+def apply_steep_bandpass(
+    audio: np.ndarray,
+    sample_rate: float,
+    low_hz: float,
+    high_hz: float,
+    *,
+    resonance: float = 0.0,
+    steepness: float = 0.0,
+) -> np.ndarray:
+    """
+    Steep band-pass (Chebyshev type II). steepness 0 falls back to mild 4th-order Butterworth.
+    """
+    nyq = 0.5 * sample_rate
+    low = float(np.clip(low_hz, 1.0, nyq * 0.99))
+    high = float(np.clip(high_hz, low + 1.0, nyq * 0.995))
+    lo_n = max(0.01, low / nyq)
+    hi_n = min(0.99, high / nyq)
+    if lo_n >= hi_n - 1e-7:
+        lo_n, hi_n = 0.02, min(0.98, hi_n + 0.02)
+
+    s = float(np.clip(steepness, 0.0, 1.0))
+    if s <= 1e-9:
+        return apply_butter_filter(audio, sample_rate, "band", (low, high), order=4)
+
+    n_order = int(max(8, min(34, round(8 + s * 26))))
+    if n_order % 2:
+        n_order = min(34, n_order + 1)
+    rs = float(np.clip(50.0 + float(np.clip(resonance, 0.0, 1.0)) * 32.0, 48.0, 90.0))
+    sos = cheby2(N=n_order, rs=rs, Wn=[lo_n, hi_n], btype="band", output="sos")
+    out = _apply_sos_per_channel(audio, sos)
+    centre = float(np.sqrt(max(low * high, 1.0)))
+    return _apply_resonance_peak(out, sample_rate, centre, resonance)
 
 
 def peaking_biquad_coeffs(

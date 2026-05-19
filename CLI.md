@@ -122,6 +122,8 @@ Examples:
 - `fade:[style=in][duration_ms=2000]` — fade in over 2 seconds  
 - `fade:[style=out][duration_ms=5000]` — fade out over 5 seconds  
 - `filter:[kind=lpf][cutoff_hz=800]` — low-pass at 800 Hz  
+- `filter:[kind=lpf][cutoff_hz=3200][resonance=0.4][steepness=0.85]` — sharper slope + resonance bump (~0–1 each)  
+- `filter:[kind=bpf][low_hz=400][high_hz=5000][steepness=0]` — mild legacy-style band-pass (omit `steepness` in the spec for the same gentle default)  
 - Chain: `fade:[style=out][duration_ms=5000];filter:[kind=lpf][cutoff_hz=800]`
 
 Legacy tokens (e.g. `fade:in 2s`, `eq:lows +5db`) still work.

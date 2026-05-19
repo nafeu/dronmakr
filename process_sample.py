@@ -828,48 +828,73 @@ def apply_distortion_heavy_to_sample(input_path):
     apply_distortion_to_sample(input_path, drive_db=11.0)
 
 
-def apply_lowpass_to_sample(input_path, cutoff_hz=6000, order=6):
-    """Apply aggressive low-pass with steep cutoff. Truly cuts high frequencies."""
+def apply_lowpass_to_sample(input_path, cutoff_hz=6000, **_kwargs):
+    """Apply steep low-pass; optional resonance / steepness in _kwargs."""
+    resonance = float(_kwargs.get("resonance", 0.0))
+    steepness = float(_kwargs.get("steepness", 0.72))
     with AudioFile(input_path) as f:
         audio = f.read(f.frames)
         sample_rate = f.samplerate
-    processed = dsp.apply_steep_lowpass(audio, sample_rate, cutoff_hz)
-    with AudioFile(
-        input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
-    ) as out:
-        out.write(processed)
-    log_sample_processing_line(f"Applied low-pass filter ({cutoff_hz} Hz)")
-
-
-def apply_highpass_to_sample(input_path, cutoff_hz=100, order=6):
-    """Apply aggressive high-pass with steep cutoff. Truly cuts low frequencies."""
-    with AudioFile(input_path) as f:
-        audio = f.read(f.frames)
-        sample_rate = f.samplerate
-    processed = dsp.apply_steep_highpass(audio, sample_rate, cutoff_hz)
-    with AudioFile(
-        input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
-    ) as out:
-        out.write(processed)
-    log_sample_processing_line(f"Applied high-pass filter ({cutoff_hz} Hz)")
-
-
-def apply_bandpass_to_sample(
-    input_path, low_hz=300, high_hz=6000, order=4
-):
-    """Apply Butterworth bandpass filter and overwrite the file."""
-    with AudioFile(input_path) as f:
-        audio = f.read(f.frames)
-        sample_rate = f.samplerate
-    processed = dsp.apply_butter_filter(
-        audio, sample_rate, "band", (low_hz, high_hz), order
+    processed = dsp.apply_steep_lowpass(
+        audio,
+        sample_rate,
+        cutoff_hz,
+        resonance=resonance,
+        steepness=steepness,
     )
     with AudioFile(
         input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
     ) as out:
         out.write(processed)
     log_sample_processing_line(
-        f"Applied band-pass filter ({low_hz}–{high_hz} Hz, order {order})"
+        f"Applied low-pass ({cutoff_hz} Hz · steep={steepness:.2f} · res={resonance:.2f})"
+    )
+
+
+def apply_highpass_to_sample(input_path, cutoff_hz=100, **_kwargs):
+    """Apply steep high-pass; optional resonance / steepness in _kwargs."""
+    resonance = float(_kwargs.get("resonance", 0.0))
+    steepness = float(_kwargs.get("steepness", 0.72))
+    with AudioFile(input_path) as f:
+        audio = f.read(f.frames)
+        sample_rate = f.samplerate
+    processed = dsp.apply_steep_highpass(
+        audio,
+        sample_rate,
+        cutoff_hz,
+        resonance=resonance,
+        steepness=steepness,
+    )
+    with AudioFile(
+        input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
+    ) as out:
+        out.write(processed)
+    log_sample_processing_line(
+        f"Applied high-pass ({cutoff_hz} Hz · steep={steepness:.2f} · res={resonance:.2f})"
+    )
+
+
+def apply_bandpass_to_sample(input_path, low_hz=300, high_hz=6000, **_kwargs):
+    """Steep Chebyshev band-pass (optional steepness=0 mimics mild 4th-order Butterworth)."""
+    resonance = float(_kwargs.get("resonance", 0.0))
+    steepness = float(_kwargs.get("steepness", 0.0))
+    with AudioFile(input_path) as f:
+        audio = f.read(f.frames)
+        sample_rate = f.samplerate
+    processed = dsp.apply_steep_bandpass(
+        audio,
+        sample_rate,
+        low_hz,
+        high_hz,
+        resonance=resonance,
+        steepness=steepness,
+    )
+    with AudioFile(
+        input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
+    ) as out:
+        out.write(processed)
+    log_sample_processing_line(
+        f"Applied band-pass ({low_hz:.0f}–{high_hz:.0f} Hz · steep={steepness:.2f} · res={resonance:.2f})"
     )
 
 

@@ -1502,13 +1502,7 @@
       eq: 1,
       filter: 1,
       noisegate: 1,
-      reverb: 1,
       compress: 1,
-      overdrive: 1,
-      distort: 1,
-      chorus: 1,
-      flanger: 1,
-      phaser: 1,
     };
 
     function mergeProcessingCatalog(payload) {
@@ -1686,18 +1680,45 @@
     }
 
     /** Lightweight filter magnitude sketches for log-frequency preview. */
-    function editVizMagLP(fc, hz) {
+    function editVizButterMagLP(fc, hz, poles) {
+      var n = Math.max(2, Math.min(Number(poles) || 4, 48));
       var r = hz / Math.max(fc, 1e-9);
-      return 1 / Math.sqrt(1 + r * r * r * r);
+      return Math.min(1, 1 / Math.sqrt(1 + Math.pow(r, 2 * n)));
     }
 
-    function editVizMagHP(fc, hz) {
+    function editVizButterMagHP(fc, hz, poles) {
+      var n = Math.max(2, Math.min(Number(poles) || 4, 48));
       var r = hz / Math.max(fc, 1e-9);
-      return Math.sqrt(r * r * r * r / (1 + r * r * r * r));
+      var rp = Math.pow(Math.max(r, 1e-9), n);
+      return Math.min(1, rp / Math.sqrt(1 + Math.pow(r, 2 * n)));
     }
 
-    function editVizMagBPF(flow, fhigh, hz) {
-      return editVizMagHP(flow, hz) * editVizMagLP(fhigh, hz);
+    function editVizMagResBell(fcCentre, hz, res) {
+      var rsn = clamp01(res);
+      if (rsn < 0.04) return 1;
+      var oct = Math.log(hz / Math.max(fcCentre, 1e-9)) / Math.LN2;
+      var sigma = 0.2 + (1 - rsn) * 0.38;
+      return 1 + rsn * 1.08 * Math.exp(-(oct * oct) / (2 * sigma * sigma));
+    }
+
+    /** Magnitude sketches vs steepness/resonance (visual guide; audio uses Chebyshev II + peaking). */
+    function editVizMagLP(fc, hz, poles, resonance) {
+      var p = poles != null ? poles : 4;
+      var m = editVizButterMagLP(fc, hz, p);
+      return clamp01(m * editVizMagResBell(fc, hz, resonance != null ? resonance : 0));
+    }
+
+    function editVizMagHP(fc, hz, poles, resonance) {
+      var p = poles != null ? poles : 4;
+      var m = editVizButterMagHP(fc, hz, p);
+      return clamp01(m * editVizMagResBell(fc, hz, resonance != null ? resonance : 0));
+    }
+
+    function editVizMagBPF(flow, fhigh, hz, poles, resonance) {
+      var p = poles != null ? poles : 4;
+      var mag = editVizButterMagHP(flow, hz, p) * editVizButterMagLP(fhigh, hz, p);
+      var cen = Math.sqrt(Math.max(flow * fhigh, 1));
+      return clamp01(mag * editVizMagResBell(cen, hz, resonance != null ? resonance : 0));
     }
 
     function getEditControlNormalized(sectionEl, schemaKey, fallbackU) {
@@ -1942,6 +1963,10 @@
         var cutoff = editSliderPhysical(schema("cutoff_hz_ui"), uNorm("cutoff_hz_ui", 0.55));
         var low = Math.min(phys("low_hz_ui"), phys("high_hz_ui"));
         var hi = Math.max(phys("low_hz_ui"), phys("high_hz_ui"));
+        var steepNorm = uNorm("steepness_ui", 0.72);
+        var resNorm = uNorm("resonance_ui", 0.06);
+        var poleLpHp = Math.max(6, Math.min(40, Math.round(10 + steepNorm * 26)));
+        var poleBpf = steepNorm <= 0.02 ? 4 : Math.max(6, Math.min(38, Math.round(8 + steepNorm * 28)));
         var fLo = 40;
         var fHi = 18000;
         var cw = xmax - xmin;
@@ -1949,8 +1974,10 @@
         var yPeak = ymin + (ymax - ymin) * 0.2;
 
         function magAt(fhz) {
-          if (kind === "bpf") return editVizMagBPF(low, hi, fhz);
-          return kind === "lpf" ? editVizMagLP(cutoff, fhz) : editVizMagHP(cutoff, fhz);
+          if (kind === "bpf") return editVizMagBPF(low, hi, fhz, poleBpf, resNorm);
+          return kind === "lpf"
+            ? editVizMagLP(cutoff, fhz, poleLpHp, resNorm)
+            : editVizMagHP(cutoff, fhz, poleLpHp, resNorm);
         }
 
         freqStrip(ctx2, xmin, xmax, ymax, css2, fLo, fHi);
@@ -1981,10 +2008,16 @@
         }
         ctx2.stroke();
 
-        var label = kind === "bpf"
-          ? "BPF · " + fmtSpecNum(low) + " Hz · " + fmtSpecNum(hi) + " Hz"
+        var head = kind === "bpf"
+          ? "BPF · " + fmtSpecNum(low) + " · " + fmtSpecNum(hi) + " Hz"
           : (kind.toUpperCase() + " · " + fmtSpecNum(cutoff) + " Hz");
-        caption(ctx2, css2, xmin + 4, ymin + 12, label);
+        caption(
+          ctx2,
+          css2,
+          xmin + 4,
+          ymin + 12,
+          head + " · res " + fmtSpecNum(resNorm) + " · steep " + fmtSpecNum(steepNorm)
+        );
       }
 
       function freqStrip(ctx2, fx0, fx1, ymaxStrip, css3, hzMin, hzMax) {
@@ -2425,6 +2458,21 @@
       }
     }
 
+    function syncEditFilterControlRows(sec) {
+      if (!sec || sec.dataset.editType !== "filter") return;
+      function vis(key, show) {
+        var el = sec.querySelector('[data-schema-key="' + key + '"]');
+        if (!el) return;
+        var row = el.closest(".edit-control-row");
+        if (row) row.style.display = show ? "" : "none";
+      }
+      var kind = readEditControl(sec, "kind") || "lpf";
+      var isBpf = kind === "bpf";
+      vis("cutoff_hz_ui", !isBpf);
+      vis("low_hz_ui", isBpf);
+      vis("high_hz_ui", isBpf);
+    }
+
     function buildSpecFromSection(sectionEl, typeKey) {
       var schemas = (processingCatalog.paramSchemas && processingCatalog.paramSchemas[typeKey]) || [];
       function phys(sk) {
@@ -2449,14 +2497,16 @@
           return "gain:[db=" + fmtSpecNum(db) + "]";
         }
         case "filter": {
-          var kind = readEditControl(sectionEl, "kind") || "lpf";
-          if (kind === "bpf") {
+          var fk = readEditControl(sectionEl, "kind") || "lpf";
+          var resonance = phys("resonance_ui");
+          var steepness = phys("steepness_ui");
+          if (fk === "bpf") {
             var lo = phys("low_hz_ui");
             var hi = phys("high_hz_ui");
-            return "filter:[kind=bpf][low_hz=" + fmtSpecNum(lo) + "][high_hz=" + fmtSpecNum(hi) + "]";
+            return "filter:[kind=bpf][low_hz=" + fmtSpecNum(lo) + "][high_hz=" + fmtSpecNum(hi) + "][resonance=" + fmtSpecNum(resonance) + "][steepness=" + fmtSpecNum(steepness) + "]";
           }
           var cf = phys("cutoff_hz_ui");
-          return "filter:[kind=" + kind + "][cutoff_hz=" + fmtSpecNum(cf) + "]";
+          return "filter:[kind=" + fk + "][cutoff_hz=" + fmtSpecNum(cf) + "][resonance=" + fmtSpecNum(resonance) + "][steepness=" + fmtSpecNum(steepness) + "]";
         }
         case "noisegate": {
           var th = phys("threshold_db_ui");
@@ -2667,6 +2717,12 @@
             });
             var def = schema.default || ((schema.options || [])[0] || {}).value;
             if (def !== undefined) sel.value = String(def);
+            if (typeKey === "filter" && schema.key === "kind") {
+              sel.addEventListener("change", function () {
+                syncEditFilterControlRows(sec);
+                queueEditVisibleEffectVizRepaint();
+              });
+            }
             row2.appendChild(span2);
             row2.appendChild(sel);
             controlsWrap.appendChild(row2);
@@ -2675,6 +2731,7 @@
         if (vizWrap) sec.appendChild(vizWrap);
         sec.appendChild(controlsWrap);
         if (EDIT_EFFECT_VIZ_TYPES[typeKey]) installEditEffectViz(sec, typeKey);
+        if (typeKey === "filter") syncEditFilterControlRows(sec);
 
         var applyBtn = document.createElement("button");
         applyBtn.type = "button";

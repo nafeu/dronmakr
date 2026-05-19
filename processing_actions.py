@@ -103,6 +103,7 @@ _LEGACY_COLON_TOKEN_DEFINITIONS = [
     {"token": "filter:lpf", "type": "filter", "label": "LPF", "command": "lpf_sample", "params": {}},
     {"token": "filter:lpf-", "type": "filter", "label": "LPF-", "command": "lpf_sample", "params": {"cutoff_hz": 2500}},
     {"token": "filter:lpf--", "type": "filter", "label": "LPF--", "command": "lpf_sample", "params": {"cutoff_hz": 800}},
+    {"token": "filter:lpf-res", "type": "filter", "label": "LPF resonant", "command": "lpf_sample", "params": {"cutoff_hz": 4200, "steepness": 0.78, "resonance": 0.45}},
     {"token": "filter:hpf", "type": "filter", "label": "HPF", "command": "hpf_sample", "params": {}},
     {"token": "filter:hpf+", "type": "filter", "label": "HPF+", "command": "hpf_sample", "params": {"cutoff_hz": 350}},
     {"token": "filter:hpf++", "type": "filter", "label": "HPF++", "command": "hpf_sample", "params": {"cutoff_hz": 800}},
@@ -356,6 +357,30 @@ _PARAM_SCHEMAS_UI: dict[str, list[dict]] = {
             "default": 0.72,
             "maps_to": "high_hz",
             "range_hz": [200, 18000],
+        },
+        {
+            "key": "steepness_ui",
+            "label": "Cutoff slope / brick-wall",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.72,
+            "maps_to": "steepness",
+            "range_linear": [0.0, 1.0],
+            "hint": "Higher = sharper transition. BPF only: slide to minimum for mild 4-pole Butterworth. LPF/HPF always use steep Chebyshev; this raises filter order.",
+        },
+        {
+            "key": "resonance_ui",
+            "label": "Resonance",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.06,
+            "maps_to": "resonance",
+            "range_linear": [0.0, 1.0],
+            "hint": "Narrow emphasis around cutoff (LP/HPF) or band centre (BPF).",
         },
     ],
     "normalize": [],
@@ -924,22 +949,27 @@ def action_from_bracket_segment(seg: str) -> dict:
 
     if ptype == "filter":
         kind = str(params.get("kind", "")).lower()
+        resonance = {}
+        if "resonance" in params:
+            resonance["resonance"] = float(params["resonance"])
+        if "steepness" in params:
+            resonance["steepness"] = float(params["steepness"])
+
         if kind == "lpf":
-            return {
-                "token": seg_stripped,
-                "command": "lpf_sample",
-                "params": {"cutoff_hz": float(params["cutoff_hz"])} if "cutoff_hz" in params else {},
-            }
+            merged = resonance.copy()
+            if "cutoff_hz" in params:
+                merged["cutoff_hz"] = float(params["cutoff_hz"])
+            return {"token": seg_stripped, "command": "lpf_sample", "params": merged}
         if kind == "hpf":
-            return {
-                "token": seg_stripped,
-                "command": "hpf_sample",
-                "params": {"cutoff_hz": float(params["cutoff_hz"])} if "cutoff_hz" in params else {},
-            }
+            merged = resonance.copy()
+            if "cutoff_hz" in params:
+                merged["cutoff_hz"] = float(params["cutoff_hz"])
+            return {"token": seg_stripped, "command": "hpf_sample", "params": merged}
         if kind == "bpf":
-            low = float(params.get("low_hz", 300))
-            high = float(params.get("high_hz", 6000))
-            return {"token": seg_stripped, "command": "bpf_sample", "params": {"low_hz": low, "high_hz": high}}
+            merged = resonance.copy()
+            merged["low_hz"] = float(params.get("low_hz", 300))
+            merged["high_hz"] = float(params.get("high_hz", 6000))
+            return {"token": seg_stripped, "command": "bpf_sample", "params": merged}
         raise ValueError("filter: requires kind=lpf|hpf|bpf")
 
     if ptype == "noisegate":
@@ -1475,14 +1505,26 @@ def apply_processing_command(file_path: str, command: str, params: dict | None =
         case "phaser_heavy_sample":
             apply_phaser_heavy_to_sample(file_path)
         case "lpf_sample":
-            apply_lowpass_to_sample(file_path, cutoff_hz=p.get("cutoff_hz", 6000))
+            apply_lowpass_to_sample(
+                file_path,
+                cutoff_hz=float(p.get("cutoff_hz", 6000)),
+                resonance=float(p.get("resonance", 0.0)),
+                steepness=float(p.get("steepness", 0.72)),
+            )
         case "hpf_sample":
-            apply_highpass_to_sample(file_path, cutoff_hz=p.get("cutoff_hz", 100))
+            apply_highpass_to_sample(
+                file_path,
+                cutoff_hz=float(p.get("cutoff_hz", 100)),
+                resonance=float(p.get("resonance", 0.0)),
+                steepness=float(p.get("steepness", 0.72)),
+            )
         case "bpf_sample":
             apply_bandpass_to_sample(
                 file_path,
-                low_hz=p.get("low_hz", 300),
-                high_hz=p.get("high_hz", 6000),
+                low_hz=float(p.get("low_hz", 300)),
+                high_hz=float(p.get("high_hz", 6000)),
+                resonance=float(p.get("resonance", 0.0)),
+                steepness=float(p.get("steepness", 0.0)),
             )
         case "normalize_sample":
             normalize_sample(file_path)
