@@ -322,6 +322,149 @@
       align-items: stretch;
     }
 
+    .generatr-post-processing-root {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .generatr-pp-columns {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 0.65rem;
+      align-items: stretch;
+      min-height: 180px;
+      max-height: 280px;
+    }
+
+    .generatr-pp-library,
+    .generatr-pp-queue-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      min-width: 0;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      padding: 8px;
+      background: rgba(0, 0, 0, 0.15);
+    }
+
+    .generatr-pp-library {
+      max-height: 200px;
+    }
+
+    .generatr-pp-filter {
+      font-family: inherit;
+      font-size: 0.8rem;
+      padding: 0.35rem 0.45rem;
+      border-radius: 4px;
+      border: 1px solid var(--theme-a);
+      background: var(--theme-a);
+      color: var(--primary);
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .generatr-pp-shortcut-buttons {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-height: 0;
+    }
+
+    .generatr-pp-shortcut-btn {
+      font-family: inherit;
+      font-size: 0.72rem;
+      text-align: left;
+      padding: 0.35rem 0.45rem;
+      border-radius: 4px;
+      border: 1px solid var(--theme-a);
+      background: transparent;
+      color: var(--theme-a);
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .generatr-pp-shortcut-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .generatr-pp-queue-label {
+      font-size: 0.72rem;
+      color: var(--theme-a);
+    }
+
+    .generatr-pp-queue-hint {
+      opacity: 0.75;
+      font-weight: normal;
+    }
+
+    .generatr-pp-queue {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-height: 0;
+    }
+
+    .generatr-pp-queue-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      color: var(--primary);
+      padding: 4px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(0, 0, 0, 0.2);
+      cursor: grab;
+    }
+
+    .generatr-pp-queue-item:active {
+      cursor: grabbing;
+    }
+
+    .generatr-pp-drag-handle {
+      flex: 0 0 auto;
+      opacity: 0.45;
+      cursor: grab;
+      user-select: none;
+      font-size: 0.9rem;
+    }
+
+    .generatr-pp-queue-item-label {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .generatr-pp-queue-remove {
+      flex: 0 0 auto;
+      border: none;
+      background: transparent;
+      color: var(--theme-a);
+      cursor: pointer;
+      padding: 0 4px;
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    .generatr-pp-queue-remove:hover {
+      color: var(--primary);
+    }
+
+    @media (max-width: 520px) {
+      .generatr-pp-columns {
+        grid-template-columns: 1fr;
+        max-height: none;
+      }
+    }
+
     .generatr-checkbox-group,
     #generatr-beat-variants-list {
       display: flex;
@@ -545,11 +688,90 @@
     .edit-apply-row {
       width: 100%;
       margin-top: 0.65rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.4rem;
     }
 
     .edit-apply-row .btn-edit-apply {
-      width: 100%;
+      width: auto;
+      flex: 0 0 auto;
       margin-top: 0;
+    }
+
+    .edit-shortcut-name-input {
+      flex: 1 1 140px;
+      min-width: 0;
+      font-family: inherit;
+      font-size: 0.78rem;
+      padding: 0.35rem 0.45rem;
+      border-radius: 4px;
+      border: 1px solid var(--theme-a);
+      background: var(--theme-a);
+      color: var(--primary);
+      box-sizing: border-box;
+    }
+
+    .btn-edit-shortcut-save,
+    .btn-edit-shortcuts-mode {
+      flex: 0 0 auto;
+      font-family: inherit;
+      font-size: 0.75rem;
+      padding: 0.35rem 0.5rem;
+      border-radius: 4px;
+      border: 1px solid var(--theme-a);
+      background: transparent;
+      color: var(--theme-a);
+      cursor: pointer;
+    }
+
+    .btn-edit-shortcut-save:hover,
+    .btn-edit-shortcuts-mode:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .btn-edit-shortcuts-mode.active {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .edit-preset-wrap {
+      display: inline-flex;
+      align-items: stretch;
+      gap: 0;
+    }
+
+    .edit-preset-wrap .edit-preset-btn {
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+
+    .edit-preset-delete {
+      font-family: inherit;
+      font-size: 0.65rem;
+      padding: 0.25rem 0.35rem;
+      border-radius: 0 4px 4px 0;
+      border: 1px solid var(--theme-a);
+      border-left: none;
+      background: transparent;
+      color: var(--theme-a);
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .edit-preset-delete:hover {
+      color: #f66;
+      border-color: #f66;
+    }
+
+    .edit-preset-delete.hidden {
+      display: none;
+    }
+
+    .edit-preset-wrap .edit-preset-btn.solo-radius {
+      border-radius: 4px;
     }
 
     .edit-preset-btn {
@@ -1143,8 +1365,19 @@
                 </div>
               </div>
               <div class="form-row form-row-full form-row-post-processing hidden" id="generatr-beat-post-processing-row">
-                <label>Post Processing</label>
-                <div id="generatr-beat-post-processing-list"></div>
+                <label for="generatr-pp-filter">Post Processing</label>
+                <div id="generatr-beat-post-processing-root" class="generatr-post-processing-root">
+                  <div class="generatr-pp-columns">
+                    <div class="generatr-pp-library">
+                      <input type="text" id="generatr-pp-filter" class="generatr-pp-filter" placeholder="Filter shortcuts…" autocomplete="off">
+                      <div id="generatr-pp-shortcut-buttons" class="generatr-pp-shortcut-buttons" aria-label="Shortcut library"></div>
+                    </div>
+                    <div class="generatr-pp-queue-panel">
+                      <div class="generatr-pp-queue-label">Processing Chain</div>
+                      <div id="generatr-pp-queue" class="generatr-pp-queue" aria-label="Processing queue"></div>
+                    </div>
+                  </div>
+                </div>
               </div>
               <button type="submit" class="btn-generate" id="generatr-btn">
                 <i class="fa-solid fa-play"></i> Generate
@@ -1192,6 +1425,38 @@
     var auditionrSidebarActiveTab = "generate";
     var editPanelSelectedActionType = "fade";
 
+    var GENERATR_PP_QUEUE_KEY = "auditionr_post_process_queue";
+    var generatrPostProcessQueue = [];
+    var editShortcutsDeleteMode = false;
+    var generatrPpDragSourceIndex = null;
+
+    function loadGeneratrPostProcessQueueFromStorage() {
+      try {
+        var raw = sessionStorage.getItem(GENERATR_PP_QUEUE_KEY);
+        if (!raw) return;
+        var parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return;
+        generatrPostProcessQueue = parsed
+          .filter(function (x) {
+            return x && typeof x.command === "string" && String(x.command).trim();
+          })
+          .map(function (x) {
+            return {
+              displayName: String(x.displayName || "").trim() || "Step",
+              command: String(x.command).trim(),
+            };
+          });
+      } catch (e) { /* ignore */ }
+    }
+
+    function saveGeneratrPostProcessQueueToStorage() {
+      try {
+        sessionStorage.setItem(GENERATR_PP_QUEUE_KEY, JSON.stringify(generatrPostProcessQueue));
+      } catch (e) { /* ignore */ }
+    }
+
+    loadGeneratrPostProcessQueueFromStorage();
+
     var EDIT_SECTION_ORDER = ["fade", "eq", "gain", "filter", "noisegate", "timestretch", "paulstretch", "pitch", "reverb", "compress", "overdrive", "distort", "chorus", "flanger", "phaser"];
 
     function mergeProcessingCatalog(payload) {
@@ -1201,6 +1466,99 @@
       processingCatalog.paramSchemas = payload.paramSchemas || {};
       processingCatalog.presets = Array.isArray(payload.presets) ? payload.presets : [];
       renderEditSamplesPanel();
+      renderGeneratrPostProcessingLibraryFromCatalog();
+      renderGeneratrPostProcessingQueue();
+    }
+
+    function renderGeneratrPostProcessingLibraryFromCatalog() {
+      var box = document.getElementById("generatr-pp-shortcut-buttons");
+      var filterEl = document.getElementById("generatr-pp-filter");
+      if (!box) return;
+      var actions = (processingCatalog.actions || []).slice();
+      var q = filterEl && filterEl.value ? String(filterEl.value).trim().toLowerCase() : "";
+      box.innerHTML = "";
+      actions.forEach(function (action) {
+        var label = String(action.label || action.token || "").trim();
+        var cmd = String(action.spec || action.token || "").trim();
+        if (!cmd) return;
+        if (q && label.toLowerCase().indexOf(q) === -1) return;
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "generatr-pp-shortcut-btn";
+        btn.textContent = label;
+        btn.title = cmd;
+        btn.addEventListener("click", function () {
+          generatrPostProcessQueue.push({ displayName: label, command: cmd });
+          saveGeneratrPostProcessQueueToStorage();
+          renderGeneratrPostProcessingQueue();
+        });
+        box.appendChild(btn);
+      });
+    }
+
+    function renderGeneratrPostProcessingQueue() {
+      var queueEl = document.getElementById("generatr-pp-queue");
+      if (!queueEl) return;
+      queueEl.innerHTML = "";
+      generatrPostProcessQueue.forEach(function (item, idx) {
+        var row = document.createElement("div");
+        row.className = "generatr-pp-queue-item";
+        row.draggable = true;
+
+        var handle = document.createElement("span");
+        handle.className = "generatr-pp-drag-handle";
+        handle.textContent = "\u2630";
+        handle.title = "Drag to reorder";
+
+        var lab = document.createElement("span");
+        lab.className = "generatr-pp-queue-item-label";
+        lab.textContent = item.displayName || "Step";
+        lab.title = item.command;
+
+        var rm = document.createElement("button");
+        rm.type = "button";
+        rm.className = "generatr-pp-queue-remove";
+        rm.innerHTML = "&times;";
+        rm.setAttribute("aria-label", "Remove");
+        rm.addEventListener("click", function () {
+          generatrPostProcessQueue.splice(idx, 1);
+          saveGeneratrPostProcessQueueToStorage();
+          renderGeneratrPostProcessingQueue();
+        });
+
+        row.addEventListener("dragstart", function (e) {
+          generatrPpDragSourceIndex = idx;
+          e.dataTransfer.effectAllowed = "move";
+          try {
+            e.dataTransfer.setData("text/plain", String(idx));
+          } catch (err) { /* ignore */ }
+        });
+        row.addEventListener("dragover", function (e) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+        });
+        row.addEventListener("drop", function (e) {
+          e.preventDefault();
+          var from = generatrPpDragSourceIndex;
+          var to = idx;
+          if (from === null || from === undefined || from === to) return;
+          var copy = generatrPostProcessQueue.slice();
+          var moved = copy.splice(from, 1)[0];
+          copy.splice(to, 0, moved);
+          generatrPostProcessQueue = copy;
+          generatrPpDragSourceIndex = null;
+          saveGeneratrPostProcessQueueToStorage();
+          renderGeneratrPostProcessingQueue();
+        });
+        row.addEventListener("dragend", function () {
+          generatrPpDragSourceIndex = null;
+        });
+
+        row.appendChild(handle);
+        row.appendChild(lab);
+        row.appendChild(rm);
+        queueEl.appendChild(row);
+      });
     }
 
     function fmtSpecNum(x) {
@@ -1421,15 +1779,50 @@
         var presetsWrap = document.createElement("div");
         presetsWrap.className = "edit-presets-row";
         (processingCatalog.presets || []).filter(function (p) { return p.type === typeKey; }).forEach(function (preset) {
+          var wrap = document.createElement("span");
+          wrap.className = "edit-preset-wrap";
           var b = document.createElement("button");
           b.type = "button";
           b.className = "edit-preset-btn";
+          if (!editShortcutsDeleteMode) {
+            b.classList.add("solo-radius");
+          }
           b.textContent = preset.label;
           b.title = preset.spec || preset.token || "";
           b.addEventListener("click", function () {
+            if (editShortcutsDeleteMode) return;
             applyEditProcessingSpec(preset.spec || preset.token);
           });
-          presetsWrap.appendChild(b);
+          wrap.appendChild(b);
+          if (editShortcutsDeleteMode) {
+            var del = document.createElement("button");
+            del.type = "button";
+            del.className = "edit-preset-delete";
+            del.innerHTML = "&times;";
+            del.title = "Remove shortcut";
+            del.addEventListener("click", function (ev) {
+              ev.preventDefault();
+              ev.stopPropagation();
+              var nm = String(preset.label || "").trim();
+              if (!nm) return;
+              fetch("/api/post-processing-shortcuts?name=" + encodeURIComponent(nm), { method: "DELETE" })
+                .then(function (res) {
+                  return res.json().then(function (data) {
+                    return { ok: res.ok, data: data };
+                  });
+                })
+                .then(function (pack) {
+                  if (!pack.ok || (pack.data && pack.data.error)) {
+                    alert((pack.data && pack.data.error) || "Delete failed");
+                  }
+                })
+                .catch(function () {
+                  alert("Delete failed");
+                });
+            });
+            wrap.appendChild(del);
+          }
+          presetsWrap.appendChild(wrap);
         });
         var controlsWrap = document.createElement("div");
         controlsWrap.className = "edit-controls";
@@ -1510,9 +1903,67 @@
           var spec = buildSpecFromSection(sec, typeKey);
           if (spec) applyEditProcessingSpec(spec);
         });
+
+        var shortcutNameInput = document.createElement("input");
+        shortcutNameInput.type = "text";
+        shortcutNameInput.className = "edit-shortcut-name-input";
+        shortcutNameInput.placeholder = "add shortcut";
+        shortcutNameInput.setAttribute("aria-label", "New shortcut name");
+
+        var saveShortcutBtn = document.createElement("button");
+        saveShortcutBtn.type = "button";
+        saveShortcutBtn.className = "btn-edit-shortcut-save";
+        saveShortcutBtn.title = "Save shortcut";
+        saveShortcutBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i>';
+        saveShortcutBtn.addEventListener("click", function () {
+          var spec = buildSpecFromSection(sec, typeKey);
+          var nm = (shortcutNameInput.value || "").trim();
+          if (!spec) {
+            alert("Adjust controls to build a valid processing spec before saving.");
+            return;
+          }
+          if (!nm) {
+            alert("Enter a name for the shortcut.");
+            return;
+          }
+          fetch("/api/post-processing-shortcuts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: nm, command: spec }),
+          })
+            .then(function (res) {
+              return res.json().then(function (data) {
+                return { ok: res.ok, data: data };
+              });
+            })
+            .then(function (pack) {
+              if (!pack.ok || (pack.data && pack.data.error)) {
+                alert((pack.data && pack.data.error) || "Save failed");
+                return;
+              }
+              shortcutNameInput.value = "";
+            })
+            .catch(function () {
+              alert("Save failed");
+            });
+        });
+
+        var toggleDelBtn = document.createElement("button");
+        toggleDelBtn.type = "button";
+        toggleDelBtn.className = "btn-edit-shortcuts-mode" + (editShortcutsDeleteMode ? " active" : "");
+        toggleDelBtn.title = "Toggle shortcut delete mode";
+        toggleDelBtn.innerHTML = '<i class="fa-solid fa-pencil"></i>';
+        toggleDelBtn.addEventListener("click", function () {
+          editShortcutsDeleteMode = !editShortcutsDeleteMode;
+          renderEditSamplesPanel();
+        });
+
         var applyRow = document.createElement("div");
         applyRow.className = "edit-apply-row";
         applyRow.appendChild(applyBtn);
+        applyRow.appendChild(shortcutNameInput);
+        applyRow.appendChild(saveShortcutBtn);
+        applyRow.appendChild(toggleDelBtn);
         sec.appendChild(applyRow);
 
         if (presetsWrap.childNodes.length) {
@@ -2324,7 +2775,6 @@
       var beatSwingInput = document.getElementById("generatr-beat-swing");
       var beatIterationsInput = document.getElementById("generatr-beat-iterations");
       var beatVariantsList = document.getElementById("generatr-beat-variants-list");
-      var beatPostProcessingList = document.getElementById("generatr-beat-post-processing-list");
       var droneNameInput = document.getElementById("generatr-drone-name");
       var droneNotesInput = document.getElementById("generatr-drone-notes");
       var droneChartNameInput = document.getElementById("generatr-drone-chart-name");
@@ -2367,35 +2817,6 @@
         }
       }
 
-      function renderBeatPostProcessing(actionsPayload) {
-        beatPostProcessingList.innerHTML = "";
-        var actions = (actionsPayload && actionsPayload.actions) || [];
-        beatPostProcessingList.style.display = "grid";
-        beatPostProcessingList.style.gridTemplateColumns = "1fr";
-        beatPostProcessingList.style.gap = "4px";
-        beatPostProcessingList.style.maxHeight = "260px";
-        beatPostProcessingList.style.overflowY = "auto";
-        beatPostProcessingList.style.padding = "8px";
-        beatPostProcessingList.style.border = "1px solid rgba(255,255,255,0.12)";
-        beatPostProcessingList.style.borderRadius = "6px";
-        actions.forEach(function (action, idx) {
-          var label = document.createElement("label");
-          label.style.display = "flex";
-          label.style.alignItems = "center";
-          label.style.gap = "8px";
-          var input = document.createElement("input");
-          input.type = "checkbox";
-          input.value = action.spec || action.token;
-          input.id = "generatr-beat-post-" + idx;
-          var text = document.createElement("span");
-          text.textContent = action.label || action.token;
-          if (action.spec) text.title = action.spec;
-          label.appendChild(input);
-          label.appendChild(text);
-          beatPostProcessingList.appendChild(label);
-        });
-      }
-
       function loadGeneratrSidebarOptions() {
         if (generatrSidebarOptionsLoaded) return Promise.resolve();
         return Promise.all([
@@ -2417,7 +2838,6 @@
             setSelectOptions(dronePatternSelect, data.droneMidiPatterns || [], true);
             setSelectOptions(droneInstrumentSelect, data.droneInstruments || [], true);
             setSelectOptions(droneEffectSelect, data.droneEffects || [], true);
-            renderBeatPostProcessing(data.processingActions || { actions: [] });
             mergeProcessingCatalog(data.processingActions || {});
             generatrSidebarOptionsLoaded = true;
           })
@@ -2448,6 +2868,13 @@
       }
       typeSelect.addEventListener("change", updateGeneratrSubcommandVisibility);
       updateGeneratrSubcommandVisibility();
+
+      var generatrPpFilter = document.getElementById("generatr-pp-filter");
+      if (generatrPpFilter) {
+        generatrPpFilter.addEventListener("input", function () {
+          renderGeneratrPostProcessingLibraryFromCatalog();
+        });
+      }
 
       if (sidebarToggle && sidebar) {
         // Ensure initial icon/title match initial collapsed state
@@ -2488,9 +2915,7 @@
         else if (type === "transition") subcommand = document.getElementById("generatr-transition-subcommand").value;
         if (subcommand) body.subcommand = subcommand;
         if (type === "beat") {
-          var checkedPost = Array.from(
-            beatPostProcessingList.querySelectorAll("input[type='checkbox']:checked")
-          ).map(function (el) { return el.value; });
+          var postCmds = generatrPostProcessQueue.map(function (x) { return x.command; });
           var tempoRaw = (beatTempoInput.value || "").trim();
           body.tempo = tempoRaw ? parseInt(tempoRaw, 10) : null;
           body.loops = parseInt(beatLoopsInput.value || "2", 10);
@@ -2502,11 +2927,9 @@
           body.variants = Array.from(
             beatVariantsList.querySelectorAll("input[type='checkbox']:checked")
           ).map(function (el) { return el.value; });
-          body.postProcessing = checkedPost;
+          body.postProcessing = postCmds;
         } else if (type === "drone") {
-          var dronePost = Array.from(
-            beatPostProcessingList.querySelectorAll("input[type='checkbox']:checked")
-          ).map(function (el) { return el.value; });
+          var dronePostCmds = generatrPostProcessQueue.map(function (x) { return x.command; });
           body.name = (droneNameInput.value || "").trim();
           body.notes = (droneNotesInput.value || "").trim();
           body.chartName = (droneChartNameInput.value || "").trim();
@@ -2518,7 +2941,7 @@
           body.effect = (droneEffectSelect.value || "").trim();
           body.iterations = Math.max(1, parseInt(droneIterationsInput.value || "1", 10) || 1);
           body.splitProcessing = !!droneSplitCheckbox.checked;
-          body.postProcessing = dronePost;
+          body.postProcessing = dronePostCmds;
         }
 
         btnGenerate.disabled = true;

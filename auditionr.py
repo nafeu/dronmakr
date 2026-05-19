@@ -45,12 +45,15 @@ from utils import (
 )
 from generate_midi import get_patterns, generate_drone_midi, get_pattern_config
 from processing_actions import (
+    append_post_processing_shortcut,
     get_processing_actions_payload,
     parse_post_processing_spec,
     parse_single_processing_spec,
     apply_post_processing_actions,
     apply_processing_command,
     actions_without_normalize,
+    read_post_processing_shortcuts_document,
+    remove_post_processing_shortcut,
 )
 from generate_sample import apply_effect, generate_drone_sample, generate_beat_sample
 from paths import get_managed_file
@@ -188,6 +191,20 @@ def _undo_availability_for_files(files):
 def _emit_folder_counts():
     if _socketio:
         _socketio.emit("folder_counts", get_auditionr_folder_counts())
+
+
+def _emit_configs_to_clients():
+    """Broadcast presets, patterns, and processing catalog (shortcuts) to connected clients."""
+    if not _socketio:
+        return
+    _socketio.emit(
+        "configs",
+        {
+            "presets": get_presets(),
+            "patterns": get_patterns(),
+            "processingActions": get_processing_actions_payload(),
+        },
+    )
 
 
 def _resolve_managed_audio_path(path_value: str) -> str | None:
@@ -376,14 +393,7 @@ def duplicate_file():
 
 
 def refresh_configs():
-    _socketio.emit(
-        "configs",
-        {
-            "presets": get_presets(),
-            "patterns": get_patterns(),
-            "processingActions": get_processing_actions_payload(),
-        },
-    )
+    _emit_configs_to_clients()
     return jsonify({"success": "Refreshed configurations"}), 200
 
 
@@ -1077,6 +1087,45 @@ def _handle_request_exports():
     _emit_folder_counts()
 
 
+def _handle_api_post_processing_shortcuts():
+    """GET raw shortcuts JSON; POST append; DELETE ?name=…"""
+    if request.method == "GET":
+        try:
+            return jsonify(read_post_processing_shortcuts_document())
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    if request.method == "POST":
+        data = request.get_json() or {}
+        name = str(data.get("name") or "").strip()
+        command = str(data.get("command") or "").strip()
+        try:
+            append_post_processing_shortcut(name, command)
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+        _emit_configs_to_clients()
+        return jsonify({"success": True}), 200
+
+    if request.method == "DELETE":
+        name = request.args.get("name") or ""
+        try:
+            removed = remove_post_processing_shortcut(name)
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+        if not removed:
+            return jsonify({"error": "Shortcut not found"}), 404
+        _emit_configs_to_clients()
+        return jsonify({"success": True}), 200
+
+    return jsonify({"error": "Method not allowed"}), 405
+
+
 def register_auditionr(app, socketio):
     """Register auditionr routes on the given Flask app. Socketio is used for emits."""
     global _socketio
@@ -1125,6 +1174,12 @@ def register_auditionr(app, socketio):
         "auditionr_api_generate_options",
         _handle_api_generate_options,
         methods=["GET"],
+    )
+    app.add_url_rule(
+        "/api/post-processing-shortcuts",
+        "auditionr_api_post_processing_shortcuts",
+        _handle_api_post_processing_shortcuts,
+        methods=["GET", "POST", "DELETE"],
     )
 
 

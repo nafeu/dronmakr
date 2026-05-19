@@ -25,6 +25,10 @@ MIDI_DIR = get_managed_dir("midi")
 PRESETS_DIR = get_managed_dir("presets")
 PRESETS_PATH = get_managed_file("config", "presets.json")
 LEGACY_PRESETS_PATH = get_managed_file("presets", "presets.json")
+POST_PROCESSING_SHORTCUTS_PATH = get_managed_file(
+    "config", "post-processing-shortcuts.json"
+)
+POST_PROCESSING_SHORTCUTS_SAMPLE = "resources/post-processing-shortcuts-sample.json"
 SAVED_DIR = get_managed_dir("saved")
 SPLITS_DIR = get_managed_dir("splits")
 TEMP_DIR = get_managed_dir("temp")
@@ -1066,6 +1070,22 @@ def resolve_presets_index_path() -> str:
         except OSError:
             return LEGACY_PRESETS_PATH
     return ""
+
+
+def ensure_post_processing_shortcuts_file() -> None:
+    """Ensure config/post-processing-shortcuts.json exists; copy bundled sample if missing."""
+    if os.path.exists(POST_PROCESSING_SHORTCUTS_PATH):
+        return
+    parent = os.path.dirname(POST_PROCESSING_SHORTCUTS_PATH)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    if os.path.exists(POST_PROCESSING_SHORTCUTS_SAMPLE):
+        shutil.copy2(POST_PROCESSING_SHORTCUTS_SAMPLE, POST_PROCESSING_SHORTCUTS_PATH)
+        print(f"Created {POST_PROCESSING_SHORTCUTS_PATH} from sample template")
+        return
+    raise FileNotFoundError(
+        f"Post-processing shortcuts sample not found at {POST_PROCESSING_SHORTCUTS_SAMPLE}"
+    )
 
 
 def _infer_saved_sample_type(filename):

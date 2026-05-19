@@ -1,5 +1,10 @@
 import copy
+import json
+import os
 import re
+import tempfile
+
+from utils import POST_PROCESSING_SHORTCUTS_PATH, ensure_post_processing_shortcuts_file
 
 from process_sample import (
     apply_bandpass_to_sample,
@@ -75,7 +80,10 @@ PROCESSING_TYPES = [
     {"key": "phaser", "label": "Phaser"},
 ]
 
-PROCESSING_ACTIONS = [
+PROCESSING_TYPE_KEYS = frozenset(t["key"] for t in PROCESSING_TYPES)
+
+# Legacy colon-separated tokens (e.g. fade:in 2s) kept for old saved specs / CLI.
+_LEGACY_COLON_TOKEN_DEFINITIONS = [
     {"token": "fade:in 2s", "type": "fade", "label": "In 2s", "command": "fade_sample_start", "params": {"seconds": 2}},
     {"token": "fade:in 5s", "type": "fade", "label": "In 5s", "command": "fade_sample_start", "params": {"seconds": 5}},
     {"token": "fade:out 2s", "type": "fade", "label": "Out 2s", "command": "fade_sample_end", "params": {"seconds": 2}},
@@ -194,7 +202,9 @@ PROCESSING_ACTIONS = [
     {"token": "phaser:heavy", "type": "phaser", "label": "Heavy", "command": "phaser_heavy_sample", "params": {}},
 ]
 
-PROCESSING_ACTIONS_BY_TOKEN = {a["token"]: a for a in PROCESSING_ACTIONS}
+_LEGACY_COLON_TOKEN_ACTIONS: dict[str, dict[str, object]] = {
+    str(a["token"]).lower(): a for a in _LEGACY_COLON_TOKEN_DEFINITIONS
+}
 
 # paulstretch:12x4s — stretch amount × window seconds
 PAULSTRETCH_COMPACT_TOKEN_RE = re.compile(r"^paulstretch:(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)s$")
@@ -1081,169 +1091,147 @@ def action_from_bracket_segment(seg: str) -> dict:
     raise ValueError(f"Unknown bracket action type: {ptype}")
 
 
-def _legacy_action_to_spec(action: dict) -> str:
-    cmd = action.get("command")
-    p = action.get("params") or {}
-    if cmd == "fade_sample_start":
-        ms = int(round(float(p["seconds"]) * 1000))
-        return f"fade:[style=in][duration_ms={ms}]"
-    if cmd == "fade_sample_end":
-        ms = int(round(float(p["seconds"]) * 1000))
-        return f"fade:[style=out][duration_ms={ms}]"
-    if cmd == "eq_lows_sample":
-        return f"eq:[band=lows][db={p['db']}]"
-    if cmd == "eq_mids_sample":
-        return f"eq:[band=mids][db={p['db']}]"
-    if cmd == "eq_highs_sample":
-        return f"eq:[band=highs][db={p['db']}]"
-    if cmd == "increase_sample_gain":
-        return f"gain:[db={p['db']}]"
-    if cmd == "decrease_sample_gain":
-        return f"gain:[db=-{p['db']}]"
-    if cmd == "lpf_sample":
-        if not p:
-            return "filter:[kind=lpf]"
-        return f"filter:[kind=lpf][cutoff_hz={p['cutoff_hz']}]"
-    if cmd == "hpf_sample":
-        if not p:
-            return "filter:[kind=hpf]"
-        return f"filter:[kind=hpf][cutoff_hz={p['cutoff_hz']}]"
-    if cmd == "bpf_sample":
-        return f"filter:[kind=bpf][low_hz={p.get('low_hz', 300)}][high_hz={p.get('high_hz', 6000)}]"
-    if cmd == "normalize_sample":
-        return "normalize:[]"
-    if cmd == "noisegate_sample":
-        parts = [
-            f"[threshold_db={p.get('threshold_db', -30)}]",
-            f"[attack_ms={p.get('attack_ms', 8)}]",
-            f"[release_ms={p.get('release_ms', 140)}]",
-        ]
-        if "ratio" in p:
-            parts.append(f"[ratio={p['ratio']}]")
-        return "noisegate:" + "".join(parts)
-    if cmd == "stretch_sample":
-        return f"timestretch:[stretch_factor={p.get('stretch_factor', 1)}]"
-    if cmd == "paul_stretch_sample":
-        return (
-            f"paulstretch:[stretch_amount={p.get('stretch', 8)}]"
-            f"[window_size={p.get('window_size', 2.5)}]"
-        )
-    if cmd == "pitch_shift_sample":
-        return f"pitch:[mode=preserve][semitones={p.get('semitones', 0)}]"
-    if cmd == "pitch_shift_transpose_sample":
-        return f"pitch:[mode=resample][semitones={p.get('semitones', 0)}]"
-    rev_map = {
-        "reverb_bedroom_sample": (
-            "reverb:[wet_level=0.18][length_sec=0.25][decay_sec=0.18][highpass_hz=120]"
-        ),
-        "reverb_room_sample": (
-            "reverb:[wet_level=0.3][length_sec=0.4][decay_sec=0.3][highpass_hz=100]"
-        ),
-        "reverb_hall_sample": (
-            "reverb:[wet_level=0.35][length_sec=1][decay_sec=0.8][highpass_hz=100]"
-        ),
-        "reverb_large_sample": (
-            "reverb:[wet_level=0.4][length_sec=1.8][decay_sec=1.5][highpass_hz=100]"
-        ),
-        "reverb_amphitheatre_sample": (
-            "reverb:[wet_level=0.48][length_sec=3.5][decay_sec=3][highpass_hz=80]"
-        ),
-        "reverb_space_sample": (
-            "reverb:[wet_level=0.62][length_sec=8][decay_sec=7][highpass_hz=50]"
-        ),
-        "reverb_void_sample": (
-            "reverb:[wet_level=0.74][length_sec=14][decay_sec=12][highpass_hz=38]"
-            "[early_reflections=11][tail_diffusion=0.93][early_diffuse=true]"
-        ),
-        "reverb_distant_sample": (
-            "reverb:[wet_level=0.53][length_sec=11.5][decay_sec=10.5][highpass_hz=62]"
-            "[early_reflections=3][tail_diffusion=0.95][early_diffuse=false]"
-        ),
-    }
-    if cmd in rev_map:
-        return rev_map[cmd]
-    if cmd == "compress_mild_sample":
-        return "compress:[threshold_db=-14][ratio=2.5][attack_ms=10][release_ms=140]"
-    if cmd == "compress_medium_sample":
-        return "compress:[threshold_db=-20][ratio=10][attack_ms=3][release_ms=80]"
-    if cmd == "compress_heavy_sample":
-        return "compress:[threshold_db=-28][ratio=16][attack_ms=1.5][release_ms=60]"
-    if cmd == "overdrive_mild_sample":
-        return "overdrive:[drive_db=8][highpass_hz=150][lowpass_hz=5500]"
-    if cmd == "overdrive_medium_sample":
-        return "overdrive:[drive_db=14][highpass_hz=200][lowpass_hz=4000]"
-    if cmd == "overdrive_heavy_sample":
-        return "overdrive:[drive_db=20][highpass_hz=300][lowpass_hz=3000]"
-    if cmd == "distort_mild_sample":
-        return "distort:[drive_db=3]"
-    if cmd == "distort_medium_sample":
-        return "distort:[drive_db=6]"
-    if cmd == "distort_heavy_sample":
-        return "distort:[drive_db=11]"
-    if cmd == "chorus_mild_sample":
-        return (
-            "chorus:[rate_hz=0.7][depth=0.15][centre_delay_ms=8][feedback=0][mix=0.3]"
-        )
-    if cmd == "chorus_medium_sample":
-        return (
-            "chorus:[rate_hz=1][depth=0.25][centre_delay_ms=7][feedback=0][mix=0.5]"
-        )
-    if cmd == "chorus_heavy_sample":
-        return (
-            "chorus:[rate_hz=1.4][depth=0.45][centre_delay_ms=6][feedback=0.2][mix=0.75]"
-        )
-    if cmd == "flanger_mild_sample":
-        return (
-            "flanger:[rate_hz=0.35][depth=0.2][centre_delay_ms=2.5][feedback=0.15][mix=0.35]"
-        )
-    if cmd == "flanger_medium_sample":
-        return (
-            "flanger:[rate_hz=0.5][depth=0.4][centre_delay_ms=2][feedback=0.3][mix=0.5]"
-        )
-    if cmd == "flanger_heavy_sample":
-        return (
-            "flanger:[rate_hz=0.9][depth=0.65][centre_delay_ms=1.2][feedback=0.55][mix=0.75]"
-        )
-    if cmd == "phaser_mild_sample":
-        return (
-            "phaser:[rate_hz=0.7][depth=0.45][centre_frequency_hz=900]"
-            "[feedback=0.25][mix=0.35]"
-        )
-    if cmd == "phaser_medium_sample":
-        return (
-            "phaser:[rate_hz=1][depth=0.7][centre_frequency_hz=1000]"
-            "[feedback=0.5][mix=0.5]"
-        )
-    if cmd == "phaser_heavy_sample":
-        return (
-            "phaser:[rate_hz=1.4][depth=0.95][centre_frequency_hz=1300]"
-            "[feedback=0.7][mix=0.75]"
-        )
-    tok = action.get("token")
-    if isinstance(tok, str):
-        return tok
-    return str(cmd)
+def infer_processing_type_prefix(command: str) -> str:
+    command = (command or "").strip()
+    if ":" not in command:
+        raise ValueError(f"Invalid shortcut command (expected type:[...]): {command!r}")
+    return command.split(":", 1)[0].strip().lower()
+
+
+def _validate_shortcuts_raw_list(raw_list: object, *, path_label: str) -> list[dict[str, str]]:
+    if not isinstance(raw_list, list):
+        raise ValueError(f"{path_label}: shortcuts must be a list")
+    seen: set[str] = set()
+    out: list[dict[str, str]] = []
+    for i, raw in enumerate(raw_list):
+        if not isinstance(raw, dict):
+            raise ValueError(f"{path_label}: shortcuts[{i}] must be an object")
+        name = str(raw.get("name") or "").strip()
+        command = str(raw.get("command") or "").strip()
+        if not name:
+            raise ValueError(f"{path_label}: shortcuts[{i}] missing name")
+        if not command:
+            raise ValueError(f"{path_label}: shortcuts[{i}] missing command")
+        nk = name.lower()
+        if nk in seen:
+            raise ValueError(f"{path_label}: duplicate shortcut name {name!r}")
+        seen.add(nk)
+        inferred = infer_processing_type_prefix(command)
+        explicit = raw.get("type")
+        if explicit is not None and str(explicit).strip() != "":
+            et = str(explicit).strip().lower()
+            if et != inferred:
+                raise ValueError(
+                    f"{path_label}: shortcut {name!r} type {et!r} does not match "
+                    f"command prefix {inferred!r}"
+                )
+            ptype = et
+        else:
+            ptype = inferred
+        if ptype not in PROCESSING_TYPE_KEYS:
+            raise ValueError(f"{path_label}: shortcut {name!r} has unknown type {ptype!r}")
+        parse_single_processing_spec(command)
+        out.append({"name": name, "command": command, "type": ptype})
+    return out
+
+
+def load_post_processing_shortcuts_models() -> list[dict[str, str]]:
+    """Normalized shortcut rows from disk: name, command, type."""
+    ensure_post_processing_shortcuts_file()
+    with open(POST_PROCESSING_SHORTCUTS_PATH, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    raw_list = data.get("shortcuts")
+    return _validate_shortcuts_raw_list(raw_list, path_label=POST_PROCESSING_SHORTCUTS_PATH)
+
+
+def read_post_processing_shortcuts_document() -> dict:
+    """Return validated ``{\"shortcuts\": [...]}`` from disk."""
+    ensure_post_processing_shortcuts_file()
+    with open(POST_PROCESSING_SHORTCUTS_PATH, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    raw_list = data.get("shortcuts")
+    models = _validate_shortcuts_raw_list(raw_list, path_label=POST_PROCESSING_SHORTCUTS_PATH)
+    return {"shortcuts": models}
+
+
+def write_post_processing_shortcuts_document_atomic(shortcuts: list) -> None:
+    """Write shortcuts list to disk atomically after validation."""
+    models = _validate_shortcuts_raw_list(shortcuts, path_label="shortcuts payload")
+    ensure_post_processing_shortcuts_file()
+    path = POST_PROCESSING_SHORTCUTS_PATH
+    parent = os.path.dirname(path) or "."
+    fd, tmp_path = tempfile.mkstemp(
+        prefix="post-processing-shortcuts-", suffix=".tmp", dir=parent
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as tmp_f:
+            json.dump({"shortcuts": models}, tmp_f, indent=2)
+            tmp_f.write("\n")
+            tmp_f.flush()
+            os.fsync(tmp_f.fileno())
+        os.replace(tmp_path, path)
+    except Exception:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
+
+
+def append_post_processing_shortcut(name: str, command: str) -> None:
+    name = (name or "").strip()
+    command = (command or "").strip()
+    if not name:
+        raise ValueError("Shortcut name is required")
+    if not command:
+        raise ValueError("Shortcut command is required")
+    inferred = infer_processing_type_prefix(command)
+    if inferred not in PROCESSING_TYPE_KEYS:
+        raise ValueError(f"Unknown processing type {inferred!r}")
+    parse_single_processing_spec(command)
+    doc = read_post_processing_shortcuts_document()
+    shortcuts = list(doc.get("shortcuts") or [])
+    for row in shortcuts:
+        if str(row.get("name") or "").strip().lower() == name.lower():
+            raise ValueError(f"Shortcut name already exists: {name}")
+    shortcuts.append({"name": name, "type": inferred, "command": command})
+    write_post_processing_shortcuts_document_atomic(shortcuts)
+
+
+def remove_post_processing_shortcut(name: str) -> bool:
+    """Remove shortcut by exact stored name (trimmed). Returns True if an entry was removed."""
+    target = (name or "").strip()
+    if not target:
+        raise ValueError("Shortcut name is required")
+    doc = read_post_processing_shortcuts_document()
+    shortcuts = list(doc.get("shortcuts") or [])
+    new_list = [s for s in shortcuts if str(s.get("name") or "").strip() != target]
+    if len(new_list) == len(shortcuts):
+        return False
+    write_post_processing_shortcuts_document_atomic(new_list)
+    return True
 
 
 def _enriched_actions_and_presets():
-    actions_out = []
-    presets_out = []
-    for a in PROCESSING_ACTIONS:
-        row = dict(a)
-        row["spec"] = _legacy_action_to_spec(a)
+    models = load_post_processing_shortcuts_models()
+    actions_out: list[dict] = []
+    presets_out: list[dict] = []
+    for entry in models:
+        cmd = entry["command"]
+        name = entry["name"]
+        ptype = entry["type"]
+        parsed = parse_single_processing_spec(cmd)
+        row = {
+            "type": ptype,
+            "label": name,
+            "token": cmd,
+            "spec": cmd,
+            "command": parsed["command"],
+            "params": copy.deepcopy(parsed.get("params") or {}),
+        }
         actions_out.append(row)
-        presets_out.append(
-            {
-                "type": a["type"],
-                "label": a["label"],
-                "token": a["token"],
-                "spec": row["spec"],
-            }
-        )
+        presets_out.append({"type": ptype, "label": name, "token": cmd, "spec": cmd})
     return actions_out, presets_out
-
-
-_ENRICHED_ACTIONS, PROCESSING_PRESETS = _enriched_actions_and_presets()
 
 
 def get_processing_actions_payload() -> dict:
@@ -1283,7 +1271,7 @@ def parse_post_processing_spec(spec: str | None) -> list[dict]:
                 unknown.append(f"{seg_trim} ({e})")
             continue
         token = seg_trim.lower()
-        action = PROCESSING_ACTIONS_BY_TOKEN.get(token)
+        action = _LEGACY_COLON_TOKEN_ACTIONS.get(token)
         if action:
             actions.append(copy.deepcopy(action))
             continue
