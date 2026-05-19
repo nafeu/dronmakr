@@ -1238,16 +1238,31 @@
           });
           splitrOrganizeEl.appendChild(btn);
         });
+      var exportsOrganizeBtn = document.createElement("button");
+      exportsOrganizeBtn.textContent = "exports";
+      exportsOrganizeBtn.title = "Move to exports folder (visible in auditionr)";
+      exportsOrganizeBtn.addEventListener("click", async function () {
+        try {
+          await splitrOrganize("exports");
+        } catch (e) {
+          setStatus(e.message || "Move failed.", true);
+        }
+      });
+      splitrOrganizeEl.appendChild(exportsOrganizeBtn);
       updateSplitrOrganizePreview();
     }
 
     function renderSplitrActions() {
       splitrActionsEl.innerHTML = "";
-      var processingTypes = [{ key: "cut", label: "Cut" }]
-        .concat((processingCatalog.types || []).map(function (type) {
-          return { key: type.key, label: type.label };
-        }))
-        .filter(function (type) { return type.key !== "normalize"; });
+      var processingTypes = [{ key: "cut", label: "Cut" }].concat(
+        (processingCatalog.types || [])
+          .map(function (type) {
+            return { key: type.key, label: type.label };
+          })
+          .filter(function (type) {
+            return type.key !== "normalize" && type.key !== "cut";
+          })
+      );
 
       function addActionButton(label, onClick) {
         var btn = document.createElement("button");

@@ -672,6 +672,12 @@
       color: #000;
     }
 
+    .folysplitr-sample .waveform-actions .button.processing-type-active {
+      background-color: var(--theme-e);
+      border-bottom-color: var(--theme-e);
+      color: #000;
+    }
+
     .waveform {
       margin-bottom: 1rem;
     }
@@ -725,7 +731,7 @@
       opacity: 1;
     }
 
-    .waveform-wrapper:not(.drumpattern-sample):not(.transition-sample) .waveform-title-text {
+    .waveform-wrapper:not(.drumpattern-sample):not(.transition-sample):not(.folysplitr-sample) .waveform-title-text {
       color: var(--primary);
     }
 
@@ -735,6 +741,10 @@
 
     .transition-sample .waveform-title-text {
       color: var(--theme-c);
+    }
+
+    .folysplitr-sample .waveform-title-text {
+      color: var(--theme-e);
     }
 
     .waveform-actions,
@@ -779,6 +789,10 @@
       border-left-color: var(--theme-c);
     }
 
+    .folysplitr-sample .waveform-actions .processing-actions-divider {
+      border-left-color: var(--theme-e);
+    }
+
     /* Drumpattern sample: blue theme */
     .drumpattern-sample .waveform-actions .button {
       color: var(--theme-b);
@@ -807,6 +821,21 @@
 
     .transition-sample .waveform-actions .button:hover {
       border-bottom-color: var(--theme-c);
+    }
+
+    /* Folysplitr exports: sea-green theme */
+    .folysplitr-sample .waveform-actions .button {
+      color: var(--theme-e);
+    }
+
+    .folysplitr-sample .waveform-actions .fixed-button {
+      background-color: var(--theme-e);
+      border-bottom-color: var(--theme-e);
+      color: var(--secondary);
+    }
+
+    .folysplitr-sample .waveform-actions .button:hover {
+      border-bottom-color: var(--theme-e);
     }
 
     .waveform-actions .button.processing-type-active {
@@ -1712,6 +1741,14 @@
       }
     }
 
+    function auditionrReadCssVar(name, fallback) {
+      try {
+        var v = getComputedStyle(document.documentElement).getPropertyValue(name);
+        if (v && String(v).trim()) return String(v).trim();
+      } catch (e) { /* ignore */ }
+      return fallback;
+    }
+
     function createSingleWaveform(file, onReady) {
       var basename = auditionrBasename(file);
       var apiPath = auditionrExportsApiPath(file);
@@ -1719,11 +1756,13 @@
       var displayName = basename.replace(/\.wav$/i, "");
       var isDrumpattern = displayName.startsWith("drumpattern___");
       var isTransition = displayName.startsWith("transition");
+      var isFolysplitr = displayName.startsWith("folysplitr___");
 
       var wrapper = document.createElement("div");
       wrapper.className = "waveform-wrapper";
       if (isDrumpattern) wrapper.classList.add("drumpattern-sample");
       if (isTransition) wrapper.classList.add("transition-sample");
+      if (isFolysplitr) wrapper.classList.add("folysplitr-sample");
 
       var titleContainer = document.createElement("div");
       titleContainer.classList.add("title-container");
@@ -1904,13 +1943,16 @@
 
       var container = document.getElementById("waveform-container");
       container.appendChild(wrapper);
-      var wavesurfer = WaveSurfer.create({
+      var themeEProgress = auditionrReadCssVar("--theme-e", "#2e8b57");
+      var wsOpts = {
         container: "#" + waveformIdSafe,
         waveColor: "#353531",
-        progressColor: isDrumpattern ? "#016fb9" : (isTransition ? "#ec4e20" : "#ff9505"),
+        progressColor: isDrumpattern ? "#016fb9" : (isTransition ? "#ec4e20" : (isFolysplitr ? themeEProgress : "#ff9505")),
         backend: "MediaElement",
         height: 80
-      });
+      };
+      if (isFolysplitr) wsOpts.cursorColor = themeEProgress;
+      var wavesurfer = WaveSurfer.create(wsOpts);
 
       wavesurfer.load(mediaUrl);
 

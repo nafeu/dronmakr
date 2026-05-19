@@ -22,6 +22,7 @@ from werkzeug.utils import secure_filename
 from process_sample import trim_sample_start, trim_sample_end, reverse_sample
 from processing_actions import apply_processing_command, get_processing_actions_payload
 from paths import get_files_root_path
+from utils import EXPORTS_DIR
 
 ROOT_DIR = get_files_root_path()
 RECORDINGS_DIR = ROOT_DIR / "recordings"
@@ -92,6 +93,8 @@ def _resolve_audio_path(file_ref: str) -> Path | None:
         candidate = ROOT_DIR / cleaned
     elif cleaned.startswith("splits/"):
         candidate = ROOT_DIR / cleaned
+    elif cleaned.startswith("exports/"):
+        candidate = ROOT_DIR / cleaned
     else:
         candidate = RECORDINGS_DIR / cleaned
     try:
@@ -134,6 +137,8 @@ def _public_audio_payload(file_path: Path) -> dict:
     if rel.startswith("recordings/"):
         url = "/" + rel
     elif rel.startswith("splits/"):
+        url = "/" + rel
+    elif rel.startswith("exports/"):
         url = "/" + rel
     else:
         url = f"/recordings/{file_path.name}"
@@ -383,10 +388,14 @@ def register_folysplitr(app):
         destination = (params.get("destination") or "").strip().lower()
         if source is None or not source.exists() or not source.is_file():
             return jsonify({"ok": False, "error": "File does not exist"}), 404
-        if destination not in SPLIT_CATEGORIES:
+        if destination == "exports":
+            target_dir = Path(EXPORTS_DIR)
+            target_dir.mkdir(parents=True, exist_ok=True)
+        elif destination in SPLIT_CATEGORIES:
+            target_dir = SPLITS_DIR / destination
+            target_dir.mkdir(parents=True, exist_ok=True)
+        else:
             return jsonify({"ok": False, "error": "Invalid split destination"}), 400
-        target_dir = SPLITS_DIR / destination
-        target_dir.mkdir(parents=True, exist_ok=True)
         ext = source.suffix.lower() if source.suffix else ".wav"
         if ext not in _ALLOWED_EXTENSIONS:
             ext = ".wav"
@@ -411,7 +420,7 @@ def register_folysplitr(app):
 
     @app.route("/api/folysplitr/reveal", methods=["POST"])
     def api_folysplitr_reveal():
-        """Reveal a recordings/ or splits/ file in the system file manager."""
+        """Reveal a recordings/, splits/, or exports/ file in the system file manager."""
         params = request.get_json(silent=True) or {}
         source = _resolve_audio_path(params.get("path", ""))
         if source is None or not source.exists() or not source.is_file():
