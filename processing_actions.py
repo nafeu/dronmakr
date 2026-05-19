@@ -1444,7 +1444,16 @@ def _enriched_actions_and_presets():
             "params": copy.deepcopy(parsed.get("params") or {}),
         }
         actions_out.append(row)
-        presets_out.append({"type": ptype, "label": name, "token": cmd, "spec": cmd})
+        presets_out.append(
+            {
+                "type": ptype,
+                "label": name,
+                "token": cmd,
+                "spec": cmd,
+                "command": parsed["command"],
+                "params": copy.deepcopy(parsed.get("params") or {}),
+            }
+        )
     return actions_out, presets_out
 
 

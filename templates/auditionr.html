@@ -1742,7 +1742,7 @@
 
     var GENERATR_PP_QUEUE_KEY = "auditionr_post_process_queue";
     var generatrPostProcessQueue = [];
-    var editShortcutsDeleteMode = false;
+    var editShortcutMode = false;
     var generatrPpDragSourceIndex = null;
 
     function loadGeneratrPostProcessQueueFromStorage() {
@@ -1962,6 +1962,74 @@
       var x = parseFloat(u);
       if (!isFinite(x)) return 0.5;
       return Math.max(0, Math.min(1, x));
+    }
+
+    /** Parse ``type:[k=v]…`` bracket pairs (matches server-side processing specs). */
+    function parseBracketScalar(raw) {
+      var s = String(raw).trim();
+      var low = s.toLowerCase();
+      if (low === "true") return true;
+      if (low === "false") return false;
+      if (/^-?\d+(?:\.\d+)?(?:e[+-]?\d+)?$/i.test(s)) {
+        var f = parseFloat(s);
+        return isFinite(f) ? f : s;
+      }
+      return s;
+    }
+
+    function parseProcessingBracketParams(spec) {
+      var str = String(spec || "").trim();
+      var colon = str.indexOf(":");
+      var typePart = colon === -1 ? str : str.slice(0, colon).trim().toLowerCase();
+      var rest = colon === -1 ? "" : str.slice(colon + 1);
+      var params = {};
+      var re = /\[([^\]=]+)\s*=\s*([^\]]*)\]/g;
+      var m;
+      while ((m = re.exec(rest)) !== null) {
+        params[m[1].trim()] = parseBracketScalar(m[2]);
+      }
+      return { type: typePart, params: params };
+    }
+
+    function bracketParamKeyForSchema(schema) {
+      if (!schema) return null;
+      if (schema.widget === "slider" && schema.maps_to)
+        return schema.maps_to === "db_signed" ? "db" : schema.maps_to;
+      return schema.key;
+    }
+
+    /** Push bracket-derived physical values into the edit panel controls for one section. */
+    function applyBracketParamsToEditSection(sectionEl, typeKey, bracketParams) {
+      if (!sectionEl || !bracketParams || typeof bracketParams !== "object") return;
+      var schemas = (processingCatalog.paramSchemas && processingCatalog.paramSchemas[typeKey]) || [];
+      schemas.forEach(function (schema) {
+        var bk = bracketParamKeyForSchema(schema);
+        if (bk == null || !Object.prototype.hasOwnProperty.call(bracketParams, bk)) return;
+        var rawVal = bracketParams[bk];
+        var el = sectionEl.querySelector('[data-schema-key="' + schema.key + '"]');
+        if (!el) return;
+        if (schema.widget === "slider") {
+          var phys =
+            typeof rawVal === "number" ? rawVal : parseFloat(String(rawVal));
+          if (!isFinite(phys)) return;
+          var u = editPhysicalToNormalized(schema, phys);
+          el.value = String(u);
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+        } else if (schema.widget === "select") {
+          el.value = String(rawVal);
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+        } else if (schema.widget === "number") {
+          var n = typeof rawVal === "number" ? rawVal : parseFloat(String(rawVal));
+          if (!isFinite(n)) return;
+          el.value = String(n);
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      });
+      if (typeKey === "filter") syncEditFilterControlRows(sectionEl);
+      if (typeKey === "delay") syncEditDelayControlRows(sectionEl);
+      queueEditVisibleEffectVizRepaint();
     }
 
     function editPhysicalToNormalized(schema, phys) {
@@ -3036,17 +3104,22 @@
           var b = document.createElement("button");
           b.type = "button";
           b.className = "edit-preset-btn";
-          if (!editShortcutsDeleteMode) {
+          if (!editShortcutMode) {
             b.classList.add("solo-radius");
           }
           b.textContent = preset.label;
           b.title = preset.spec || preset.token || "";
           b.addEventListener("click", function () {
-            if (editShortcutsDeleteMode) return;
+            if (editShortcutMode) {
+              var specStr = preset.spec || preset.token || "";
+              var parsed = parseProcessingBracketParams(specStr);
+              applyBracketParamsToEditSection(sec, typeKey, parsed.params);
+              return;
+            }
             applyEditProcessingSpec(preset.spec || preset.token);
           });
           wrap.appendChild(b);
-          if (editShortcutsDeleteMode) {
+          if (editShortcutMode) {
             var del = document.createElement("button");
             del.type = "button";
             del.className = "edit-preset-delete";
@@ -3279,11 +3352,12 @@
 
         var toggleDelBtn = document.createElement("button");
         toggleDelBtn.type = "button";
-        toggleDelBtn.className = "btn-edit-shortcuts-mode" + (editShortcutsDeleteMode ? " active" : "");
-        toggleDelBtn.title = "Toggle shortcut delete mode";
+        toggleDelBtn.className = "btn-edit-shortcuts-mode" + (editShortcutMode ? " active" : "");
+        toggleDelBtn.title =
+          "Edit shortcut mode — click a shortcut to load its settings; use × to remove";
         toggleDelBtn.innerHTML = '<i class="fa-solid fa-pencil"></i>';
         toggleDelBtn.addEventListener("click", function () {
-          editShortcutsDeleteMode = !editShortcutsDeleteMode;
+          editShortcutMode = !editShortcutMode;
           renderEditSamplesPanel();
         });
 
