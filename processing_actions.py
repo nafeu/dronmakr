@@ -1553,14 +1553,16 @@ def actions_without_normalize(actions: list[dict]) -> list[dict]:
 
 def apply_post_processing_actions(
     file_path: str,
-    actions: list[dict],
+    actions: list[dict] | None,
     *,
     on_before_chain_step=None,
     on_before_finalize_normalize=None,
 ) -> None:
-    if not actions:
-        return
-    chain = actions_without_normalize(actions)
+    """
+    Apply optional preprocessing steps from `actions`, then always finalize with
+    peak normalization (-1 dBFS), matching the Normalize action in the UI.
+    """
+    chain = actions_without_normalize(actions or [])
     for i, action in enumerate(chain, start=1):
         if on_before_chain_step is not None:
             on_before_chain_step(i, len(chain), action)

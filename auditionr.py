@@ -43,6 +43,7 @@ from utils import (
     RESET,
     PRESETS_PATH,
 )
+from chord_scale_catalog import get_chord_scale_picklists, warm_chord_scale_picklists
 from generate_midi import get_patterns, generate_drone_midi, get_pattern_config
 from processing_actions import (
     append_post_processing_shortcut,
@@ -542,17 +543,25 @@ def reveal_in_explorer():
 # ---------------------------------------------------------------------------
 
 
+def _finalize_generatr_audio_export(output_wav_path: str) -> None:
+    """Apply default finalize step (peak normalize) after raw sample synthesis."""
+    apply_post_processing_actions(output_wav_path, [])
+
+
 def _apply_drone_post_processing_to_wavs(
     wav_paths: list[str], post_processing: str | None
 ) -> None:
-    if not post_processing or not str(post_processing).strip():
+    if not wav_paths:
         return
+    spec = (
+        post_processing.strip()
+        if isinstance(post_processing, str) and post_processing.strip()
+        else None
+    )
     try:
-        actions = parse_post_processing_spec(post_processing)
+        actions = parse_post_processing_spec(spec)
     except ValueError as e:
         raise ValueError(str(e)) from e
-    if not actions:
-        return
 
     def _pp_step_banner(i: int, total: int, action: dict) -> None:
         label = action.get("token") or action.get("command", "")
@@ -744,6 +753,7 @@ def _run_generate_bass(subcommand: str):
             tempo=170, bars=4, output=output_path, config=config
         )
         print(with_prompt(f"generated: {output_path}"))
+        _finalize_generatr_audio_export(output_path)
         return [output_path]
     elif subcommand == "donk":
         config = parse_donk_config(sound=None)
@@ -755,6 +765,7 @@ def _run_generate_bass(subcommand: str):
             tempo=120, bars=1, output=output_path, config=config
         )
         print(with_prompt(f"generated: {output_path}"))
+        _finalize_generatr_audio_export(output_path)
         return [output_path]
     else:
         raise ValueError(f"Unknown bass subcommand: {subcommand}")
@@ -775,6 +786,7 @@ def _run_generate_transition(subcommand: str):
             tempo=120, bars=8, output=output_path, config=config
         )
         print(with_prompt(f"generated: {output_path}"))
+        _finalize_generatr_audio_export(output_path)
         return [output_path]
     elif subcommand == "closh":
         config = parse_closh_config(reverb=None, delay=None)
@@ -786,6 +798,7 @@ def _run_generate_transition(subcommand: str):
             tempo=120, bars=4, output=output_path, config=config
         )
         print(with_prompt(f"generated: {output_path}"))
+        _finalize_generatr_audio_export(output_path)
         return [output_path]
     elif subcommand == "kickboom":
         config = parse_closh_config(reverb=None, delay=None)
@@ -797,6 +810,7 @@ def _run_generate_transition(subcommand: str):
             tempo=120, bars=4, output=output_path, config=config
         )
         print(with_prompt(f"generated: {output_path}"))
+        _finalize_generatr_audio_export(output_path)
         return [output_path]
     elif subcommand == "longcrash":
         config = parse_closh_config(reverb=None, delay=None)
@@ -808,6 +822,7 @@ def _run_generate_transition(subcommand: str):
             tempo=120, bars=8, output=output_path, config=config
         )
         print(with_prompt(f"generated: {output_path}"))
+        _finalize_generatr_audio_export(output_path)
         return [output_path]
     elif subcommand == "riser":
         longcrash_config = parse_closh_config(reverb=None, delay=None)
@@ -821,6 +836,7 @@ def _run_generate_transition(subcommand: str):
             longcrash_config=longcrash_config, sweep_config=sweep_config,
         )
         print(with_prompt(f"generated: {output_path}"))
+        _finalize_generatr_audio_export(output_path)
         return [output_path]
     elif subcommand == "drop":
         longcrash_config = parse_closh_config(reverb=None, delay=None)
@@ -834,6 +850,7 @@ def _run_generate_transition(subcommand: str):
             longcrash_config=longcrash_config, sweep_config=sweep_config,
         )
         print(with_prompt(f"generated: {output_path}"))
+        _finalize_generatr_audio_export(output_path)
         return [output_path]
     else:
         raise ValueError(f"Unknown transition subcommand: {subcommand}")
@@ -1015,8 +1032,7 @@ def _run_generate_beat(payload: dict):
                     kit_paths=current_kit_paths,
                     pattern_data=raw if isinstance(raw, dict) else None,
                 )
-                if post_actions:
-                    apply_post_processing_actions(output_path, post_actions)
+                apply_post_processing_actions(output_path, post_actions)
                 paths.append(output_path)
     finally:
         if original_preset_name:
@@ -1028,6 +1044,7 @@ def _run_generate_beat(payload: dict):
 def _handle_api_generate_options():
     ensure_settings()
     preset_index = get_presets()
+    pick = get_chord_scale_picklists()
     return jsonify(
         {
             "patterns": sorted(_load_beat_patterns_for_generate().keys()),
@@ -1036,6 +1053,9 @@ def _handle_api_generate_options():
             "droneMidiPatterns": get_patterns(),
             "droneInstruments": preset_index.get("instruments", []),
             "droneEffects": preset_index.get("effects", []),
+            "droneChordScaleRoots": pick["roots"],
+            "droneChordScaleTags": pick["tags"],
+            "droneChordScaleChartNames": pick["chartNames"],
         }
     )
 
@@ -1129,6 +1149,7 @@ def _handle_api_post_processing_shortcuts():
 def register_auditionr(app, socketio):
     """Register auditionr routes on the given Flask app. Socketio is used for emits."""
     global _socketio
+    warm_chord_scale_picklists()
     _socketio = socketio
 
     socketio.on_event("requestExports", _handle_request_exports)

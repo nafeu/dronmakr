@@ -116,6 +116,8 @@ Build outputs go to `dist/`; archives to `dist-artifacts/`. Release asset names 
 
 Post-processing uses legacy tokens and/or bracket-parameter steps. Separate steps with commas or semicolons.
 
+**Default:** every synthesized export is **peak-normalized to −1 dBFS** after generation (same as the “Normalize” action). Steps you pass via `--post-processing` run **before** that final normalize.
+
 **Bracket syntax:** `type:[key=value][key2=value2]`  
 Examples:
 

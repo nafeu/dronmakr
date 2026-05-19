@@ -99,8 +99,6 @@ def apply_post_processing_to_wavs(wav_paths: list[str], post_processing: str | N
     except ValueError as e:
         print(with_prompt(f"Error: {e}"))
         sys.exit(1)
-    if not actions:
-        return
 
     def _pp_step_banner(i: int, total: int, action: dict) -> None:
         label = action.get("token") or action.get("command", "")

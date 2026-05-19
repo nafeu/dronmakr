@@ -34,6 +34,7 @@ from utils import (
 )
 from generate_sample import generate_beat_sample
 from paths import get_managed_file
+from processing_actions import apply_post_processing_actions
 
 # Injected by register_beatbuildr(app, socketio); used by socket handlers for emits.
 _socketio = None
@@ -1023,6 +1024,7 @@ def _handle_export_beat(payload):
                 pattern_data=pattern,
                 loops=loops,
             )
+            apply_post_processing_actions(output_path, [])
             filenames.append(os.path.basename(output_path))
 
         _socketio.emit(

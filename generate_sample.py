@@ -20,6 +20,7 @@ from pedalboard.io import AudioFile
 from mido import MidiFile, Message
 
 from generate_midi import get_beat_patterns
+from processing_actions import apply_post_processing_actions
 from utils import (
     CYAN,
     RESET,
@@ -627,6 +628,7 @@ def main():
     output_path = args[1] if len(args) > 1 else "generated_sample.wav"
 
     generate_drone_sample(input_path, output_path)
+    apply_post_processing_actions(output_path, [])
 
 
 if __name__ == "__main__":
