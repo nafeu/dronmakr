@@ -273,10 +273,6 @@
       grid-column: 1 / -1;
     }
 
-    .generatr-form > .generatr-loading {
-      grid-column: 1 / -1;
-    }
-
     .generatr-form .form-row > label:first-of-type {
       font-size: 0.72rem;
       color: var(--theme-a);
@@ -529,34 +525,6 @@
       cursor: not-allowed;
     }
 
-    .generatr-loading {
-      font-size: 0.8rem;
-      color: var(--theme-a);
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .generatr-loading.hidden {
-      display: none;
-    }
-
-    .spinner {
-      display: inline-block;
-      width: 0.9rem;
-      height: 0.9rem;
-      border: 2px solid var(--theme-a);
-      border-top-color: var(--primary);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-
-    @keyframes spin {
-      to {
-        transform: rotate(360deg);
-      }
-    }
-
     .generatr-result {
       margin-top: 0.75rem;
       padding-top: 0.75rem;
@@ -566,21 +534,6 @@
 
     .generatr-result.hidden {
       display: none;
-    }
-
-    .generatr-result h3 {
-      font-size: 0.8rem;
-      margin: 0 0 0.4rem 0;
-      color: var(--theme-a);
-    }
-
-    .generatr-result ul {
-      margin: 0;
-      padding-left: 1.1rem;
-      font-size: 0.75rem;
-      color: var(--primary);
-      line-height: 1.5;
-      word-break: break-all;
     }
 
     .generatr-result .error {
@@ -635,6 +588,43 @@
 
     .sidebar-tab-panel.hidden {
       display: none !important;
+    }
+
+    #sidebar-panel-generate {
+      position: relative;
+    }
+
+    .generatr-busy-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 40;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      padding: 1.5rem;
+      background: color-mix(in srgb, var(--secondary) 93%, transparent);
+      color: var(--primary);
+      text-align: center;
+      pointer-events: auto;
+    }
+
+    .generatr-busy-overlay.hidden {
+      display: none !important;
+    }
+
+    .generatr-busy-icon {
+      font-size: 2.85rem;
+      line-height: 1;
+      color: var(--primary);
+    }
+
+    .generatr-busy-text {
+      font-size: 1.65rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
     }
 
     .edit-action-nav {
@@ -1288,6 +1278,10 @@
               <button type="button" class="sidebar-tab-btn" id="sidebar-tab-btn-edit" data-sidebar-tab="edit"><i class="fa-solid fa-pencil"></i> Edit Samples</button>
             </div>
             <div id="sidebar-panel-generate" class="sidebar-tab-panel">
+              <div class="generatr-busy-overlay hidden" id="generatr-busy-overlay" role="status" aria-live="polite" aria-hidden="true" aria-busy="false">
+                <i class="fa-solid fa-spinner fa-spin generatr-busy-icon" aria-hidden="true"></i>
+                <span class="generatr-busy-text">Generating</span>
+              </div>
           <div class="generatr-card">
             <form class="generatr-form" id="generatr-form">
               <div class="form-row form-row-full">
@@ -1421,14 +1415,8 @@
               <button type="submit" class="btn-generate" id="generatr-btn">
                 <i class="fa-solid fa-play"></i> Generate
               </button>
-              <div class="generatr-loading hidden" id="generatr-loading">
-                <span class="spinner"></span>
-                <span>Generating…</span>
-              </div>
             </form>
             <div class="generatr-result hidden" id="generatr-result">
-              <h3>Generated files</h3>
-              <ul id="generated-paths"></ul>
               <p class="error generatr-error hidden" id="generatr-error"></p>
             </div>
           </div>
@@ -3626,9 +3614,9 @@
       var droneSplitCheckbox = document.getElementById("generatr-drone-split");
       var form = document.getElementById("generatr-form");
       var btnGenerate = document.getElementById("generatr-btn");
-      var loadingEl = document.getElementById("generatr-loading");
+      var busyOverlay = document.getElementById("generatr-busy-overlay");
+      var generateTabPanel = document.getElementById("sidebar-panel-generate");
       var resultEl = document.getElementById("generatr-result");
-      var pathsList = document.getElementById("generated-paths");
       var errorEl = document.getElementById("generatr-error");
       var sidebar = document.getElementById("auditionr-sidebar");
       var sidebarToggle = document.getElementById("sidebar-toggle");
@@ -3783,9 +3771,13 @@
         }
 
         btnGenerate.disabled = true;
-        loadingEl.classList.remove("hidden");
+        if (busyOverlay) {
+          busyOverlay.classList.remove("hidden");
+          busyOverlay.setAttribute("aria-hidden", "false");
+          busyOverlay.setAttribute("aria-busy", "true");
+        }
+        if (generateTabPanel) generateTabPanel.setAttribute("aria-busy", "true");
         resultEl.classList.add("hidden");
-        pathsList.innerHTML = "";
         errorEl.classList.add("hidden");
         errorEl.textContent = "";
 
@@ -3796,20 +3788,13 @@
         })
           .then(function (res) { return res.json(); })
           .then(function (data) {
-            resultEl.classList.remove("hidden");
             if (data.error) {
+              resultEl.classList.remove("hidden");
               errorEl.textContent = data.error;
               errorEl.classList.remove("hidden");
             } else {
-              if (data.paths && data.paths.length) {
-                data.paths.forEach(function (path) {
-                  var li = document.createElement("li");
-                  li.textContent = path;
-                  pathsList.appendChild(li);
-                });
-              } else {
-                pathsList.appendChild(document.createTextNode("(no files returned)"));
-              }
+              errorEl.classList.add("hidden");
+              errorEl.textContent = "";
               socket.emit("requestExports");
             }
           })
@@ -3820,7 +3805,12 @@
           })
           .finally(function () {
             btnGenerate.disabled = false;
-            loadingEl.classList.add("hidden");
+            if (busyOverlay) {
+              busyOverlay.classList.add("hidden");
+              busyOverlay.setAttribute("aria-hidden", "true");
+              busyOverlay.setAttribute("aria-busy", "false");
+            }
+            if (generateTabPanel) generateTabPanel.setAttribute("aria-busy", "false");
           });
       });
     })();
