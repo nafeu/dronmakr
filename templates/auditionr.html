@@ -689,6 +689,26 @@
       color: var(--primary);
     }
 
+    .edit-effect-viz-wrap {
+      margin: 0 0 0.55rem 0;
+      padding: 0;
+      border: none;
+      border-radius: 0;
+      background: color-mix(in srgb, var(--secondary) 92%, transparent);
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    canvas.edit-effect-viz {
+      display: block;
+      width: 100%;
+      min-height: 172px;
+      height: auto;
+      vertical-align: top;
+      pointer-events: none;
+      cursor: default;
+    }
+
     .edit-presets-row {
       display: flex;
       flex-wrap: wrap;
@@ -1477,6 +1497,19 @@
     loadGeneratrPostProcessQueueFromStorage();
 
     var EDIT_SECTION_ORDER = ["fade", "eq", "gain", "filter", "noisegate", "timestretch", "paulstretch", "pitch", "reverb", "compress", "overdrive", "distort", "chorus", "flanger", "phaser"];
+    /** Sections that render the passive parameter canvas above controls (values come from sliders only). */
+    var EDIT_EFFECT_VIZ_TYPES = {
+      eq: 1,
+      filter: 1,
+      noisegate: 1,
+      reverb: 1,
+      compress: 1,
+      overdrive: 1,
+      distort: 1,
+      chorus: 1,
+      flanger: 1,
+      phaser: 1,
+    };
 
     function mergeProcessingCatalog(payload) {
       if (!payload || typeof payload !== "object") return;
@@ -1621,6 +1654,700 @@
       return fmtSpecNum(phys);
     }
 
+    function clamp01(u) {
+      var x = parseFloat(u);
+      if (!isFinite(x)) return 0.5;
+      return Math.max(0, Math.min(1, x));
+    }
+
+    function editPhysicalToNormalized(schema, phys) {
+      if (!schema) return 0.5;
+      var p = parseFloat(phys);
+      if (!isFinite(p)) return 0.5;
+      function invRange(a0, a1) {
+        var denom = a1 - a0;
+        if (!isFinite(denom) || denom === 0) return 0.5;
+        return (p - a0) / denom;
+      }
+      if (schema.range_db) return clamp01(invRange(schema.range_db[0], schema.range_db[1]));
+      if (schema.range_hz) return clamp01(invRange(schema.range_hz[0], schema.range_hz[1]));
+      if (schema.range_ms) return clamp01(invRange(schema.range_ms[0], schema.range_ms[1]));
+      if (schema.range_linear)
+        return clamp01(invRange(schema.range_linear[0], schema.range_linear[1]));
+      return clamp01(p);
+    }
+
+    function editSchemaLookup(typeKey, key) {
+      var schemas = (processingCatalog.paramSchemas && processingCatalog.paramSchemas[typeKey]) || [];
+      for (var i = 0; i < schemas.length; i++) {
+        if (schemas[i].key === key) return schemas[i];
+      }
+      return null;
+    }
+
+    /** Lightweight filter magnitude sketches for log-frequency preview. */
+    function editVizMagLP(fc, hz) {
+      var r = hz / Math.max(fc, 1e-9);
+      return 1 / Math.sqrt(1 + r * r * r * r);
+    }
+
+    function editVizMagHP(fc, hz) {
+      var r = hz / Math.max(fc, 1e-9);
+      return Math.sqrt(r * r * r * r / (1 + r * r * r * r));
+    }
+
+    function editVizMagBPF(flow, fhigh, hz) {
+      return editVizMagHP(flow, hz) * editVizMagLP(fhigh, hz);
+    }
+
+    function getEditControlNormalized(sectionEl, schemaKey, fallbackU) {
+      var el = sectionEl.querySelector('[data-schema-key="' + schemaKey + '"]');
+      if (!el) return fallbackU != null ? clamp01(fallbackU) : 0.5;
+      return clamp01(el.value);
+    }
+
+    /** Read theme colors for canvases (auditionrReadCssVar hoisted to same script scope). */
+    function editEffectVizCssColors() {
+      return {
+        primary: auditionrReadCssVar("--primary", "#ff9505"),
+        secondary: auditionrReadCssVar("--secondary", "#000000"),
+        themeA: auditionrReadCssVar("--theme-a", "#353531"),
+        themeB: auditionrReadCssVar("--theme-b", "#016fb9"),
+        themeC: auditionrReadCssVar("--theme-c", "#ec4e20"),
+        themeD: auditionrReadCssVar("--theme-d", "#FFFFFF"),
+        themeE: auditionrReadCssVar("--theme-e", "#2e8b57"),
+      };
+    }
+
+    /** lnRatio from freq in Hz; f clamped inside [fMin,fMax]; axis is logarithmic between fMin and fMax */
+    function editVizHzToLogRatio(freq, fMin, fMax) {
+      var hz = parseFloat(freq);
+      if (!isFinite(hz) || hz <= 0) hz = fMin;
+      hz = Math.max(fMin, Math.min(fMax, hz));
+      return (Math.log(hz / fMin)) / Math.log(fMax / fMin);
+    }
+
+    /** inverse of editVizHzToLogRatio */
+    function editVizLogRatioToHz(lnRatio, fMin, fMax) {
+      var r = clamp01(lnRatio);
+      var hz = Math.exp(r * Math.log(fMax / fMin)) * fMin;
+      return Math.max(fMin, Math.min(fMax, hz));
+    }
+
+    var _editVizPaintScheduled = false;
+    function queueEditVisibleEffectVizRepaint() {
+      if (_editVizPaintScheduled) return;
+      _editVizPaintScheduled = true;
+      var rqf = typeof window.requestAnimationFrame === "function" ? window.requestAnimationFrame.bind(window) : function (fn) { setTimeout(fn, 18); };
+      rqf(function () {
+        _editVizPaintScheduled = false;
+        var visible = document.querySelector(".edit-sample-section.edit-sample-section-visible");
+        if (visible && typeof visible.__repaintEditEffectViz === "function") visible.__repaintEditEffectViz();
+      });
+    }
+
+    function drawEditVizGrid(ctx, gx0, gy0, gx1, gy1, css) {
+      ctx.strokeStyle = css.themeA;
+      ctx.globalAlpha = 0.2;
+      ctx.lineWidth = 1;
+      for (var i = 1; i < 12; i++) {
+        var x = gx0 + (gx1 - gx0) * (i / 12);
+        ctx.beginPath(); ctx.moveTo(x, gy0); ctx.lineTo(x, gy1); ctx.stroke();
+      }
+      for (var j = 1; j < 9; j++) {
+        var y = gy0 + (gy1 - gy0) * (j / 9);
+        ctx.beginPath(); ctx.moveTo(gx0, y); ctx.lineTo(gx1, y); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    /** Map symmetric peaking EQ dB (+/- range) onto vertical span (top brighter = +12 dB). */
+    function editVizDbToVerticalY(dbBell, yTopBright, yBotQuiet) {
+      var maxDb = 12;
+      var t = clamp01((dbBell + maxDb) / (2 * maxDb));
+      return yTopBright + (1 - t) * (yBotQuiet - yTopBright);
+    }
+
+    function editVizWaveshaperDrive(t01, steep) {
+      steep = Math.max(steep, 0.02);
+      var x = (clamp01(t01) * 2 - 1) * 1.42;
+      var denom = Math.tanh(1.42 * steep);
+      if (!isFinite(denom) || Math.abs(denom) < 1e-12) return clamp01(t01) * 2 - 1;
+      return Math.tanh(x * steep) / denom;
+    }
+
+    function installEditEffectViz(sec, typeKey) {
+      var vizWrap = sec.querySelector(".edit-effect-viz-wrap");
+      var canvas = sec.querySelector("canvas.edit-effect-viz");
+      if (!vizWrap || !canvas) return;
+
+      var cssHCanvas = 172;
+
+      function dprComputed() {
+        return typeof window.devicePixelRatio === "number" && window.devicePixelRatio > 0 ? window.devicePixelRatio : 1;
+      }
+
+      function resizeBacking() {
+        var dpr = dprComputed();
+        var w = vizWrap.clientWidth || 260;
+        if (w <= 1) return false;
+        canvas.style.height = cssHCanvas + "px";
+        canvas.width = Math.max(220, Math.floor(w * dpr));
+        canvas.height = Math.floor(cssHCanvas * dpr);
+        return true;
+      }
+
+      function schema(key) {
+        return editSchemaLookup(typeKey, key);
+      }
+
+      function phys(key) {
+        var s = schema(key);
+        var u = getEditControlNormalized(sec, key, s && s.default != null ? s.default : 0.5);
+        return s ? editSliderPhysical(s, u) : 0;
+      }
+
+      function uNorm(key, fb) {
+        return getEditControlNormalized(sec, key, fb);
+      }
+
+      function paintPassiveFrame() {
+        if (!resizeBacking()) return;
+        var colors = editEffectVizCssColors();
+        var ctx = canvas.getContext("2d");
+        if (!ctx || canvas.width <= 8) return;
+        ctx.setTransform(dprComputed(), 0, 0, dprComputed(), 0, 0);
+
+        var cssW = vizWrap.clientWidth || canvas.offsetWidth || 260;
+        var cssHcss = cssHCanvas;
+        ctx.clearRect(0, 0, cssW, cssHcss);
+
+        ctx.globalAlpha = 0.94;
+        ctx.fillStyle = colors.secondary;
+        ctx.fillRect(0, 0, cssW, cssHcss);
+        ctx.globalAlpha = 1;
+
+        var pad = Math.max(22, cssW * 0.06);
+        var gx0 = pad;
+        var gy0 = pad;
+        var gx1 = cssW - pad;
+        var gy1 = cssHcss - pad * 0.55;
+
+        drawEditVizGrid(ctx, gx0, gy0, gx1, gy1, colors);
+
+        switch (typeKey) {
+          case "eq":
+            paintEq(ctx, gx0, gy0, gx1, gy1, colors);
+            break;
+          case "filter":
+            paintFilter(ctx, gx0, gy0, gx1, gy1, colors);
+            break;
+          case "noisegate":
+            paintNoisegate(ctx, gx0, gy0, gx1, gy1, colors);
+            break;
+          case "reverb":
+            paintReverb(ctx, gx0, gy0, gx1, gy1, colors);
+            break;
+          case "compress":
+            paintCompress(ctx, gx0, gy0, gx1, gy1, colors);
+            break;
+          case "overdrive":
+            paintOverdrive(ctx, gx0, gy0, gx1, gy1, colors);
+            break;
+          case "distort":
+            paintDistort(ctx, gx0, gy0, gx1, gy1, colors);
+            break;
+          case "chorus":
+            paintModDelay(ctx, gx0, gy0, gx1, gy1, colors, "chorus");
+            break;
+          case "flanger":
+            paintModDelay(ctx, gx0, gy0, gx1, gy1, colors, "flanger");
+            break;
+          case "phaser":
+            paintModDelay(ctx, gx0, gy0, gx1, gy1, colors, "phaser");
+            break;
+          default:
+            ctx.font = "12px Fragment Mono, monospace";
+            ctx.fillStyle = colors.themeA;
+            ctx.textAlign = "center";
+            ctx.fillText("No preview for this effect.", cssW / 2, cssHcss / 2);
+        }
+      }
+
+      function caption(ctx2, css3, x, y, text) {
+        ctx2.font = "10px Fragment Mono, monospace";
+        ctx2.fillStyle = css3.themeA;
+        ctx2.textAlign = "left";
+        ctx2.textBaseline = "alphabetic";
+        ctx2.fillText(text, x, y);
+      }
+
+      function paintEq(ctx2, xmin, ymin, xmax, ymax, css2) {
+        var band = readEditControl(sec, "band") || "lows";
+        var fc = band === "highs" ? 5200 : band === "mids" ? 1400 : 220;
+        var bwOct = band === "highs" ? 0.78 : band === "mids" ? 1.02 : 0.92;
+        var db = phys("db_ui");
+        var fLo = 40;
+        var fHi = 18000;
+        var yNom = ymin + (ymax - ymin) * 0.5;
+        var yTopBell = ymin + (ymax - ymin) * 0.16;
+        var yBotBell = ymin + (ymax - ymin) * 0.88;
+
+        ctx2.strokeStyle = css2.themeA;
+        ctx2.globalAlpha = 0.45;
+        ctx2.lineWidth = 1;
+        [140, 1000, 8000].forEach(function (fx) {
+          if (fx < fLo || fx > fHi) return;
+          var lx = xmin + editVizHzToLogRatio(fx, fLo, fHi) * (xmax - xmin);
+          ctx2.beginPath(); ctx2.moveTo(lx, ymin); ctx2.lineTo(lx, ymax); ctx2.stroke();
+        });
+        ctx2.globalAlpha = 1;
+
+        ctx2.strokeStyle = css2.themeD;
+        ctx2.globalAlpha = 0.42;
+        ctx2.setLineDash([5, 4]);
+        ctx2.beginPath();
+        ctx2.moveTo(xmin, yNom); ctx2.lineTo(xmax, yNom); ctx2.stroke();
+        ctx2.setLineDash([]); ctx2.globalAlpha = 1;
+
+        ctx2.strokeStyle = css2.primary;
+        ctx2.lineWidth = 2;
+        ctx2.beginPath();
+        for (var k = 0; k <= 160; k++) {
+          var u = k / 160;
+          var fhz = fLo * Math.pow(fHi / fLo, u);
+          var x = xmin + u * (xmax - xmin);
+          var oct = Math.log(Math.max(fhz, 1e-9) / Math.max(fc, 1e-9)) / Math.LN2;
+          var bell = Math.exp(-((oct / bwOct) * (oct / bwOct)));
+          var y = editVizDbToVerticalY(bell * db, yTopBell, yBotBell);
+          if (!k) ctx2.moveTo(x, y); else ctx2.lineTo(x, y);
+        }
+        ctx2.stroke();
+
+        ctx2.font = "9px Fragment Mono, monospace";
+        ctx2.fillStyle = css2.themeA;
+        ctx2.textAlign = "center";
+        ctx2.textBaseline = "top";
+        [100, 400, 1600, 6400].forEach(function (fz) {
+          if (fz < fLo || fz > fHi) return;
+          var tx = xmin + editVizHzToLogRatio(fz, fLo, fHi) * (xmax - xmin);
+          ctx2.fillText(fz >= 1000 ? (fz / 1000) + "k" : String(fz), tx, ymin - 2);
+        });
+
+        caption(ctx2, css2, xmin + 4, ymin + 14, "EQ · " + band + " bell ~" + fmtSpecNum(fc) + " Hz · " + fmtSpecNum(db) + " dB");
+      }
+
+      function paintFilter(ctx2, xmin, ymin, xmax, ymax, css2) {
+        var kind = readEditControl(sec, "kind") || "lpf";
+        var cutoff = editSliderPhysical(schema("cutoff_hz_ui"), uNorm("cutoff_hz_ui", 0.55));
+        var low = Math.min(phys("low_hz_ui"), phys("high_hz_ui"));
+        var hi = Math.max(phys("low_hz_ui"), phys("high_hz_ui"));
+        var fLo = 40;
+        var fHi = 18000;
+        var cw = xmax - xmin;
+        var midY = ymin + (ymax - ymin) * 0.54;
+        var yPeak = ymin + (ymax - ymin) * 0.2;
+
+        function magAt(fhz) {
+          if (kind === "bpf") return editVizMagBPF(low, hi, fhz);
+          return kind === "lpf" ? editVizMagLP(cutoff, fhz) : editVizMagHP(cutoff, fhz);
+        }
+
+        freqStrip(ctx2, xmin, xmax, ymax, css2, fLo, fHi);
+
+        ctx2.globalAlpha = 0.42;
+        ctx2.fillStyle = css2.themeB;
+        ctx2.beginPath();
+        for (var p = 0; p <= 140; p++) {
+          var t = p / 140;
+          var fhz = fLo * Math.pow(fHi / fLo, t);
+          var x = xmin + t * cw;
+          var m = clamp01(magAt(fhz));
+          var yy = midY + (1 - m) * Math.max(midY - yPeak, 4);
+          if (!p) ctx2.moveTo(x, yy); else ctx2.lineTo(x, yy);
+        }
+        ctx2.lineTo(xmax, ymax + 14); ctx2.lineTo(xmin, ymax + 14); ctx2.closePath(); ctx2.fill(); ctx2.globalAlpha = 1;
+
+        ctx2.strokeStyle = css2.themeE;
+        ctx2.lineWidth = 2;
+        ctx2.beginPath();
+        for (var q = 0; q <= 140; q++) {
+          var tt = q / 140;
+          var fhz2 = fLo * Math.pow(fHi / fLo, tt);
+          var xx = xmin + tt * cw;
+          var m2 = clamp01(magAt(fhz2));
+          var yl = midY + (1 - m2) * Math.max(midY - yPeak, 4);
+          if (!q) ctx2.moveTo(xx, yl); else ctx2.lineTo(xx, yl);
+        }
+        ctx2.stroke();
+
+        var label = kind === "bpf"
+          ? "BPF · " + fmtSpecNum(low) + " Hz · " + fmtSpecNum(hi) + " Hz"
+          : (kind.toUpperCase() + " · " + fmtSpecNum(cutoff) + " Hz");
+        caption(ctx2, css2, xmin + 4, ymin + 12, label);
+      }
+
+      function freqStrip(ctx2, fx0, fx1, ymaxStrip, css3, hzMin, hzMax) {
+        ctx2.font = "9px Fragment Mono, monospace";
+        ctx2.fillStyle = css3.themeA;
+        ctx2.textAlign = "center";
+        ctx2.textBaseline = "top";
+        [100, 400, 1000, 4000].forEach(function (fz) {
+          if (fz < hzMin || fz > hzMax) return;
+          var tx = fx0 + editVizHzToLogRatio(fz, hzMin, hzMax) * (fx1 - fx0);
+          ctx2.fillText(fz >= 1000 ? fz / 1000 + "k" : String(fz), tx, ymaxStrip + 8);
+        });
+      }
+
+      function paintNoisegate(ctx2, xmin, ymin, xmax, ymax, css2) {
+        var atkMs = Math.max(phys("attack_ms_ui"), 0.001);
+        var relMs = Math.max(phys("release_ms_ui"), 0.001);
+        var thDb = phys("threshold_db_ui");
+        var ratio = phys("ratio_ui");
+        var atkSch = schema("attack_ms_ui");
+        var relSch = schema("release_ms_ui");
+        var thSch = schema("threshold_db_ui");
+        var atkN = atkSch ? clamp01(editPhysicalToNormalized(atkSch, atkMs)) : 0;
+        var relN = relSch ? clamp01(editPhysicalToNormalized(relSch, relMs)) : 0;
+        var cw = xmax - xmin;
+        var ch = ymax - ymin;
+        var uTh = thSch ? clamp01(editPhysicalToNormalized(thSch, thDb)) : 0.5;
+
+        var yOpen = ymin + ch * 0.28;
+        var yShut = ymin + ch * (0.66 + clamp01((ratio - 2) / 18) * 0.1);
+        var yThMark = ymin + ch * (0.12 + uTh * 0.5);
+
+        var x0 = xmin + cw * 0.06;
+        var xHit = xmin + cw * (0.2 + atkN * 0.06);
+        var xAtkDone = Math.min(xHit + cw * (0.06 + atkN * 0.42), xmin + cw * 0.55);
+        var xHold = xmin + cw * (0.66 - relN * 0.04);
+        var xRelEnd = Math.min(xHold + cw * (0.04 + relN * 0.34), xmax - cw * 0.04);
+
+        ctx2.strokeStyle = css2.themeA;
+        ctx2.globalAlpha = 0.55;
+        ctx2.setLineDash([4, 4]);
+        ctx2.beginPath();
+        ctx2.moveTo(xmin, yThMark); ctx2.lineTo(xmax, yThMark); ctx2.stroke(); ctx2.setLineDash([]);
+        ctx2.globalAlpha = 1;
+
+        ctx2.strokeStyle = css2.themeE;
+        ctx2.lineWidth = 2;
+        ctx2.beginPath();
+        ctx2.moveTo(x0, yShut);
+        ctx2.lineTo(xHit, yShut);
+        ctx2.lineTo(xAtkDone, yOpen);
+        ctx2.lineTo(xHold, yOpen);
+        ctx2.lineTo(xRelEnd, yShut);
+        ctx2.lineTo(xmax - cw * 0.02, yShut);
+        ctx2.stroke();
+
+        caption(ctx2, css2, xmin + 4, ymin + 12,
+          "noise gate · threshold " + fmtSpecNum(thDb) + " dB · atk " + fmtSpecNum(atkMs) + " ms · rel " + fmtSpecNum(relMs) + " ms · ratio ×" + fmtSpecNum(ratio));
+      }
+
+      function paintReverb(ctx2, xmin, ymin, xmax, ymax, css2) {
+        var wetSch = schema("wet_level_ui");
+        var decaySch = schema("decay_sec_ui");
+        var lenSch = schema("length_sec_ui");
+        var wetPhy = phys("wet_level_ui");
+        var wetU = wetSch ? clamp01(editPhysicalToNormalized(wetSch, wetPhy)) : 0.35;
+        var decayPhy = Math.max(phys("decay_sec_ui"), 0.05);
+        var lenPhy = Math.max(phys("length_sec_ui"), 0.05);
+        var hp = phys("highpass_hz_ui");
+        var er = Math.max(3, Math.min(22, Math.round(phys("early_reflections_ui"))));
+        var tailD = clamp01(editPhysicalToNormalized(schema("tail_diffusion_ui"), phys("tail_diffusion_ui")));
+        var earlySpread = readEditControl(sec, "early_diffuse") !== "false";
+        var cw = xmax - xmin;
+        var ch = ymax - ymin;
+        var split = ymin + ch * (0.22 + (1 - wetU) * 0.62);
+
+        ctx2.strokeStyle = css2.themeD;
+        ctx2.globalAlpha = 0.55;
+        ctx2.setLineDash([5, 4]);
+        ctx2.beginPath();
+        ctx2.moveTo(xmin, split); ctx2.lineTo(xmax, split); ctx2.stroke(); ctx2.setLineDash([]);
+        ctx2.globalAlpha = 1;
+
+        var hpSch = schema("highpass_hz_ui");
+        var hpU = hpSch ? clamp01(editPhysicalToNormalized(hpSch, hp)) : 0.2;
+        ctx2.strokeStyle = css2.themeC;
+        ctx2.globalAlpha = 0.92;
+        ctx2.beginPath();
+        ctx2.moveTo(xmin + cw * 0.06, ymin + ch * 0.16);
+        ctx2.lineTo(xmin + cw * 0.1, ymin + ch * (0.2 + hpU * 0.1));
+        ctx2.lineTo(xmin + cw * 0.12, ymin + ch * (0.16 + hpU * 0.06));
+        ctx2.stroke(); ctx2.globalAlpha = 1;
+
+        var decayTau = decaySch ? clamp01(editPhysicalToNormalized(decaySch, decayPhy)) : 0.5;
+        var decayK = Math.max(6, decayTau * 38 + (1 - tailD) * 10);
+        var tailLenFrac = lenSch ? clamp01(editPhysicalToNormalized(lenSch, lenPhy)) : 0.4;
+
+        ctx2.strokeStyle = css2.themeB;
+        ctx2.globalAlpha = 0.92;
+        ctx2.lineWidth = 2;
+        ctx2.beginPath();
+        for (var i = 0; i <= 120; i++) {
+          var t = i / 120;
+          var env = tailD * 0.18 * Math.sin(t * Math.PI * decayK * 0.05) + Math.exp(-t * decayK * (0.78 + decayTau));
+          var xx = xmin + cw * (0.1 + t * tailLenFrac * 0.86);
+          var yy = split + (ymax - split) * 0.94 * (1 - env * 0.96);
+          if (!i) ctx2.moveTo(xx, yy); else ctx2.lineTo(xx, yy);
+        }
+        ctx2.stroke(); ctx2.globalAlpha = 1;
+
+        if (earlySpread) {
+          ctx2.strokeStyle = css2.primary;
+          ctx2.globalAlpha = 0.7;
+          for (var kk = 0; kk < er; kk++) {
+            var spikeX = xmin + cw * (0.12 + kk * Math.min(cw * 0.036, cw / Math.max(er, 3)));
+            ctx2.beginPath(); ctx2.moveTo(spikeX, split); ctx2.lineTo(spikeX, split - (10 + (kk % 4) * 3)); ctx2.stroke();
+          }
+          ctx2.globalAlpha = 1;
+        }
+
+        caption(ctx2, css2, xmin + 4, ymin + 10,
+          "reverb · wet " + fmtSpecNum(wetPhy) + " · length " + fmtSpecNum(lenPhy) + " s · decay " + fmtSpecNum(decayPhy) + " s · tail diffusion " + fmtSpecNum(tailD));
+      }
+
+      function paintCompress(ctx2, xmin, ymin, xmax, ymax, css2) {
+        var thDb = phys("threshold_db_ui");
+        var ratioNum = Math.max(phys("ratio_ui"), 1);
+
+        function outDb(inpDb) {
+          if (inpDb <= thDb) return inpDb;
+          return thDb + (inpDb - thDb) / ratioNum;
+        }
+
+        var dMin = -46;
+        var dMax = -3;
+        var plotW = xmax - xmin;
+        var plotH = ymax - ymin;
+
+        ctx2.strokeStyle = css2.themeA;
+        ctx2.globalAlpha = 0.45;
+        ctx2.setLineDash([4, 4]);
+        ctx2.beginPath();
+        for (var b = -40; b <= -8; b += 8) {
+          var lx = xmin + plotW * clamp01((b - dMin) / (dMax - dMin));
+          ctx2.moveTo(lx, ymin); ctx2.lineTo(lx, ymax);
+        }
+        ctx2.stroke();
+        ctx2.setLineDash([]); ctx2.globalAlpha = 1;
+
+        function xOf(inp) {
+          return xmin + plotW * clamp01((inp - dMin) / (dMax - dMin));
+        }
+        function yOf(outDbVal) {
+          return ymax - plotH * clamp01((outDbVal - dMin) / (dMax - dMin));
+        }
+
+        ctx2.strokeStyle = css2.themeD;
+        ctx2.globalAlpha = 0.52;
+        ctx2.lineWidth = 1.25;
+        ctx2.beginPath();
+        ctx2.moveTo(xOf(dMin), yOf(dMin));
+        ctx2.lineTo(xOf(dMax), yOf(dMax));
+        ctx2.stroke(); ctx2.globalAlpha = 1;
+
+        ctx2.strokeStyle = css2.themeE;
+        ctx2.lineWidth = 3;
+        ctx2.beginPath();
+        for (var uu = 0; uu <= 90; uu++) {
+          var inp = dMin + (dMax - dMin) * (uu / 90);
+          var outv = outDb(inp);
+          if (!uu) ctx2.moveTo(xOf(inp), yOf(outv)); else ctx2.lineTo(xOf(inp), yOf(outv));
+        }
+        ctx2.stroke(); ctx2.lineWidth = 1;
+
+        ctx2.strokeStyle = css2.primary;
+        ctx2.globalAlpha = 0.8;
+        ctx2.setLineDash([3, 3]);
+        ctx2.beginPath();
+        ctx2.moveTo(xOf(thDb), ymin);
+        ctx2.lineTo(xOf(thDb), ymax);
+        ctx2.stroke();
+        ctx2.setLineDash([]); ctx2.globalAlpha = 1;
+
+        var atkPhy = fmtSpecNum(phys("attack_ms_ui"));
+        var relPhy = fmtSpecNum(phys("release_ms_ui"));
+        caption(ctx2, css2, xmin + 4, ymin + 12,
+          "compressor · input (x) vs output (y) · thr " + fmtSpecNum(thDb) + " dB · ratio ×" + fmtSpecNum(ratioNum) + " · atk " + atkPhy + " ms · rel " + relPhy + " ms");
+      }
+
+      function paintOverdrive(ctx2, xmin, ymin, xmax, ymax, css2) {
+        var drv = phys("drive_db_ui");
+        var drvSch = schema("drive_db_ui");
+        var drvU = drvSch ? clamp01(editPhysicalToNormalized(drvSch, drv)) : 0.45;
+        var steep = 0.62 + drvU * 22;
+        var hp = phys("highpass_hz_ui");
+        var lp = phys("lowpass_hz_ui");
+        var cw = xmax - xmin;
+        var cx = xmin + cw * 0.34;
+        var cy = ymin + (ymax - ymin) * 0.46;
+        var span = Math.min(cw - 72, ymax - ymin - 56) / 2.35;
+
+        ctx2.strokeStyle = css2.themeA;
+        ctx2.lineWidth = 1;
+        ctx2.globalAlpha = 0.72;
+        ctx2.beginPath();
+        ctx2.moveTo(cx - span, cy + span); ctx2.lineTo(cx + span, cy - span);
+        ctx2.stroke(); ctx2.globalAlpha = 1;
+
+        ctx2.strokeStyle = css2.primary;
+        ctx2.lineWidth = 2;
+        ctx2.beginPath();
+        for (var ip = 0; ip <= 100; ip++) {
+          var t = ip / 100;
+          var outv = editVizWaveshaperDrive(t, steep);
+          var px = cx - span + t * span * 2;
+          var py = cy + span - outv * span * 2;
+          if (!ip) ctx2.moveTo(px, py); else ctx2.lineTo(px, py);
+        }
+        ctx2.stroke();
+
+        var stripTop = ymin + (ymax - ymin) * 0.72;
+        var stripBot = ymin + (ymax - ymin) * 0.86;
+
+        ctx2.strokeStyle = css2.themeE;
+        ctx2.lineWidth = 2;
+        var xHp = xmin + cw * (0.1 + clamp01(editPhysicalToNormalized(schema("highpass_hz_ui"), hp)) * 0.8);
+        ctx2.beginPath(); ctx2.moveTo(xHp, stripTop); ctx2.lineTo(xHp, stripBot); ctx2.stroke();
+        ctx2.strokeStyle = css2.themeC;
+        var xLp = xmin + cw * (0.08 + clamp01(editPhysicalToNormalized(schema("lowpass_hz_ui"), lp)) * 0.82);
+        ctx2.beginPath(); ctx2.moveTo(xLp, stripTop); ctx2.lineTo(xLp, stripBot); ctx2.stroke();
+
+        caption(ctx2, css2, xmin + 4, ymin + 12, "overdrive waveshaping · drive " + fmtSpecNum(drv) + " dB · tone HP " + fmtSpecNum(hp) + " Hz · LP " + fmtSpecNum(lp) + " Hz");
+      }
+
+      function paintDistort(ctx2, xmin, ymin, xmax, ymax, css2) {
+        var drv = phys("drive_db_ui");
+        var drvSch = schema("drive_db_ui");
+        var drvU = drvSch ? clamp01(editPhysicalToNormalized(drvSch, drv)) : 0.45;
+        var steep = 0.92 + drvU * 38;
+        var cx = xmin + (xmax - xmin) / 2;
+        var cy = ymin + (ymax - ymin) * 0.46;
+        var span = Math.min(xmax - xmin - 72, ymax - ymin - 56) / 2.25;
+
+        ctx2.strokeStyle = css2.themeA;
+        ctx2.lineWidth = 1;
+        ctx2.globalAlpha = 0.74;
+        ctx2.beginPath();
+        ctx2.moveTo(cx - span, cy + span); ctx2.lineTo(cx + span, cy - span);
+        ctx2.stroke(); ctx2.globalAlpha = 1;
+
+        ctx2.strokeStyle = css2.themeC;
+        ctx2.lineWidth = 2.5;
+        ctx2.beginPath();
+        for (var ip = 0; ip <= 100; ip++) {
+          var t = ip / 100;
+          var outv = editVizWaveshaperDrive(t, steep);
+          var px = cx - span + t * span * 2;
+          var py = cy + span - outv * span * 2;
+          if (!ip) ctx2.moveTo(px, py); else ctx2.lineTo(px, py);
+        }
+        ctx2.stroke();
+
+        caption(ctx2, css2, xmin + 4, ymin + 12, "distort · drive " + fmtSpecNum(drv) + " dB (saturation sketch)");
+      }
+
+      function paintModDelay(ctx2, xmin, ymin, xmax, ymax, css2, kind) {
+        var rate = Math.max(phys("rate_hz_ui"), 1e-4);
+        var depthPhys = phys("depth_ui");
+        var depthSch = schema("depth_ui");
+        var depthNorm = depthSch ? clamp01(editPhysicalToNormalized(depthSch, depthPhys)) : 0;
+        var mixSch = schema("mix_ui");
+        var mixPhy = phys("mix_ui");
+        var mixNorm = mixSch ? clamp01(editPhysicalToNormalized(mixSch, mixPhy)) : 0;
+        var cd = phys("centre_delay_ms_ui");
+        var cdSch = schema("centre_delay_ms_ui");
+        var cdMax = cdSch && cdSch.range_linear ? cdSch.range_linear[1] : 14;
+        var delayNorm = clamp01(cd / Math.max(cdMax, 1e-4));
+        var fb = phys("feedback_ui");
+
+        var cw = xmax - xmin;
+        var ch = ymax - ymin;
+        var mid = ymin + ch * 0.5;
+
+        var cyclesAcross = rate * (
+          kind === "flanger" ? 32 :
+          kind === "phaser" ? 22 : 20
+        );
+        var ampBoost = kind === "flanger" ? 1.08 : kind === "phaser" ? 0.72 : 0.95;
+        ctx2.strokeStyle = css2.themeE;
+        ctx2.globalAlpha = 0.55;
+        ctx2.beginPath();
+        ctx2.moveTo(xmin, mid); ctx2.lineTo(xmax, mid); ctx2.stroke(); ctx2.globalAlpha = 1;
+
+        var amp = Math.max(4, depthNorm * 0.5 * ampBoost) * Math.min(ch, 118);
+        ctx2.strokeStyle = css2.primary;
+        ctx2.lineWidth = 2;
+        ctx2.beginPath();
+        for (var iq = 0; iq <= 220; iq++) {
+          var t = iq / 220;
+          var px = xmin + cw * (0.04 + t * 0.92);
+          var ph = cyclesAcross * Math.PI * 2 * t;
+          var wobble = depthNorm + 0.12;
+          var py = mid + Math.sin(ph * (1 + wobble * (kind === "flanger" ? 0.32 : kind === "phaser" ? 0.52 : 0.18))) * amp * delayNorm;
+          if (!iq) ctx2.moveTo(px, py); else ctx2.lineTo(px, py);
+        }
+        ctx2.stroke();
+
+        ctx2.strokeStyle = css2.themeD;
+        ctx2.globalAlpha = 0.65;
+        var split = ymin + mixNorm * ch * (kind === "phaser" ? 0.32 : 0.36) + 18;
+        ctx2.beginPath();
+        ctx2.moveTo(xmin, split); ctx2.lineTo(xmax, split); ctx2.stroke(); ctx2.globalAlpha = 1;
+
+        ctx2.strokeStyle = css2.themeB;
+        ctx2.globalAlpha = 0.88;
+        var fbSchInner = schema("feedback_ui");
+        var fbFrac = fbSchInner ? clamp01(editPhysicalToNormalized(fbSchInner, fb)) : 0;
+        ctx2.beginPath(); ctx2.moveTo(xmax - cw * (0.3 + fbFrac * 0.45), ymin + ch * 0.32); ctx2.lineTo(xmax - 16, ymin + ch * (0.55 - fbFrac * 0.06)); ctx2.stroke(); ctx2.globalAlpha = 1;
+
+        var labelWord = kind === "flanger" ? "flanger" : kind === "phaser" ? "phaser" : "chorus";
+
+        var captionY = ymin + (kind === "phaser" ? 24 : 10);
+        var line1 =
+          labelWord + " modulation · rate " + fmtSpecNum(rate) + " Hz · depth " + fmtSpecNum(depthPhys) + " · delay " + fmtSpecNum(cd) + " ms · feedback " + fmtSpecNum(fb) + " · mix " + fmtSpecNum(mixPhy);
+
+        if (kind === "phaser") {
+          var cfSch = schema("centre_frequency_hz_ui");
+          var cf = Math.max(phys("centre_frequency_hz_ui"), 1);
+          var cfNorm = cfSch ? clamp01(editPhysicalToNormalized(cfSch, cf)) : 0;
+          var fMinAxis = cfSch && cfSch.range_linear ? cfSch.range_linear[0] : 400;
+          var fMaxAxis = cfSch && cfSch.range_linear ? cfSch.range_linear[1] : 2800;
+          var cxNotch = xmin + cw * (0.06 + cfNorm * 0.82);
+          var dip = ymin + split + (ymax - split) * 0.72;
+          ctx2.strokeStyle = css2.themeC;
+          ctx2.lineWidth = 2;
+          ctx2.beginPath(); ctx2.moveTo(cxNotch - 38, ymin + ch * 0.74); ctx2.lineTo(cxNotch - 22, ymin + split + depthNorm * 22); ctx2.lineTo(cxNotch, ymin + dip - depthNorm * 26); ctx2.lineTo(cxNotch + 22, ymin + split + depthNorm * 22); ctx2.lineTo(cxNotch + 38, ymin + ch * 0.74); ctx2.stroke();
+          line1 +=
+            " · sweep ~ " + fmtSpecNum(cf) + " Hz · UI axis " + fmtSpecNum(fMinAxis) + "–" + fmtSpecNum(fMaxAxis) + " Hz";
+        }
+
+        caption(ctx2, css2, xmin + 4, captionY, line1);
+      }
+
+      sec.__repaintEditEffectViz = paintPassiveFrame;
+
+      var ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(function () {
+        paintPassiveFrame();
+      });
+      if (ro) ro.observe(vizWrap);
+
+      function onCtl() {
+        queueEditVisibleEffectVizRepaint();
+      }
+
+      sec.querySelectorAll('[data-schema-key]').forEach(function (el) {
+        el.addEventListener("input", onCtl);
+        el.addEventListener("change", onCtl);
+      });
+
+      paintPassiveFrame();
+    }
+
+
     function readEditControl(sectionEl, schemaKey) {
       var el = sectionEl.querySelector('[data-schema-key="' + schemaKey + '"]');
       return el ? String(el.value) : "";
@@ -1667,6 +2394,7 @@
       detail.querySelectorAll(".edit-sample-section").forEach(function (sec) {
         sec.classList.toggle("edit-sample-section-visible", sec.dataset.editType === editPanelSelectedActionType);
       });
+      queueEditVisibleEffectVizRepaint();
     }
 
     function openAuditionrSidebarTab(tab) {
@@ -1682,6 +2410,7 @@
       genPanel.classList.toggle("hidden", !isGen);
       editPanel.classList.toggle("hidden", isGen);
       try { sessionStorage.setItem(AUDITIONR_SIDEBAR_TAB_KEY, tab); } catch (e) {}
+      if (!isGen) queueEditVisibleEffectVizRepaint();
     }
 
     function ensureSidebarOpenForEdit() {
@@ -1858,6 +2587,22 @@
           }
           presetsWrap.appendChild(wrap);
         });
+        var vizWrap = null;
+        var vizSr = null;
+        if (EDIT_EFFECT_VIZ_TYPES[typeKey]) {
+          vizWrap = document.createElement("div");
+          vizWrap.className = "edit-effect-viz-wrap";
+          vizSr = document.createElement("span");
+          vizSr.className = "sr-only";
+          vizSr.textContent = "Passive preview of current " + typeKey + " parameters (matches sliders below).";
+          var vizCanvas = document.createElement("canvas");
+          vizCanvas.className = "edit-effect-viz";
+          vizCanvas.setAttribute("role", "img");
+          vizCanvas.setAttribute("aria-label", typeKey + " parameter preview");
+          vizWrap.appendChild(vizSr);
+          vizWrap.appendChild(vizCanvas);
+        }
+
         var controlsWrap = document.createElement("div");
         controlsWrap.className = "edit-controls";
         schemas.forEach(function (schema) {
@@ -1927,7 +2672,9 @@
             controlsWrap.appendChild(row2);
           }
         });
+        if (vizWrap) sec.appendChild(vizWrap);
         sec.appendChild(controlsWrap);
+        if (EDIT_EFFECT_VIZ_TYPES[typeKey]) installEditEffectViz(sec, typeKey);
 
         var applyBtn = document.createElement("button");
         applyBtn.type = "button";
