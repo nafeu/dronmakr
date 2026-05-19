@@ -384,10 +384,29 @@
       color: var(--theme-a);
       cursor: pointer;
       width: 100%;
+      display: flex;
+      align-items: baseline;
+      justify-content: flex-start;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+    }
+
+    .generatr-pp-shortcut-type {
+      color: var(--primary);
+      flex-shrink: 0;
+      font-weight: 600;
+    }
+
+    .generatr-pp-shortcut-name {
+      color: var(--theme-a);
+      min-width: 0;
     }
 
     .generatr-pp-shortcut-btn:hover {
       border-color: var(--primary);
+    }
+
+    .generatr-pp-shortcut-btn:hover .generatr-pp-shortcut-name {
       color: var(--primary);
     }
 
@@ -695,7 +714,7 @@
     }
 
     .edit-apply-row .btn-edit-apply {
-      width: auto;
+      width: 30%;
       flex: 0 0 auto;
       margin-top: 0;
     }
@@ -1474,21 +1493,36 @@
       var box = document.getElementById("generatr-pp-shortcut-buttons");
       var filterEl = document.getElementById("generatr-pp-filter");
       if (!box) return;
+      var typesByKey = {};
+      (processingCatalog.types || []).forEach(function (t) {
+        typesByKey[String(t.key || "").trim().toLowerCase()] = String(t.label || t.key || "").trim();
+      });
       var actions = (processingCatalog.actions || []).slice();
       var q = filterEl && filterEl.value ? String(filterEl.value).trim().toLowerCase() : "";
       box.innerHTML = "";
       actions.forEach(function (action) {
-        var label = String(action.label || action.token || "").trim();
+        var shortcutLabel = String(action.label || action.token || "").trim();
+        var typeKey = String(action.type || "").trim().toLowerCase();
+        var typeLabel = typesByKey[typeKey] || typeKey;
         var cmd = String(action.spec || action.token || "").trim();
         if (!cmd) return;
-        if (q && label.toLowerCase().indexOf(q) === -1) return;
+        var filterHaystack = (typeLabel + " " + shortcutLabel).toLowerCase();
+        if (q && filterHaystack.indexOf(q) === -1) return;
         var btn = document.createElement("button");
         btn.type = "button";
         btn.className = "generatr-pp-shortcut-btn";
-        btn.textContent = label;
+        var typeSpan = document.createElement("span");
+        typeSpan.className = "generatr-pp-shortcut-type";
+        typeSpan.textContent = typeLabel;
+        var nameSpan = document.createElement("span");
+        nameSpan.className = "generatr-pp-shortcut-name";
+        nameSpan.textContent = shortcutLabel;
+        btn.appendChild(typeSpan);
+        btn.appendChild(nameSpan);
+        var displayName = (typeLabel + " " + shortcutLabel).trim();
         btn.title = cmd;
         btn.addEventListener("click", function () {
-          generatrPostProcessQueue.push({ displayName: label, command: cmd });
+          generatrPostProcessQueue.push({ displayName: displayName, command: cmd });
           saveGeneratrPostProcessQueueToStorage();
           renderGeneratrPostProcessingQueue();
         });
