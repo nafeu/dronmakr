@@ -1044,7 +1044,7 @@ def get_presets():
     for preset in presets:
         if preset["type"] == "instrument":
             instrument_presets.append(preset["name"])
-        elif preset["type"] == "effect_chain":
+        elif preset["type"] in ("effect", "effect_chain"):
             effect_chain_presets.append(preset["name"])
 
     return {
