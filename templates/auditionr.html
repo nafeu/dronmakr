@@ -1162,6 +1162,67 @@
       border-radius: 4px;
     }
 
+    .edit-controls .edit-control-span-2 {
+      grid-column: 1 / -1;
+    }
+
+    .edit-control-row-number .edit-param-number-input,
+    .edit-param-number-input {
+      font-family: inherit;
+      font-size: 0.78rem;
+      padding: 0.35rem 0.45rem;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      background: var(--theme-a);
+      border: 1px solid var(--theme-a);
+      color: var(--primary);
+      border-radius: 4px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .edit-number-suffix-wrap {
+      display: flex;
+      align-items: stretch;
+      gap: 0.35rem;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .edit-number-suffix-wrap .edit-param-number-input {
+      flex: 1 1 auto;
+      min-width: 0;
+      width: auto;
+      max-width: none;
+    }
+
+    .btn-edit-bpm-wand {
+      flex-shrink: 0;
+      width: 2.15rem;
+      min-height: 2rem;
+      padding: 0.25rem;
+      font-size: 0.82rem;
+      line-height: 1;
+      border-radius: 4px;
+      border: 1px solid var(--theme-a);
+      background: var(--secondary);
+      color: var(--primary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+    }
+
+    .btn-edit-bpm-wand:hover {
+      border-color: var(--primary);
+    }
+
+    .btn-edit-bpm-wand:focus {
+      outline: none;
+      box-shadow: 0 0 0 2px var(--primary);
+    }
+
     .btn-edit-apply {
       margin-top: 0;
       padding: 0.4rem 0.75rem;
@@ -1729,6 +1790,22 @@
       "1/2": 2,
       "1/1": 4,
     };
+
+    /** Match ``110bpm``, ``110bpm___``, ``140_bpm``, ``140 BPM`` in a basename (BPM wand). */
+    function auditionrParseBpmFromName(pathOrBase) {
+      if (!pathOrBase) return null;
+      var base = String(pathOrBase).replace(/^.*[\\/]/, "");
+      /* Avoid \\b: digits touching ``bpm`` (110bpm) and ``bpm`` before ``_`` both lack a JS word boundary. */
+      var re = /(\d+(?:\.\d+)?)(?:\s|_)*bpm(?=(?:_|[^\w]|$))/gi;
+      var best = null;
+      var match;
+      while ((match = re.exec(base)) !== null) {
+        var v = parseFloat(match[1]);
+        if (isFinite(v) && v >= 20 && v <= 999) best = v;
+      }
+      return best;
+    }
+
     /** Sections that render the passive parameter canvas above controls (values come from sliders only). */
     var EDIT_EFFECT_VIZ_TYPES = {
       eq: 1,
@@ -2381,8 +2458,9 @@
       function paintDelay(ctx2, xmin, ymin, xmax, ymax, css2) {
         var mode = readEditControl(sec, "time_mode") || "sync";
         var dMs;
+        var bpmForCaption = Math.min(999, Math.max(20, readEditNumber(sec, "bpm", 120)));
         if (mode === "sync") {
-          var bpm = Math.max(phys("bpm_ui"), 1);
+          var bpm = Math.max(bpmForCaption, 1);
           var beatMs = 60000 / bpm;
           var div = readEditControl(sec, "division") || "1/8";
           var mul = EDIT_DELAY_DIV_BEATS[div] != null ? EDIT_DELAY_DIV_BEATS[div] : 0.5;
@@ -2450,7 +2528,9 @@
           ctx2.stroke(); ctx2.globalAlpha = 1;
         }
 
-        var modeLab = mode === "sync" ? "sync " + fmtSpecNum(phys("bpm_ui")) + " bpm · " + (readEditControl(sec, "division") || "1/8") : "ms";
+        var modeLab = mode === "sync"
+          ? "sync " + fmtSpecNum(bpmForCaption) + " bpm · " + (readEditControl(sec, "division") || "1/8")
+          : "ms";
         caption(ctx2, css2, xmin + 4, ymin + 10,
           "delay · " + modeLab + " · ~" + fmtSpecNum(dMs) + " ms centre · spread ±" + fmtSpecNum(spread / 2) +
           " ms · fb " + fmtSpecNum(fb) + " · mix " + fmtSpecNum(mixPhy) + (pp ? " · ping-pong" : ""));
@@ -2700,6 +2780,13 @@
       return el ? String(el.value) : "";
     }
 
+    function readEditNumber(sectionEl, schemaKey, fallback) {
+      var el = sectionEl.querySelector('[data-schema-key="' + schemaKey + '"]');
+      if (!el || el.value === "" || el.value == null) return fallback;
+      var v = parseFloat(String(el.value).trim());
+      return isFinite(v) ? v : fallback;
+    }
+
     function selectSampleForEdit(file, apiPath, opts) {
       opts = opts || {};
       selectedEditAbsPath = file;
@@ -2798,7 +2885,7 @@
       }
       var mode = readEditControl(sec, "time_mode") || "sync";
       var isSync = mode === "sync";
-      vis("bpm_ui", isSync);
+      vis("bpm", isSync);
       vis("division", isSync);
       vis("delay_ms_ui", !isSync);
     }
@@ -2871,7 +2958,7 @@
         }
         case "delay": {
           var tm = readEditControl(sectionEl, "time_mode") || "sync";
-          var bpm = phys("bpm_ui");
+          var bpm = Math.min(999, Math.max(20, readEditNumber(sectionEl, "bpm", 120)));
           var div = readEditControl(sectionEl, "division") || "1/8";
           var dms = phys("delay_ms_ui");
           var off = phys("delay_offset_ms_ui");
@@ -2884,10 +2971,11 @@
           var flp = phys("feedback_lowpass_hz_ui");
           var fhp = phys("feedback_highpass_hz_ui");
           return (
-            "delay:[time_mode=" + tm + "][bpm=" + fmtSpecNum(bpm) + "][division=" + div + "][delay_ms=" + fmtSpecNum(dms) +
-            "][delay_offset_ms=" + fmtSpecNum(off) + "][stereo_spread_ms=" + fmtSpecNum(spread) + "][feedback=" + fmtSpecNum(fb) +
-            "][mix=" + fmtSpecNum(mix) + "][ping_pong=" + pp + "][stereo_width=" + fmtSpecNum(sw) + "][input_crossfeed=" + fmtSpecNum(cf) +
-            "][feedback_lowpass_hz=" + fmtSpecNum(flp) + "][feedback_highpass_hz=" + fmtSpecNum(fhp) + "]"
+            "delay:[time_mode=" + tm + "][bpm=" + fmtSpecNum(bpm) + "][division=" + div + "][delay_ms=" +
+            fmtSpecNum(dms) + "][delay_offset_ms=" + fmtSpecNum(off) + "][stereo_spread_ms=" + fmtSpecNum(spread) +
+            "][feedback=" + fmtSpecNum(fb) + "][mix=" + fmtSpecNum(mix) + "][ping_pong=" + pp +
+            "][stereo_width=" + fmtSpecNum(sw) + "][input_crossfeed=" + fmtSpecNum(cf) + "][feedback_lowpass_hz=" +
+            fmtSpecNum(flp) + "][feedback_highpass_hz=" + fmtSpecNum(fhp) + "]"
           );
         }
         case "compress": {
@@ -3083,6 +3171,51 @@
             row2.appendChild(span2);
             row2.appendChild(sel);
             controlsWrap.appendChild(row2);
+          } else if (schema.widget === "number") {
+            var rowN = document.createElement("label");
+            rowN.className = "edit-control-row edit-control-row-number";
+            var spanN = document.createElement("span");
+            spanN.textContent = schema.label;
+            var inpN = document.createElement("input");
+            inpN.type = "number";
+            inpN.className = "edit-param-number-input";
+            inpN.dataset.schemaKey = schema.key;
+            if (schema.min != null) inpN.min = String(schema.min);
+            if (schema.max != null) inpN.max = String(schema.max);
+            inpN.step = schema.step != null ? String(schema.step) : "any";
+            var defN = schema.default != null ? schema.default : "";
+            inpN.value = defN === "" ? "" : String(defN);
+            inpN.setAttribute("aria-label", schema.label || schema.key || "parameter");
+            if (schema.hint) rowN.title = schema.hint;
+            rowN.appendChild(spanN);
+            var numWrap = document.createElement("div");
+            numWrap.className = "edit-number-suffix-wrap";
+            numWrap.appendChild(inpN);
+            if (schema.suffix_button === "magic_detect_bpm") {
+              var wandBtn = document.createElement("button");
+              wandBtn.type = "button";
+              wandBtn.className = "btn-edit-bpm-wand";
+              wandBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>';
+              wandBtn.title = "Fill BPM from the selected sample filename (e.g. …140bpm…)";
+              wandBtn.setAttribute("aria-label", "Detect tempo from sample filename");
+              wandBtn.addEventListener("click", function (ev) {
+                ev.preventDefault();
+                if (!selectedEditAbsPath) {
+                  window.alert("Select a sample first (click its name or waveform).");
+                  return;
+                }
+                var parsed = auditionrParseBpmFromName(selectedEditAbsPath);
+                if (parsed != null) {
+                  inpN.value = String(parsed);
+                  queueEditVisibleEffectVizRepaint();
+                } else {
+                  window.alert("No bpm detected in filename");
+                }
+              });
+              numWrap.appendChild(wandBtn);
+            }
+            rowN.appendChild(numWrap);
+            controlsWrap.appendChild(rowN);
           }
         });
         if (vizWrap) sec.appendChild(vizWrap);

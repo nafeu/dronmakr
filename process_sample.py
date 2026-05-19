@@ -490,7 +490,7 @@ def apply_delay_to_sample(
         out.write(processed)
     bits = [f"{time_mode}"]
     if str(time_mode).lower() == "sync":
-        bits.append(f"{division} @ {bpm:g} BPM")
+        bits.append(f"{division} @ {float(bpm):g} BPM")
     else:
         bits.append(f"{delay_ms:g} ms")
     bits.append(f"fb={feedback:.2f} mix={mix:.2f}")

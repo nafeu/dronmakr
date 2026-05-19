@@ -126,7 +126,7 @@ Examples:
 - `filter:[kind=lpf][cutoff_hz=800]` — low-pass at 800 Hz  
 - `filter:[kind=lpf][cutoff_hz=3200][resonance=0.4][steepness=0.85]` — sharper slope + resonance bump (~0–1 each)  
 - `filter:[kind=bpf][low_hz=400][high_hz=5000][steepness=0]` — mild legacy-style band-pass (omit `steepness` in the spec for the same gentle default)  
-- `delay:[time_mode=sync][bpm=128][division=1/8][feedback=0.55][mix=0.4][ping_pong=true][stereo_width=1][input_crossfeed=0.15][feedback_lowpass_hz=9000][feedback_highpass_hz=120]` — tempo-sync delay with ping-pong, filtering, and stereo widening (`time_mode=ms` uses `delay_ms=` instead of BPM/division)
+- `delay:[time_mode=sync][bpm=128][division=1/8][feedback=0.55][mix=0.4][ping_pong=true][stereo_width=1][input_crossfeed=0.15][feedback_lowpass_hz=9000][feedback_highpass_hz=120]` — tempo-sync delay with ping-pong, filtering, and stereo widening (`time_mode=ms` uses `delay_ms=` instead of BPM/division). In Auditionr, use the **wand** next to BPM to fill tempo from the sample name when it contains tokens like `140bpm` or `140 BPM`.
 - Chain: `fade:[style=out][duration_ms=5000];filter:[kind=lpf][cutoff_hz=800]`
 
 Legacy tokens (e.g. `fade:in 2s`, `eq:lows +5db`) still work.

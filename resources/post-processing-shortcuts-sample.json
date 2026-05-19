@@ -76,6 +76,14 @@
     {"name": "Heavy flanger", "type": "flanger", "command": "flanger:[rate_hz=0.9][depth=0.65][centre_delay_ms=1.2][feedback=0.55][mix=0.75]"},
     {"name": "Mild phaser", "type": "phaser", "command": "phaser:[rate_hz=0.7][depth=0.45][centre_frequency_hz=900][feedback=0.25][mix=0.35]"},
     {"name": "Medium phaser", "type": "phaser", "command": "phaser:[rate_hz=1][depth=0.7][centre_frequency_hz=1000][feedback=0.5][mix=0.5]"},
-    {"name": "Heavy phaser", "type": "phaser", "command": "phaser:[rate_hz=1.4][depth=0.95][centre_frequency_hz=1300][feedback=0.7][mix=0.75]"}
+    {"name": "Heavy phaser", "type": "phaser", "command": "phaser:[rate_hz=1.4][depth=0.95][centre_frequency_hz=1300][feedback=0.7][mix=0.75]"},
+    {"name": "Delay dotted 1/8 dub", "type": "delay", "command": "delay:[time_mode=sync][bpm=120][division=1/8d][feedback=0.5][mix=0.35][ping_pong=false][stereo_width=1][feedback_lowpass_hz=7200][feedback_highpass_hz=100]"},
+    {"name": "Delay 1/16 ping-pong", "type": "delay", "command": "delay:[time_mode=sync][bpm=120][division=1/16][feedback=0.48][mix=0.42][ping_pong=true][stereo_width=1][input_crossfeed=0.08][feedback_lowpass_hz=11000][feedback_highpass_hz=85]"},
+    {"name": "Delay quarter note wash", "type": "delay", "command": "delay:[time_mode=sync][bpm=120][division=1/4][feedback=0.62][mix=0.48][ping_pong=false][stereo_width=0.92][feedback_lowpass_hz=5200][feedback_highpass_hz=75]"},
+    {"name": "Delay slapback (ms)", "type": "delay", "command": "delay:[time_mode=ms][bpm=120][delay_ms=72][feedback=0.28][mix=0.32][ping_pong=false][stereo_width=1][feedback_lowpass_hz=14000][feedback_highpass_hz=120]"},
+    {"name": "Delay Haas wide 1/8", "type": "delay", "command": "delay:[time_mode=sync][bpm=120][division=1/8][stereo_spread_ms=22][feedback=0.35][mix=0.38][ping_pong=false][stereo_width=1][feedback_lowpass_hz=12000][feedback_highpass_hz=80]"},
+    {"name": "Delay triplet 1/8", "type": "delay", "command": "delay:[time_mode=sync][bpm=120][division=1/8t][feedback=0.45][mix=0.36][ping_pong=false][feedback_lowpass_hz=9000][feedback_highpass_hz=95]"},
+    {"name": "Delay dark dub feedback", "type": "delay", "command": "delay:[time_mode=sync][bpm=120][division=1/8][feedback=0.72][mix=0.44][ping_pong=false][feedback_lowpass_hz=3400][feedback_highpass_hz=110][input_crossfeed=0.05]"},
+    {"name": "Delay 1/8 standard", "type": "delay", "command": "delay:[time_mode=sync][bpm=120][division=1/8][feedback=0.42][mix=0.35][ping_pong=false][stereo_width=1][feedback_lowpass_hz=12000][feedback_highpass_hz=80]"}
   ]
 }
