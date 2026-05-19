@@ -279,7 +279,7 @@
 
     .generatr-form .form-row > label:first-of-type {
       font-size: 0.72rem;
-      color: var(--theme-b);
+      color: var(--theme-a);
       text-align: left;
       align-self: flex-start;
       min-width: 0;
@@ -369,7 +369,7 @@
 
     .generatr-loading {
       font-size: 0.8rem;
-      color: var(--theme-b);
+      color: var(--theme-a);
       display: flex;
       align-items: center;
       gap: 0.5rem;
@@ -409,7 +409,7 @@
     .generatr-result h3 {
       font-size: 0.8rem;
       margin: 0 0 0.4rem 0;
-      color: var(--theme-b);
+      color: var(--theme-a);
     }
 
     .generatr-result ul {
@@ -454,7 +454,7 @@
       font-size: 0.78rem;
       border: none;
       background: none;
-      color: var(--theme-b);
+      color: var(--theme-a);
       cursor: pointer;
       font-family: inherit;
     }
@@ -491,7 +491,7 @@
       border-radius: 4px;
       border: 1px solid rgba(255, 255, 255, 0.14);
       background: transparent;
-      color: var(--theme-b);
+      color: var(--theme-a);
       cursor: pointer;
     }
 
@@ -558,7 +558,7 @@
       border-radius: 4px;
       border: 1px solid var(--theme-a);
       background: transparent;
-      color: var(--theme-b);
+      color: var(--theme-a);
       cursor: pointer;
       font-family: inherit;
     }
@@ -582,12 +582,119 @@
       align-items: stretch;
       gap: 0.2rem;
       font-size: 0.72rem;
-      color: var(--theme-b);
+      color: var(--theme-a);
       min-width: 0;
     }
 
-    .edit-control-row input[type="range"] {
+    /* Edit sidebar sliders (beatbuildr-style track + thumb; native track hidden) */
+    .edit-control-row-slider {
+      gap: 0.35rem;
+    }
+
+    .edit-slider-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 0.5rem;
       width: 100%;
+      min-width: 0;
+    }
+
+    .edit-slider-param-label {
+      font-size: 0.72rem;
+      color: var(--theme-a);
+      line-height: 1.2;
+      text-align: left;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .edit-slider-value-display {
+      font-size: 0.78rem;
+      color: var(--primary);
+      font-weight: 600;
+      flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .auditionr-sidebar-slider-wrap {
+      position: relative;
+      width: 100%;
+      height: 1.65rem;
+      display: flex;
+      align-items: center;
+      box-sizing: border-box;
+    }
+
+    .auditionr-sidebar-slider-fake-track {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 52%;
+      transform: translateY(-50%);
+      height: 3px;
+      background: var(--theme-a);
+      pointer-events: none;
+      z-index: 1;
+      border-radius: 2px;
+    }
+
+    .auditionr-sidebar-slider-wrap input[type="range"] {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+      z-index: 2;
+    }
+
+    /* Thin invisible native track so the thumb centers on the same line as the fake track */
+    .auditionr-sidebar-slider-wrap input[type="range"]::-webkit-slider-runnable-track {
+      background: transparent;
+      border: none;
+      height: 3px;
+    }
+
+    .auditionr-sidebar-slider-wrap input[type="range"]::-webkit-slider-track {
+      background: transparent;
+      border: none;
+      height: 3px;
+    }
+
+    .auditionr-sidebar-slider-wrap input[type="range"]::-moz-range-track {
+      background: transparent;
+      border: none;
+      height: 3px;
+    }
+
+    .auditionr-sidebar-slider-wrap input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      background: var(--primary);
+      border: 2px solid var(--secondary);
+      border-radius: 50%;
+      cursor: pointer;
+      margin-top: -7px;
+    }
+
+    .auditionr-sidebar-slider-wrap input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      background: var(--primary);
+      border: 2px solid var(--secondary);
+      border-radius: 50%;
+      cursor: pointer;
+      box-sizing: border-box;
+    }
+
+    .auditionr-sidebar-slider-wrap input[type="range"]:focus {
+      outline: none;
     }
 
     .edit-control-row select {
@@ -1104,6 +1211,15 @@
       return u;
     }
 
+    function formatEditSliderDisplay(schema, uRaw) {
+      var phys = editSliderPhysical(schema, uRaw);
+      if (schema.range_db) return fmtSpecNum(phys) + " dB";
+      if (schema.range_hz) return fmtSpecNum(phys) + " Hz";
+      if (schema.range_ms) return fmtSpecNum(phys) + " ms";
+      if (schema.range_linear) return fmtSpecNum(phys);
+      return fmtSpecNum(phys);
+    }
+
     function readEditControl(sectionEl, schemaKey) {
       var el = sectionEl.querySelector('[data-schema-key="' + schemaKey + '"]');
       return el ? String(el.value) : "";
@@ -1311,10 +1427,29 @@
         controlsWrap.className = "edit-controls";
         schemas.forEach(function (schema) {
           if (schema.widget === "slider") {
-            var row = document.createElement("label");
-            row.className = "edit-control-row";
-            var span = document.createElement("span");
-            span.textContent = schema.label;
+            var row = document.createElement("div");
+            row.className = "edit-control-row edit-control-row-slider";
+
+            var labelRow = document.createElement("div");
+            labelRow.className = "edit-slider-label-row";
+
+            var paramLabel = document.createElement("span");
+            paramLabel.className = "edit-slider-param-label";
+            paramLabel.textContent = schema.label;
+
+            var valueDisplay = document.createElement("span");
+            valueDisplay.className = "edit-slider-value-display";
+            valueDisplay.setAttribute("aria-live", "polite");
+
+            labelRow.appendChild(paramLabel);
+            labelRow.appendChild(valueDisplay);
+
+            var sliderWrap = document.createElement("div");
+            sliderWrap.className = "auditionr-sidebar-slider-wrap";
+            var fakeTrack = document.createElement("div");
+            fakeTrack.className = "auditionr-sidebar-slider-fake-track";
+            fakeTrack.setAttribute("aria-hidden", "true");
+
             var input = document.createElement("input");
             input.type = "range";
             input.min = 0;
@@ -1322,8 +1457,20 @@
             input.step = schema.step != null ? schema.step : 0.01;
             input.value = schema.default != null ? String(schema.default) : "0.5";
             input.dataset.schemaKey = schema.key;
-            row.appendChild(span);
-            row.appendChild(input);
+            input.setAttribute("aria-label", schema.label || schema.key || "parameter");
+
+            function refreshSliderDisplay() {
+              valueDisplay.textContent = formatEditSliderDisplay(schema, input.value);
+            }
+            input.addEventListener("input", refreshSliderDisplay);
+            input.addEventListener("change", refreshSliderDisplay);
+            refreshSliderDisplay();
+
+            sliderWrap.appendChild(fakeTrack);
+            sliderWrap.appendChild(input);
+
+            row.appendChild(labelRow);
+            row.appendChild(sliderWrap);
             controlsWrap.appendChild(row);
           } else if (schema.widget === "select") {
             var row2 = document.createElement("label");
