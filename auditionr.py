@@ -13,6 +13,7 @@ import json
 import random
 import fnmatch
 import tempfile
+import time
 
 from flask import request, jsonify, send_from_directory
 from settings import (
@@ -413,6 +414,10 @@ def duplicate_file():
         counter += 1
 
     shutil.copy2(file_path, duplicate_path)
+    # copy2 preserves source mtime; auditionr only shows the newest 5 exports by mtime,
+    # so the duplicate would often be missing from the queue. Bump mtime to now.
+    _now = time.time()
+    os.utime(duplicate_path, (_now, _now))
 
     _socketio.emit("exports", {"files": get_latest_exports()})
     _emit_folder_counts()

@@ -123,45 +123,35 @@ PROCESSING_ACTIONS = [
     },
     {"token": "pitch:+1", "type": "pitch", "label": "+1", "command": "pitch_shift_sample", "params": {"semitones": 1}},
     {"token": "pitch:+2", "type": "pitch", "label": "+2", "command": "pitch_shift_sample", "params": {"semitones": 2}},
-    {"token": "pitch:+3", "type": "pitch", "label": "+3", "command": "pitch_shift_sample", "params": {"semitones": 3}},
-    {"token": "pitch:+5", "type": "pitch", "label": "+5", "command": "pitch_shift_sample", "params": {"semitones": 5}},
-    {"token": "pitch:+6", "type": "pitch", "label": "+6", "command": "pitch_shift_sample", "params": {"semitones": 6}},
-    {"token": "pitch:+7", "type": "pitch", "label": "+7", "command": "pitch_shift_sample", "params": {"semitones": 7}},
     {"token": "pitch:+12", "type": "pitch", "label": "+12", "command": "pitch_shift_sample", "params": {"semitones": 12}},
-    {"token": "pitch:+24", "type": "pitch", "label": "+24", "command": "pitch_shift_sample", "params": {"semitones": 24}},
     {"token": "pitch:-1", "type": "pitch", "label": "-1", "command": "pitch_shift_sample", "params": {"semitones": -1}},
     {"token": "pitch:-2", "type": "pitch", "label": "-2", "command": "pitch_shift_sample", "params": {"semitones": -2}},
-    {"token": "pitch:-3", "type": "pitch", "label": "-3", "command": "pitch_shift_sample", "params": {"semitones": -3}},
-    {"token": "pitch:-5", "type": "pitch", "label": "-5", "command": "pitch_shift_sample", "params": {"semitones": -5}},
-    {"token": "pitch:-6", "type": "pitch", "label": "-6", "command": "pitch_shift_sample", "params": {"semitones": -6}},
-    {"token": "pitch:-7", "type": "pitch", "label": "-7", "command": "pitch_shift_sample", "params": {"semitones": -7}},
     {"token": "pitch:-12", "type": "pitch", "label": "-12", "command": "pitch_shift_sample", "params": {"semitones": -12}},
-    {"token": "pitch:-24", "type": "pitch", "label": "-24", "command": "pitch_shift_sample", "params": {"semitones": -24}},
     {
-        "token": "pitch:-12raw",
+        "token": "pitch:-12resample",
         "type": "pitch",
-        "label": "-12 raw (Resample transpose)",
+        "label": "-12 resample",
         "command": "pitch_shift_transpose_sample",
         "params": {"semitones": -12},
     },
     {
-        "token": "pitch:+12raw",
+        "token": "pitch:+12resample",
         "type": "pitch",
-        "label": "+12 raw (Resample transpose)",
+        "label": "+12 resample",
         "command": "pitch_shift_transpose_sample",
         "params": {"semitones": 12},
     },
     {
-        "token": "pitch:-6raw",
+        "token": "pitch:-6resample",
         "type": "pitch",
-        "label": "-6 raw (Resample transpose)",
+        "label": "-6 resample",
         "command": "pitch_shift_transpose_sample",
         "params": {"semitones": -6},
     },
     {
-        "token": "pitch:+6raw",
+        "token": "pitch:+6resample",
         "type": "pitch",
-        "label": "+6 raw (Resample transpose)",
+        "label": "+6 resample",
         "command": "pitch_shift_transpose_sample",
         "params": {"semitones": 6},
     },
@@ -196,7 +186,9 @@ PROCESSING_ACTIONS = [
 PROCESSING_ACTIONS_BY_TOKEN = {a["token"]: a for a in PROCESSING_ACTIONS}
 
 PAUL_STRETCH_TOKEN_RE = re.compile(r"^stretch:paul(\d+(?:\.\d+)?)s(\d+(?:\.\d+)?)w$")
-PITCH_RAW_TOKEN_RE = re.compile(r"^pitch:([+-]?\d+(?:\.\d+)?)raw$")
+PITCH_RESAMPLE_TOKEN_RE = re.compile(r"^pitch:([+-]?\d+(?:\.\d+)?)resample$")
+# Legacy CSV tokens (pitch:*raw) accepted for compatibility with older specs / docs.
+PITCH_RAW_LEGACY_TOKEN_RE = re.compile(r"^pitch:([+-]?\d+(?:\.\d+)?)raw$")
 
 
 def get_processing_actions_payload() -> dict:
@@ -230,13 +222,23 @@ def parse_post_processing_spec(spec: str | None) -> list[dict]:
                 }
             )
             continue
-        pr_m = PITCH_RAW_TOKEN_RE.match(token)
-        if pr_m:
+        pr_sm = PITCH_RESAMPLE_TOKEN_RE.match(token)
+        if pr_sm:
             actions.append(
                 {
                     "token": token,
                     "command": "pitch_shift_transpose_sample",
-                    "params": {"semitones": float(pr_m.group(1))},
+                    "params": {"semitones": float(pr_sm.group(1))},
+                }
+            )
+            continue
+        pr_legacy = PITCH_RAW_LEGACY_TOKEN_RE.match(token)
+        if pr_legacy:
+            actions.append(
+                {
+                    "token": token,
+                    "command": "pitch_shift_transpose_sample",
+                    "params": {"semitones": float(pr_legacy.group(1))},
                 }
             )
             continue

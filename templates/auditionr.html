@@ -241,24 +241,41 @@
     }
 
     .generatr-form {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.65rem 0.85rem;
+      align-items: start;
     }
 
     .generatr-form .form-row {
       display: flex;
-      flex-direction: row;
-      align-items: center;
-      gap: 0.6rem;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.3rem;
+      min-width: 0;
     }
 
-    .generatr-form .form-row label {
-      font-size: 0.75rem;
+    /* Type, subcommands as single selects, checkbox blocks, post-processing */
+    .generatr-form .form-row-full {
+      grid-column: 1 / -1;
+    }
+
+    .generatr-form > .btn-generate {
+      grid-column: 1 / -1;
+    }
+
+    .generatr-form > .generatr-loading {
+      grid-column: 1 / -1;
+    }
+
+    .generatr-form .form-row > label:first-of-type {
+      font-size: 0.72rem;
       color: var(--theme-b);
-      min-width: 120px;
-      flex: 0 0 120px;
-      text-align: right;
+      text-align: left;
+      align-self: flex-start;
+      min-width: 0;
+      line-height: 1.2;
+      margin: 0;
     }
 
     .generatr-form .form-row select,
@@ -271,10 +288,10 @@
       border: 1px solid var(--theme-a);
       border-radius: 4px;
       color: var(--primary);
-      width: auto;
-      flex: 1 1 auto;
-      cursor: pointer;
+      width: 100%;
       box-sizing: border-box;
+      min-width: 0;
+      cursor: pointer;
     }
 
     .generatr-form .form-row select:focus,
@@ -293,7 +310,27 @@
     }
 
     .generatr-form .form-row.form-row-post-processing {
-      align-items: flex-start;
+      align-items: stretch;
+    }
+
+    .generatr-checkbox-group,
+    #generatr-beat-variants-list {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.35rem 0.85rem;
+    }
+
+    .generatr-checkbox-group label,
+    #generatr-beat-variants-list label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.8rem;
+      color: var(--primary);
+      margin: 0;
+      cursor: pointer;
+      white-space: nowrap;
     }
 
     .btn-generate {
@@ -579,10 +616,6 @@
     #app-version-chip a:hover {
       opacity: 1;
     }
-
-    #generatr-beat-variants-list label input {
-      margin-right: 5px;
-    }
   </style>
 </head>
 
@@ -611,7 +644,7 @@
           <div class="generatr-card">
             <h2><i class="fa-solid fa-wand-magic-sparkles"></i> Generate Samples</h2>
             <form class="generatr-form" id="generatr-form">
-              <div class="form-row">
+              <div class="form-row form-row-full">
                 <label for="generatr-type">Type</label>
                 <select id="generatr-type" name="type">
                   <option value="beat">beat</option>
@@ -620,14 +653,14 @@
                   <option value="transition">transition</option>
                 </select>
               </div>
-              <div class="form-row form-row-subcommand hidden" id="generatr-subcommand-row">
+              <div class="form-row form-row-full form-row-subcommand hidden" id="generatr-subcommand-row">
                 <label for="generatr-subcommand">Subcommand</label>
                 <select id="generatr-subcommand" name="subcommand">
                   <option value="reese">reese</option>
                   <option value="donk">donk</option>
                 </select>
               </div>
-              <div class="form-row form-row-subcommand hidden" id="generatr-transition-subcommand-row">
+              <div class="form-row form-row-full form-row-subcommand hidden" id="generatr-transition-subcommand-row">
                 <label for="generatr-transition-subcommand">Subcommand</label>
                 <select id="generatr-transition-subcommand" name="transition_subcommand">
                   <option value="sweep">sweep</option>
@@ -682,10 +715,10 @@
                 <label for="generatr-drone-iterations">Iterations</label>
                 <input type="number" id="generatr-drone-iterations" min="1" value="1">
               </div>
-              <div class="form-row hidden" id="generatr-drone-split-row">
+              <div class="form-row form-row-full hidden" id="generatr-drone-split-row">
                 <label for="generatr-drone-split">Render Options</label>
-                <div>
-                  <label><input type="checkbox" id="generatr-drone-split"> Milestone WAVs</label>
+                <div class="generatr-checkbox-group">
+                  <label><input type="checkbox" id="generatr-drone-split"> Split processing milestones</label>
                 </div>
               </div>
               <div class="form-row hidden" id="generatr-beat-tempo-row">
@@ -716,7 +749,7 @@
                 <label for="generatr-beat-iterations">Iterations</label>
                 <input type="number" id="generatr-beat-iterations" min="1" value="1">
               </div>
-              <div class="form-row hidden" id="generatr-beat-variants-row">
+              <div class="form-row form-row-full hidden" id="generatr-beat-variants-row">
                 <label>Render Variants</label>
                 <div id="generatr-beat-variants-list">
                   <label><input type="checkbox" value="1/2">1/2 Tempo</label>
@@ -724,7 +757,7 @@
                   <label><input type="checkbox" value="3/4">3/4 Tempo</label>
                 </div>
               </div>
-              <div class="form-row form-row-post-processing hidden" id="generatr-beat-post-processing-row">
+              <div class="form-row form-row-full form-row-post-processing hidden" id="generatr-beat-post-processing-row">
                 <label>Post Processing</label>
                 <div id="generatr-beat-post-processing-list"></div>
               </div>
@@ -843,7 +876,11 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ path })
       }).then(response => response.json())
-        .then(data => console.log(data))
+        .then(data => {
+          console.log(data);
+          if (data.error) return;
+          socket.emit("requestExports");
+        })
         .catch(error => console.error("Error:", error));
     }
 
