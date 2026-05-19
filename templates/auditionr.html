@@ -240,6 +240,15 @@
       color: var(--primary);
     }
 
+    .edit-samples-card {
+      border: none;
+      box-shadow: none;
+      background: transparent;
+      padding-left: 2rem;
+      padding-right: 1rem;
+      min-height: 85vh;
+    }
+
     .generatr-form {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -506,10 +515,10 @@
     }
 
     .edit-sample-section {
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 6px;
-      padding: 0.65rem;
-      margin-bottom: 0.65rem;
+      border: none;
+      border-radius: 0;
+      padding: 0;
+      margin: 0;
     }
 
     .edit-sample-section h3 {
@@ -522,7 +531,25 @@
       display: flex;
       flex-wrap: wrap;
       gap: 0.35rem;
-      margin-bottom: 0.45rem;
+      margin: 0;
+    }
+
+    .edit-presets-divider {
+      border: none;
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      margin: 0.65rem 0 0.5rem 0;
+      padding: 0;
+      height: 0;
+    }
+
+    .edit-apply-row {
+      width: 100%;
+      margin-top: 0.65rem;
+    }
+
+    .edit-apply-row .btn-edit-apply {
+      width: 100%;
+      margin-top: 0;
     }
 
     .edit-preset-btn {
@@ -542,10 +569,11 @@
     }
 
     .edit-controls {
-      display: flex;
-      flex-direction: column;
-      gap: 0.35rem;
-      margin-bottom: 0.5rem;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.5rem 0.85rem;
+      align-items: start;
+      margin: 0;
     }
 
     .edit-control-row {
@@ -555,6 +583,7 @@
       gap: 0.2rem;
       font-size: 0.72rem;
       color: var(--theme-b);
+      min-width: 0;
     }
 
     .edit-control-row input[type="range"] {
@@ -572,7 +601,7 @@
     }
 
     .btn-edit-apply {
-      margin-top: 0.25rem;
+      margin-top: 0;
       padding: 0.4rem 0.75rem;
       font-size: 0.78rem;
       border-radius: 4px;
@@ -1249,8 +1278,6 @@
           });
           presetsWrap.appendChild(b);
         });
-        if (presetsWrap.childNodes.length) sec.appendChild(presetsWrap);
-
         var controlsWrap = document.createElement("div");
         controlsWrap.className = "edit-controls";
         schemas.forEach(function (schema) {
@@ -1299,7 +1326,19 @@
           var spec = buildSpecFromSection(sec, typeKey);
           if (spec) applyEditProcessingSpec(spec);
         });
-        sec.appendChild(applyBtn);
+        var applyRow = document.createElement("div");
+        applyRow.className = "edit-apply-row";
+        applyRow.appendChild(applyBtn);
+        sec.appendChild(applyRow);
+
+        if (presetsWrap.childNodes.length) {
+          var presetsDivider = document.createElement("div");
+          presetsDivider.className = "edit-presets-divider";
+          presetsDivider.setAttribute("aria-hidden", "true");
+          sec.appendChild(presetsDivider);
+          sec.appendChild(presetsWrap);
+        }
+
         detailEl.appendChild(sec);
       });
 
