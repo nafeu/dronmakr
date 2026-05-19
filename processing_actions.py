@@ -63,7 +63,8 @@ PROCESSING_TYPES = [
     {"key": "filter", "label": "Filter"},
     {"key": "normalize", "label": "Normalize"},
     {"key": "noisegate", "label": "Noisegate"},
-    {"key": "stretch", "label": "Stretch"},
+    {"key": "timestretch", "label": "Time stretch"},
+    {"key": "paulstretch", "label": "Paulstretch"},
     {"key": "pitch", "label": "Pitch"},
     {"key": "reverb", "label": "Reverb"},
     {"key": "compress", "label": "Compress"},
@@ -106,28 +107,28 @@ PROCESSING_ACTIONS = [
     {"token": "noisegate:fast", "type": "noisegate", "label": "Fast", "command": "noisegate_sample", "params": {"threshold_db": -30, "attack_ms": 2, "release_ms": 50}},
     {"token": "noisegate:medium", "type": "noisegate", "label": "Medium", "command": "noisegate_sample", "params": {"threshold_db": -30, "attack_ms": 8, "release_ms": 140}},
     {"token": "noisegate:slow", "type": "noisegate", "label": "Slow", "command": "noisegate_sample", "params": {"threshold_db": -30, "attack_ms": 20, "release_ms": 280}},
-    {"token": "stretch:50% speed", "type": "stretch", "label": "50% Speed", "command": "stretch_sample", "params": {"stretch_factor": 2.0}},
-    {"token": "stretch:125% speed", "type": "stretch", "label": "125% Speed", "command": "stretch_sample", "params": {"stretch_factor": 0.8}},
-    {"token": "stretch:175% speed", "type": "stretch", "label": "175% Speed", "command": "stretch_sample", "params": {"stretch_factor": 0.5714286}},
-    {"token": "stretch:200% speed", "type": "stretch", "label": "200% Speed", "command": "stretch_sample", "params": {"stretch_factor": 0.5}},
+    {"token": "timestretch:50pct", "type": "timestretch", "label": "50%", "command": "stretch_sample", "params": {"stretch_factor": 2.0}},
+    {"token": "timestretch:125pct", "type": "timestretch", "label": "125%", "command": "stretch_sample", "params": {"stretch_factor": 0.8}},
+    {"token": "timestretch:175pct", "type": "timestretch", "label": "175%", "command": "stretch_sample", "params": {"stretch_factor": 0.5714286}},
+    {"token": "timestretch:200pct", "type": "timestretch", "label": "200%", "command": "stretch_sample", "params": {"stretch_factor": 0.5}},
     {
-        "token": "stretch:paul8s2.5w",
-        "type": "stretch",
-        "label": "Paul 8× · 2.5s window",
+        "token": "paulstretch:8x2.5s",
+        "type": "paulstretch",
+        "label": "8x 2.5s",
         "command": "paul_stretch_sample",
         "params": {"stretch": 8.0, "window_size": 2.5},
     },
     {
-        "token": "stretch:paul12s4w",
-        "type": "stretch",
-        "label": "Paul 12× · 4s window",
+        "token": "paulstretch:12x4s",
+        "type": "paulstretch",
+        "label": "12x 4s",
         "command": "paul_stretch_sample",
         "params": {"stretch": 12.0, "window_size": 4.0},
     },
     {
-        "token": "stretch:paul5s1w",
-        "type": "stretch",
-        "label": "Paul 5× · 1s window",
+        "token": "paulstretch:5x1s",
+        "type": "paulstretch",
+        "label": "5x 1s",
         "command": "paul_stretch_sample",
         "params": {"stretch": 5.0, "window_size": 1.0},
     },
@@ -195,7 +196,37 @@ PROCESSING_ACTIONS = [
 
 PROCESSING_ACTIONS_BY_TOKEN = {a["token"]: a for a in PROCESSING_ACTIONS}
 
+# paulstretch:12x4s — stretch amount × window seconds
+PAULSTRETCH_COMPACT_TOKEN_RE = re.compile(r"^paulstretch:(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)s$")
+# Legacy: stretch:paul8s2.5w
 PAUL_STRETCH_TOKEN_RE = re.compile(r"^stretch:paul(\d+(?:\.\d+)?)s(\d+(?:\.\d+)?)w$")
+
+_LEGACY_PROCESSING_TOKEN_ACTIONS: dict[str, dict[str, object]] = {
+    "stretch:50% speed": {
+        "token": "stretch:50% speed",
+        "type": "timestretch",
+        "command": "stretch_sample",
+        "params": {"stretch_factor": 2.0},
+    },
+    "stretch:125% speed": {
+        "token": "stretch:125% speed",
+        "type": "timestretch",
+        "command": "stretch_sample",
+        "params": {"stretch_factor": 0.8},
+    },
+    "stretch:175% speed": {
+        "token": "stretch:175% speed",
+        "type": "timestretch",
+        "command": "stretch_sample",
+        "params": {"stretch_factor": 0.5714286},
+    },
+    "stretch:200% speed": {
+        "token": "stretch:200% speed",
+        "type": "timestretch",
+        "command": "stretch_sample",
+        "params": {"stretch_factor": 0.5},
+    },
+}
 PITCH_RESAMPLE_TOKEN_RE = re.compile(r"^pitch:([+-]?\d+(?:\.\d+)?)resample$")
 PITCH_RAW_LEGACY_TOKEN_RE = re.compile(r"^pitch:([+-]?\d+(?:\.\d+)?)raw$")
 
@@ -364,17 +395,10 @@ _PARAM_SCHEMAS_UI: dict[str, list[dict]] = {
             "range_linear": [2.0, 20.0],
         },
     ],
-    "stretch": [
-        {
-            "key": "mode",
-            "label": "Mode",
-            "widget": "select",
-            "options": [{"value": "simple", "label": "Time stretch"}, {"value": "paul", "label": "Paulstretch"}],
-            "default": "simple",
-        },
+    "timestretch": [
         {
             "key": "stretch_factor_ui",
-            "label": "Playback speed ↔ stretch factor",
+            "label": "Stretch factor",
             "widget": "slider",
             "min": 0,
             "max": 1,
@@ -382,22 +406,24 @@ _PARAM_SCHEMAS_UI: dict[str, list[dict]] = {
             "default": 0.35,
             "maps_to": "stretch_factor",
             "range_linear": [2.5, 0.4],
-            "hint": "Lower slider ≈ slower playback (larger stretch factor).",
+            "hint": "Resampling stretch: >1 slows down (longer + lower pitch), <1 speeds up.",
         },
+    ],
+    "paulstretch": [
         {
             "key": "paul_stretch_ui",
-            "label": "Paul stretch amount",
+            "label": "Stretch amount",
             "widget": "slider",
             "min": 0,
             "max": 1,
             "step": 0.02,
             "default": 0.35,
-            "maps_to": "stretch",
+            "maps_to": "stretch_amount",
             "range_linear": [2.0, 16.0],
         },
         {
             "key": "paul_window_ui",
-            "label": "Paul window (s)",
+            "label": "Window (s)",
             "widget": "slider",
             "min": 0,
             "max": 1,
@@ -916,6 +942,26 @@ def action_from_bracket_segment(seg: str) -> dict:
             gate_params["ratio"] = float(params["ratio"])
         return {"token": seg_stripped, "command": "noisegate_sample", "params": gate_params}
 
+    if ptype == "timestretch":
+        return {
+            "token": seg_stripped,
+            "command": "stretch_sample",
+            "params": {"stretch_factor": float(params.get("stretch_factor", 1.0))},
+        }
+
+    if ptype == "paulstretch":
+        amt = params.get("stretch_amount")
+        if amt is None:
+            amt = params.get("stretch")
+        return {
+            "token": seg_stripped,
+            "command": "paul_stretch_sample",
+            "params": {
+                "stretch": float(amt if amt is not None else 8.0),
+                "window_size": float(params.get("window_size", 2.5)),
+            },
+        }
+
     if ptype == "stretch":
         mode = str(params.get("mode", "simple")).lower()
         if mode == "paul":
@@ -1076,10 +1122,10 @@ def _legacy_action_to_spec(action: dict) -> str:
             parts.append(f"[ratio={p['ratio']}]")
         return "noisegate:" + "".join(parts)
     if cmd == "stretch_sample":
-        return f"stretch:[mode=simple][stretch_factor={p.get('stretch_factor', 1)}]"
+        return f"timestretch:[stretch_factor={p.get('stretch_factor', 1)}]"
     if cmd == "paul_stretch_sample":
         return (
-            f"stretch:[mode=paul][stretch={p.get('stretch', 8)}]"
+            f"paulstretch:[stretch_amount={p.get('stretch', 8)}]"
             f"[window_size={p.get('window_size', 2.5)}]"
         )
     if cmd == "pitch_shift_sample":
@@ -1240,6 +1286,23 @@ def parse_post_processing_spec(spec: str | None) -> list[dict]:
         action = PROCESSING_ACTIONS_BY_TOKEN.get(token)
         if action:
             actions.append(copy.deepcopy(action))
+            continue
+        legacy_action = _LEGACY_PROCESSING_TOKEN_ACTIONS.get(token)
+        if legacy_action:
+            actions.append(copy.deepcopy(legacy_action))
+            continue
+        paul_compact = PAULSTRETCH_COMPACT_TOKEN_RE.match(token)
+        if paul_compact:
+            actions.append(
+                {
+                    "token": token,
+                    "command": "paul_stretch_sample",
+                    "params": {
+                        "stretch": float(paul_compact.group(1)),
+                        "window_size": float(paul_compact.group(2)),
+                    },
+                }
+            )
             continue
         paul_m = PAUL_STRETCH_TOKEN_RE.match(token)
         if paul_m:

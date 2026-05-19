@@ -785,6 +785,15 @@
       color: #000;
     }
 
+    .waveform-actions .trim-cut-action .fa-scissors {
+      margin-right: 0.35em;
+      opacity: 0.92;
+    }
+
+    .trim-cut-action {
+      padding-block: 6px;
+    }
+
     .waveform {
       margin-bottom: 1rem;
     }
@@ -1183,7 +1192,7 @@
     var auditionrSidebarActiveTab = "generate";
     var editPanelSelectedActionType = "fade";
 
-    var EDIT_SECTION_ORDER = ["fade", "eq", "gain", "filter", "noisegate", "stretch", "pitch", "reverb", "compress", "overdrive", "distort", "chorus", "flanger", "phaser"];
+    var EDIT_SECTION_ORDER = ["fade", "eq", "gain", "filter", "noisegate", "timestretch", "paulstretch", "pitch", "reverb", "compress", "overdrive", "distort", "chorus", "flanger", "phaser"];
 
     function mergeProcessingCatalog(payload) {
       if (!payload || typeof payload !== "object") return;
@@ -1335,15 +1344,14 @@
           var rat = phys("ratio_ui");
           return "noisegate:[threshold_db=" + fmtSpecNum(th) + "][attack_ms=" + fmtSpecNum(atk) + "][release_ms=" + fmtSpecNum(rel) + "][ratio=" + fmtSpecNum(rat) + "]";
         }
-        case "stretch": {
-          var mode = readEditControl(sectionEl, "mode") || "simple";
-          if (mode === "paul") {
-            var st = phys("paul_stretch_ui");
-            var ws = phys("paul_window_ui");
-            return "stretch:[mode=paul][stretch=" + fmtSpecNum(st) + "][window_size=" + fmtSpecNum(ws) + "]";
-          }
+        case "timestretch": {
           var sf = phys("stretch_factor_ui");
-          return "stretch:[mode=simple][stretch_factor=" + fmtSpecNum(sf) + "]";
+          return "timestretch:[stretch_factor=" + fmtSpecNum(sf) + "]";
+        }
+        case "paulstretch": {
+          var st = phys("paul_stretch_ui");
+          var ws = phys("paul_window_ui");
+          return "paulstretch:[stretch_amount=" + fmtSpecNum(st) + "][window_size=" + fmtSpecNum(ws) + "]";
         }
         case "pitch": {
           var pm = readEditControl(sectionEl, "mode") || "preserve";
@@ -2047,17 +2055,19 @@
       actions.appendChild(deleteButton);
 
       var trimStartButton = document.createElement("div");
-      trimStartButton.classList.add("button");
+      trimStartButton.classList.add("button", "trim-cut-action");
       trimStartButton.title = "Remove audio before playhead";
       var trimEndButton = document.createElement("div");
-      trimEndButton.classList.add("button");
+      trimEndButton.classList.add("button", "trim-cut-action");
       trimEndButton.title = "Remove audio after playhead";
 
       function updateTrimButtonLabels() {
         var t = selectedWaveformTimestamps[file];
         if (typeof t !== "number") t = 0;
-        trimStartButton.innerText = "Start At " + formatTimestamp(t);
-        trimEndButton.innerText = "End At " + formatTimestamp(t);
+        trimStartButton.innerHTML =
+          "<i class=\"fa-solid fa-scissors\" aria-hidden=\"true\"></i> Start from " + formatTimestamp(t);
+        trimEndButton.innerHTML =
+          "<i class=\"fa-solid fa-scissors\" aria-hidden=\"true\"></i> End At " + formatTimestamp(t);
       }
       updateTrimButtonLabels();
 
@@ -2176,7 +2186,6 @@
         var mediaEl = wavesurfer.getMediaElement && wavesurfer.getMediaElement();
         if (mediaEl) mediaEl.loop = false;
         try { wavesurfer.pause(); } catch (e) { }
-        if (wavesurfer.getDuration() > 0) wavesurfer.seekTo(0);
         updatePlayButton(false);
       }
 
