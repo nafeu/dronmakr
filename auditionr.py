@@ -78,6 +78,7 @@ from beatbuildr import generate_random_drum_kit
 from process_sample import (
     apply_pitch_shift_preserve_length,
     reverse_sample,
+    double_loop_sample,
     apply_granular_synthesis,
 )
 
@@ -471,6 +472,8 @@ def process_file():
             _apply_pitch_with_fixed_base(file_path, inner_params.get("semitones", 0))
         case "reverse_sample":
             reverse_sample(file_path)
+        case "double_loop_sample":
+            double_loop_sample(file_path)
         case "granularize_sample":
             apply_granular_synthesis(file_path)
         case _:

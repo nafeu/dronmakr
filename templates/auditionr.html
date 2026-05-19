@@ -3940,12 +3940,20 @@
       });
       actions.appendChild(duplicateButton);
 
-      var deleteButton = document.createElement("div");
-      deleteButton.innerHTML = "<i class=\"fa-solid fa-trash-can\"></i>";
-      deleteButton.classList.add("button", "icon-btn");
-      deleteButton.title = "Delete";
-      deleteButton.addEventListener("click", () => deleteSample(apiPath));
-      actions.appendChild(deleteButton);
+      var doubleLoopButton = document.createElement("div");
+      doubleLoopButton.innerHTML = "<i class=\"fa-solid fa-repeat\"></i>";
+      doubleLoopButton.classList.add("button", "icon-btn");
+      doubleLoopButton.title =
+        "Double length — append a copy (sample-accurate; ideal for seamless drum loops)";
+      doubleLoopButton.addEventListener("click", function () {
+        selectSampleForEdit(file, apiPath, {});
+        processSample({
+          path: apiPath,
+          command: "double_loop_sample",
+          files: getCurrentFiles(),
+        });
+      });
+      actions.appendChild(doubleLoopButton);
 
       var trimStartButton = document.createElement("div");
       trimStartButton.classList.add("button", "trim-cut-action");
@@ -3984,6 +3992,13 @@
       });
       actions.appendChild(trimStartButton);
       actions.appendChild(trimEndButton);
+
+      var deleteButton = document.createElement("div");
+      deleteButton.innerHTML = "<i class=\"fa-solid fa-trash-can\"></i>";
+      deleteButton.classList.add("button", "icon-btn");
+      deleteButton.title = "Delete";
+      deleteButton.addEventListener("click", () => deleteSample(apiPath));
+      actions.appendChild(deleteButton);
 
       wrapper.appendChild(actions);
 

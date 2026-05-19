@@ -209,6 +209,22 @@ def reverse_sample(input_path):
     log_sample_processing_line("Applied reverse")
 
 
+def double_loop_sample(input_path):
+    """
+    Concatenate the file with itself (2× duration), sample-accurate, no fades.
+
+    For a one-bar (or any) loop that already wraps cleanly from last sample back
+    to the first, the join at the midpoint matches the natural loop point twice.
+    """
+    audio, sample_rate = sf.read(input_path)
+    if audio.size == 0:
+        raise ValueError("Audio file is empty")
+
+    doubled = np.concatenate([audio, audio], axis=0)
+    sf.write(input_path, doubled, sample_rate)
+    log_sample_processing_line("Doubled length (two copies back-to-back)")
+
+
 def apply_time_stretch_simple(input_path, stretch_factor):
     """
     Simple resampling-based time stretch.
