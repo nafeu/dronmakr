@@ -47,6 +47,7 @@ from generate_midi import get_patterns, generate_drone_midi, get_pattern_config
 from processing_actions import (
     get_processing_actions_payload,
     parse_post_processing_spec,
+    parse_single_processing_spec,
     apply_post_processing_actions,
     apply_processing_command,
     actions_without_normalize,
@@ -71,59 +72,9 @@ from generate_bass import (
 )
 from beatbuildr import generate_random_drum_kit
 from process_sample import (
-    apply_paulstretch_to_sample,
-    apply_transpose_pitch_by_resampling_inplace,
-    trim_sample_start,
-    trim_sample_end,
-    fade_sample_start,
-    fade_sample_end,
-    increase_sample_gain,
-    decrease_sample_gain,
-    reverse_sample,
-    apply_time_stretch_simple,
     apply_pitch_shift_preserve_length,
+    reverse_sample,
     apply_granular_synthesis,
-    apply_reverb_to_sample,
-    apply_reverb_bedroom_to_sample,
-    apply_reverb_room_to_sample,
-    apply_reverb_hall_to_sample,
-    apply_reverb_large_to_sample,
-    apply_reverb_amphitheatre_to_sample,
-    apply_reverb_space_to_sample,
-    apply_reverb_void_to_sample,
-    apply_reverb_distant_to_sample,
-    apply_distortion_to_sample,
-    apply_distortion_mild_to_sample,
-    apply_distortion_medium_to_sample,
-    apply_distortion_heavy_to_sample,
-    apply_compress_to_sample,
-    apply_compress_mild_to_sample,
-    apply_compress_medium_to_sample,
-    apply_compress_heavy_to_sample,
-    apply_overdrive_mids_to_sample,
-    apply_overdrive_mild_to_sample,
-    apply_overdrive_medium_to_sample,
-    apply_overdrive_heavy_to_sample,
-    apply_chorus_to_sample,
-    apply_chorus_mild_to_sample,
-    apply_chorus_medium_to_sample,
-    apply_chorus_heavy_to_sample,
-    apply_flanger_to_sample,
-    apply_flanger_mild_to_sample,
-    apply_flanger_medium_to_sample,
-    apply_flanger_heavy_to_sample,
-    apply_phaser_to_sample,
-    apply_phaser_mild_to_sample,
-    apply_phaser_medium_to_sample,
-    apply_phaser_heavy_to_sample,
-    apply_lowpass_to_sample,
-    apply_highpass_to_sample,
-    apply_bandpass_to_sample,
-    apply_eq_lows_to_sample,
-    apply_eq_mids_to_sample,
-    apply_eq_highs_to_sample,
-    normalize_sample,
-    apply_noise_gate_to_sample,
 )
 
 # Injected by register_auditionr(app, socketio); used by view functions for emits.
@@ -474,135 +425,30 @@ def process_file():
     if not os.path.exists(file_path):
         return jsonify({"error": "File does not exist."}), 404
 
-    if not params["command"]:
-        return jsonify({"error": "File command is required."}), 400
+    processing_spec = (params.get("processing_spec") or "").strip()
+    command = (params.get("command") or "").strip()
 
-    command = params["command"]
-    if command != "undo_last_edit":
+    if not processing_spec and not command:
+        return jsonify({"error": "File command or processing_spec is required."}), 400
+
+    skip_keys = frozenset({"path", "command", "files", "processing_spec"})
+    inner_params = {k: v for k, v in params.items() if k not in skip_keys}
+
+    inner_command = command
+    if processing_spec:
+        try:
+            action = parse_single_processing_spec(processing_spec)
+            inner_command = action.get("command", "")
+            inner_params = dict(action.get("params") or {})
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+
+    if inner_command != "undo_last_edit":
         _save_undo_snapshot(file_path)
-    if command != "pitch_shift_sample":
+    if inner_command != "pitch_shift_sample":
         _clear_pitch_state_for_file(file_path)
 
-    match command:
-        case "trim_sample_start":
-            trim_sample_start(file_path, params["seconds"])
-        case "trim_sample_end":
-            trim_sample_end(file_path, params["seconds"])
-        case "fade_sample_start":
-            fade_sample_start(file_path, params["seconds"])
-        case "fade_sample_end":
-            fade_sample_end(file_path, params["seconds"])
-        case "increase_sample_gain":
-            increase_sample_gain(file_path, params["db"])
-        case "decrease_sample_gain":
-            decrease_sample_gain(file_path, params["db"])
-        case "reverse_sample":
-            reverse_sample(file_path)
-        case "stretch_sample":
-            apply_time_stretch_simple(file_path, params.get("stretch_factor", 1.0))
-        case "paul_stretch_sample":
-            apply_paulstretch_to_sample(
-                file_path,
-                stretch=params.get("stretch", 8.0),
-                window_size=params.get("window_size", 2.5),
-            )
-        case "pitch_shift_sample":
-            _apply_pitch_with_fixed_base(file_path, params.get("semitones", 0))
-        case "pitch_shift_transpose_sample":
-            apply_transpose_pitch_by_resampling_inplace(
-                file_path, params.get("semitones", 0)
-            )
-        case "granularize_sample":
-            apply_granular_synthesis(file_path)
-        case "reverb_sample":
-            apply_reverb_to_sample(file_path)
-        case "reverb_bedroom_sample":
-            apply_reverb_bedroom_to_sample(file_path)
-        case "reverb_room_sample":
-            apply_reverb_room_to_sample(file_path)
-        case "reverb_hall_sample":
-            apply_reverb_hall_to_sample(file_path)
-        case "reverb_large_sample":
-            apply_reverb_large_to_sample(file_path)
-        case "reverb_amphitheatre_sample":
-            apply_reverb_amphitheatre_to_sample(file_path)
-        case "reverb_space_sample":
-            apply_reverb_space_to_sample(file_path)
-        case "reverb_void_sample":
-            apply_reverb_void_to_sample(file_path)
-        case "reverb_distant_sample":
-            apply_reverb_distant_to_sample(file_path)
-        case "compress_sample":
-            apply_compress_to_sample(file_path)
-        case "compress_mild_sample":
-            apply_compress_mild_to_sample(file_path)
-        case "compress_medium_sample":
-            apply_compress_medium_to_sample(file_path)
-        case "compress_heavy_sample":
-            apply_compress_heavy_to_sample(file_path)
-        case "overdrive_mids_sample":
-            apply_overdrive_mids_to_sample(file_path)
-        case "overdrive_mild_sample":
-            apply_overdrive_mild_to_sample(file_path)
-        case "overdrive_medium_sample":
-            apply_overdrive_medium_to_sample(file_path)
-        case "overdrive_heavy_sample":
-            apply_overdrive_heavy_to_sample(file_path)
-        case "distort_sample":
-            apply_distortion_to_sample(file_path)
-        case "distort_mild_sample":
-            apply_distortion_mild_to_sample(file_path)
-        case "distort_medium_sample":
-            apply_distortion_medium_to_sample(file_path)
-        case "distort_heavy_sample":
-            apply_distortion_heavy_to_sample(file_path)
-        case "chorus_sample":
-            apply_chorus_to_sample(file_path)
-        case "chorus_mild_sample":
-            apply_chorus_mild_to_sample(file_path)
-        case "chorus_medium_sample":
-            apply_chorus_medium_to_sample(file_path)
-        case "chorus_heavy_sample":
-            apply_chorus_heavy_to_sample(file_path)
-        case "flanger_sample":
-            apply_flanger_to_sample(file_path)
-        case "flanger_mild_sample":
-            apply_flanger_mild_to_sample(file_path)
-        case "flanger_medium_sample":
-            apply_flanger_medium_to_sample(file_path)
-        case "flanger_heavy_sample":
-            apply_flanger_heavy_to_sample(file_path)
-        case "phaser_sample":
-            apply_phaser_to_sample(file_path)
-        case "phaser_mild_sample":
-            apply_phaser_mild_to_sample(file_path)
-        case "phaser_medium_sample":
-            apply_phaser_medium_to_sample(file_path)
-        case "phaser_heavy_sample":
-            apply_phaser_heavy_to_sample(file_path)
-        case "lpf_sample":
-            apply_lowpass_to_sample(file_path, cutoff_hz=params.get("cutoff_hz", 6000))
-        case "hpf_sample":
-            apply_highpass_to_sample(file_path, cutoff_hz=params.get("cutoff_hz", 100))
-        case "bpf_sample":
-            low = params.get("low_hz", 300)
-            high = params.get("high_hz", 6000)
-            apply_bandpass_to_sample(file_path, low_hz=low, high_hz=high)
-        case "eq_lows_sample":
-            apply_eq_lows_to_sample(file_path, params.get("db", 0))
-        case "eq_mids_sample":
-            apply_eq_mids_to_sample(file_path, params.get("db", 0))
-        case "eq_highs_sample":
-            apply_eq_highs_to_sample(file_path, params.get("db", 0))
-        case "normalize_sample":
-            normalize_sample(file_path)
-        case "noisegate_sample":
-            apply_noise_gate_to_sample(
-                file_path,
-                threshold_db=params.get("threshold_db", -30),
-                attack_ms=params.get("attack_ms", 8),
-                release_ms=params.get("release_ms", 140),
-            )
+    match inner_command:
         case "undo_last_edit":
             snapshot = _undo_snapshot_path(file_path)
             if not os.path.exists(snapshot):
@@ -610,8 +456,17 @@ def process_file():
             shutil.copy2(snapshot, file_path)
             _clear_undo_snapshot(file_path)
             _clear_pitch_state_for_file(file_path)
+        case "pitch_shift_sample":
+            _apply_pitch_with_fixed_base(file_path, inner_params.get("semitones", 0))
+        case "reverse_sample":
+            reverse_sample(file_path)
+        case "granularize_sample":
+            apply_granular_synthesis(file_path)
         case _:
-            return jsonify({"error": "Command not recognized"}), 400
+            try:
+                apply_processing_command(file_path, inner_command, inner_params)
+            except ValueError:
+                return jsonify({"error": "Command not recognized"}), 400
 
     files = get_latest_exports(sort_override=params["files"])
     undo_available = _undo_availability_for_files(files)
@@ -626,7 +481,7 @@ def process_file():
         },
     )
     _emit_folder_counts()
-    return jsonify({"success": f"File processed with {command}"}), 200
+    return jsonify({"success": f"File processed with {inner_command}"}), 200
 
 
 def undo_status():

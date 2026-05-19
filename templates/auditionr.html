@@ -425,6 +425,169 @@
       display: none !important;
     }
 
+    .auditionr-sidebar-tabs {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      flex: 1;
+    }
+
+    .sidebar-tab-row {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--theme-a);
+      flex-shrink: 0;
+    }
+
+    .sidebar-tab-btn {
+      flex: 1;
+      padding: 0.55rem 0.5rem;
+      font-size: 0.78rem;
+      border: none;
+      background: none;
+      color: var(--theme-b);
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .sidebar-tab-btn.sidebar-tab-active {
+      color: var(--primary);
+      border-bottom: 2px solid var(--primary);
+    }
+
+    .sidebar-tab-panel {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .sidebar-tab-panel.hidden {
+      display: none !important;
+    }
+
+    .edit-action-nav {
+      display: flex;
+      gap: 0.25rem;
+      margin-bottom: 0.75rem;
+      padding-right: 2px;
+      flex-wrap: wrap;
+    }
+
+    .edit-action-nav-btn {
+      text-align: left;
+      font-family: inherit;
+      font-size: 0.78rem;
+      padding: 0.4rem 0.5rem;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: transparent;
+      color: var(--theme-b);
+      cursor: pointer;
+    }
+
+    .edit-action-nav-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .edit-action-nav-btn.edit-action-nav-active {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: rgba(255, 149, 5, 0.08);
+    }
+
+    .edit-action-detail .edit-sample-section {
+      display: none;
+    }
+
+    .edit-action-detail .edit-sample-section.edit-sample-section-visible {
+      display: block;
+    }
+
+    .edit-sample-section {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 6px;
+      padding: 0.65rem;
+      margin-bottom: 0.65rem;
+    }
+
+    .edit-sample-section h3 {
+      font-size: 0.82rem;
+      margin: 0 0 0.45rem 0;
+      color: var(--primary);
+    }
+
+    .edit-presets-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      margin-bottom: 0.45rem;
+    }
+
+    .edit-preset-btn {
+      font-size: 0.65rem;
+      padding: 0.25rem 0.45rem;
+      border-radius: 4px;
+      border: 1px solid var(--theme-a);
+      background: transparent;
+      color: var(--theme-b);
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .edit-preset-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .edit-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .edit-control-row {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.2rem;
+      font-size: 0.72rem;
+      color: var(--theme-b);
+    }
+
+    .edit-control-row input[type="range"] {
+      width: 100%;
+    }
+
+    .edit-control-row select {
+      font-family: inherit;
+      font-size: 0.78rem;
+      padding: 0.35rem;
+      background: var(--theme-a);
+      border: 1px solid var(--theme-a);
+      color: var(--primary);
+      border-radius: 4px;
+    }
+
+    .btn-edit-apply {
+      margin-top: 0.25rem;
+      padding: 0.4rem 0.75rem;
+      font-size: 0.78rem;
+      border-radius: 4px;
+      border: none;
+      background: var(--primary);
+      color: var(--secondary);
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: bold;
+    }
+
+    .btn-edit-apply:hover {
+      opacity: 0.88;
+    }
+
     .button {
       cursor: pointer;
       border-bottom: 2px solid var(--theme-a);
@@ -497,13 +660,52 @@
       pointer-events: none;
     }
 
-    .waveform-processing .waveform-duration {
+    .waveform-processing .waveform-duration-wrap {
       color: var(--theme-b);
     }
 
-    .waveform-title {
+    .waveform-title-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
       font-size: 0.75rem;
-      margin-bottom: 1rem;
+      border-radius: 4px;
+      border: none;
+      background: transparent;
+      font-family: inherit;
+      text-align: left;
+      box-sizing: border-box;
+      padding: 0;
+      padding-right: 5px;
+    }
+
+    .waveform-title-edit-icon {
+      opacity: 0;
+      flex-shrink: 0;
+      font-size: 0.65rem;
+      width: 1em;
+      transition: opacity 0.12s ease;
+      color: inherit;
+    }
+
+    .waveform-title-row:hover ~ .waveform-duration-wrap .waveform-title-edit-icon,
+    .waveform-title-row.waveform-sample-selected ~ .waveform-duration-wrap .waveform-title-edit-icon,
+    .waveform-title-row:focus-visible ~ .waveform-duration-wrap .waveform-title-edit-icon,
+    .waveform-duration-wrap:hover .waveform-title-edit-icon {
+      opacity: 1;
+    }
+
+    .waveform-wrapper:not(.drumpattern-sample):not(.transition-sample) .waveform-title-text {
+      color: var(--primary);
+    }
+
+    .drumpattern-sample .waveform-title-text {
+      color: var(--theme-b);
+    }
+
+    .transition-sample .waveform-title-text {
+      color: var(--theme-c);
     }
 
     .waveform-actions,
@@ -511,6 +713,24 @@
       display: flex;
       gap: 5px;
       flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .title-container {
+      margin-bottom: 1rem;
+    }
+
+    .waveform-duration-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      color: var(--theme-c);
+    }
+
+    .waveform-duration {
+      color: inherit;
     }
 
     .processing-actions-divider {
@@ -530,17 +750,7 @@
       border-left-color: var(--theme-c);
     }
 
-    .waveform-duration {
-      font-size: 0.75rem;
-      color: var(--theme-c);
-      font-weight: bold;
-    }
-
     /* Drumpattern sample: blue theme */
-    .drumpattern-sample .waveform-title {
-      color: var(--theme-b);
-    }
-
     .drumpattern-sample .waveform-actions .button {
       color: var(--theme-b);
     }
@@ -556,10 +766,6 @@
     }
 
     /* Transition sample: orange theme */
-    .transition-sample .waveform-title {
-      color: var(--theme-c);
-    }
-
     .transition-sample .waveform-actions .button {
       color: var(--theme-c);
     }
@@ -635,14 +841,19 @@
       </main>
     </div>
     <div class="auditionr-sidebar-wrapper">
-      <button type="button" class="sidebar-toggle" id="sidebar-toggle" title="Show generate sidebar"
-        aria-label="Toggle generate sidebar">
+      <button type="button" class="sidebar-toggle" id="sidebar-toggle" title="Show sidebar"
+        aria-label="Toggle sidebar">
         <i class="fa-solid fa-chevron-left" id="sidebar-toggle-icon"></i>
       </button>
       <aside class="auditionr-sidebar collapsed" id="auditionr-sidebar">
         <div class="auditionr-sidebar-content">
+          <div class="auditionr-sidebar-tabs">
+            <div class="sidebar-tab-row">
+              <button type="button" class="sidebar-tab-btn sidebar-tab-active" id="sidebar-tab-btn-generate" data-sidebar-tab="generate"><i class="fa-solid fa-wand-magic-sparkles"></i> Generate Samples</button>
+              <button type="button" class="sidebar-tab-btn" id="sidebar-tab-btn-edit" data-sidebar-tab="edit"><i class="fa-solid fa-pencil"></i> Edit Samples</button>
+            </div>
+            <div id="sidebar-panel-generate" class="sidebar-tab-panel">
           <div class="generatr-card">
-            <h2><i class="fa-solid fa-wand-magic-sparkles"></i> Generate Samples</h2>
             <form class="generatr-form" id="generatr-form">
               <div class="form-row form-row-full">
                 <label for="generatr-type">Type</label>
@@ -775,6 +986,14 @@
               <p class="error generatr-error hidden" id="generatr-error"></p>
             </div>
           </div>
+            </div>
+            <div id="sidebar-panel-edit" class="sidebar-tab-panel hidden">
+              <div class="generatr-card edit-samples-card">
+                <div id="edit-action-nav" class="edit-action-nav" aria-label="Processing actions"></div>
+                <div id="edit-action-detail" class="edit-action-detail"></div>
+              </div>
+            </div>
+          </div>
         </div>
       </aside>
     </div>
@@ -784,6 +1003,7 @@
     var socket = io();
     var lastFolderCounts = { archive: 0, trash: 0, exports: 0, saved: 0 };
     var selectedWaveformTimestamps = {};
+    var processingCatalog = { types: [], actions: [], paramSchemas: {}, presets: [] };
     var currentDisplayedFiles = [];
     var waveformInstances = {};
     var processingGuardMs = 120000;
@@ -791,6 +1011,300 @@
     var lastEdited = "";
     var sharedAudioContext = null;
     var currentDrumpatternStop = null;
+    var waveformDurations = {};
+    var selectedEditAbsPath = null;
+    var selectedEditApiPath = null;
+    var AUDITIONR_SIDEBAR_TAB_KEY = "auditionr_sidebar_tab";
+    var auditionrSidebarActiveTab = "generate";
+    var editPanelSelectedActionType = "fade";
+
+    var EDIT_SECTION_ORDER = ["fade", "eq", "gain", "filter", "noisegate", "stretch", "pitch", "reverb", "compress", "overdrive", "distort", "chorus", "flanger", "phaser"];
+
+    function mergeProcessingCatalog(payload) {
+      if (!payload || typeof payload !== "object") return;
+      processingCatalog.types = Array.isArray(payload.types) ? payload.types : [];
+      processingCatalog.actions = Array.isArray(payload.actions) ? payload.actions : [];
+      processingCatalog.paramSchemas = payload.paramSchemas || {};
+      processingCatalog.presets = Array.isArray(payload.presets) ? payload.presets : [];
+      renderEditSamplesPanel();
+    }
+
+    function fmtSpecNum(x) {
+      if (typeof x !== "number" || isNaN(x)) return "0";
+      var ax = Math.abs(x);
+      var r = ax >= 100 ? 2 : (ax >= 10 ? 3 : 5);
+      var s = Number(x.toFixed(r)).toString();
+      return s;
+    }
+
+    function editSliderPhysical(schema, uRaw) {
+      var u = Math.max(0, Math.min(1, parseFloat(uRaw)));
+      if (schema.range_db) return schema.range_db[0] + (schema.range_db[1] - schema.range_db[0]) * u;
+      if (schema.range_hz) return schema.range_hz[0] + (schema.range_hz[1] - schema.range_hz[0]) * u;
+      if (schema.range_ms) return schema.range_ms[0] + (schema.range_ms[1] - schema.range_ms[0]) * u;
+      if (schema.range_linear) return schema.range_linear[0] + (schema.range_linear[1] - schema.range_linear[0]) * u;
+      return u;
+    }
+
+    function readEditControl(sectionEl, schemaKey) {
+      var el = sectionEl.querySelector('[data-schema-key="' + schemaKey + '"]');
+      return el ? String(el.value) : "";
+    }
+
+    function selectSampleForEdit(file, apiPath, opts) {
+      opts = opts || {};
+      selectedEditAbsPath = file;
+      selectedEditApiPath = apiPath;
+      syncWaveformTitleSelection();
+      if (opts.openEditTab) {
+        ensureSidebarOpenForEdit();
+        openAuditionrSidebarTab("edit");
+      }
+    }
+
+    function syncWaveformTitleSelection() {
+      Object.keys(waveformInstances).forEach(function (absPath) {
+        var inst = waveformInstances[absPath];
+        if (!inst || !inst.titleRowEl) return;
+        inst.titleRowEl.classList.toggle("waveform-sample-selected", selectedEditAbsPath === absPath);
+      });
+    }
+
+    function applyEditProcessingSpec(spec) {
+      if (!selectedEditApiPath) {
+        window.alert("Select a sample first (click its name or use the waveform).");
+        return;
+      }
+      processSample({
+        path: selectedEditApiPath,
+        processing_spec: spec,
+        files: getCurrentFiles()
+      });
+    }
+
+    function updateEditActionVisibility() {
+      var nav = document.getElementById("edit-action-nav");
+      var detail = document.getElementById("edit-action-detail");
+      if (!nav || !detail) return;
+      nav.querySelectorAll(".edit-action-nav-btn").forEach(function (btn) {
+        btn.classList.toggle("edit-action-nav-active", btn.dataset.editType === editPanelSelectedActionType);
+      });
+      detail.querySelectorAll(".edit-sample-section").forEach(function (sec) {
+        sec.classList.toggle("edit-sample-section-visible", sec.dataset.editType === editPanelSelectedActionType);
+      });
+    }
+
+    function openAuditionrSidebarTab(tab) {
+      var genBtn = document.getElementById("sidebar-tab-btn-generate");
+      var editBtn = document.getElementById("sidebar-tab-btn-edit");
+      var genPanel = document.getElementById("sidebar-panel-generate");
+      var editPanel = document.getElementById("sidebar-panel-edit");
+      if (!genBtn || !editBtn || !genPanel || !editPanel) return;
+      var isGen = tab === "generate";
+      auditionrSidebarActiveTab = isGen ? "generate" : "edit";
+      genBtn.classList.toggle("sidebar-tab-active", isGen);
+      editBtn.classList.toggle("sidebar-tab-active", !isGen);
+      genPanel.classList.toggle("hidden", !isGen);
+      editPanel.classList.toggle("hidden", isGen);
+      try { sessionStorage.setItem(AUDITIONR_SIDEBAR_TAB_KEY, tab); } catch (e) {}
+    }
+
+    function ensureSidebarOpenForEdit() {
+      var sidebar = document.getElementById("auditionr-sidebar");
+      var sidebarToggle = document.getElementById("sidebar-toggle");
+      var sidebarToggleIcon = document.getElementById("sidebar-toggle-icon");
+      if (!sidebar || !sidebarToggle || !sidebarToggleIcon) return;
+      if (sidebar.classList.contains("collapsed")) {
+        sidebar.classList.remove("collapsed");
+        sidebarToggleIcon.className = "fa-solid fa-chevron-right";
+        sidebarToggle.title = "Hide sidebar";
+      }
+    }
+
+    function buildSpecFromSection(sectionEl, typeKey) {
+      var schemas = (processingCatalog.paramSchemas && processingCatalog.paramSchemas[typeKey]) || [];
+      function phys(sk) {
+        var sch = schemas.filter(function (s) { return s.key === sk; })[0];
+        if (!sch) return 0;
+        return editSliderPhysical(sch, readEditControl(sectionEl, sk));
+      }
+
+      switch (typeKey) {
+        case "fade": {
+          var style = readEditControl(sectionEl, "style") || "in";
+          var ms = phys("duration_ms_ui");
+          return "fade:[style=" + style + "][duration_ms=" + fmtSpecNum(ms) + "]";
+        }
+        case "eq": {
+          var band = readEditControl(sectionEl, "band") || "lows";
+          var db = phys("db_ui");
+          return "eq:[band=" + band + "][db=" + fmtSpecNum(db) + "]";
+        }
+        case "gain": {
+          var db = phys("db_ui");
+          return "gain:[db=" + fmtSpecNum(db) + "]";
+        }
+        case "filter": {
+          var kind = readEditControl(sectionEl, "kind") || "lpf";
+          if (kind === "bpf") {
+            var lo = phys("low_hz_ui");
+            var hi = phys("high_hz_ui");
+            return "filter:[kind=bpf][low_hz=" + fmtSpecNum(lo) + "][high_hz=" + fmtSpecNum(hi) + "]";
+          }
+          var cf = phys("cutoff_hz_ui");
+          return "filter:[kind=" + kind + "][cutoff_hz=" + fmtSpecNum(cf) + "]";
+        }
+        case "noisegate": {
+          var th = phys("threshold_db_ui");
+          var atk = phys("attack_ms_ui");
+          var rel = phys("release_ms_ui");
+          var rat = phys("ratio_ui");
+          return "noisegate:[threshold_db=" + fmtSpecNum(th) + "][attack_ms=" + fmtSpecNum(atk) + "][release_ms=" + fmtSpecNum(rel) + "][ratio=" + fmtSpecNum(rat) + "]";
+        }
+        case "stretch": {
+          var mode = readEditControl(sectionEl, "mode") || "simple";
+          if (mode === "paul") {
+            var st = phys("paul_stretch_ui");
+            var ws = phys("paul_window_ui");
+            return "stretch:[mode=paul][stretch=" + fmtSpecNum(st) + "][window_size=" + fmtSpecNum(ws) + "]";
+          }
+          var sf = phys("stretch_factor_ui");
+          return "stretch:[mode=simple][stretch_factor=" + fmtSpecNum(sf) + "]";
+        }
+        case "pitch": {
+          var pm = readEditControl(sectionEl, "mode") || "preserve";
+          var sem = phys("semitones_ui");
+          return "pitch:[mode=" + pm + "][semitones=" + fmtSpecNum(sem) + "]";
+        }
+        case "reverb": {
+          var wet = phys("wet_level_ui");
+          var ls = phys("length_sec_ui");
+          var ds = phys("decay_sec_ui");
+          var hp = phys("highpass_hz_ui");
+          var er = Math.round(phys("early_reflections_ui"));
+          var td = phys("tail_diffusion_ui");
+          var ed = readEditControl(sectionEl, "early_diffuse") || "true";
+          return "reverb:[wet_level=" + fmtSpecNum(wet) + "][length_sec=" + fmtSpecNum(ls) + "][decay_sec=" + fmtSpecNum(ds) + "][highpass_hz=" + fmtSpecNum(hp) + "][early_reflections=" + er + "][tail_diffusion=" + fmtSpecNum(td) + "][early_diffuse=" + ed + "]";
+        }
+        case "compress": {
+          return "compress:[threshold_db=" + fmtSpecNum(phys("threshold_db_ui")) + "][ratio=" + fmtSpecNum(phys("ratio_ui")) + "][attack_ms=" + fmtSpecNum(phys("attack_ms_ui")) + "][release_ms=" + fmtSpecNum(phys("release_ms_ui")) + "]";
+        }
+        case "overdrive": {
+          return "overdrive:[drive_db=" + fmtSpecNum(phys("drive_db_ui")) + "][highpass_hz=" + fmtSpecNum(phys("highpass_hz_ui")) + "][lowpass_hz=" + fmtSpecNum(phys("lowpass_hz_ui")) + "]";
+        }
+        case "distort":
+          return "distort:[drive_db=" + fmtSpecNum(phys("drive_db_ui")) + "]";
+        case "chorus":
+          return "chorus:[rate_hz=" + fmtSpecNum(phys("rate_hz_ui")) + "][depth=" + fmtSpecNum(phys("depth_ui")) + "][centre_delay_ms=" + fmtSpecNum(phys("centre_delay_ms_ui")) + "][feedback=" + fmtSpecNum(phys("feedback_ui")) + "][mix=" + fmtSpecNum(phys("mix_ui")) + "]";
+        case "flanger":
+          return "flanger:[rate_hz=" + fmtSpecNum(phys("rate_hz_ui")) + "][depth=" + fmtSpecNum(phys("depth_ui")) + "][centre_delay_ms=" + fmtSpecNum(phys("centre_delay_ms_ui")) + "][feedback=" + fmtSpecNum(phys("feedback_ui")) + "][mix=" + fmtSpecNum(phys("mix_ui")) + "]";
+        case "phaser":
+          return "phaser:[rate_hz=" + fmtSpecNum(phys("rate_hz_ui")) + "][depth=" + fmtSpecNum(phys("depth_ui")) + "][centre_frequency_hz=" + fmtSpecNum(phys("centre_frequency_hz_ui")) + "][feedback=" + fmtSpecNum(phys("feedback_ui")) + "][mix=" + fmtSpecNum(phys("mix_ui")) + "]";
+        default:
+          return null;
+      }
+    }
+
+    function renderEditSamplesPanel() {
+      var navEl = document.getElementById("edit-action-nav");
+      var detailEl = document.getElementById("edit-action-detail");
+      if (!navEl || !detailEl) return;
+
+      if (EDIT_SECTION_ORDER.indexOf(editPanelSelectedActionType) === -1) {
+        editPanelSelectedActionType = EDIT_SECTION_ORDER[0] || "fade";
+      }
+
+      navEl.innerHTML = "";
+      detailEl.innerHTML = "";
+      var typesByKey = {};
+      (processingCatalog.types || []).forEach(function (t) { typesByKey[t.key] = t.label; });
+
+      EDIT_SECTION_ORDER.forEach(function (typeKey) {
+        var navBtn = document.createElement("button");
+        navBtn.type = "button";
+        navBtn.className = "edit-action-nav-btn";
+        navBtn.dataset.editType = typeKey;
+        navBtn.textContent = typesByKey[typeKey] || typeKey;
+        navBtn.addEventListener("click", function () {
+          editPanelSelectedActionType = typeKey;
+          updateEditActionVisibility();
+        });
+        navEl.appendChild(navBtn);
+
+        var schemas = (processingCatalog.paramSchemas && processingCatalog.paramSchemas[typeKey]) || [];
+        var sec = document.createElement("section");
+        sec.className = "edit-sample-section";
+        sec.dataset.editType = typeKey;
+
+        var presetsWrap = document.createElement("div");
+        presetsWrap.className = "edit-presets-row";
+        (processingCatalog.presets || []).filter(function (p) { return p.type === typeKey; }).forEach(function (preset) {
+          var b = document.createElement("button");
+          b.type = "button";
+          b.className = "edit-preset-btn";
+          b.textContent = preset.label;
+          b.title = preset.spec || preset.token || "";
+          b.addEventListener("click", function () {
+            applyEditProcessingSpec(preset.spec || preset.token);
+          });
+          presetsWrap.appendChild(b);
+        });
+        if (presetsWrap.childNodes.length) sec.appendChild(presetsWrap);
+
+        var controlsWrap = document.createElement("div");
+        controlsWrap.className = "edit-controls";
+        schemas.forEach(function (schema) {
+          if (schema.widget === "slider") {
+            var row = document.createElement("label");
+            row.className = "edit-control-row";
+            var span = document.createElement("span");
+            span.textContent = schema.label;
+            var input = document.createElement("input");
+            input.type = "range";
+            input.min = 0;
+            input.max = 1;
+            input.step = schema.step != null ? schema.step : 0.01;
+            input.value = schema.default != null ? String(schema.default) : "0.5";
+            input.dataset.schemaKey = schema.key;
+            row.appendChild(span);
+            row.appendChild(input);
+            controlsWrap.appendChild(row);
+          } else if (schema.widget === "select") {
+            var row2 = document.createElement("label");
+            row2.className = "edit-control-row";
+            var span2 = document.createElement("span");
+            span2.textContent = schema.label;
+            var sel = document.createElement("select");
+            sel.dataset.schemaKey = schema.key;
+            (schema.options || []).forEach(function (opt) {
+              var o = document.createElement("option");
+              o.value = opt.value;
+              o.textContent = opt.label;
+              sel.appendChild(o);
+            });
+            var def = schema.default || ((schema.options || [])[0] || {}).value;
+            if (def !== undefined) sel.value = String(def);
+            row2.appendChild(span2);
+            row2.appendChild(sel);
+            controlsWrap.appendChild(row2);
+          }
+        });
+        sec.appendChild(controlsWrap);
+
+        var applyBtn = document.createElement("button");
+        applyBtn.type = "button";
+        applyBtn.className = "btn-edit-apply";
+        applyBtn.textContent = "Apply";
+        applyBtn.addEventListener("click", function () {
+          var spec = buildSpecFromSection(sec, typeKey);
+          if (spec) applyEditProcessingSpec(spec);
+        });
+        sec.appendChild(applyBtn);
+        detailEl.appendChild(sec);
+      });
+
+      updateEditActionVisibility();
+    }
 
     function getAudioContext() {
       if (!sharedAudioContext) sharedAudioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -980,6 +1494,10 @@
     }
 
     function processSample(params) {
+      if (!params.command && !params.processing_spec) {
+        console.warn("processSample: command or processing_spec is required");
+        return;
+      }
       var fileAbs = resolveDisplayedFileFromProcessPath(params.path);
       if (fileAbs) beginWaveformProcessing(fileAbs);
       fetch("/process", {
@@ -1025,14 +1543,9 @@
       updateFolderCounts(data);
     });
 
-    var processingCatalog = { types: [], actions: [] };
     socket.on("configs", function (data) {
       if (!data || !data.processingActions) return;
-      var payload = data.processingActions;
-      processingCatalog = {
-        types: Array.isArray(payload.types) ? payload.types : [],
-        actions: Array.isArray(payload.actions) ? payload.actions : []
-      };
+      mergeProcessingCatalog(data.processingActions);
     });
 
     function updateFolderCounts(counts) {
@@ -1068,6 +1581,12 @@
       }
       delete waveformInstances[file];
       delete selectedWaveformTimestamps[file];
+      delete waveformDurations[file];
+      if (selectedEditAbsPath === file) {
+        selectedEditAbsPath = null;
+        selectedEditApiPath = null;
+      }
+      syncWaveformTitleSelection();
     }
 
     function refreshWaveform(file) {
@@ -1135,6 +1654,8 @@
         }
       });
 
+      syncWaveformTitleSelection();
+
       container.innerHTML = "";
       orderedWrappers.forEach(function (w) { container.appendChild(w); });
 
@@ -1168,15 +1689,31 @@
       var titleContainer = document.createElement("div");
       titleContainer.classList.add("title-container");
 
-      var title = document.createElement("div");
-      title.innerText = displayName;
-      title.classList.add("waveform-title");
-      titleContainer.appendChild(title);
+      var titleRowEl = document.createElement("button");
+      titleRowEl.type = "button";
+      titleRowEl.classList.add("waveform-title-row");
+      titleRowEl.title = "Edit sample";
+      var titleTextSpan = document.createElement("span");
+      titleTextSpan.className = "waveform-title-text";
+      titleTextSpan.textContent = displayName;
+      titleRowEl.appendChild(titleTextSpan);
+      titleRowEl.addEventListener("click", function () {
+        selectSampleForEdit(file, apiPath, { openEditTab: true });
+      });
+      titleContainer.appendChild(titleRowEl);
 
+      var durationWrap = document.createElement("div");
+      durationWrap.className = "waveform-duration-wrap";
       var duration = document.createElement("div");
       duration.innerText = "loading...";
       duration.classList.add("waveform-duration");
-      titleContainer.appendChild(duration);
+      durationWrap.appendChild(duration);
+      var titleEditIcon = document.createElement("span");
+      titleEditIcon.className = "waveform-title-edit-icon";
+      titleEditIcon.innerHTML = "<i class=\"fa-solid fa-pencil\"></i>";
+      titleEditIcon.setAttribute("aria-hidden", "true");
+      durationWrap.appendChild(titleEditIcon);
+      titleContainer.appendChild(durationWrap);
 
       wrapper.appendChild(titleContainer);
 
@@ -1207,14 +1744,20 @@
       saveButton.innerHTML = "<i class=\"fa-solid fa-floppy-disk\"></i>";
       saveButton.classList.add("button", "icon-btn");
       saveButton.title = "Save";
-      saveButton.addEventListener("click", () => saveSample(apiPath));
+      saveButton.addEventListener("click", function () {
+        selectSampleForEdit(file, apiPath, {});
+        saveSample(apiPath);
+      });
       actions.appendChild(saveButton);
 
       var revealButton = document.createElement("div");
       revealButton.innerHTML = "<i class=\"fa-solid fa-folder-open\"></i>";
       revealButton.classList.add("button", "icon-btn");
       revealButton.title = "Reveal in folder";
-      revealButton.addEventListener("click", () => revealSample(apiPath));
+      revealButton.addEventListener("click", function () {
+        selectSampleForEdit(file, apiPath, {});
+        revealSample(apiPath);
+      });
       actions.appendChild(revealButton);
 
       var undoButton = document.createElement("div");
@@ -1224,6 +1767,7 @@
       undoButton.classList.add("disabled");
       undoButton.addEventListener("click", () => {
         if (undoButton.classList.contains("disabled")) return;
+        selectSampleForEdit(file, apiPath, {});
         processSample({
           path: apiPath,
           command: "undo_last_edit",
@@ -1236,119 +1780,82 @@
       reverseButton.innerHTML = "<i class=\"fa-solid fa-arrows-left-right\"></i>";
       reverseButton.classList.add("button", "icon-btn");
       reverseButton.title = "Reverse";
-      reverseButton.addEventListener("click", () => processSample({
-        path: apiPath,
-        command: "reverse_sample",
-        files: getCurrentFiles()
-      }));
+      reverseButton.addEventListener("click", function () {
+        selectSampleForEdit(file, apiPath, {});
+        processSample({
+          path: apiPath,
+          command: "reverse_sample",
+          files: getCurrentFiles()
+        });
+      });
       actions.appendChild(reverseButton);
 
       var normalizeButton = document.createElement("div");
       normalizeButton.innerHTML = "<i class=\"fa-solid fa-wave-square\"></i>";
       normalizeButton.classList.add("button", "icon-btn");
       normalizeButton.title = "Normalize";
-      normalizeButton.addEventListener("click", () => processSample({
-        path: apiPath,
-        command: "normalize_sample",
-        files: getCurrentFiles()
-      }));
+      normalizeButton.addEventListener("click", function () {
+        selectSampleForEdit(file, apiPath, {});
+        processSample({
+          path: apiPath,
+          command: "normalize_sample",
+          files: getCurrentFiles()
+        });
+      });
       actions.appendChild(normalizeButton);
 
-      var deleteButton = document.createElement("div");
       var duplicateButton = document.createElement("div");
       duplicateButton.innerHTML = "<i class=\"fa-solid fa-copy\"></i>";
       duplicateButton.classList.add("button", "icon-btn");
       duplicateButton.title = "Duplicate";
-      duplicateButton.addEventListener("click", () => duplicateSample(apiPath));
+      duplicateButton.addEventListener("click", function () {
+        selectSampleForEdit(file, apiPath, {});
+        duplicateSample(apiPath);
+      });
       actions.appendChild(duplicateButton);
 
+      var deleteButton = document.createElement("div");
       deleteButton.innerHTML = "<i class=\"fa-solid fa-trash-can\"></i>";
       deleteButton.classList.add("button", "icon-btn");
       deleteButton.title = "Delete";
       deleteButton.addEventListener("click", () => deleteSample(apiPath));
       actions.appendChild(deleteButton);
 
-      var trimStartButton = null;
-      var trimEndButton = null;
-      var activeProcessingType = null;
-      var processingActionButtons = [];
-      var processingActionsDivider = document.createElement("div");
-      processingActionsDivider.classList.add("processing-actions-divider", "hidden");
-      var processingTypeButtons = {};
-      var processingTypes = [{ key: "cut", label: "Cut" }]
-        .concat((processingCatalog.types || []).map(function (type) {
-          return { key: type.key, label: type.label };
-        }))
-        .filter(function (type) { return type.key !== "normalize"; });
+      var trimStartButton = document.createElement("div");
+      trimStartButton.classList.add("button");
+      trimStartButton.title = "Remove audio before playhead";
+      var trimEndButton = document.createElement("div");
+      trimEndButton.classList.add("button");
+      trimEndButton.title = "Remove audio after playhead";
 
-      function clearProcessingActions() {
-        processingActionButtons.forEach(function (btn) { actions.removeChild(btn); });
-        processingActionButtons = [];
-        trimStartButton = null;
-        trimEndButton = null;
+      function updateTrimButtonLabels() {
+        var t = selectedWaveformTimestamps[file];
+        if (typeof t !== "number") t = 0;
+        trimStartButton.innerText = "Start At " + formatTimestamp(t);
+        trimEndButton.innerText = "End At " + formatTimestamp(t);
       }
+      updateTrimButtonLabels();
 
-      function addProcessingAction(label, command, extraParams) {
-        var btn = document.createElement("div");
-        btn.innerText = label;
-        btn.classList.add("button");
-        btn.addEventListener("click", () => processSample(Object.assign({
+      trimStartButton.addEventListener("click", function () {
+        selectSampleForEdit(file, apiPath, {});
+        processSample({
           path: apiPath,
-          command: command,
+          command: "trim_sample_start",
+          seconds: selectedWaveformTimestamps[file],
           files: getCurrentFiles()
-        }, extraParams || {})));
-        actions.appendChild(btn);
-        processingActionButtons.push(btn);
-        return btn;
-      }
-
-      function renderProcessingActions(processingType) {
-        clearProcessingActions();
-        processingActionsDivider.classList.toggle("hidden", !processingType);
-        if (!processingType) return;
-
-        if (processingType === "cut") {
-          trimStartButton = addProcessingAction(
-            `Start At ${formatTimestamp(selectedWaveformTimestamps[file])}`,
-            "trim_sample_start",
-            { seconds: selectedWaveformTimestamps[file] }
-          );
-          trimEndButton = addProcessingAction(
-            `End At ${formatTimestamp(selectedWaveformTimestamps[file])}`,
-            "trim_sample_end",
-            { seconds: selectedWaveformTimestamps[file] }
-          );
-          return;
-        }
-        (processingCatalog.actions || [])
-          .filter(function (action) { return action.type === processingType; })
-          .forEach(function (action) {
-            addProcessingAction(action.label, action.command, action.params || {});
-          });
-      }
-
-      processingTypes.forEach(function (type) {
-        var processingTypeButton = document.createElement("div");
-        processingTypeButton.innerText = type.label;
-        processingTypeButton.classList.add("button");
-        processingTypeButton.addEventListener("click", function () {
-          if (activeProcessingType === type.key) {
-            activeProcessingType = null;
-            processingTypeButton.classList.remove("processing-type-active");
-            renderProcessingActions(null);
-            return;
-          }
-
-          activeProcessingType = type.key;
-          Object.keys(processingTypeButtons).forEach(function (k) {
-            processingTypeButtons[k].classList.toggle("processing-type-active", k === type.key);
-          });
-          renderProcessingActions(type.key);
         });
-        processingTypeButtons[type.key] = processingTypeButton;
-        actions.appendChild(processingTypeButton);
       });
-      actions.appendChild(processingActionsDivider);
+      trimEndButton.addEventListener("click", function () {
+        selectSampleForEdit(file, apiPath, {});
+        processSample({
+          path: apiPath,
+          command: "trim_sample_end",
+          seconds: selectedWaveformTimestamps[file],
+          files: getCurrentFiles()
+        });
+      });
+      actions.appendChild(trimStartButton);
+      actions.appendChild(trimEndButton);
 
       wrapper.appendChild(actions);
 
@@ -1377,8 +1884,11 @@
 
       wavesurfer.on("seeking", function (currentTime) {
         selectedWaveformTimestamps[file] = currentTime;
-        if (trimStartButton) trimStartButton.innerText = `Start At ${formatTimestamp(selectedWaveformTimestamps[file])}`;
-        if (trimEndButton) trimEndButton.innerText = `End At ${formatTimestamp(selectedWaveformTimestamps[file])}`;
+        updateTrimButtonLabels();
+      });
+
+      wavesurfer.on("interaction", function () {
+        selectSampleForEdit(file, apiPath, {});
       });
 
       var drumpatternBuffer = null;
@@ -1388,7 +1898,9 @@
       var drumpatternRafId = null;
 
       wavesurfer.on("ready", function () {
-        duration.innerText = `${formatTimestamp(wavesurfer.getDuration())}`;
+        var dur = wavesurfer.getDuration();
+        waveformDurations[file] = dur;
+        duration.innerText = `${formatTimestamp(dur)}`;
         var pinnedReady = waveformInstances[file];
         if (pinnedReady && pinnedReady.pendingProcessingReveal) {
           endWaveformProcessing(file, { skipDurationRepair: true });
@@ -1451,14 +1963,17 @@
       }
 
       wavesurfer.on("play", function () {
+        selectSampleForEdit(file, apiPath, {});
         updatePlayButton(true);
       });
 
       wavesurfer.on("pause", function () {
+        selectSampleForEdit(file, apiPath, {});
         if (!isDrumpattern && !wavesurfer.isPlaying()) updatePlayButton(false);
       });
 
       playButton.addEventListener("click", function () {
+        selectSampleForEdit(file, apiPath, {});
         if (isDrumpattern) {
           if (playButton.classList.contains("disabled") || !drumpatternBuffer) return;
           if (drumpatternPlaying) {
@@ -1497,6 +2012,7 @@
         durationEl: duration,
         stopPlayback: stopPlayback,
         undoButton: undoButton,
+        titleRowEl: titleRowEl,
         pendingProcessingReveal: false,
         processingSafetyTimer: null
       };
@@ -1632,10 +2148,11 @@
           label.style.gap = "8px";
           var input = document.createElement("input");
           input.type = "checkbox";
-          input.value = action.token;
+          input.value = action.spec || action.token;
           input.id = "generatr-beat-post-" + idx;
           var text = document.createElement("span");
-          text.textContent = action.token;
+          text.textContent = action.label || action.token;
+          if (action.spec) text.title = action.spec;
           label.appendChild(input);
           label.appendChild(text);
           beatPostProcessingList.appendChild(label);
@@ -1664,6 +2181,7 @@
             setSelectOptions(droneInstrumentSelect, data.droneInstruments || [], true);
             setSelectOptions(droneEffectSelect, data.droneEffects || [], true);
             renderBeatPostProcessing(data.processingActions || { actions: [] });
+            mergeProcessingCatalog(data.processingActions || {});
             generatrSidebarOptionsLoaded = true;
           })
           .catch(function (err) {
@@ -1699,16 +2217,30 @@
         (function syncSidebarToggleState() {
           var collapsed = sidebar.classList.contains("collapsed");
           sidebarToggleIcon.className = collapsed ? "fa-solid fa-chevron-left" : "fa-solid fa-chevron-right";
-          sidebarToggle.title = collapsed ? "Show generate sidebar" : "Hide generate sidebar";
+          sidebarToggle.title = collapsed ? "Show sidebar" : "Hide sidebar";
         })();
 
         sidebarToggle.addEventListener("click", function () {
           sidebar.classList.toggle("collapsed");
           var collapsed = sidebar.classList.contains("collapsed");
           sidebarToggleIcon.className = collapsed ? "fa-solid fa-chevron-left" : "fa-solid fa-chevron-right";
-          sidebarToggle.title = collapsed ? "Show generate sidebar" : "Hide generate sidebar";
+          sidebarToggle.title = collapsed ? "Show sidebar" : "Hide sidebar";
         });
       }
+
+      var tabGen = document.getElementById("sidebar-tab-btn-generate");
+      var tabEdit = document.getElementById("sidebar-tab-btn-edit");
+      if (tabGen) {
+        tabGen.addEventListener("click", function () { openAuditionrSidebarTab("generate"); });
+      }
+      if (tabEdit) {
+        tabEdit.addEventListener("click", function () { openAuditionrSidebarTab("edit"); });
+      }
+      try {
+        if (sessionStorage.getItem(AUDITIONR_SIDEBAR_TAB_KEY) === "edit") {
+          openAuditionrSidebarTab("edit");
+        }
+      } catch (errTab) { /* ignore */ }
 
       form.addEventListener("submit", function (e) {
         e.preventDefault();

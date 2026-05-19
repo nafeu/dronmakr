@@ -6,29 +6,34 @@ from process_sample import (
     apply_chorus_heavy_to_sample,
     apply_chorus_medium_to_sample,
     apply_chorus_mild_to_sample,
+    apply_chorus_to_sample,
     apply_compress_heavy_to_sample,
     apply_compress_medium_to_sample,
     apply_compress_mild_to_sample,
+    apply_compress_to_sample,
     apply_distortion_heavy_to_sample,
     apply_distortion_medium_to_sample,
     apply_distortion_mild_to_sample,
+    apply_distortion_to_sample,
     apply_eq_highs_to_sample,
     apply_eq_lows_to_sample,
     apply_eq_mids_to_sample,
     apply_flanger_heavy_to_sample,
     apply_flanger_medium_to_sample,
     apply_flanger_mild_to_sample,
+    apply_flanger_to_sample,
     apply_highpass_to_sample,
     apply_lowpass_to_sample,
     apply_noise_gate_to_sample,
     apply_overdrive_heavy_to_sample,
     apply_overdrive_medium_to_sample,
     apply_overdrive_mild_to_sample,
+    apply_overdrive_mids_to_sample,
     apply_phaser_heavy_to_sample,
     apply_phaser_medium_to_sample,
     apply_phaser_mild_to_sample,
+    apply_phaser_to_sample,
     apply_pitch_shift_preserve_length,
-    apply_transpose_pitch_by_resampling_inplace,
     apply_paulstretch_to_sample,
     apply_reverb_amphitheatre_to_sample,
     apply_reverb_bedroom_to_sample,
@@ -38,15 +43,20 @@ from process_sample import (
     apply_reverb_space_to_sample,
     apply_reverb_void_to_sample,
     apply_reverb_distant_to_sample,
+    apply_reverb_to_sample,
     apply_time_stretch_simple,
+    apply_transpose_pitch_by_resampling_inplace,
     decrease_sample_gain,
     fade_sample_end,
     fade_sample_start,
     increase_sample_gain,
     normalize_sample,
+    trim_sample_end,
+    trim_sample_start,
 )
 
 PROCESSING_TYPES = [
+    {"key": "cut", "label": "Cut"},
     {"key": "fade", "label": "Fade"},
     {"key": "eq", "label": "EQ"},
     {"key": "gain", "label": "Gain"},
@@ -187,27 +197,1049 @@ PROCESSING_ACTIONS_BY_TOKEN = {a["token"]: a for a in PROCESSING_ACTIONS}
 
 PAUL_STRETCH_TOKEN_RE = re.compile(r"^stretch:paul(\d+(?:\.\d+)?)s(\d+(?:\.\d+)?)w$")
 PITCH_RESAMPLE_TOKEN_RE = re.compile(r"^pitch:([+-]?\d+(?:\.\d+)?)resample$")
-# Legacy CSV tokens (pitch:*raw) accepted for compatibility with older specs / docs.
 PITCH_RAW_LEGACY_TOKEN_RE = re.compile(r"^pitch:([+-]?\d+(?:\.\d+)?)raw$")
+
+BRACKET_PAIR_RE = re.compile(r"\[([^\]=]+)\s*=\s*([^\]]*)\]")
+
+_PARAM_SCHEMAS_UI: dict[str, list[dict]] = {
+    "cut": [
+        {
+            "key": "edge",
+            "label": "Edge",
+            "widget": "select",
+            "options": [
+                {"value": "start", "label": "Trim start (before playhead)"},
+                {"value": "end", "label": "Trim end (after playhead)"},
+            ],
+            "default": "start",
+        },
+    ],
+    "fade": [
+        {
+            "key": "style",
+            "label": "Style",
+            "widget": "select",
+            "options": [{"value": "in", "label": "Fade in"}, {"value": "out", "label": "Fade out"}],
+            "default": "in",
+        },
+        {
+            "key": "duration_ms_ui",
+            "label": "Duration",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.01,
+            "default": 0.28,
+            "maps_to": "duration_ms",
+            "range_ms": [100, 8000],
+        },
+    ],
+    "eq": [
+        {
+            "key": "band",
+            "label": "Band",
+            "widget": "select",
+            "options": [
+                {"value": "lows", "label": "Lows"},
+                {"value": "mids", "label": "Mids"},
+                {"value": "highs", "label": "Highs"},
+            ],
+            "default": "lows",
+        },
+        {
+            "key": "db_ui",
+            "label": "Gain (dB)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.55,
+            "maps_to": "db",
+            "range_db": [-12, 12],
+        },
+    ],
+    "gain": [
+        {
+            "key": "db_ui",
+            "label": "Gain change (dB)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.55,
+            "maps_to": "db_signed",
+            "range_db": [-12, 12],
+        },
+    ],
+    "filter": [
+        {
+            "key": "kind",
+            "label": "Kind",
+            "widget": "select",
+            "options": [
+                {"value": "lpf", "label": "Low-pass"},
+                {"value": "hpf", "label": "High-pass"},
+                {"value": "bpf", "label": "Band-pass"},
+            ],
+            "default": "lpf",
+        },
+        {
+            "key": "cutoff_hz_ui",
+            "label": "Cutoff (Hz) LPF/HPF",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.005,
+            "default": 0.55,
+            "maps_to": "cutoff_hz",
+            "range_hz": [80, 16000],
+        },
+        {
+            "key": "low_hz_ui",
+            "label": "BPF low (Hz)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.005,
+            "default": 0.12,
+            "maps_to": "low_hz",
+            "range_hz": [40, 8000],
+        },
+        {
+            "key": "high_hz_ui",
+            "label": "BPF high (Hz)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.005,
+            "default": 0.72,
+            "maps_to": "high_hz",
+            "range_hz": [200, 18000],
+        },
+    ],
+    "normalize": [],
+    "noisegate": [
+        {
+            "key": "threshold_db_ui",
+            "label": "Threshold",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.45,
+            "maps_to": "threshold_db",
+            "range_db": [-55, -12],
+        },
+        {
+            "key": "attack_ms_ui",
+            "label": "Attack",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.25,
+            "maps_to": "attack_ms",
+            "range_ms": [1, 40],
+        },
+        {
+            "key": "release_ms_ui",
+            "label": "Release",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.4,
+            "maps_to": "release_ms",
+            "range_ms": [40, 400],
+        },
+        {
+            "key": "ratio_ui",
+            "label": "Ratio",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.45,
+            "maps_to": "ratio",
+            "range_linear": [2.0, 20.0],
+        },
+    ],
+    "stretch": [
+        {
+            "key": "mode",
+            "label": "Mode",
+            "widget": "select",
+            "options": [{"value": "simple", "label": "Time stretch"}, {"value": "paul", "label": "Paulstretch"}],
+            "default": "simple",
+        },
+        {
+            "key": "stretch_factor_ui",
+            "label": "Playback speed ↔ stretch factor",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.35,
+            "maps_to": "stretch_factor",
+            "range_linear": [2.5, 0.4],
+            "hint": "Lower slider ≈ slower playback (larger stretch factor).",
+        },
+        {
+            "key": "paul_stretch_ui",
+            "label": "Paul stretch amount",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.35,
+            "maps_to": "stretch",
+            "range_linear": [2.0, 16.0],
+        },
+        {
+            "key": "paul_window_ui",
+            "label": "Paul window (s)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.35,
+            "maps_to": "window_size",
+            "range_linear": [0.5, 6.0],
+        },
+    ],
+    "pitch": [
+        {
+            "key": "mode",
+            "label": "Mode",
+            "widget": "select",
+            "options": [{"value": "preserve", "label": "Preserve length"}, {"value": "resample", "label": "Resample"}],
+            "default": "preserve",
+        },
+        {
+            "key": "semitones_ui",
+            "label": "Semitones",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.56,
+            "maps_to": "semitones",
+            "range_linear": [-24, 24],
+        },
+    ],
+    "reverb": [
+        {
+            "key": "wet_level_ui",
+            "label": "Wet",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.35,
+            "maps_to": "wet_level",
+            "range_linear": [0.05, 0.85],
+        },
+        {
+            "key": "length_sec_ui",
+            "label": "IR length (s)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.35,
+            "maps_to": "length_sec",
+            "range_linear": [0.15, 16.0],
+        },
+        {
+            "key": "decay_sec_ui",
+            "label": "Decay (s)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.35,
+            "maps_to": "decay_sec",
+            "range_linear": [0.1, 14.0],
+        },
+        {
+            "key": "highpass_hz_ui",
+            "label": "Reverb HPF (Hz)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.2,
+            "maps_to": "highpass_hz",
+            "range_linear": [30.0, 200.0],
+        },
+        {
+            "key": "early_reflections_ui",
+            "label": "Early reflections",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.05,
+            "default": 0.45,
+            "maps_to": "early_reflections",
+            "range_linear": [2.0, 16.0],
+        },
+        {
+            "key": "tail_diffusion_ui",
+            "label": "Tail diffusion",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.75,
+            "maps_to": "tail_diffusion",
+            "range_linear": [0.5, 0.98],
+        },
+        {
+            "key": "early_diffuse",
+            "label": "Early diffuse",
+            "widget": "select",
+            "options": [{"value": "true", "label": "On"}, {"value": "false", "label": "Off"}],
+            "default": "true",
+        },
+    ],
+    "compress": [
+        {
+            "key": "threshold_db_ui",
+            "label": "Threshold (dB)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.45,
+            "maps_to": "threshold_db",
+            "range_db": [-35, -8],
+        },
+        {
+            "key": "ratio_ui",
+            "label": "Ratio",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.45,
+            "maps_to": "ratio",
+            "range_linear": [1.5, 20.0],
+        },
+        {
+            "key": "attack_ms_ui",
+            "label": "Attack (ms)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.35,
+            "maps_to": "attack_ms",
+            "range_linear": [0.5, 40.0],
+        },
+        {
+            "key": "release_ms_ui",
+            "label": "Release (ms)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.45,
+            "maps_to": "release_ms",
+            "range_linear": [40.0, 250.0],
+        },
+    ],
+    "overdrive": [
+        {
+            "key": "drive_db_ui",
+            "label": "Drive (dB)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.45,
+            "maps_to": "drive_db",
+            "range_linear": [4.0, 26.0],
+        },
+        {
+            "key": "highpass_hz_ui",
+            "label": "High-pass (Hz)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.35,
+            "maps_to": "highpass_hz",
+            "range_linear": [80.0, 450.0],
+        },
+        {
+            "key": "lowpass_hz_ui",
+            "label": "Low-pass (Hz)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.55,
+            "maps_to": "lowpass_hz",
+            "range_linear": [2500.0, 7000.0],
+        },
+    ],
+    "distort": [
+        {
+            "key": "drive_db_ui",
+            "label": "Drive (dB)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.45,
+            "maps_to": "drive_db",
+            "range_linear": [1.0, 18.0],
+        },
+    ],
+    "chorus": [
+        {
+            "key": "rate_hz_ui",
+            "label": "Rate (Hz)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.45,
+            "maps_to": "rate_hz",
+            "range_linear": [0.3, 2.0],
+        },
+        {
+            "key": "depth_ui",
+            "label": "Depth",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.45,
+            "maps_to": "depth",
+            "range_linear": [0.05, 0.65],
+        },
+        {
+            "key": "centre_delay_ms_ui",
+            "label": "Centre delay (ms)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.45,
+            "maps_to": "centre_delay_ms",
+            "range_linear": [4.0, 14.0],
+        },
+        {
+            "key": "feedback_ui",
+            "label": "Feedback",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.25,
+            "maps_to": "feedback",
+            "range_linear": [0.0, 0.45],
+        },
+        {
+            "key": "mix_ui",
+            "label": "Mix",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.45,
+            "maps_to": "mix",
+            "range_linear": [0.15, 0.85],
+        },
+    ],
+    "flanger": [
+        {
+            "key": "rate_hz_ui",
+            "label": "Rate (Hz)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.45,
+            "maps_to": "rate_hz",
+            "range_linear": [0.2, 1.2],
+        },
+        {
+            "key": "depth_ui",
+            "label": "Depth",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.45,
+            "maps_to": "depth",
+            "range_linear": [0.1, 0.75],
+        },
+        {
+            "key": "centre_delay_ms_ui",
+            "label": "Centre delay (ms)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.35,
+            "maps_to": "centre_delay_ms",
+            "range_linear": [1.0, 4.0],
+        },
+        {
+            "key": "feedback_ui",
+            "label": "Feedback",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.45,
+            "maps_to": "feedback",
+            "range_linear": [0.05, 0.65],
+        },
+        {
+            "key": "mix_ui",
+            "label": "Mix",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.45,
+            "maps_to": "mix",
+            "range_linear": [0.2, 0.85],
+        },
+    ],
+    "phaser": [
+        {
+            "key": "rate_hz_ui",
+            "label": "Rate (Hz)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.45,
+            "maps_to": "rate_hz",
+            "range_linear": [0.4, 1.8],
+        },
+        {
+            "key": "depth_ui",
+            "label": "Depth",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.55,
+            "maps_to": "depth",
+            "range_linear": [0.35, 0.98],
+        },
+        {
+            "key": "centre_frequency_hz_ui",
+            "label": "Centre freq (Hz)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.45,
+            "maps_to": "centre_frequency_hz",
+            "range_linear": [400.0, 2800.0],
+        },
+        {
+            "key": "feedback_ui",
+            "label": "Feedback",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.45,
+            "maps_to": "feedback",
+            "range_linear": [0.1, 0.85],
+        },
+        {
+            "key": "mix_ui",
+            "label": "Mix",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.45,
+            "maps_to": "mix",
+            "range_linear": [0.2, 0.85],
+        },
+    ],
+}
+
+
+def _split_spec_segments(spec: str) -> list[str]:
+    depth = 0
+    parts: list[str] = []
+    buf: list[str] = []
+    for ch in spec:
+        if ch == "[":
+            depth += 1
+            buf.append(ch)
+        elif ch == "]":
+            depth = max(0, depth - 1)
+            buf.append(ch)
+        elif ch in ",;" and depth == 0:
+            seg = "".join(buf).strip()
+            if seg:
+                parts.append(seg)
+            buf = []
+        else:
+            buf.append(ch)
+    tail = "".join(buf).strip()
+    if tail:
+        parts.append(tail)
+    return parts
+
+
+def _parse_scalar(raw: str):
+    s = raw.strip()
+    low = s.lower()
+    if low == "true":
+        return True
+    if low == "false":
+        return False
+    try:
+        if "." in s or "e" in low:
+            return float(s)
+        return int(s)
+    except ValueError:
+        return s
+
+
+def _parse_bracket_params(rest: str) -> dict[str, object]:
+    params: dict[str, object] = {}
+    for m in BRACKET_PAIR_RE.finditer(rest):
+        key = m.group(1).strip()
+        params[key] = _parse_scalar(m.group(2))
+    return params
+
+
+def _is_bracket_segment(seg: str) -> bool:
+    s = seg.strip()
+    if re.match(r"^\w+\s*:\s*\[\s*\]\s*$", s):
+        return True
+    return "[" in s and BRACKET_PAIR_RE.search(s) is not None
+
+
+def _fade_duration_ms(params: dict[str, object]) -> float:
+    if "duration_ms" in params:
+        return float(params["duration_ms"])
+    if "duration_s" in params:
+        return float(params["duration_s"]) * 1000.0
+    if "duration" in params:
+        v = float(params["duration"])
+        # Values >= 500 are treated as milliseconds; smaller numbers as seconds (e.g. 2 → 2s).
+        if v >= 500:
+            return v
+        return v * 1000.0
+    raise ValueError("fade: requires duration_ms, duration_s, or duration")
+
+
+def action_from_bracket_segment(seg: str) -> dict:
+    seg_stripped = seg.strip()
+    m = re.match(r"^(\w+)\s*:\s*(.*)$", seg_stripped, re.DOTALL)
+    if not m:
+        raise ValueError(f"Invalid bracket action: {seg_stripped!r}")
+    ptype = m.group(1).lower()
+    rest = m.group(2).strip()
+    params = _parse_bracket_params(rest)
+
+    if ptype == "normalize":
+        return {"token": seg_stripped, "command": "normalize_sample", "params": {}}
+
+    if ptype == "cut":
+        edge = str(params.get("edge", "")).lower()
+        if edge not in ("start", "end"):
+            raise ValueError("cut: requires edge=start|end and seconds")
+        sec = params.get("seconds")
+        if sec is None:
+            raise ValueError("cut: requires seconds")
+        cmd = "trim_sample_start" if edge == "start" else "trim_sample_end"
+        return {"token": seg_stripped, "command": cmd, "params": {"seconds": float(sec)}}
+
+    if ptype == "fade":
+        style = str(params.get("style", "")).lower()
+        if style not in ("in", "out"):
+            raise ValueError("fade: requires style=in|out")
+        ms = _fade_duration_ms(params)
+        seconds = ms / 1000.0
+        cmd = "fade_sample_start" if style == "in" else "fade_sample_end"
+        return {"token": seg_stripped, "command": cmd, "params": {"seconds": seconds}}
+
+    if ptype == "eq":
+        band = str(params.get("band", "")).lower()
+        db = params.get("db")
+        if band not in ("lows", "mids", "highs") or db is None:
+            raise ValueError("eq: requires band=lows|mids|highs and db")
+        cmd = {"lows": "eq_lows_sample", "mids": "eq_mids_sample", "highs": "eq_highs_sample"}[band]
+        return {"token": seg_stripped, "command": cmd, "params": {"db": float(db)}}
+
+    if ptype == "gain":
+        db = params.get("db")
+        if db is None:
+            raise ValueError("gain: requires db (signed)")
+        dbf = float(db)
+        if dbf >= 0:
+            return {"token": seg_stripped, "command": "increase_sample_gain", "params": {"db": dbf}}
+        return {"token": seg_stripped, "command": "decrease_sample_gain", "params": {"db": abs(dbf)}}
+
+    if ptype == "filter":
+        kind = str(params.get("kind", "")).lower()
+        if kind == "lpf":
+            return {
+                "token": seg_stripped,
+                "command": "lpf_sample",
+                "params": {"cutoff_hz": float(params["cutoff_hz"])} if "cutoff_hz" in params else {},
+            }
+        if kind == "hpf":
+            return {
+                "token": seg_stripped,
+                "command": "hpf_sample",
+                "params": {"cutoff_hz": float(params["cutoff_hz"])} if "cutoff_hz" in params else {},
+            }
+        if kind == "bpf":
+            low = float(params.get("low_hz", 300))
+            high = float(params.get("high_hz", 6000))
+            return {"token": seg_stripped, "command": "bpf_sample", "params": {"low_hz": low, "high_hz": high}}
+        raise ValueError("filter: requires kind=lpf|hpf|bpf")
+
+    if ptype == "noisegate":
+        gate_params = {
+            "threshold_db": float(params.get("threshold_db", -30)),
+            "attack_ms": float(params.get("attack_ms", 8)),
+            "release_ms": float(params.get("release_ms", 140)),
+        }
+        if "ratio" in params:
+            gate_params["ratio"] = float(params["ratio"])
+        return {"token": seg_stripped, "command": "noisegate_sample", "params": gate_params}
+
+    if ptype == "stretch":
+        mode = str(params.get("mode", "simple")).lower()
+        if mode == "paul":
+            return {
+                "token": seg_stripped,
+                "command": "paul_stretch_sample",
+                "params": {
+                    "stretch": float(params.get("stretch", 8.0)),
+                    "window_size": float(params.get("window_size", 2.5)),
+                },
+            }
+        return {
+            "token": seg_stripped,
+            "command": "stretch_sample",
+            "params": {"stretch_factor": float(params.get("stretch_factor", 1.0))},
+        }
+
+    if ptype == "pitch":
+        mode = str(params.get("mode", "preserve")).lower()
+        sem = float(params.get("semitones", 0))
+        if mode == "resample":
+            return {
+                "token": seg_stripped,
+                "command": "pitch_shift_transpose_sample",
+                "params": {"semitones": sem},
+            }
+        return {"token": seg_stripped, "command": "pitch_shift_sample", "params": {"semitones": sem}}
+
+    if ptype == "reverb":
+        out_params: dict[str, object] = {
+            "wet_level": float(params.get("wet_level", 0.35)),
+            "length_sec": float(params.get("length_sec", params.get("reverb_length_sec", 0.7))),
+            "decay_sec": float(params.get("decay_sec", 0.5)),
+            "highpass_hz": float(params.get("highpass_hz", params.get("reverb_highpass_hz", 100))),
+        }
+        if "early_reflections" in params:
+            out_params["early_reflections"] = int(params["early_reflections"])
+        if "tail_diffusion" in params:
+            out_params["tail_diffusion"] = float(params["tail_diffusion"])
+        if "early_diffuse" in params:
+            ed = params["early_diffuse"]
+            if isinstance(ed, str):
+                out_params["early_diffuse"] = ed.lower() in ("true", "1", "yes")
+            else:
+                out_params["early_diffuse"] = bool(ed)
+        return {"token": seg_stripped, "command": "reverb_sample", "params": out_params}
+
+    if ptype == "compress":
+        return {
+            "token": seg_stripped,
+            "command": "compress_sample",
+            "params": {
+                "threshold_db": float(params.get("threshold_db", -20)),
+                "ratio": float(params.get("ratio", 10)),
+                "attack_ms": float(params.get("attack_ms", 3)),
+                "release_ms": float(params.get("release_ms", 80)),
+            },
+        }
+
+    if ptype == "overdrive":
+        return {
+            "token": seg_stripped,
+            "command": "overdrive_mids_sample",
+            "params": {
+                "drive_db": float(params.get("drive_db", 14)),
+                "highpass_hz": float(params.get("highpass_hz", 200)),
+                "lowpass_hz": float(params.get("lowpass_hz", 4000)),
+            },
+        }
+
+    if ptype == "distort":
+        return {
+            "token": seg_stripped,
+            "command": "distort_sample",
+            "params": {"drive_db": float(params.get("drive_db", 6))},
+        }
+
+    if ptype == "chorus":
+        return {
+            "token": seg_stripped,
+            "command": "chorus_sample",
+            "params": {
+                "rate_hz": float(params.get("rate_hz", 1.0)),
+                "depth": float(params.get("depth", 0.25)),
+                "centre_delay_ms": float(params.get("centre_delay_ms", 7.0)),
+                "feedback": float(params.get("feedback", 0.0)),
+                "mix": float(params.get("mix", 0.5)),
+            },
+        }
+
+    if ptype == "flanger":
+        return {
+            "token": seg_stripped,
+            "command": "flanger_sample",
+            "params": {
+                "rate_hz": float(params.get("rate_hz", 0.5)),
+                "depth": float(params.get("depth", 0.4)),
+                "centre_delay_ms": float(params.get("centre_delay_ms", 2.0)),
+                "feedback": float(params.get("feedback", 0.3)),
+                "mix": float(params.get("mix", 0.5)),
+            },
+        }
+
+    if ptype == "phaser":
+        return {
+            "token": seg_stripped,
+            "command": "phaser_sample",
+            "params": {
+                "rate_hz": float(params.get("rate_hz", 1.0)),
+                "depth": float(params.get("depth", 0.7)),
+                "centre_frequency_hz": float(params.get("centre_frequency_hz", 1000)),
+                "feedback": float(params.get("feedback", 0.5)),
+                "mix": float(params.get("mix", 0.5)),
+            },
+        }
+
+    raise ValueError(f"Unknown bracket action type: {ptype}")
+
+
+def _legacy_action_to_spec(action: dict) -> str:
+    cmd = action.get("command")
+    p = action.get("params") or {}
+    if cmd == "fade_sample_start":
+        ms = int(round(float(p["seconds"]) * 1000))
+        return f"fade:[style=in][duration_ms={ms}]"
+    if cmd == "fade_sample_end":
+        ms = int(round(float(p["seconds"]) * 1000))
+        return f"fade:[style=out][duration_ms={ms}]"
+    if cmd == "eq_lows_sample":
+        return f"eq:[band=lows][db={p['db']}]"
+    if cmd == "eq_mids_sample":
+        return f"eq:[band=mids][db={p['db']}]"
+    if cmd == "eq_highs_sample":
+        return f"eq:[band=highs][db={p['db']}]"
+    if cmd == "increase_sample_gain":
+        return f"gain:[db={p['db']}]"
+    if cmd == "decrease_sample_gain":
+        return f"gain:[db=-{p['db']}]"
+    if cmd == "lpf_sample":
+        if not p:
+            return "filter:[kind=lpf]"
+        return f"filter:[kind=lpf][cutoff_hz={p['cutoff_hz']}]"
+    if cmd == "hpf_sample":
+        if not p:
+            return "filter:[kind=hpf]"
+        return f"filter:[kind=hpf][cutoff_hz={p['cutoff_hz']}]"
+    if cmd == "bpf_sample":
+        return f"filter:[kind=bpf][low_hz={p.get('low_hz', 300)}][high_hz={p.get('high_hz', 6000)}]"
+    if cmd == "normalize_sample":
+        return "normalize:[]"
+    if cmd == "noisegate_sample":
+        parts = [
+            f"[threshold_db={p.get('threshold_db', -30)}]",
+            f"[attack_ms={p.get('attack_ms', 8)}]",
+            f"[release_ms={p.get('release_ms', 140)}]",
+        ]
+        if "ratio" in p:
+            parts.append(f"[ratio={p['ratio']}]")
+        return "noisegate:" + "".join(parts)
+    if cmd == "stretch_sample":
+        return f"stretch:[mode=simple][stretch_factor={p.get('stretch_factor', 1)}]"
+    if cmd == "paul_stretch_sample":
+        return (
+            f"stretch:[mode=paul][stretch={p.get('stretch', 8)}]"
+            f"[window_size={p.get('window_size', 2.5)}]"
+        )
+    if cmd == "pitch_shift_sample":
+        return f"pitch:[mode=preserve][semitones={p.get('semitones', 0)}]"
+    if cmd == "pitch_shift_transpose_sample":
+        return f"pitch:[mode=resample][semitones={p.get('semitones', 0)}]"
+    rev_map = {
+        "reverb_bedroom_sample": (
+            "reverb:[wet_level=0.18][length_sec=0.25][decay_sec=0.18][highpass_hz=120]"
+        ),
+        "reverb_room_sample": (
+            "reverb:[wet_level=0.3][length_sec=0.4][decay_sec=0.3][highpass_hz=100]"
+        ),
+        "reverb_hall_sample": (
+            "reverb:[wet_level=0.35][length_sec=1][decay_sec=0.8][highpass_hz=100]"
+        ),
+        "reverb_large_sample": (
+            "reverb:[wet_level=0.4][length_sec=1.8][decay_sec=1.5][highpass_hz=100]"
+        ),
+        "reverb_amphitheatre_sample": (
+            "reverb:[wet_level=0.48][length_sec=3.5][decay_sec=3][highpass_hz=80]"
+        ),
+        "reverb_space_sample": (
+            "reverb:[wet_level=0.62][length_sec=8][decay_sec=7][highpass_hz=50]"
+        ),
+        "reverb_void_sample": (
+            "reverb:[wet_level=0.74][length_sec=14][decay_sec=12][highpass_hz=38]"
+            "[early_reflections=11][tail_diffusion=0.93][early_diffuse=true]"
+        ),
+        "reverb_distant_sample": (
+            "reverb:[wet_level=0.53][length_sec=11.5][decay_sec=10.5][highpass_hz=62]"
+            "[early_reflections=3][tail_diffusion=0.95][early_diffuse=false]"
+        ),
+    }
+    if cmd in rev_map:
+        return rev_map[cmd]
+    if cmd == "compress_mild_sample":
+        return "compress:[threshold_db=-14][ratio=2.5][attack_ms=10][release_ms=140]"
+    if cmd == "compress_medium_sample":
+        return "compress:[threshold_db=-20][ratio=10][attack_ms=3][release_ms=80]"
+    if cmd == "compress_heavy_sample":
+        return "compress:[threshold_db=-28][ratio=16][attack_ms=1.5][release_ms=60]"
+    if cmd == "overdrive_mild_sample":
+        return "overdrive:[drive_db=8][highpass_hz=150][lowpass_hz=5500]"
+    if cmd == "overdrive_medium_sample":
+        return "overdrive:[drive_db=14][highpass_hz=200][lowpass_hz=4000]"
+    if cmd == "overdrive_heavy_sample":
+        return "overdrive:[drive_db=20][highpass_hz=300][lowpass_hz=3000]"
+    if cmd == "distort_mild_sample":
+        return "distort:[drive_db=3]"
+    if cmd == "distort_medium_sample":
+        return "distort:[drive_db=6]"
+    if cmd == "distort_heavy_sample":
+        return "distort:[drive_db=11]"
+    if cmd == "chorus_mild_sample":
+        return (
+            "chorus:[rate_hz=0.7][depth=0.15][centre_delay_ms=8][feedback=0][mix=0.3]"
+        )
+    if cmd == "chorus_medium_sample":
+        return (
+            "chorus:[rate_hz=1][depth=0.25][centre_delay_ms=7][feedback=0][mix=0.5]"
+        )
+    if cmd == "chorus_heavy_sample":
+        return (
+            "chorus:[rate_hz=1.4][depth=0.45][centre_delay_ms=6][feedback=0.2][mix=0.75]"
+        )
+    if cmd == "flanger_mild_sample":
+        return (
+            "flanger:[rate_hz=0.35][depth=0.2][centre_delay_ms=2.5][feedback=0.15][mix=0.35]"
+        )
+    if cmd == "flanger_medium_sample":
+        return (
+            "flanger:[rate_hz=0.5][depth=0.4][centre_delay_ms=2][feedback=0.3][mix=0.5]"
+        )
+    if cmd == "flanger_heavy_sample":
+        return (
+            "flanger:[rate_hz=0.9][depth=0.65][centre_delay_ms=1.2][feedback=0.55][mix=0.75]"
+        )
+    if cmd == "phaser_mild_sample":
+        return (
+            "phaser:[rate_hz=0.7][depth=0.45][centre_frequency_hz=900]"
+            "[feedback=0.25][mix=0.35]"
+        )
+    if cmd == "phaser_medium_sample":
+        return (
+            "phaser:[rate_hz=1][depth=0.7][centre_frequency_hz=1000]"
+            "[feedback=0.5][mix=0.5]"
+        )
+    if cmd == "phaser_heavy_sample":
+        return (
+            "phaser:[rate_hz=1.4][depth=0.95][centre_frequency_hz=1300]"
+            "[feedback=0.7][mix=0.75]"
+        )
+    tok = action.get("token")
+    if isinstance(tok, str):
+        return tok
+    return str(cmd)
+
+
+def _enriched_actions_and_presets():
+    actions_out = []
+    presets_out = []
+    for a in PROCESSING_ACTIONS:
+        row = dict(a)
+        row["spec"] = _legacy_action_to_spec(a)
+        actions_out.append(row)
+        presets_out.append(
+            {
+                "type": a["type"],
+                "label": a["label"],
+                "token": a["token"],
+                "spec": row["spec"],
+            }
+        )
+    return actions_out, presets_out
+
+
+_ENRICHED_ACTIONS, PROCESSING_PRESETS = _enriched_actions_and_presets()
 
 
 def get_processing_actions_payload() -> dict:
+    actions, presets = _enriched_actions_and_presets()
     return {
         "types": copy.deepcopy(PROCESSING_TYPES),
-        "actions": copy.deepcopy(PROCESSING_ACTIONS),
+        "actions": actions,
+        "paramSchemas": copy.deepcopy(_PARAM_SCHEMAS_UI),
+        "presets": presets,
     }
+
+
+def parse_single_processing_spec(spec: str) -> dict:
+    spec = (spec or "").strip()
+    if not spec:
+        raise ValueError("Empty processing_spec")
+    actions = parse_post_processing_spec(spec)
+    if len(actions) != 1:
+        raise ValueError("processing_spec must contain exactly one action")
+    return actions[0]
 
 
 def parse_post_processing_spec(spec: str | None) -> list[dict]:
     if not spec:
         return []
-    tokens = [part.strip().lower() for part in spec.split(",") if part.strip()]
+    segments = _split_spec_segments(spec.strip())
     actions: list[dict] = []
     unknown: list[str] = []
-    for token in tokens:
+    for seg in segments:
+        seg_trim = seg.strip()
+        if not seg_trim:
+            continue
+        if _is_bracket_segment(seg_trim):
+            try:
+                actions.append(action_from_bracket_segment(seg_trim))
+            except ValueError as e:
+                unknown.append(f"{seg_trim} ({e})")
+            continue
+        token = seg_trim.lower()
         action = PROCESSING_ACTIONS_BY_TOKEN.get(token)
         if action:
-            actions.append(action)
+            actions.append(copy.deepcopy(action))
             continue
         paul_m = PAUL_STRETCH_TOKEN_RE.match(token)
         if paul_m:
@@ -247,7 +1279,7 @@ def parse_post_processing_spec(spec: str | None) -> list[dict]:
         raise ValueError(
             "Unknown post-processing action(s): "
             + ", ".join(unknown)
-            + ". Use the action names from auditionr processing controls."
+            + ". Use legacy tokens or bracket syntax type:[k=v][...]."
         )
     return actions
 
@@ -255,6 +1287,10 @@ def parse_post_processing_spec(spec: str | None) -> list[dict]:
 def apply_processing_command(file_path: str, command: str, params: dict | None = None) -> None:
     p = params or {}
     match command:
+        case "trim_sample_start":
+            trim_sample_start(file_path, p["seconds"])
+        case "trim_sample_end":
+            trim_sample_end(file_path, p["seconds"])
         case "fade_sample_start":
             fade_sample_start(file_path, p.get("seconds", 2))
         case "fade_sample_end":
@@ -277,6 +1313,20 @@ def apply_processing_command(file_path: str, command: str, params: dict | None =
                 stretch=p.get("stretch", 8.0),
                 window_size=p.get("window_size", 2.5),
             )
+        case "reverb_sample":
+            kw = {
+                "wet_level": float(p.get("wet_level", 0.35)),
+                "reverb_length_sec": float(p.get("length_sec", p.get("reverb_length_sec", 0.7))),
+                "decay_sec": float(p.get("decay_sec", 0.5)),
+                "reverb_highpass_hz": float(p.get("highpass_hz", p.get("reverb_highpass_hz", 100))),
+            }
+            if "early_reflections" in p:
+                kw["early_reflections"] = int(p["early_reflections"])
+            if "tail_diffusion" in p:
+                kw["tail_diffusion"] = float(p["tail_diffusion"])
+            if "early_diffuse" in p:
+                kw["early_diffuse"] = bool(p["early_diffuse"])
+            apply_reverb_to_sample(file_path, **kw)
         case "reverb_bedroom_sample":
             apply_reverb_bedroom_to_sample(file_path)
         case "reverb_room_sample":
@@ -293,36 +1343,80 @@ def apply_processing_command(file_path: str, command: str, params: dict | None =
             apply_reverb_void_to_sample(file_path)
         case "reverb_distant_sample":
             apply_reverb_distant_to_sample(file_path)
+        case "compress_sample":
+            apply_compress_to_sample(
+                file_path,
+                threshold_db=float(p.get("threshold_db", -20)),
+                ratio=float(p.get("ratio", 10)),
+                attack_ms=float(p.get("attack_ms", 3)),
+                release_ms=float(p.get("release_ms", 80)),
+            )
         case "compress_mild_sample":
             apply_compress_mild_to_sample(file_path)
         case "compress_medium_sample":
             apply_compress_medium_to_sample(file_path)
         case "compress_heavy_sample":
             apply_compress_heavy_to_sample(file_path)
+        case "overdrive_mids_sample":
+            apply_overdrive_mids_to_sample(
+                file_path,
+                drive_db=float(p.get("drive_db", 14)),
+                highpass_hz=float(p.get("highpass_hz", 200)),
+                lowpass_hz=float(p.get("lowpass_hz", 4000)),
+            )
         case "overdrive_mild_sample":
             apply_overdrive_mild_to_sample(file_path)
         case "overdrive_medium_sample":
             apply_overdrive_medium_to_sample(file_path)
         case "overdrive_heavy_sample":
             apply_overdrive_heavy_to_sample(file_path)
+        case "distort_sample":
+            apply_distortion_to_sample(file_path, drive_db=float(p.get("drive_db", 6)))
         case "distort_mild_sample":
             apply_distortion_mild_to_sample(file_path)
         case "distort_medium_sample":
             apply_distortion_medium_to_sample(file_path)
         case "distort_heavy_sample":
             apply_distortion_heavy_to_sample(file_path)
+        case "chorus_sample":
+            apply_chorus_to_sample(
+                file_path,
+                rate_hz=float(p.get("rate_hz", 1.0)),
+                depth=float(p.get("depth", 0.25)),
+                centre_delay_ms=float(p.get("centre_delay_ms", 7.0)),
+                feedback=float(p.get("feedback", 0.0)),
+                mix=float(p.get("mix", 0.5)),
+            )
         case "chorus_mild_sample":
             apply_chorus_mild_to_sample(file_path)
         case "chorus_medium_sample":
             apply_chorus_medium_to_sample(file_path)
         case "chorus_heavy_sample":
             apply_chorus_heavy_to_sample(file_path)
+        case "flanger_sample":
+            apply_flanger_to_sample(
+                file_path,
+                rate_hz=float(p.get("rate_hz", 0.5)),
+                depth=float(p.get("depth", 0.4)),
+                centre_delay_ms=float(p.get("centre_delay_ms", 2.0)),
+                feedback=float(p.get("feedback", 0.3)),
+                mix=float(p.get("mix", 0.5)),
+            )
         case "flanger_mild_sample":
             apply_flanger_mild_to_sample(file_path)
         case "flanger_medium_sample":
             apply_flanger_medium_to_sample(file_path)
         case "flanger_heavy_sample":
             apply_flanger_heavy_to_sample(file_path)
+        case "phaser_sample":
+            apply_phaser_to_sample(
+                file_path,
+                rate_hz=float(p.get("rate_hz", 1.0)),
+                depth=float(p.get("depth", 0.7)),
+                centre_frequency_hz=float(p.get("centre_frequency_hz", 1000)),
+                feedback=float(p.get("feedback", 0.5)),
+                mix=float(p.get("mix", 0.5)),
+            )
         case "phaser_mild_sample":
             apply_phaser_mild_to_sample(file_path)
         case "phaser_medium_sample":
@@ -344,9 +1438,10 @@ def apply_processing_command(file_path: str, command: str, params: dict | None =
         case "noisegate_sample":
             apply_noise_gate_to_sample(
                 file_path,
-                threshold_db=p.get("threshold_db", -30),
-                attack_ms=p.get("attack_ms", 8),
-                release_ms=p.get("release_ms", 140),
+                threshold_db=float(p.get("threshold_db", -30)),
+                ratio=float(p.get("ratio", 8.0)),
+                attack_ms=float(p.get("attack_ms", 8)),
+                release_ms=float(p.get("release_ms", 140)),
             )
         case "eq_lows_sample":
             apply_eq_lows_to_sample(file_path, p.get("db", 0))
@@ -384,4 +1479,3 @@ def apply_post_processing_actions(
     if on_before_finalize_normalize is not None:
         on_before_finalize_normalize()
     normalize_sample(file_path)
-

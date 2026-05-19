@@ -278,7 +278,11 @@ def bass_reese(
         None,
         "--post-processing",
         "-x",
-        help="Comma-separated post-processing actions to apply to each generated WAV.",
+        help=(
+            "Post-processing pipeline: separate steps with commas or semicolons. "
+            "Legacy tokens (e.g. fade:in 2s) or bracket syntax "
+            "(e.g. fade:[style=in][duration_ms=2000];filter:[kind=lpf][cutoff_hz=800])."
+        ),
     ),
 ):
     """Generate a Reese bass loop (raw by default; use --sound neuro for neuro-style, --sound sub for sub)."""
@@ -379,7 +383,11 @@ def bass_donk(
         None,
         "--post-processing",
         "-x",
-        help="Comma-separated post-processing actions to apply to each generated WAV.",
+        help=(
+            "Post-processing pipeline: separate steps with commas or semicolons. "
+            "Legacy tokens (e.g. fade:in 2s) or bracket syntax "
+            "(e.g. fade:[style=in][duration_ms=2000];filter:[kind=lpf][cutoff_hz=800])."
+        ),
     ),
 ):
     """Generate a donk bass loop: short percussive hits with pitch-drop, mono. UK donk / hard bounce."""
@@ -514,7 +522,11 @@ def generate_drone(
         None,
         "--post-processing",
         "-x",
-        help="Comma-separated post-processing actions to apply to each generated WAV.",
+        help=(
+            "Post-processing pipeline: separate steps with commas or semicolons. "
+            "Legacy tokens (e.g. fade:in 2s) or bracket syntax "
+            "(e.g. fade:[style=in][duration_ms=2000];filter:[kind=lpf][cutoff_hz=800])."
+        ),
     ),
     split_processing: bool = typer.Option(
         False,
@@ -766,7 +778,11 @@ def generate_beat(
         None,
         "--post-processing",
         "-x",
-        help="Comma-separated post-processing actions to apply to each generated WAV.",
+        help=(
+            "Post-processing pipeline: separate steps with commas or semicolons. "
+            "Legacy tokens (e.g. fade:in 2s) or bracket syntax "
+            "(e.g. fade:[style=in][duration_ms=2000];filter:[kind=lpf][cutoff_hz=800])."
+        ),
     ),
     iterations: int = typer.Option(
         1,
@@ -1062,7 +1078,11 @@ def transition_sweep(
         None,
         "--post-processing",
         "-x",
-        help="Comma-separated post-processing actions to apply to each generated WAV.",
+        help=(
+            "Post-processing pipeline: separate steps with commas or semicolons. "
+            "Legacy tokens (e.g. fade:in 2s) or bracket syntax "
+            "(e.g. fade:[style=in][duration_ms=2000];filter:[kind=lpf][cutoff_hz=800])."
+        ),
     ),
 ):
     """Generate a noise riser (techno/trance/house).
@@ -1167,7 +1187,11 @@ def transition_closh(
         None,
         "--post-processing",
         "-x",
-        help="Comma-separated post-processing actions to apply to each generated WAV.",
+        help=(
+            "Post-processing pipeline: separate steps with commas or semicolons. "
+            "Legacy tokens (e.g. fade:in 2s) or bracket syntax "
+            "(e.g. fade:[style=in][duration_ms=2000];filter:[kind=lpf][cutoff_hz=800])."
+        ),
     ),
 ):
     """Generate washed clap transition: random clap from DRUM_CLAP_PATHS with long reverb.
@@ -1262,7 +1286,11 @@ def transition_kickboom(
         None,
         "--post-processing",
         "-x",
-        help="Comma-separated post-processing actions to apply to each generated WAV.",
+        help=(
+            "Post-processing pipeline: separate steps with commas or semicolons. "
+            "Legacy tokens (e.g. fade:in 2s) or bracket syntax "
+            "(e.g. fade:[style=in][duration_ms=2000];filter:[kind=lpf][cutoff_hz=800])."
+        ),
     ),
 ):
     """Generate washed kick transition: random kick from DRUM_KICK_PATHS with long reverb.
@@ -1366,7 +1394,11 @@ def transition_longcrash(
         None,
         "--post-processing",
         "-x",
-        help="Comma-separated post-processing actions to apply to each generated WAV.",
+        help=(
+            "Post-processing pipeline: separate steps with commas or semicolons. "
+            "Legacy tokens (e.g. fade:in 2s) or bracket syntax "
+            "(e.g. fade:[style=in][duration_ms=2000];filter:[kind=lpf][cutoff_hz=800])."
+        ),
     ),
 ):
     """Generate long crash transition: random cymbal with long reverb + Paulstretch tail.
@@ -1543,7 +1575,11 @@ def transition_riser(
         None,
         "--post-processing",
         "-x",
-        help="Comma-separated post-processing actions to apply to each generated WAV.",
+        help=(
+            "Post-processing pipeline: separate steps with commas or semicolons. "
+            "Legacy tokens (e.g. fade:in 2s) or bracket syntax "
+            "(e.g. fade:[style=in][duration_ms=2000];filter:[kind=lpf][cutoff_hz=800])."
+        ),
     ),
 ):
     """Generate riser transition: reversed longcrash + upward sweep that peaks at the end."""
@@ -1714,7 +1750,11 @@ def transition_drop(
         None,
         "--post-processing",
         "-x",
-        help="Comma-separated post-processing actions to apply to each generated WAV.",
+        help=(
+            "Post-processing pipeline: separate steps with commas or semicolons. "
+            "Legacy tokens (e.g. fade:in 2s) or bracket syntax "
+            "(e.g. fade:[style=in][duration_ms=2000];filter:[kind=lpf][cutoff_hz=800])."
+        ),
     ),
 ):
     """Generate drop transition: reversed riser + synth drop (high→low pitch)."""

@@ -114,13 +114,31 @@ Build outputs go to `dist/`; archives to `dist-artifacts/`. Release asset names 
 
 ### `generate-drone`
 
+Post-processing uses legacy tokens and/or bracket-parameter steps. Separate steps with commas or semicolons.
+
+**Bracket syntax:** `type:[key=value][key2=value2]`  
+Examples:
+
+- `fade:[style=in][duration_ms=2000]` — fade in over 2 seconds  
+- `fade:[style=out][duration_ms=5000]` — fade out over 5 seconds  
+- `filter:[kind=lpf][cutoff_hz=800]` — low-pass at 800 Hz  
+- Chain: `fade:[style=out][duration_ms=5000];filter:[kind=lpf][cutoff_hz=800]`
+
+Legacy tokens (e.g. `fade:in 2s`, `eq:lows +5db`) still work.
+
 ```sh
 python dronmakr.py generate-drone \
   --name "my_drone" \
   --instrument "Reaktor 6" \
   --chart-name "minor" \
   --iterations 2 \
-  --post-processing "normalize,fade"
+  --post-processing "normalize:[]"
+```
+
+```sh
+python dronmakr.py generate-drone \
+  --name "my_drone" \
+  --post-processing "fade:[style=in][duration_ms=2000],eq:[band=lows][db=5]"
 ```
 
 ```sh
