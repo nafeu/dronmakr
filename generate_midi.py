@@ -99,6 +99,46 @@ SUPPORTED_PATTERNS_INFO = [
         "double_layer_octave_ping",
         "each melody note doubled an octave higher, eighth-note pulses",
     ),
+    (
+        "pedal_low_arp_quarter",
+        "sustain bottom pitch while remaining chord tones outline in quarter-notes",
+    ),
+    (
+        "neighbor_pair_eighth",
+        "adjacent scale steps as eighth-note pairs, wrapping around sorted chord pitch order",
+    ),
+    (
+        "strum_burst_quarter_down",
+        "each beat: chord pitches staggered quickly from high to low inside the beat",
+    ),
+    (
+        "skip_step_quarter_arpeggio",
+        "quarter-notes every other chord tone (skip-one index), looping the scale",
+    ),
+    (
+        "random_dyad_stabs",
+        "short bursts of random two-note pairs (single note when only one tone exists)",
+    ),
+    (
+        "dotted_rhythm_triplet_cells",
+        "per beat dotted-eighth-plus-sixteenth feel cycling through sorted pitches",
+    ),
+    (
+        "accent_root_strong_weak_inner",
+        "strong beats emphasize root pitch, weak beats use inner chord tones quarter-length",
+    ),
+    (
+        "bar_rotating_arpeggio_quarter",
+        "every bar the quarter arpeggio starts on the next rotated voice of the chord",
+    ),
+    (
+        "stagger_voice_pad_hit",
+        "each bar softly stagger chord entrances then hold slightly short of bar end",
+    ),
+    (
+        "shuffled_chord_voice_quarters",
+        "fresh random permutation of chord tones replayed each bar on quarter pulses",
+    ),
 ]
 
 SUPPORTED_PATTERNS = [item[0] for item in SUPPORTED_PATTERNS_INFO]
@@ -897,6 +937,305 @@ def generate_drone_midi(
                 )
             )
             time += note_duration
+
+    elif pattern == "pedal_low_arp_quarter":
+        ordered = sorted(midi_notes)
+        note_duration = seconds_per_beat
+        if len(ordered) == 1:
+            pn = ordered[0]
+            while time < total_duration:
+                velocity = random.randint(*velocity_range)
+                st = max(0.0, time)
+                instrument.notes.append(
+                    pretty_midi.Note(
+                        velocity=velocity,
+                        pitch=pn,
+                        start=st,
+                        end=min(st + note_duration, total_duration),
+                    )
+                )
+                time += note_duration
+        else:
+            drone_vel = velocity_range[0] + (
+                velocity_range[1] - velocity_range[0]
+            ) // 4
+            low_pitch = ordered[0]
+            pool = ordered[1:]
+            instrument.notes.append(
+                pretty_midi.Note(
+                    velocity=min(velocity_range[1], drone_vel),
+                    pitch=low_pitch,
+                    start=0.0,
+                    end=total_duration,
+                )
+            )
+            ai = 0
+            while time < total_duration:
+                velocity = random.randint(*velocity_range)
+                pitch_note = pool[ai % len(pool)]
+                ai += 1
+                start_time = max(0.0, time)
+                instrument.notes.append(
+                    pretty_midi.Note(
+                        velocity=velocity,
+                        pitch=pitch_note,
+                        start=start_time,
+                        end=min(start_time + note_duration, total_duration),
+                    )
+                )
+                time += note_duration
+
+    elif pattern == "neighbor_pair_eighth":
+        ordered = sorted(midi_notes)
+        if len(ordered) < 2:
+            ordered = midi_notes[:]
+        slot = seconds_per_beat * 0.5
+        if len(ordered) < 2:
+            pitch = ordered[0]
+            while time < total_duration:
+                velocity = random.randint(*velocity_range)
+                start_time = max(0.0, time)
+                instrument.notes.append(
+                    pretty_midi.Note(
+                        velocity=velocity,
+                        pitch=pitch,
+                        start=start_time,
+                        end=min(start_time + slot, total_duration),
+                    )
+                )
+                time += slot
+        else:
+            pairs = [(ordered[i], ordered[(i + 1) % len(ordered)]) for i in range(len(ordered))]
+            pi = 0
+            while time < total_duration:
+                a_pitch, b_pitch = pairs[pi % len(pairs)]
+                pi += 1
+                for pitch in (a_pitch, b_pitch):
+                    if time >= total_duration:
+                        break
+                    velocity = random.randint(*velocity_range)
+                    start_time = max(0.0, time)
+                    gate = slot * 0.88
+                    instrument.notes.append(
+                        pretty_midi.Note(
+                            velocity=velocity,
+                            pitch=pitch,
+                            start=start_time,
+                            end=min(start_time + gate, total_duration),
+                        )
+                    )
+                    time += slot
+
+    elif pattern == "strum_burst_quarter_down":
+        ordered = list(reversed(sorted(midi_notes)))
+        while time < total_duration:
+            if not ordered:
+                break
+            step = seconds_per_beat / len(ordered)
+            for note in ordered:
+                if time >= total_duration:
+                    break
+                velocity = random.randint(*velocity_range)
+                start_time = max(0.0, time)
+                instrument.notes.append(
+                    pretty_midi.Note(
+                        velocity=velocity,
+                        pitch=note,
+                        start=start_time,
+                        end=min(start_time + step * 0.92, total_duration),
+                    )
+                )
+                time += step
+
+    elif pattern == "skip_step_quarter_arpeggio":
+        ordered = sorted(midi_notes)
+        if not ordered:
+            ordered = midi_notes[:]
+        note_duration = seconds_per_beat
+        idx = 0
+        n = len(ordered)
+        step = 2 if n > 2 else 1
+        while time < total_duration:
+            velocity = random.randint(*velocity_range)
+            pitch = ordered[idx % n]
+            idx = (idx + step) % n
+            start_time = max(0.0, time)
+            instrument.notes.append(
+                pretty_midi.Note(
+                    velocity=velocity,
+                    pitch=pitch,
+                    start=start_time,
+                    end=min(start_time + note_duration, total_duration),
+                )
+            )
+            time += note_duration
+
+    elif pattern == "random_dyad_stabs":
+        notes_list = midi_notes[:] if midi_notes else [60]
+        stab = max(0.04, seconds_per_beat * 0.08)
+        step = seconds_per_beat * 0.65
+        while time < total_duration:
+            if len(notes_list) >= 2:
+                a, b = random.sample(sorted(set(notes_list)), 2)
+                pair = [a, b]
+            else:
+                pair = [notes_list[0]]
+            lo, hi = velocity_range
+            base_vel = random.randint(lo, hi)
+            start_time = max(0.0, time)
+            for ix, pitch in enumerate(pair):
+                v = base_vel - (ix * 8)
+                if v < lo:
+                    v = lo
+                if v > hi:
+                    v = hi
+                instrument.notes.append(
+                    pretty_midi.Note(
+                        velocity=v,
+                        pitch=pitch,
+                        start=start_time,
+                        end=min(start_time + stab, total_duration),
+                    )
+                )
+            time += step
+
+    elif pattern == "dotted_rhythm_triplet_cells":
+        ordered = sorted(midi_notes)
+        if not ordered:
+            ordered = midi_notes[:]
+        long_n = seconds_per_beat * 0.5625  # dotted-eighth-ish (9/16 of beat)
+        short_n = seconds_per_beat * 0.1875  # remaining sixteenth-ish
+        i = 0
+        while time < total_duration:
+            for dur in (long_n, short_n):
+                if time >= total_duration:
+                    break
+                pitch = ordered[i % len(ordered)]
+                i += 1
+                velocity = random.randint(*velocity_range)
+                start_time = max(0.0, time)
+                instrument.notes.append(
+                    pretty_midi.Note(
+                        velocity=velocity,
+                        pitch=pitch,
+                        start=start_time,
+                        end=min(start_time + dur * 0.92, total_duration),
+                    )
+                )
+                time += dur
+
+    elif pattern == "accent_root_strong_weak_inner":
+        ordered = sorted(midi_notes)
+        if not ordered:
+            ordered = midi_notes[:]
+        root_pitch = ordered[0]
+        inner = ordered[1:] or ordered[:]
+        bar_t = 0.0
+        ni = 0
+        while bar_t < total_duration - 1e-9:
+            for beat_ix in range(beats_per_bar):
+                t_abs = bar_t + beat_ix * seconds_per_beat
+                if t_abs >= total_duration:
+                    break
+                strong = beat_ix in (0, 2)
+                if strong:
+                    vel = random.randint(max(velocity_range[0], velocity_range[1] - 20), velocity_range[1])
+                    pitch = root_pitch
+                else:
+                    vel = random.randint(velocity_range[0], max(velocity_range[0], velocity_range[1] - 12))
+                    pitch = inner[ni % len(inner)]
+                    ni += 1
+                instrument.notes.append(
+                    pretty_midi.Note(
+                        velocity=vel,
+                        pitch=pitch,
+                        start=t_abs,
+                        end=min(t_abs + seconds_per_beat * 0.88, total_duration),
+                    )
+                )
+            bar_t += bar_length
+
+    elif pattern == "bar_rotating_arpeggio_quarter":
+        ordered = sorted(midi_notes)
+        if not ordered:
+            ordered = midi_notes[:]
+        n = len(ordered)
+        note_duration = seconds_per_beat
+        for bar_index in range(num_bars):
+            start_bar = bar_index * bar_length
+            k = bar_index % n
+            rotated = ordered[k:] + ordered[:k]
+            local_t = 0.0
+            rp = 0
+            while local_t + start_bar < total_duration:
+                velocity = random.randint(*velocity_range)
+                pitch = rotated[rp % n]
+                rp += 1
+                abs_t = max(0.0, start_bar + local_t)
+                instrument.notes.append(
+                    pretty_midi.Note(
+                        velocity=velocity,
+                        pitch=pitch,
+                        start=abs_t,
+                        end=min(abs_t + note_duration, total_duration),
+                    )
+                )
+                local_t += note_duration
+
+    elif pattern == "stagger_voice_pad_hit":
+        voices = sorted(midi_notes)
+        if not voices:
+            voices = midi_notes[:]
+        tail_trim = seconds_per_beat * 0.06
+        for bar_index in range(num_bars):
+            bar_start = bar_index * bar_length
+            vn = len(voices)
+            spread = seconds_per_beat / max(12, vn * 3 + 4)
+            for j, pitch in enumerate(voices):
+                start_time = bar_start + min(j * spread, bar_length - spread - 1e-6)
+                if start_time >= total_duration:
+                    break
+                velocity = random.randint(max(velocity_range[0], velocity_range[1] - 38), velocity_range[1])
+                dur = bar_length - (start_time - bar_start) - tail_trim
+                if dur <= spread:
+                    dur = spread * 1.25
+                end_t = min(start_time + max(dur, seconds_per_beat * 0.15), bar_start + bar_length - 1e-4)
+                end_t = min(end_t, total_duration)
+                if end_t > start_time:
+                    instrument.notes.append(
+                        pretty_midi.Note(
+                            velocity=velocity,
+                            pitch=pitch,
+                            start=max(0.0, start_time),
+                            end=min(end_t, total_duration),
+                        )
+                    )
+
+    elif pattern == "shuffled_chord_voice_quarters":
+        ordered = sorted(midi_notes)
+        if not ordered:
+            ordered = midi_notes[:]
+        note_duration = seconds_per_beat
+        for bar_index in range(num_bars):
+            start_bar = bar_index * bar_length
+            seq = ordered[:]
+            random.shuffle(seq)
+            local_t = 0.0
+            si = 0
+            while local_t + start_bar < total_duration:
+                velocity = random.randint(*velocity_range)
+                pitch = seq[si % len(seq)]
+                si += 1
+                abs_t = max(0.0, start_bar + local_t)
+                instrument.notes.append(
+                    pretty_midi.Note(
+                        velocity=velocity,
+                        pitch=pitch,
+                        start=abs_t,
+                        end=min(abs_t + note_duration, total_duration),
+                    )
+                )
+                local_t += note_duration
 
     else:
         # **Straight Chord:** (default) Play all notes together from start to finish

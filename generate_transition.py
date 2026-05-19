@@ -898,24 +898,6 @@ def parse_closh_config(
     }
 
 
-def _delay_division_to_seconds(division: str, tempo: int) -> float:
-    """Convert musical division to delay time in seconds. 1/8d = dotted 1/8."""
-    beat_sec = 60.0 / tempo
-    if division == "1/4":
-        return beat_sec
-    if division == "1/8":
-        return beat_sec / 2
-    if division == "1/8d":
-        return beat_sec * 0.75
-    if division == "1/16":
-        return beat_sec / 4
-    if division == "1/16d":
-        return beat_sec * 0.375
-    if division == "1/32":
-        return beat_sec / 8
-    return beat_sec / 2
-
-
 def generate_closh_sample(
     tempo: int = 120,
     bars: int = 2,
@@ -985,7 +967,7 @@ def generate_closh_sample(
 
     # Optionally apply tempo-synced delay
     if config["delay_enabled"]:
-        delay_sec = _delay_division_to_seconds(config["delay_division"], tempo)
+        delay_sec = dsp.delay_division_to_seconds(config["delay_division"], float(tempo))
         delay_plugin = Delay(
             delay_seconds=delay_sec,
             feedback=config["delay_feedback"],
@@ -1096,7 +1078,7 @@ def generate_kickboom_sample(
     processed = wet_level * wet + (1.0 - wet_level) * dry_extended
 
     if config["delay_enabled"]:
-        delay_sec = _delay_division_to_seconds(config["delay_division"], tempo)
+        delay_sec = dsp.delay_division_to_seconds(config["delay_division"], float(tempo))
         delay_plugin = Delay(
             delay_seconds=delay_sec,
             feedback=config["delay_feedback"],
@@ -1213,7 +1195,7 @@ def generate_longcrash_sample(
 
     # Optional tempo-synced delay (same as closh/kickboom)
     if config["delay_enabled"]:
-        delay_sec = _delay_division_to_seconds(config["delay_division"], tempo)
+        delay_sec = dsp.delay_division_to_seconds(config["delay_division"], float(tempo))
         delay_plugin = Delay(
             delay_seconds=delay_sec,
             feedback=config["delay_feedback"],

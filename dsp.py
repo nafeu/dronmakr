@@ -2,6 +2,11 @@
 Shared DSP utilities for generate_transition, process_sample, and related modules.
 """
 
+from __future__ import annotations
+
+import math
+
+import numba
 import numpy as np
 from scipy.signal import butter, cheby2, filtfilt, sosfiltfilt
 
@@ -302,4 +307,411 @@ def apply_reese_post_eq(
     # Broad boost for growl presence
     b, a = peaking_biquad_coeffs(1100.0, 2.0, 0.7, sample_rate)
     out = apply_iir_per_channel(out, sample_rate, b, a)
+    return out
+
+
+def delay_division_to_seconds(division: str, bpm: float) -> float:
+    """
+    Note value → delay time in seconds (quarter note = one beat at ``bpm``).
+    Supports dotted (suffix ``d``) and triplet (suffix ``t``) forms.
+
+    Unknown divisions fall back to an eighth-note delay (half a beat), matching
+    legacy ``generate_transition`` behaviour.
+    """
+    beat_sec = 60.0 / max(float(bpm), 1e-6)
+    d = str(division).strip().lower().replace(" ", "")
+    table: dict[str, float] = {
+        # Beats (quarter = 1 beat)
+        "1/64": 1 / 16,
+        "1/32": 1 / 8,
+        "1/32d": 3 / 16,
+        "1/16": 1 / 4,
+        "1/16d": 3 / 8,
+        "1/16t": 1 / 6,
+        "1/8": 1 / 2,
+        "1/8d": 3 / 4,
+        "1/8t": 1 / 3,
+        "1/4": 1.0,
+        "1/4d": 1.5,
+        "1/4t": 2 / 3,
+        "1/2": 2.0,
+        "1/1": 4.0,
+    }
+    mul = table.get(d)
+    if mul is None:
+        mul = 0.5
+    return beat_sec * mul
+
+
+def _butter1_df1_coeffs(
+    fc_hz: float, sample_rate: float, btype: str
+) -> tuple[float, float, float]:
+    """First-order Butterworth as DF1: y = b0*x + b1*xm1 - a1*ym1 (scipy ``a`` coeffs)."""
+    nyq = 0.5 * sample_rate
+    w = np.clip(float(fc_hz), 2.0, nyq * 0.97) / nyq
+    b, a = butter(1, w, btype=btype)
+    return float(b[0]), float(b[1]), float(a[1])
+
+
+@numba.njit(cache=True, fastmath=True)
+def _feedback_delay_mono_numba(
+    dry: np.ndarray,
+    out: np.ndarray,
+    delay_samples_f: float,
+    feedback: float,
+    mix: float,
+    b0_hp: float,
+    b1_hp: float,
+    a1_hp: float,
+    b0_lp: float,
+    b1_lp: float,
+    a1_lp: float,
+    do_hp: int,
+    do_lp: int,
+    buf: np.ndarray,
+) -> None:
+    n = dry.shape[0]
+    cap = buf.shape[0]
+    wi = 0
+    x_hp_m1 = 0.0
+    y_hp_m1 = 0.0
+    x_lp_m1 = 0.0
+    y_lp_m1 = 0.0
+    dly = delay_samples_f
+    if dly < 1.0:
+        dly = 1.0
+    if dly > float(cap - 3):
+        dly = float(cap - 3)
+    fb = feedback
+    mx = mix
+    if mx < 0.0:
+        mx = 0.0
+    if mx > 1.0:
+        mx = 1.0
+
+    for i in range(n):
+        xi = dry[i]
+        pos = float(wi) - dly
+        while pos < 0.0:
+            pos += float(cap)
+        i0 = int(math.floor(pos))
+        frac = pos - float(i0)
+        i0 = int(i0 % cap)
+        i1 = int((i0 + 1) % cap)
+        tap = buf[i0] * (1.0 - frac) + buf[i1] * frac
+
+        if do_hp != 0:
+            y_hp = b0_hp * tap + b1_hp * x_hp_m1 - a1_hp * y_hp_m1
+            x_hp_m1 = tap
+            y_hp_m1 = y_hp
+            src_lp = y_hp
+        else:
+            src_lp = tap
+
+        if do_lp != 0:
+            y_lp = b0_lp * src_lp + b1_lp * x_lp_m1 - a1_lp * y_lp_m1
+            x_lp_m1 = src_lp
+            y_lp_m1 = y_lp
+            s_fb = y_lp
+        else:
+            s_fb = src_lp
+
+        buf[wi] = xi + fb * s_fb
+        out[i] = (1.0 - mx) * xi + mx * tap
+
+        wi += 1
+        if wi >= cap:
+            wi = 0
+
+
+@numba.njit(cache=True, fastmath=True)
+def _feedback_delay_stereo_numba(
+    dry_l: np.ndarray,
+    dry_r: np.ndarray,
+    out_l: np.ndarray,
+    out_r: np.ndarray,
+    delay_l_f: float,
+    delay_r_f: float,
+    feedback: float,
+    mix: float,
+    ping_pong: int,
+    stereo_width: float,
+    crossfeed: float,
+    b0_hp: float,
+    b1_hp: float,
+    a1_hp: float,
+    b0_lp: float,
+    b1_lp: float,
+    a1_lp: float,
+    do_hp: int,
+    do_lp: int,
+    buf_l: np.ndarray,
+    buf_r: np.ndarray,
+) -> None:
+    n = dry_l.shape[0]
+    cap = buf_l.shape[0]
+    wi = 0
+
+    x_hp_ml = 0.0
+    y_hp_ml = 0.0
+    x_lp_ml = 0.0
+    y_lp_ml = 0.0
+    x_hp_mr = 0.0
+    y_hp_mr = 0.0
+    x_lp_mr = 0.0
+    y_lp_mr = 0.0
+
+    d_l = delay_l_f
+    d_r = delay_r_f
+    if d_l < 1.0:
+        d_l = 1.0
+    if d_r < 1.0:
+        d_r = 1.0
+    max_d = d_l if d_l > d_r else d_r
+    capf = float(cap - 3)
+    if max_d > capf:
+        scale = capf / max_d
+        d_l *= scale
+        d_r *= scale
+
+    fb = feedback
+    mx = mix
+    if mx < 0.0:
+        mx = 0.0
+    if mx > 1.0:
+        mx = 1.0
+
+    sw = stereo_width
+    if sw < 0.0:
+        sw = 0.0
+    if sw > 1.0:
+        sw = 1.0
+
+    cf = crossfeed
+    if cf < 0.0:
+        cf = 0.0
+    if cf > 1.0:
+        cf = 1.0
+
+    for i in range(n):
+        xl = dry_l[i]
+        xr = dry_r[i]
+
+        pos_l = float(wi) - d_l
+        while pos_l < 0.0:
+            pos_l += float(cap)
+        i0l = int(math.floor(pos_l))
+        fracl = pos_l - float(i0l)
+        i0l = int(i0l % cap)
+        i1l = int((i0l + 1) % cap)
+        tap_l = buf_l[i0l] * (1.0 - fracl) + buf_l[i1l] * fracl
+
+        pos_r = float(wi) - d_r
+        while pos_r < 0.0:
+            pos_r += float(cap)
+        i0r = int(math.floor(pos_r))
+        fracr = pos_r - float(i0r)
+        i0r = int(i0r % cap)
+        i1r = int((i0r + 1) % cap)
+        tap_r = buf_r[i0r] * (1.0 - fracr) + buf_r[i1r] * fracr
+
+        mid = 0.5 * (tap_l + tap_r)
+        wet_l = mid + sw * (tap_l - mid)
+        wet_r = mid + sw * (tap_r - mid)
+
+        src_fb_l = tap_r if ping_pong != 0 else tap_l
+        src_fb_r = tap_l if ping_pong != 0 else tap_r
+
+        if do_hp != 0:
+            yh_l = b0_hp * src_fb_l + b1_hp * x_hp_ml - a1_hp * y_hp_ml
+            x_hp_ml = src_fb_l
+            y_hp_ml = yh_l
+            z_l = yh_l
+            yh_r = b0_hp * src_fb_r + b1_hp * x_hp_mr - a1_hp * y_hp_mr
+            x_hp_mr = src_fb_r
+            y_hp_mr = yh_r
+            z_r = yh_r
+        else:
+            z_l = src_fb_l
+            z_r = src_fb_r
+
+        if do_lp != 0:
+            ylp_l = b0_lp * z_l + b1_lp * x_lp_ml - a1_lp * y_lp_ml
+            x_lp_ml = z_l
+            y_lp_ml = ylp_l
+            f_l = ylp_l
+            ylp_r = b0_lp * z_r + b1_lp * x_lp_mr - a1_lp * y_lp_mr
+            x_lp_mr = z_r
+            y_lp_mr = ylp_r
+            f_r = ylp_r
+        else:
+            f_l = z_l
+            f_r = z_r
+
+        in_l = (1.0 - cf) * xl + cf * xr
+        in_r = (1.0 - cf) * xr + cf * xl
+
+        buf_l[wi] = in_l + fb * f_l
+        buf_r[wi] = in_r + fb * f_r
+
+        out_l[i] = (1.0 - mx) * xl + mx * wet_l
+        out_r[i] = (1.0 - mx) * xr + mx * wet_r
+
+        wi += 1
+        if wi >= cap:
+            wi = 0
+
+
+def apply_feedback_delay(
+    audio: np.ndarray,
+    sample_rate: float,
+    *,
+    time_mode: str = "sync",
+    bpm: float = 120.0,
+    division: str = "1/8",
+    delay_ms: float = 250.0,
+    delay_offset_ms: float = 0.0,
+    stereo_spread_ms: float = 0.0,
+    feedback: float = 0.42,
+    mix: float = 0.35,
+    ping_pong: bool = False,
+    stereo_width: float = 1.0,
+    input_crossfeed: float = 0.0,
+    feedback_lowpass_hz: float = 12000.0,
+    feedback_highpass_hz: float = 80.0,
+    max_delay_sec: float = 8.0,
+) -> np.ndarray:
+    """
+    Stereo feedback delay with fractional delay line, tempo sync or manual ms time,
+    feedback damping (one-pole HP/LP), optional ping-pong cross-feedback, Haas-style
+    spread (different delay times per channel), wet stereo width, and pre-delay input crossfeed.
+
+    ``audio`` shape ``(channels, samples)``; float32/float64. Mono uses a single delay line
+    (ping-pong, spread, and input crossfeed are ignored). More than two channels: independent mono
+    delays per channel (same timing), no ping-pong.
+    """
+    x = np.asarray(audio, dtype=np.float32)
+    if x.ndim != 2:
+        raise ValueError("apply_feedback_delay expects shape (channels, samples)")
+    n_ch, n_samp = x.shape
+    if n_samp == 0:
+        return x
+
+    mode = str(time_mode).strip().lower()
+    if mode == "sync":
+        base_sec = delay_division_to_seconds(division, bpm) + float(delay_offset_ms) / 1000.0
+    else:
+        base_sec = float(delay_ms) / 1000.0 + float(delay_offset_ms) / 1000.0
+
+    sr = float(sample_rate)
+    half_spread_sec = float(stereo_spread_ms) / 2000.0
+    if n_ch >= 2:
+        d_l_sec = base_sec + half_spread_sec
+        d_r_sec = base_sec - half_spread_sec
+    else:
+        d_l_sec = d_r_sec = base_sec
+    min_sec = 1.0 / sr
+    if d_l_sec < min_sec:
+        d_l_sec = min_sec
+    if d_r_sec < min_sec:
+        d_r_sec = min_sec
+
+    delay_l_f = float(d_l_sec * sr)
+    delay_r_f = float(d_r_sec * sr)
+
+    max_d_samp = max(delay_l_f, delay_r_f, 1.0)
+    cap = int(min(max_delay_sec * sr, max(64.0, max_d_samp + 8.0)))
+    cap = max(cap, int(max_d_samp) + 8)
+
+    fb = float(np.clip(feedback, 0.0, 0.995))
+    mx = float(np.clip(mix, 0.0, 1.0))
+    sw = float(np.clip(stereo_width, 0.0, 1.0))
+    cf = float(np.clip(input_crossfeed, 0.0, 1.0))
+
+    nyq = 0.5 * sr
+    f_hp = float(feedback_highpass_hz)
+    f_lp = float(feedback_lowpass_hz)
+    do_hp = 1 if f_hp > 25.0 else 0
+    do_lp = 1 if f_lp < nyq * 0.92 else 0
+
+    if do_hp:
+        b0_hp, b1_hp, a1_hp = _butter1_df1_coeffs(f_hp, sr, "high")
+    else:
+        b0_hp = b1_hp = a1_hp = 0.0
+
+    if do_lp:
+        b0_lp, b1_lp, a1_lp = _butter1_df1_coeffs(f_lp, sr, "low")
+    else:
+        b0_lp = b1_lp = a1_lp = 0.0
+
+    pp = 1 if (ping_pong and n_ch == 2) else 0
+
+    out = np.zeros_like(x, dtype=np.float32)
+
+    if n_ch == 1:
+        buf = np.zeros(cap, dtype=np.float32)
+        _feedback_delay_mono_numba(
+            x[0],
+            out[0],
+            delay_l_f,
+            fb,
+            mx,
+            b0_hp,
+            b1_hp,
+            a1_hp,
+            b0_lp,
+            b1_lp,
+            a1_lp,
+            do_hp,
+            do_lp,
+            buf,
+        )
+        return out
+
+    if n_ch == 2:
+        buf_l = np.zeros(cap, dtype=np.float32)
+        buf_r = np.zeros(cap, dtype=np.float32)
+        _feedback_delay_stereo_numba(
+            x[0],
+            x[1],
+            out[0],
+            out[1],
+            delay_l_f,
+            delay_r_f,
+            fb,
+            mx,
+            pp,
+            sw,
+            cf if cf > 1e-7 else 0.0,
+            b0_hp,
+            b1_hp,
+            a1_hp,
+            b0_lp,
+            b1_lp,
+            a1_lp,
+            do_hp,
+            do_lp,
+            buf_l,
+            buf_r,
+        )
+        return out
+
+    buf_tmp = np.zeros(cap, dtype=np.float32)
+    for c in range(n_ch):
+        _feedback_delay_mono_numba(
+            x[c],
+            out[c],
+            delay_l_f,
+            fb,
+            mx,
+            b0_hp,
+            b1_hp,
+            a1_hp,
+            b0_lp,
+            b1_lp,
+            a1_lp,
+            do_hp,
+            do_lp,
+            buf_tmp,
+        )
     return out

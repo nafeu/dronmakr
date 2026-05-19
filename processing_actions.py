@@ -29,6 +29,7 @@ from process_sample import (
     apply_flanger_to_sample,
     apply_highpass_to_sample,
     apply_lowpass_to_sample,
+    apply_delay_to_sample,
     apply_noise_gate_to_sample,
     apply_overdrive_heavy_to_sample,
     apply_overdrive_medium_to_sample,
@@ -72,6 +73,7 @@ PROCESSING_TYPES = [
     {"key": "paulstretch", "label": "Paulstretch"},
     {"key": "pitch", "label": "Pitch"},
     {"key": "reverb", "label": "Reverb"},
+    {"key": "delay", "label": "Delay"},
     {"key": "compress", "label": "Compress"},
     {"key": "overdrive", "label": "Overdrive"},
     {"key": "distort", "label": "Distort"},
@@ -563,6 +565,161 @@ _PARAM_SCHEMAS_UI: dict[str, list[dict]] = {
             "default": "true",
         },
     ],
+    "delay": [
+        {
+            "key": "time_mode",
+            "label": "Time mode",
+            "widget": "select",
+            "options": [
+                {"value": "sync", "label": "Tempo sync"},
+                {"value": "ms", "label": "Milliseconds"},
+            ],
+            "default": "sync",
+        },
+        {
+            "key": "bpm_ui",
+            "label": "Tempo (BPM)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.01,
+            "default": 0.46,
+            "maps_to": "bpm",
+            "range_linear": [60.0, 200.0],
+        },
+        {
+            "key": "division",
+            "label": "Note division",
+            "widget": "select",
+            "options": [
+                {"value": "1/64", "label": "1/64"},
+                {"value": "1/32", "label": "1/32"},
+                {"value": "1/32d", "label": "1/32 dotted"},
+                {"value": "1/16", "label": "1/16"},
+                {"value": "1/16d", "label": "1/16 dotted"},
+                {"value": "1/16t", "label": "1/16 triplet"},
+                {"value": "1/8", "label": "1/8"},
+                {"value": "1/8d", "label": "1/8 dotted"},
+                {"value": "1/8t", "label": "1/8 triplet"},
+                {"value": "1/4", "label": "1/4"},
+                {"value": "1/4d", "label": "1/4 dotted"},
+                {"value": "1/4t", "label": "1/4 triplet"},
+                {"value": "1/2", "label": "1/2 note (2 beats)"},
+                {"value": "1/1", "label": "Whole note (4 beats)"},
+            ],
+            "default": "1/8",
+        },
+        {
+            "key": "delay_ms_ui",
+            "label": "Delay time (ms)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.005,
+            "default": 0.28,
+            "maps_to": "delay_ms",
+            "range_ms": [5.0, 3000.0],
+        },
+        {
+            "key": "delay_offset_ms_ui",
+            "label": "Fine offset (ms)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.01,
+            "default": 0.5,
+            "maps_to": "delay_offset_ms",
+            "range_ms": [-120.0, 120.0],
+            "hint": "Millis added on top of sync/ms delay (micro-shift).",
+        },
+        {
+            "key": "stereo_spread_ms_ui",
+            "label": "L/R spread (ms)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.5,
+            "maps_to": "stereo_spread_ms",
+            "range_ms": [-80.0, 80.0],
+            "hint": "Skews left vs right delay around the centre time (Haas / widening).",
+        },
+        {
+            "key": "feedback_ui",
+            "label": "Feedback",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.43,
+            "maps_to": "feedback",
+            "range_linear": [0.0, 0.92],
+        },
+        {
+            "key": "mix_ui",
+            "label": "Mix (wet)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.35,
+            "maps_to": "mix",
+            "range_linear": [0.0, 1.0],
+        },
+        {
+            "key": "ping_pong",
+            "label": "Ping-pong feedback",
+            "widget": "select",
+            "options": [{"value": "false", "label": "Off"}, {"value": "true", "label": "On"}],
+            "default": "false",
+        },
+        {
+            "key": "stereo_width_ui",
+            "label": "Wet stereo width",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.85,
+            "maps_to": "stereo_width",
+            "range_linear": [0.0, 1.0],
+            "hint": "0 = mono wet taps; 1 = full stereo separation.",
+        },
+        {
+            "key": "input_crossfeed_ui",
+            "label": "Input crossfeed",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.0,
+            "maps_to": "input_crossfeed",
+            "range_linear": [0.0, 1.0],
+            "hint": "Feeds opposite channel into each delay input (stereo only).",
+        },
+        {
+            "key": "feedback_lowpass_hz_ui",
+            "label": "Feedback low-pass (Hz)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.015,
+            "default": 0.72,
+            "maps_to": "feedback_lowpass_hz",
+            "range_hz": [900.0, 19000.0],
+        },
+        {
+            "key": "feedback_highpass_hz_ui",
+            "label": "Feedback high-pass (Hz)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.02,
+            "default": 0.22,
+            "maps_to": "feedback_highpass_hz",
+            "range_hz": [20.0, 2000.0],
+        },
+    ],
     "compress": [
         {
             "key": "threshold_db_ui",
@@ -1049,6 +1206,34 @@ def action_from_bracket_segment(seg: str) -> dict:
                 out_params["early_diffuse"] = bool(ed)
         return {"token": seg_stripped, "command": "reverb_sample", "params": out_params}
 
+    if ptype == "delay":
+        tm = str(params.get("time_mode", "sync")).lower()
+        if tm not in ("sync", "ms"):
+            tm = "sync"
+        pp_raw = params.get("ping_pong", False)
+        if isinstance(pp_raw, str):
+            ping_pong = pp_raw.lower() in ("true", "1", "yes")
+        else:
+            ping_pong = bool(pp_raw)
+        pr: dict[str, object] = {
+            "time_mode": tm,
+            "bpm": float(params.get("bpm", 120.0)),
+            "division": str(params.get("division", "1/8")),
+            "delay_ms": float(params.get("delay_ms", 250.0)),
+            "delay_offset_ms": float(params.get("delay_offset_ms", 0.0)),
+            "stereo_spread_ms": float(params.get("stereo_spread_ms", 0.0)),
+            "feedback": float(params.get("feedback", 0.42)),
+            "mix": float(params.get("mix", 0.35)),
+            "ping_pong": ping_pong,
+            "stereo_width": float(params.get("stereo_width", 1.0)),
+            "input_crossfeed": float(params.get("input_crossfeed", 0.0)),
+            "feedback_lowpass_hz": float(params.get("feedback_lowpass_hz", 12000.0)),
+            "feedback_highpass_hz": float(params.get("feedback_highpass_hz", 80.0)),
+        }
+        if "max_delay_sec" in params:
+            pr["max_delay_sec"] = float(params["max_delay_sec"])
+        return {"token": seg_stripped, "command": "delay_sample", "params": pr}
+
     if ptype == "compress":
         return {
             "token": seg_stripped,
@@ -1408,6 +1593,30 @@ def apply_processing_command(file_path: str, command: str, params: dict | None =
             if "early_diffuse" in p:
                 kw["early_diffuse"] = bool(p["early_diffuse"])
             apply_reverb_to_sample(file_path, **kw)
+        case "delay_sample":
+            pp_raw = p.get("ping_pong", False)
+            if isinstance(pp_raw, str):
+                ping_pong_b = pp_raw.lower() in ("true", "1", "yes")
+            else:
+                ping_pong_b = bool(pp_raw)
+            kw_delay = {
+                "time_mode": str(p.get("time_mode", "sync")),
+                "bpm": float(p.get("bpm", 120.0)),
+                "division": str(p.get("division", "1/8")),
+                "delay_ms": float(p.get("delay_ms", 250.0)),
+                "delay_offset_ms": float(p.get("delay_offset_ms", 0.0)),
+                "stereo_spread_ms": float(p.get("stereo_spread_ms", 0.0)),
+                "feedback": float(p.get("feedback", 0.42)),
+                "mix": float(p.get("mix", 0.35)),
+                "ping_pong": ping_pong_b,
+                "stereo_width": float(p.get("stereo_width", 1.0)),
+                "input_crossfeed": float(p.get("input_crossfeed", 0.0)),
+                "feedback_lowpass_hz": float(p.get("feedback_lowpass_hz", 12000.0)),
+                "feedback_highpass_hz": float(p.get("feedback_highpass_hz", 80.0)),
+            }
+            if "max_delay_sec" in p:
+                kw_delay["max_delay_sec"] = float(p["max_delay_sec"])
+            apply_delay_to_sample(file_path, **kw_delay)
         case "reverb_bedroom_sample":
             apply_reverb_bedroom_to_sample(file_path)
         case "reverb_room_sample":

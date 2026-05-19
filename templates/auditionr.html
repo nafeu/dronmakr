@@ -1711,13 +1711,31 @@
 
     loadGeneratrPostProcessQueueFromStorage();
 
-    var EDIT_SECTION_ORDER = ["fade", "eq", "gain", "filter", "noisegate", "timestretch", "paulstretch", "pitch", "reverb", "compress", "overdrive", "distort", "chorus", "flanger", "phaser"];
+    var EDIT_SECTION_ORDER = ["fade", "eq", "gain", "filter", "noisegate", "timestretch", "paulstretch", "pitch", "reverb", "delay", "compress", "overdrive", "distort", "chorus", "flanger", "phaser"];
+    /** Beat multipliers for tempo-sync delay preview (matches dsp.delay_division_to_seconds). */
+    var EDIT_DELAY_DIV_BEATS = {
+      "1/64": 1 / 16,
+      "1/32": 1 / 8,
+      "1/32d": 3 / 16,
+      "1/16": 1 / 4,
+      "1/16d": 3 / 8,
+      "1/16t": 1 / 6,
+      "1/8": 1 / 2,
+      "1/8d": 3 / 4,
+      "1/8t": 1 / 3,
+      "1/4": 1,
+      "1/4d": 1.5,
+      "1/4t": 2 / 3,
+      "1/2": 2,
+      "1/1": 4,
+    };
     /** Sections that render the passive parameter canvas above controls (values come from sliders only). */
     var EDIT_EFFECT_VIZ_TYPES = {
       eq: 1,
       filter: 1,
       noisegate: 1,
       compress: 1,
+      delay: 1,
     };
 
     function mergeProcessingCatalog(payload) {
@@ -2084,6 +2102,9 @@
           case "reverb":
             paintReverb(ctx, gx0, gy0, gx1, gy1, colors);
             break;
+          case "delay":
+            paintDelay(ctx, gx0, gy0, gx1, gy1, colors);
+            break;
           case "compress":
             paintCompress(ctx, gx0, gy0, gx1, gy1, colors);
             break;
@@ -2355,6 +2376,84 @@
 
         caption(ctx2, css2, xmin + 4, ymin + 10,
           "reverb · wet " + fmtSpecNum(wetPhy) + " · length " + fmtSpecNum(lenPhy) + " s · decay " + fmtSpecNum(decayPhy) + " s · tail diffusion " + fmtSpecNum(tailD));
+      }
+
+      function paintDelay(ctx2, xmin, ymin, xmax, ymax, css2) {
+        var mode = readEditControl(sec, "time_mode") || "sync";
+        var dMs;
+        if (mode === "sync") {
+          var bpm = Math.max(phys("bpm_ui"), 1);
+          var beatMs = 60000 / bpm;
+          var div = readEditControl(sec, "division") || "1/8";
+          var mul = EDIT_DELAY_DIV_BEATS[div] != null ? EDIT_DELAY_DIV_BEATS[div] : 0.5;
+          dMs = beatMs * mul + phys("delay_offset_ms_ui");
+        } else {
+          dMs = phys("delay_ms_ui") + phys("delay_offset_ms_ui");
+        }
+        var spread = phys("stereo_spread_ms_ui");
+        var dL = Math.max(1, dMs + spread / 2);
+        var dR = Math.max(1, dMs - spread / 2);
+        var fbSch = schema("feedback_ui");
+        var fb = Math.min(0.999, Math.max(0, phys("feedback_ui")));
+        var fbNorm = fbSch ? clamp01(editPhysicalToNormalized(fbSch, fb)) : 0;
+        var mixPhy = phys("mix_ui");
+        var pp = readEditControl(sec, "ping_pong") === "true";
+        var cw = xmax - xmin;
+        var ch = ymax - ymin;
+        var yL = ymin + ch * 0.28;
+        var yR = ymin + ch * 0.72;
+        var winMs = Math.max(dL, dR) * (1 + fbNorm * 10);
+        winMs = Math.min(Math.max(winMs, dMs * 2), 4800);
+
+        function xAt(ms) {
+          return xmin + cw * clamp01(ms / winMs);
+        }
+
+        ctx2.strokeStyle = css2.themeE;
+        ctx2.globalAlpha = 0.55;
+        ctx2.setLineDash([4, 4]);
+        ctx2.beginPath();
+        ctx2.moveTo(xmin, yL); ctx2.lineTo(xmax, yL); ctx2.stroke();
+        ctx2.beginPath();
+        ctx2.moveTo(xmin, yR); ctx2.lineTo(xmax, yR); ctx2.stroke();
+        ctx2.setLineDash([]); ctx2.globalAlpha = 1;
+
+        function drawEchoLane(y, stepMs, col, alphaBase) {
+          var amp = alphaBase;
+          var t = 0;
+          var guard = 0;
+          while (t <= winMs * 1.02 && guard < 48) {
+            var xx = xAt(t);
+            ctx2.strokeStyle = col;
+            ctx2.globalAlpha = Math.min(0.95, amp);
+            ctx2.lineWidth = guard ? 1.6 : 2.4;
+            ctx2.beginPath(); ctx2.moveTo(xx, y - 9); ctx2.lineTo(xx, y + 9); ctx2.stroke();
+            t += stepMs;
+            amp *= fb;
+            guard += 1;
+          }
+          ctx2.globalAlpha = 1;
+        }
+
+        drawEchoLane(yL, dL, css2.primary, 0.92);
+        drawEchoLane(yR, dR, css2.themeB, pp ? 0.72 : 0.92);
+
+        if (pp) {
+          ctx2.strokeStyle = css2.themeC;
+          ctx2.globalAlpha = 0.78;
+          ctx2.lineWidth = 1.25;
+          ctx2.beginPath();
+          ctx2.moveTo(xAt(dR), yR); ctx2.lineTo(xAt(dL + dR), yL);
+          ctx2.stroke();
+          ctx2.beginPath();
+          ctx2.moveTo(xAt(dL), yL); ctx2.lineTo(xAt(dL + dR), yR);
+          ctx2.stroke(); ctx2.globalAlpha = 1;
+        }
+
+        var modeLab = mode === "sync" ? "sync " + fmtSpecNum(phys("bpm_ui")) + " bpm · " + (readEditControl(sec, "division") || "1/8") : "ms";
+        caption(ctx2, css2, xmin + 4, ymin + 10,
+          "delay · " + modeLab + " · ~" + fmtSpecNum(dMs) + " ms centre · spread ±" + fmtSpecNum(spread / 2) +
+          " ms · fb " + fmtSpecNum(fb) + " · mix " + fmtSpecNum(mixPhy) + (pp ? " · ping-pong" : ""));
       }
 
       function paintCompress(ctx2, xmin, ymin, xmax, ymax, css2) {
@@ -2688,6 +2787,22 @@
       vis("high_hz_ui", isBpf);
     }
 
+    function syncEditDelayControlRows(sec) {
+      if (!sec || sec.dataset.editType !== "delay") return;
+      function vis(key, show) {
+        var el = sec.querySelector('[data-schema-key="' + key + '"]');
+        if (!el) return;
+        var row = el.closest(".edit-control-row");
+        if (!row && el.closest("label.edit-control-row")) row = el.closest("label.edit-control-row");
+        if (row) row.style.display = show ? "" : "none";
+      }
+      var mode = readEditControl(sec, "time_mode") || "sync";
+      var isSync = mode === "sync";
+      vis("bpm_ui", isSync);
+      vis("division", isSync);
+      vis("delay_ms_ui", !isSync);
+    }
+
     function buildSpecFromSection(sectionEl, typeKey) {
       var schemas = (processingCatalog.paramSchemas && processingCatalog.paramSchemas[typeKey]) || [];
       function phys(sk) {
@@ -2753,6 +2868,27 @@
           var td = phys("tail_diffusion_ui");
           var ed = readEditControl(sectionEl, "early_diffuse") || "true";
           return "reverb:[wet_level=" + fmtSpecNum(wet) + "][length_sec=" + fmtSpecNum(ls) + "][decay_sec=" + fmtSpecNum(ds) + "][highpass_hz=" + fmtSpecNum(hp) + "][early_reflections=" + er + "][tail_diffusion=" + fmtSpecNum(td) + "][early_diffuse=" + ed + "]";
+        }
+        case "delay": {
+          var tm = readEditControl(sectionEl, "time_mode") || "sync";
+          var bpm = phys("bpm_ui");
+          var div = readEditControl(sectionEl, "division") || "1/8";
+          var dms = phys("delay_ms_ui");
+          var off = phys("delay_offset_ms_ui");
+          var spread = phys("stereo_spread_ms_ui");
+          var fb = phys("feedback_ui");
+          var mix = phys("mix_ui");
+          var pp = readEditControl(sectionEl, "ping_pong") || "false";
+          var sw = phys("stereo_width_ui");
+          var cf = phys("input_crossfeed_ui");
+          var flp = phys("feedback_lowpass_hz_ui");
+          var fhp = phys("feedback_highpass_hz_ui");
+          return (
+            "delay:[time_mode=" + tm + "][bpm=" + fmtSpecNum(bpm) + "][division=" + div + "][delay_ms=" + fmtSpecNum(dms) +
+            "][delay_offset_ms=" + fmtSpecNum(off) + "][stereo_spread_ms=" + fmtSpecNum(spread) + "][feedback=" + fmtSpecNum(fb) +
+            "][mix=" + fmtSpecNum(mix) + "][ping_pong=" + pp + "][stereo_width=" + fmtSpecNum(sw) + "][input_crossfeed=" + fmtSpecNum(cf) +
+            "][feedback_lowpass_hz=" + fmtSpecNum(flp) + "][feedback_highpass_hz=" + fmtSpecNum(fhp) + "]"
+          );
         }
         case "compress": {
           return "compress:[threshold_db=" + fmtSpecNum(phys("threshold_db_ui")) + "][ratio=" + fmtSpecNum(phys("ratio_ui")) + "][attack_ms=" + fmtSpecNum(phys("attack_ms_ui")) + "][release_ms=" + fmtSpecNum(phys("release_ms_ui")) + "]";
@@ -2938,6 +3074,12 @@
                 queueEditVisibleEffectVizRepaint();
               });
             }
+            if (typeKey === "delay" && schema.key === "time_mode") {
+              sel.addEventListener("change", function () {
+                syncEditDelayControlRows(sec);
+                queueEditVisibleEffectVizRepaint();
+              });
+            }
             row2.appendChild(span2);
             row2.appendChild(sel);
             controlsWrap.appendChild(row2);
@@ -2947,6 +3089,7 @@
         sec.appendChild(controlsWrap);
         if (EDIT_EFFECT_VIZ_TYPES[typeKey]) installEditEffectViz(sec, typeKey);
         if (typeKey === "filter") syncEditFilterControlRows(sec);
+        if (typeKey === "delay") syncEditDelayControlRows(sec);
 
         var applyBtn = document.createElement("button");
         applyBtn.type = "button";

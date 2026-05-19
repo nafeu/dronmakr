@@ -441,6 +441,62 @@ def apply_reverb_to_sample(
     log_sample_processing_line(msg)
 
 
+def apply_delay_to_sample(
+    input_path,
+    *,
+    time_mode: str = "sync",
+    bpm: float = 120.0,
+    division: str = "1/8",
+    delay_ms: float = 250.0,
+    delay_offset_ms: float = 0.0,
+    stereo_spread_ms: float = 0.0,
+    feedback: float = 0.42,
+    mix: float = 0.35,
+    ping_pong: bool = False,
+    stereo_width: float = 1.0,
+    input_crossfeed: float = 0.0,
+    feedback_lowpass_hz: float = 12000.0,
+    feedback_highpass_hz: float = 80.0,
+    max_delay_sec: float = 8.0,
+):
+    """
+    Tempo-synced or manual-ms feedback delay (fractional delay line, filtered feedback).
+    See ``dsp.apply_feedback_delay`` for stereo/ping-pong behaviour.
+    """
+    with AudioFile(input_path) as f:
+        audio = f.read(f.frames)
+        sample_rate = f.samplerate
+    processed = dsp.apply_feedback_delay(
+        audio,
+        float(sample_rate),
+        time_mode=time_mode,
+        bpm=float(bpm),
+        division=str(division),
+        delay_ms=float(delay_ms),
+        delay_offset_ms=float(delay_offset_ms),
+        stereo_spread_ms=float(stereo_spread_ms),
+        feedback=float(feedback),
+        mix=float(mix),
+        ping_pong=bool(ping_pong),
+        stereo_width=float(stereo_width),
+        input_crossfeed=float(input_crossfeed),
+        feedback_lowpass_hz=float(feedback_lowpass_hz),
+        feedback_highpass_hz=float(feedback_highpass_hz),
+        max_delay_sec=float(max_delay_sec),
+    )
+    with AudioFile(
+        input_path, "w", samplerate=sample_rate, num_channels=processed.shape[0]
+    ) as out:
+        out.write(processed)
+    bits = [f"{time_mode}"]
+    if str(time_mode).lower() == "sync":
+        bits.append(f"{division} @ {bpm:g} BPM")
+    else:
+        bits.append(f"{delay_ms:g} ms")
+    bits.append(f"fb={feedback:.2f} mix={mix:.2f}")
+    log_sample_processing_line("Applied delay (" + ", ".join(bits) + ")")
+
+
 def apply_reverb_room_to_sample(input_path):
     """Small room reverb: short length and decay."""
     apply_reverb_to_sample(
