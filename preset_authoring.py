@@ -242,7 +242,7 @@ def preview_plugin(plugin, effect_chain_tuples: list):
             audio_length_s = f.frames / f.samplerate
             pre_fx_signal = f.read(f.frames)
         fx_chain = Pedalboard([fx[2] for fx in effect_chain_tuples])
-        pre_fx_signal = fx_chain(pre_fx_signal, PREVIEW_SAMPLE_RATE)
+        pre_fx_signal = fx_chain(pre_fx_signal, PREVIEW_SAMPLE_RATE, reset=False)
     else:
         return
 

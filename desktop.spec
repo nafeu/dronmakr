@@ -21,6 +21,7 @@ a = Analysis(
         "preset_authoring",
         "patchcraftr_gui",
         "patchcraftr_live_monitor",
+        "pedalboard_isolated_runner",
         "tkinter",
         "_tkinter",
     ]

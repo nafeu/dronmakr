@@ -87,8 +87,22 @@ def generate_drone_sample(
     instrument=None,
     effect=None,
 ):
-    print(generate_drone_sample_header())
     presets_path = presets_path or resolve_presets_index_path() or PRESETS_PATH
+
+    # Desktop tray mode: Flask runs on a worker thread; many plug-ins require the process main thread.
+    from pedalboard_isolated_runner import delegate_generate_drone_sample_if_needed
+
+    delegated = delegate_generate_drone_sample_if_needed(
+        os.path.abspath(input_path),
+        os.path.abspath(output_path),
+        os.path.abspath(presets_path),
+        instrument,
+        effect,
+    )
+    if delegated is not None:
+        return delegated
+
+    print(generate_drone_sample_header())
 
     loaded_effects = []
 
@@ -189,6 +203,8 @@ def generate_drone_sample(
     midi_messages, audio_length_s = midi_to_messages(input_path)
 
     # Process MIDI through the instrument plugin
+    # reset=False: required when this runs on Flask worker threads (desktop tray mode);
+    # many VSTs error with "must be reloaded on the main thread" if reset defaults to True.
     pre_fx_signal = instrument_plugin(
         midi_messages,
         duration=audio_length_s,
@@ -201,13 +217,13 @@ def generate_drone_sample(
     # Create a gain reduction effect (-6dB = 0.5 multiplier)
     gain_reduction = Pedalboard([Gain(gain_db=-6)])  # -6dB reduction
 
-    pre_fx_signal = gain_reduction(pre_fx_signal, SAMPLE_RATE)
+    pre_fx_signal = gain_reduction(pre_fx_signal, SAMPLE_RATE, reset=False)
 
     print(with_prompt(f"sending midi and rendering audio ({audio_length_s:.2f}s)"))
 
     # Apply the selected effect plugin
     fx_chain = Pedalboard(loaded_effects)
-    post_fx_signal = fx_chain(pre_fx_signal, SAMPLE_RATE)
+    post_fx_signal = fx_chain(pre_fx_signal, SAMPLE_RATE, reset=False)
 
     output_path = output_path.replace("#", "sharp")
 
@@ -222,6 +238,16 @@ def generate_drone_sample(
 
 def apply_effect(input_path, effect_chain, presets_path=PRESETS_PATH):
     """Applies an effect chain from presets to a WAV file and overwrites it after backing up."""
+
+    presets_path = presets_path or PRESETS_PATH
+    from pedalboard_isolated_runner import delegate_apply_effect_if_needed
+
+    if delegate_apply_effect_if_needed(
+        os.path.abspath(input_path),
+        effect_chain,
+        os.path.abspath(presets_path),
+    ):
+        return
 
     # Load presets
     with open(presets_path, "r") as f:
@@ -291,7 +317,7 @@ def apply_effect(input_path, effect_chain, presets_path=PRESETS_PATH):
         ),  # Ensure headroom without crushing dynamics
     ]
     fx_chain = Pedalboard(loaded_effects + normalization_chain)
-    processed_audio = fx_chain(audio, sample_rate)
+    processed_audio = fx_chain(audio, sample_rate, reset=False)
 
     with AudioFile(
         output_path, "w", samplerate=sample_rate, num_channels=processed_audio.shape[0]
