@@ -141,6 +141,7 @@
       min-height: 0;
       overflow-y: auto;
       padding-right: 0.5rem;
+      padding-bottom: 4rem;
       box-sizing: border-box;
       position: relative;
     }
@@ -1438,6 +1439,7 @@
     var lastFolderCounts = { archive: 0, trash: 0, exports: 0, saved: 0 };
     var selectedWaveformTimestamps = {};
     var processingCatalog = { types: [], actions: [], paramSchemas: {}, presets: [] };
+    var AUDITIONR_WAVEFORM_VISIBLE = 4;
     var currentDisplayedFiles = [];
     var waveformInstances = {};
     var processingGuardMs = 120000;
@@ -3051,14 +3053,95 @@
     function updateFolderCounts(counts) {
       if (!counts) return;
       lastFolderCounts = counts;
-      var queueNumEl = document.getElementById("queue-num");
       var savedNumEl = document.getElementById("saved-num");
       var unarchiveCountEl = document.getElementById("unarchive-count");
       var trashCountEl = document.getElementById("trash-count");
-      if (queueNumEl) queueNumEl.textContent = counts.exports || 0;
       if (savedNumEl) savedNumEl.textContent = counts.saved || 0;
       if (unarchiveCountEl) unarchiveCountEl.textContent = String(counts.archive || 0);
       if (trashCountEl) trashCountEl.textContent = String(counts.trash || 0);
+      auditionrRefreshQueueFloatingChip();
+    }
+
+    function auditionrRefreshQueueFloatingChip() {
+      var queueNumEl = document.getElementById("queue-num");
+      if (!queueNumEl) return;
+      var folderTotal = lastFolderCounts.exports || 0;
+      var listLen = currentDisplayedFiles.length;
+      var total = Math.max(folderTotal, listLen);
+      if (total > AUDITIONR_WAVEFORM_VISIBLE) {
+        queueNumEl.textContent = AUDITIONR_WAVEFORM_VISIBLE + " of " + total;
+      } else {
+        queueNumEl.textContent = String(total);
+      }
+    }
+
+    function refreshAuditionrWaveformViewport(updatedPath, undoAvailability) {
+      var container = document.getElementById("waveform-container");
+      if (!container) return;
+
+      var newFiles = currentDisplayedFiles;
+
+      function applyUndoRows() {
+        if (!undoAvailability) return;
+        newFiles.forEach(function (file) {
+          if (Object.prototype.hasOwnProperty.call(undoAvailability, file)) {
+            setUndoButtonState(file, !!undoAvailability[file]);
+          }
+        });
+      }
+
+      if (!newFiles.length) {
+        container.innerHTML = "";
+        applyUndoRows();
+        auditionrRefreshQueueFloatingChip();
+        if (window.__pageReady) window.__pageReady();
+        return;
+      }
+
+      var slice = newFiles.slice(0, AUDITIONR_WAVEFORM_VISIBLE);
+
+      newFiles.forEach(function (file) {
+        var inst = waveformInstances[file];
+        if (!inst || !inst.wrapper) return;
+        if (slice.indexOf(file) === -1 && inst.wrapper.parentNode === container) {
+          container.removeChild(inst.wrapper);
+        }
+      });
+
+      var pendingReady = 0;
+
+      slice.forEach(function (file) {
+        var inst = waveformInstances[file];
+        if (!inst || !inst.wrapper) {
+          pendingReady++;
+          var created = createSingleWaveform(file, function () {
+            pendingReady--;
+            if (pendingReady === 0 && window.__pageReady) window.__pageReady();
+          });
+          if (created) {
+            waveformInstances[file] = created;
+          } else {
+            pendingReady--;
+          }
+        }
+      });
+
+      slice.forEach(function (file) {
+        var inst = waveformInstances[file];
+        if (inst && inst.wrapper) {
+          container.appendChild(inst.wrapper);
+        }
+      });
+
+      applyUndoRows();
+
+      auditionrRefreshQueueFloatingChip();
+
+      if (pendingReady === 0 && window.__pageReady) window.__pageReady();
+
+      if (updatedPath && newFiles.indexOf(updatedPath) !== -1 && slice.indexOf(updatedPath) !== -1) {
+        refreshWaveform(updatedPath);
+      }
     }
 
     function getCurrentFiles() {
@@ -3112,52 +3195,15 @@
       removed.forEach(removeWaveform);
 
       currentDisplayedFiles = newFiles;
-      var container = document.getElementById("waveform-container");
       var emptyPlaceholder = document.getElementById("queue-empty-placeholder");
 
       newFiles.forEach(function (file) {
         if (!selectedWaveformTimestamps.hasOwnProperty(file)) selectedWaveformTimestamps[file] = 0;
       });
 
-      var orderedWrappers = [];
-      var pendingReady = 0;
-      newFiles.forEach(function (file) {
-        var inst = waveformInstances[file];
-        if (inst && inst.wrapper) {
-          orderedWrappers.push(inst.wrapper);
-        } else {
-          pendingReady++;
-        }
-      });
-      function onWaveformReady() {
-        pendingReady--;
-        if (pendingReady === 0 && window.__pageReady) window.__pageReady();
-      }
-      newFiles.forEach(function (file) {
-        var inst = waveformInstances[file];
-        if (inst && inst.wrapper) {
-          /* already pushed */
-          if (undoAvailability && Object.prototype.hasOwnProperty.call(undoAvailability, file)) {
-            setUndoButtonState(file, !!undoAvailability[file]);
-          }
-        } else {
-          var created = createSingleWaveform(file, onWaveformReady);
-          if (created) {
-            waveformInstances[file] = created;
-            orderedWrappers.push(created.wrapper);
-            if (undoAvailability && Object.prototype.hasOwnProperty.call(undoAvailability, file)) {
-              setUndoButtonState(file, !!undoAvailability[file]);
-            }
-          } else {
-            onWaveformReady();
-          }
-        }
-      });
-
       syncWaveformTitleSelection();
 
-      container.innerHTML = "";
-      orderedWrappers.forEach(function (w) { container.appendChild(w); });
+      refreshAuditionrWaveformViewport(updatedPath, undoAvailability);
 
       if (emptyPlaceholder) {
         if (!newFiles.length) {
@@ -3165,11 +3211,6 @@
         } else {
           emptyPlaceholder.classList.add("hidden");
         }
-      }
-
-      if (pendingReady === 0 && window.__pageReady) window.__pageReady();
-      if (updatedPath && newFiles.indexOf(updatedPath) !== -1) {
-        refreshWaveform(updatedPath);
       }
     }
 
@@ -3726,6 +3767,7 @@
       if (tabEdit) {
         tabEdit.addEventListener("click", function () { openAuditionrSidebarTab("edit"); });
       }
+
       try {
         if (sessionStorage.getItem(AUDITIONR_SIDEBAR_TAB_KEY) === "edit") {
           openAuditionrSidebarTab("edit");

@@ -980,7 +980,7 @@ def generate_beat_name():
 
 
 def get_latest_exports(sort_override=None):
-    """Reads the last 20 `.wav` files from the 'exports/' folder, sorted by newest first."""
+    """All `.wav` files in `exports/`, sorted by modification time (newest first)."""
     try:
         if not os.path.exists(EXPORTS_DIR):
             return []
@@ -992,8 +992,7 @@ def get_latest_exports(sort_override=None):
             and f.lower().endswith(".wav")
         ]
 
-        # Sort by newest file first (modification time descending) & return latest 5
-        sorted_files = sorted(files, key=os.path.getmtime, reverse=True)[:5]
+        sorted_files = sorted(files, key=os.path.getmtime, reverse=True)
 
         # If sort_override is provided, remove all files in it from the final sorted list
         # and insert them at the top of the sorted list

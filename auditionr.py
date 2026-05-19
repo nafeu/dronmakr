@@ -382,8 +382,8 @@ def duplicate_file():
         counter += 1
 
     shutil.copy2(file_path, duplicate_path)
-    # copy2 preserves source mtime; auditionr only shows the newest 5 exports by mtime,
-    # so the duplicate would often be missing from the queue. Bump mtime to now.
+    # copy2 preserves source mtime; the queue is ordered by mtime (newest first),
+    # so the duplicate would often sort below the original. Bump mtime to now.
     _now = time.time()
     os.utime(duplicate_path, (_now, _now))
 
