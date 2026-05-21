@@ -100,7 +100,7 @@ On **Linux**, the tray icon may require GTK AppIndicator / `libappindicator` (or
 
 Build outputs go to `dist/`; archives to `dist-artifacts/`. Release asset names must include `macos-arm64`, `macos-x64`, `linux-x64`, or `windows-x64` so the packaged app’s updater can find them.
 
-**macOS:** Before PyInstaller, `build_desktop.sh` runs [`scripts/build_mac_app_icns.sh`](scripts/build_mac_app_icns.sh) to write [`packaging/macos/dronmakr.icns`](packaging/macos/dronmakr.icns) (gitignored) from `static/branding/android-chrome-512x512.png` so **Finder / Spotlight** use your artwork instead of PyInstaller’s default icon.
+**macOS:** Before PyInstaller, `build_desktop.sh` runs [`scripts/build_mac_app_icns.sh`](scripts/build_mac_app_icns.sh). It calls [`scripts/compose_mac_app_icon_layer.py`](scripts/compose_mac_app_icon_layer.py) to paint **`--theme-a`** (from [`templates/_app_css_root.html`](templates/_app_css_root.html)) full-bleed behind `static/branding/android-chrome-512x512.png`, then emits [`packaging/macos/dronmakr.icns`](packaging/macos/dronmakr.icns). Override: `python scripts/compose_mac_app_icon_layer.py --theme-a '#353531'` (then re-run `build_mac_app_icns.sh`).
 
 **macOS:** PyInstaller emits **`dist/dronmakr.app`** (Finder bundle). **`build_desktop.sh`** produces **`dist-artifacts/dronmakr-v*-macos-*.tar.gz`** containing that `.app`, plus **`dist-artifacts/dronmakr-v*-macos-*.dmg`** (drag-to-Applications layout). CI publishes both formats for Apple Silicon builds.
 
