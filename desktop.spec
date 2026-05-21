@@ -6,7 +6,8 @@ from pathlib import Path
 from PyInstaller.utils.hooks import collect_all, collect_submodules
 
 # Resolve version for macOS Info.plist (SPECPATH is defined by PyInstaller when this file runs).
-_spec_root = Path(SPECPATH).resolve().parent
+# PyInstaller sets SPECPATH to the *directory* that contains desktop.spec—not the path to the file itself.
+_spec_root = Path(SPECPATH).resolve()
 if str(_spec_root) not in sys.path:
     sys.path.insert(0, str(_spec_root))
 from version import __version__ as _DESKTOP_APP_VERSION  # noqa: E402
