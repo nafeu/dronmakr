@@ -1,5 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import importlib
 import sys
 from pathlib import Path
 
@@ -15,6 +16,34 @@ from version import __version__ as _DESKTOP_APP_VERSION  # noqa: E402
 _brand_ico = _spec_root / "static" / "branding" / "favicon.ico"
 _mac_icns = _spec_root / "packaging" / "macos" / "dronmakr.icns"
 
+
+def _site_packages_pkg_dir(module_qname: str) -> Path:
+    """
+    Resolve a PEP 420-ish site-packages sibling (e.g. _soundfile_data) to a filesystem folder.
+    PySoundFile publishes soundfile.py at site root with _soundfile_data/ beside it —
+    PyInstaller rarely infers those data folders unless we list them explicitly.
+    """
+    m = importlib.import_module(module_qname)
+    path = getattr(m, "__path__", None)
+    if path:
+        return Path(next(iter(path))).resolve()
+    file = getattr(m, "__file__", None)
+    if file:
+        return Path(file).resolve().parent
+    raise RuntimeError(f"Cannot locate filesystem folder for module {module_qname!r}")
+
+
+_extra_site_pkg_datas = [
+    (
+        str(_site_packages_pkg_dir("_soundfile_data")),
+        "_soundfile_data",
+    ),
+    (
+        str(_site_packages_pkg_dir("_sounddevice_data")),
+        "_sounddevice_data",
+    ),
+]
+
 hiddenimports_base = collect_submodules("eventlet") + collect_submodules("pystray")
 tk_datas, tk_bins, tk_hidden = collect_all("tkinter")
 
@@ -28,9 +57,18 @@ a = Analysis(
         ("resources", "resources"),
         ("patchcraftr_gui.py", "."),
     ]
-    + tk_datas,
+    + tk_datas
+    + _extra_site_pkg_datas,
     hiddenimports=hiddenimports_base
     + [
+        "_cffi_backend",
+        "cffi",
+        "_sounddevice",
+        "_sounddevice_data",
+        "_soundfile",
+        "_soundfile_data",
+        "sounddevice",
+        "soundfile",
         "preset_authoring",
         "patchcraftr_gui",
         "patchcraftr_live_monitor",

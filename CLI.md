@@ -106,6 +106,8 @@ Build outputs go to `dist/`; archives to `dist-artifacts/`. Release asset names 
 
 Desktop builds populate **FFmpeg** under `resources/ffmpeg/` via [`scripts/vendor_ffmpeg.py`](scripts/vendor_ffmpeg.py) automatically when you run the build scripts (`build_desktop.sh` / `.ps1`/CI invoke it before PyInstaller). The packaged binary is used for **Folysplitr** browser recording uploads so end users don’t need a separate system FFmpeg install. Third-party FFmpeg notices ship as `resources/ffmpeg/THIRD_PARTY_FFMPEG.txt` inside the bundle; see [`resources/ffmpeg/LICENSE.third_party.ffmpeg`](resources/ffmpeg/LICENSE.third_party.ffmpeg) for redistribution notes.
 
+**PySoundFile / PortAudio bundled libs:** [`desktop.spec`](desktop.spec) pulls `site-packages` folders **`_soundfile_data`** and **`_sounddevice_data`** into the freeze (those wheels ship **`libsndfile_*`** / **`libportaudio*`** binaries). Without that step, **`import soundfile`** can fail inside a frozen `.app` when system **`libsndfile`** / **`PortAudio`** are unavailable.
+
 When running **`python webui.py` / tray from source**, Folysplitr still falls back to `ffmpeg` on your **`PATH`** (or **`DRONMAKR_FFMPEG_PATH`**) unless you ran the vendor script locally.
 
 **macOS / Linux:**
