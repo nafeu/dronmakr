@@ -43,6 +43,30 @@ def _platform_asset_hint() -> str:
     return "linux-x64"
 
 
+def _asset_download_priority(asset_name: str) -> int:
+    """
+    Pick a sensible default when multiple release assets match the platform hint
+    (e.g. macOS ships both .dmg and .tar.gz). Lower value = higher priority.
+    """
+    system = platform.system().lower()
+    n = asset_name.lower()
+    if "darwin" in system:
+        if n.endswith(".dmg"):
+            return 0
+        if n.endswith(".tar.gz") or n.endswith(".tgz"):
+            return 1
+        if n.endswith(".zip"):
+            return 2
+        return 10
+    if "windows" in system:
+        if n.endswith(".zip"):
+            return 0
+        return 10
+    if n.endswith(".tar.gz") or n.endswith(".tgz"):
+        return 0
+    return 10
+
+
 def check_for_update(timeout: int = 5) -> UpdateInfo | None:
     resp = requests.get(GITHUB_RELEASES_API, timeout=timeout)
     if resp.status_code != 200:
@@ -55,17 +79,21 @@ def check_for_update(timeout: int = 5) -> UpdateInfo | None:
         return None
     hint = _platform_asset_hint()
     assets = data.get("assets", []) if isinstance(data.get("assets"), list) else []
+    notes = str(data.get("body", ""))
+    matching: list[UpdateInfo] = []
     for asset in assets:
         name = str(asset.get("name", ""))
         url = str(asset.get("browser_download_url", ""))
         if hint in name.lower() and url:
-            return UpdateInfo(
-                tag=tag,
-                notes=str(data.get("body", "")),
-                asset_name=name,
-                asset_url=url,
+            matching.append(
+                UpdateInfo(tag=tag, notes=notes, asset_name=name, asset_url=url)
             )
-    return None
+    if not matching:
+        return None
+    matching.sort(
+        key=lambda info: (_asset_download_priority(info.asset_name), info.asset_name)
+    )
+    return matching[0]
 
 
 _UPDATE_CHECK_MIN_INTERVAL_S = 3600.0

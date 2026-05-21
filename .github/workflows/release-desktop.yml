@@ -37,12 +37,14 @@ jobs:
           source venv/bin/activate
           pyinstaller --noconfirm --clean desktop.spec
 
-      - name: Create archive
+      - name: Create archive and DMG
         run: |
           source venv/bin/activate
           VERSION=$(python -c "from version import __version__; print(__version__)")
           mkdir -p dist-artifacts
-          tar -czf "dist-artifacts/dronmakr-v${VERSION}-macos-arm64.tar.gz" -C dist dronmakr
+          test -d dist/dronmakr.app
+          tar -czf "dist-artifacts/dronmakr-v${VERSION}-macos-arm64.tar.gz" -C dist dronmakr.app
+          bash scripts/package_mac_dmg.sh
 
       - uses: softprops/action-gh-release@v2
         with:

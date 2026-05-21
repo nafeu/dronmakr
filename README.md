@@ -26,16 +26,31 @@
 
 ### Desktop (GitHub Releases)
 
-1. Open **[Releases](https://github.com/nafeu/dronmakr/releases/latest)** and download the archive for your platform:
-   - **macOS (Apple Silicon):** `dronmakr-v*-macos-arm64.tar.gz`
-   - **macOS (Intel):** `dronmakr-v*-macos-x64.tar.gz`
+1. Open **[Releases](https://github.com/nafeu/dronmakr/releases/latest)** and download the build for your platform:
+   - **macOS (Apple Silicon):** Prefer **`dronmakr-v*-macos-arm64.dmg`** (drag **dronmakr.app** into **Applications**). A **`dronmakr-v*-macos-arm64.tar.gz`** is also available if you prefer unpacking manually.
+   - **macOS (Intel):** **`dronmakr-v*-macos-x64.tar.gz`** from a maintainer-built artifact (Intel builds are not produced by CI today).
    - **Linux (x86_64):** `dronmakr-v*-linux-x64.tar.gz`
    - **Windows:** `dronmakr-v*-windows-x64.zip`
-2. Extract the archive. Inside you will find a `dronmakr` folder containing the app bundle from PyInstaller.
-3. Run the executable:
-   - **macOS / Linux:** `dronmakr` (inside `dronmakr/`)
+2. **macOS (DMG):** Open the `.dmg`, drag **`dronmakr.app`** into **Applications**, then eject the disk image. Launch **dronmakr** from Launchpad / Spotlight (**⌘Space**, type **dronmakr**).
+3. **macOS / Linux (tar.gz)** or **Windows (zip):** Extract the archive. On macOS you get **`dronmakr.app`**; on Linux / Windows you get a **`dronmakr`** folder with the launcher inside.
+4. Run:
+   - **macOS:** open **`dronmakr.app`** (from `/Applications` or the extracted folder).
+   - **Linux:** `./dronmakr/dronmakr`
    - **Windows:** `dronmakr.exe`
-4. A **console window** may stay open (useful for logs). The **menu bar** (macOS) or **system tray** (Windows) icon lets you open the app in your browser, browse your `dronmakr-files` folder, settings, and about page. On first launch, choose where to store `dronmakr-files`.
+5. A **console window** may stay open (useful for logs). The **menu bar** (macOS) or **system tray** (Windows) icon lets you open the app in your browser, browse your `dronmakr-files` folder, settings, and about page. On first launch, choose where to store `dronmakr-files`.
+
+#### macOS Gatekeeper (downloads from the internet)
+
+GitHub CI builds are **not Apple-notarized**. After downloading, macOS may block the embedded Python libraries (`library load disallowed by system policy`). Typical workarounds:
+
+- **Preferred:** Open **System Settings → Privacy & Security** after a blocked launch and choose **Open Anyway**, **or** Control-click **`dronmakr.app` → Open** and confirm once.
+- **Alternative:** clear quarantine flags after you trust the build (copied apps inherit them until cleared):
+
+  ```sh
+  xattr -dr com.apple.quarantine /Applications/dronmakr.app
+  ```
+
+For distribution without these prompts you need your own **Apple Developer Program** subscription, **Developer ID Application** signing, **`codesign`**, **notarization** (`notarytool`), and **stapling**. That pipeline is outside this repo’s automated CI today.
 
 Packaged desktop builds also check **GitHub Releases** for updates: use **Check for updates…** or **Download v…** in the tray when a newer version is available (menu checks the API at most once per hour).
 

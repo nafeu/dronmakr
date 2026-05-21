@@ -37,16 +37,23 @@ mkdir -p "$ARTIFACT_DIR"
 # packaged app's updater (updater.py) can match GitHub release assets.
 if [[ "$UNAME_S" == "darwin" ]]; then
   ARCHIVE_NAME="dronmakr-v${VERSION}-macos-${ARCH_LABEL}.tar.gz"
+  if [[ ! -d "dist/dronmakr.app" ]]; then
+    echo "error: dist/dronmakr.app missing after PyInstaller (desktop.spec should emit BUNDLE on macOS)." >&2
+    exit 1
+  fi
+  tar -czf "${ARTIFACT_DIR}/${ARCHIVE_NAME}" -C "dist" "dronmakr.app"
+  bash scripts/package_mac_dmg.sh
 elif [[ "$UNAME_S" == "linux" ]]; then
   if [[ "$ARCH_LABEL" == "x64" ]]; then
     ARCHIVE_NAME="dronmakr-v${VERSION}-linux-x64.tar.gz"
   else
     ARCHIVE_NAME="dronmakr-v${VERSION}-linux-${ARCH_LABEL}.tar.gz"
   fi
+  tar -czf "${ARTIFACT_DIR}/${ARCHIVE_NAME}" -C "dist" "dronmakr"
 else
   echo "Unsupported OS for this script: ${UNAME_S} (use build_desktop.ps1 on Windows)"
   exit 1
 fi
 
-tar -czf "${ARTIFACT_DIR}/${ARCHIVE_NAME}" -C "dist" "dronmakr"
-echo "Built artifact: ${ARTIFACT_DIR}/${ARCHIVE_NAME}"
+echo "Built artifact(s) under ${ARTIFACT_DIR}/"
+ls -la "${ARTIFACT_DIR}"

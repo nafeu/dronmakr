@@ -1,6 +1,15 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+import sys
+from pathlib import Path
+
 from PyInstaller.utils.hooks import collect_all, collect_submodules
+
+# Resolve version for macOS Info.plist (SPECPATH is defined by PyInstaller when this file runs).
+_spec_root = Path(SPECPATH).resolve().parent
+if str(_spec_root) not in sys.path:
+    sys.path.insert(0, str(_spec_root))
+from version import __version__ as _DESKTOP_APP_VERSION  # noqa: E402
 
 hiddenimports_base = collect_submodules("eventlet") + collect_submodules("pystray")
 tk_datas, tk_bins, tk_hidden = collect_all("tkinter")
@@ -55,3 +64,21 @@ coll = COLLECT(
     upx_exclude=[],
     name="dronmakr",
 )
+
+# macOS: wrap the onedir COLLECT output in a proper .app so Finder, Spotlight, and
+# drag-to-/Applications installs work like a normal desktop app.
+if sys.platform == "darwin":
+    from PyInstaller.building.osx import BUNDLE as _OSXBundle
+
+    app = _OSXBundle(
+        coll,
+        name="dronmakr.app",
+        bundle_identifier="io.github.nafeu.dronmakr",
+        info_plist={
+            "CFBundleName": "dronmakr",
+            "CFBundleDisplayName": "dronmakr",
+            "CFBundleShortVersionString": str(_DESKTOP_APP_VERSION),
+            "CFBundleVersion": str(_DESKTOP_APP_VERSION),
+            "NSHighResolutionCapable": True,
+        },
+    )
