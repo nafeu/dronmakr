@@ -37,9 +37,7 @@
    - **macOS:** open **`dronmakr.app`** (from `/Applications` or the extracted folder).
    - **Linux:** `./dronmakr/dronmakr`
    - **Windows:** `dronmakr.exe`
-5. A **console window** may stay open (useful for logs). The **menu bar** (macOS) or **system tray** (Windows) icon lets you open the app in your browser, browse your `dronmakr-files` folder, settings, and about page. On first launch, choose where to store `dronmakr-files`.
-
-#### macOS Gatekeeper (downloads from the internet)
+5. Runtime behavior: builds use **no separate terminal window** on **macOS** (launcher is Finder-only). Watch the **menu bar** (near the Wi‑Fi / clock area) for the **dronmakr tray icon**. Open **Open dronmakr in browser** from its menu—the local server listens on `127.0.0.1`. On **Windows / Linux**, a **console window** may remain open (logs). **On first launch** you choose where to store **`dronmakr-files`** (often via onboarding in the browser).
 
 GitHub CI builds are **not Apple-notarized**. After downloading, macOS may block the embedded Python libraries (`library load disallowed by system policy`). Typical workarounds:
 
@@ -51,6 +49,14 @@ GitHub CI builds are **not Apple-notarized**. After downloading, macOS may block
   ```
 
 For distribution without these prompts you need your own **Apple Developer Program** subscription, **Developer ID Application** signing, **`codesign`**, **notarization** (`notarytool`), and **stapling**. That pipeline is outside this repo’s automated CI today.
+
+**If launching from Spotlight / Finder “does nothing”:** the packaged app waits for startup to finish—check the **menu bar icon** before assuming it failed (see step **5**). To surface errors, open **Terminal** and run:
+
+```sh
+/Applications/dronmakr.app/Contents/MacOS/dronmakr
+```
+
+On recent builds (or after a silent failure), **`~/Library/Application Support/dronmakr/last-startup-error.txt`** may contain Python tracebacks captured from the launcher.
 
 Packaged desktop builds also check **GitHub Releases** for updates: use **Check for updates…** or **Download v…** in the tray when a newer version is available (menu checks the API at most once per hour).
 
@@ -129,6 +135,12 @@ You can use the `ASSERT_INSTRUMENT` env var to list any plugins that you want to
 - Contributors welcome! Open PRs or Github Issues
 
 **Maintainers:** publishing a **GitHub Release** (not only a tag) runs [`.github/workflows/release-desktop.yml`](.github/workflows/release-desktop.yml) on macOS, Windows, and Linux and uploads the matching archives to that release.
+
+**Version bump:** from the repo root, run [`scripts/bump_version.sh`](scripts/bump_version.sh) with **`major`**, **`minor`**, or **`patch`** ([SemVer](https://semver.org/) bump applied to [`version.py`](version.py)). It edits `version.py`, commits **`Bump version to v…`**, creates an annotated tag **`v*.*.*`**, and **`git push`es** branch + tag to **`origin`** (use **`--dry-run`** to preview). Example patch release:
+
+```sh
+./scripts/bump_version.sh patch
+```
 
 On **Linux**, the tray icon may require GTK AppIndicator / `libappindicator` (or compatible) for `pystray`.
 

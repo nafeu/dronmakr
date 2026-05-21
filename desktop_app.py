@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
+import traceback
+from pathlib import Path
 
 if __name__ == "__main__":
     if len(sys.argv) > 1 and sys.argv[1] == "--run-patchcraftr":
@@ -22,14 +25,12 @@ if __name__ == "__main__":
     os.environ["DRONMAKR_ASYNC_MODE"] = "threading"
 
 import socket
-import subprocess
 import tarfile
 import threading
 import time
 import urllib.error
 import urllib.request
 import zipfile
-from pathlib import Path
 
 from PIL import Image
 from pystray import Icon, Menu, MenuItem
@@ -433,5 +434,51 @@ def main(debug: bool = False) -> None:
         print("[desktop] launcher: exiting", flush=True)
 
 
+def _frozen_startup_error_support_dir() -> Path:
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "dronmakr"
+    if sys.platform == "win32":
+        roaming = os.environ.get("APPDATA")
+        if roaming:
+            return Path(roaming) / "dronmakr"
+        return Path.home() / "AppData" / "Roaming" / "dronmakr"
+    xdg = os.environ.get("XDG_DATA_HOME")
+    if xdg:
+        return Path(xdg) / "dronmakr"
+    return Path.home() / ".local" / "share" / "dronmakr"
+
+
+def _write_frozen_startup_failure_log() -> Path | None:
+    """Persist traceback next to OS user data dirs; stderr always gets a copy."""
+    tb = traceback.format_exc()
+    sys.stderr.write(tb)
+    if not getattr(sys, "frozen", False):
+        return None
+    try:
+        root = _frozen_startup_error_support_dir()
+        root.mkdir(parents=True, exist_ok=True)
+        dest = root / "last-startup-error.txt"
+        dest.write_text(tb, encoding="utf-8")
+        return dest
+    except OSError:
+        return None
+
+
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        log_path = _write_frozen_startup_failure_log()
+        if getattr(sys, "frozen", False) and sys.platform == "darwin" and log_path is not None:
+            subprocess.run(["open", "-R", str(log_path)], check=False)
+            subprocess.run(
+                [
+                    "osascript",
+                    "-e",
+                    'display alert "dronmakr failed to start" '
+                    'message "A log file was selected in Finder. Open last-startup-error.txt for details." '
+                    "as informational",
+                ],
+                check=False,
+            )
+        raise SystemExit(1)

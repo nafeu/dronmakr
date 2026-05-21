@@ -12,6 +12,9 @@ if str(_spec_root) not in sys.path:
     sys.path.insert(0, str(_spec_root))
 from version import __version__ as _DESKTOP_APP_VERSION  # noqa: E402
 
+_brand_ico = _spec_root / "static" / "branding" / "favicon.ico"
+_mac_icns = _spec_root / "packaging" / "macos" / "dronmakr.icns"
+
 hiddenimports_base = collect_submodules("eventlet") + collect_submodules("pystray")
 tk_datas, tk_bins, tk_hidden = collect_all("tkinter")
 
@@ -44,6 +47,10 @@ a = Analysis(
 )
 pyz = PYZ(a.pure)
 
+# Finder-launched macOS bundles: UPX-packed Mach-O/dylibs can fail to load; console=True leaves no stderr.
+_console = sys.platform != "darwin"
+_upx = sys.platform != "darwin"
+
 exe = EXE(
     pyz,
     a.scripts,
@@ -53,15 +60,16 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
-    console=True,
+    upx=_upx,
+    console=_console,
+    icon=str(_brand_ico) if _brand_ico.is_file() else None,
 )
 coll = COLLECT(
     exe,
     a.binaries,
     a.datas,
     strip=False,
-    upx=True,
+    upx=_upx,
     upx_exclude=[],
     name="dronmakr",
 )
@@ -71,10 +79,16 @@ coll = COLLECT(
 if sys.platform == "darwin":
     from PyInstaller.building.osx import BUNDLE as _OSXBundle
 
+    if not _mac_icns.is_file():
+        raise FileNotFoundError(
+            f"Missing {_mac_icns}. On macOS run scripts/build_mac_app_icns.sh before PyInstaller."
+        )
+
     app = _OSXBundle(
         coll,
         name="dronmakr.app",
         bundle_identifier="io.github.nafeu.dronmakr",
+        icon=str(_mac_icns),
         info_plist={
             "CFBundleName": "dronmakr",
             "CFBundleDisplayName": "dronmakr",
