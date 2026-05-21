@@ -34,6 +34,7 @@ from pathlib import Path
 from PIL import Image
 from pystray import Icon, Menu, MenuItem
 
+from bundle_paths import get_bundle_app_root
 from settings import get_files_root, has_configured_files_root
 from updater import (
     UpdateInfo,
@@ -78,11 +79,7 @@ def _select_desktop_listen_port(host: str = "127.0.0.1") -> int:
 
 
 def _bundle_root() -> Path:
-    if getattr(sys, "frozen", False):
-        meipass = getattr(sys, "_MEIPASS", "")
-        if meipass:
-            return Path(meipass)
-    return Path(__file__).resolve().parent
+    return get_bundle_app_root()
 
 
 def _patchcraftr_work_dir() -> Path:

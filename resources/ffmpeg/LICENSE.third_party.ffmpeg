@@ -1,0 +1,8 @@
+Dronmakr includes **FFmpeg as a dynamically downloaded build-time artifact** (not committed to Git) packaged into desktop releases under `resources/ffmpeg/`.
+
+Upstream source used for pinning and SHA256 verification:
+**https://github.com/eugeneware/ffmpeg-static** (see tag in `scripts/vendor_ffmpeg.py`).
+
+Redistribution must ship the generated **`resources/ffmpeg/THIRD_PARTY_FFMPEG.txt`** next to the bundled binary in the packaged app — it contains FFmpeg’s upstream license and readme text for that build profile.
+
+FFmpeg licensing is determined by FFmpeg’s upstream build configuration; comply with FFmpeg’s trademark and license requirements when distributing binaries. This file is informational only and does not replace reading `THIRD_PARTY_FFMPEG.txt` or FFmpeg’s notices.

@@ -22,6 +22,7 @@ from werkzeug.utils import secure_filename
 from process_sample import trim_sample_start, trim_sample_end, reverse_sample
 from processing_actions import apply_processing_command, get_processing_actions_payload
 from paths import get_files_root_path
+from bundle_paths import resolve_ffmpeg_executable
 from utils import EXPORTS_DIR
 
 ROOT_DIR = get_files_root_path()
@@ -209,9 +210,13 @@ def _guess_extension(filename: str, content_type: str) -> str:
 
 def _convert_to_wav(source_path: Path, target_path: Path) -> tuple[bool, str]:
     """Convert any supported input audio to WAV using ffmpeg."""
-    ffmpeg_bin = shutil.which("ffmpeg")
+    ffmpeg_exe = resolve_ffmpeg_executable()
+    ffmpeg_bin = str(ffmpeg_exe) if ffmpeg_exe is not None else None
     if not ffmpeg_bin:
-        return False, "ffmpeg is required for WAV conversion but was not found."
+        return False, (
+            "ffmpeg was not found — install FFmpeg on PATH, set DRONMAKR_FFMPEG_PATH, "
+            "or build the desktop bundle with scripts/vendor_ffmpeg.py so resources/ffmpeg/ffmpeg is bundled."
+        )
     try:
         result = subprocess.run(
             [

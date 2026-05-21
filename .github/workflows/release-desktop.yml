@@ -27,6 +27,11 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt pyinstaller
 
+      - name: Vendor FFmpeg binary
+        run: |
+          source venv/bin/activate
+          python scripts/vendor_ffmpeg.py
+
       - name: Build with PyInstaller
         run: |
           source venv/bin/activate
@@ -60,6 +65,11 @@ jobs:
           python -m venv venv
           .\venv\Scripts\python -m pip install --upgrade pip
           .\venv\Scripts\python -m pip install -r requirements.txt pyinstaller
+
+      - name: Vendor FFmpeg binary
+        shell: pwsh
+        run: |
+          .\venv\Scripts\python scripts/vendor_ffmpeg.py
 
       - name: Build with PyInstaller
         shell: pwsh
@@ -100,6 +110,11 @@ jobs:
           source venv/bin/activate
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt pyinstaller
+
+      - name: Vendor FFmpeg binary
+        run: |
+          source venv/bin/activate
+          python scripts/vendor_ffmpeg.py
 
       - name: Build with PyInstaller
         run: |

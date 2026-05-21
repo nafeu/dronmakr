@@ -12,6 +12,7 @@ fi
 source "venv/bin/activate"
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt pyinstaller
+python scripts/vendor_ffmpeg.py
 
 if ! python -c "import tkinter" >/dev/null 2>&1; then
   echo "Warning: tkinter unavailable in this venv — Patchcraftr may be broken in the built app." >&2

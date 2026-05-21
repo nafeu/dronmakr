@@ -1,0 +1,6 @@
+# column order: profile	binary_asset	sha256	license_asset	readme_asset
+# Sources: github.com/eugeneware/ffmpeg-static tag b6.0 (pinned). Update all columns when bumping vendor tag.
+windows-x64	ffmpeg-win32-x64	e9fd5e711debab9d680955fc1e38a2c1160fd280b144476cc3f62bc43ef49db1	win32-x64.LICENSE	win32-x64.README
+linux-x64	ffmpeg-linux-x64	ed652b2f32e0851d1946894fb8333f5b677c1b2ce6b9d187910a67f8b99da028	linux-x64.LICENSE	linux-x64.README
+macos-arm64	ffmpeg-darwin-arm64	a90e3db6a3fd35f6074b013f948b1aa45b31c6375489d39e572bea3f18336584	darwin-arm64.LICENSE	darwin-arm64.README
+macos-x64	ffmpeg-darwin-x64	cfe20936c83ecf5d68e424b87e8cc45b24dd6be81787810123bb964a0df686f9	darwin-x64.LICENSE	darwin-x64.README

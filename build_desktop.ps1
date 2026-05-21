@@ -12,6 +12,7 @@ if (-not (Test-Path "venv\Scripts\python.exe")) {
 
 & "venv\Scripts\python.exe" -m pip install --upgrade pip
 & "venv\Scripts\python.exe" -m pip install -r requirements.txt pyinstaller
+& "venv\Scripts\python.exe" "scripts/vendor_ffmpeg.py"
 & "venv\Scripts\pyinstaller.exe" --noconfirm --clean desktop.spec
 
 $version = & "venv\Scripts\python.exe" -c "from version import __version__; print(__version__)"

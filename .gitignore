@@ -87,3 +87,8 @@ vst-preset-files/
 output.wav
 config/
 dronmakr-files/
+
+# FFmpeg vendored binaries (populate via scripts/vendor_ffmpeg.py before desktop build)
+resources/ffmpeg/ffmpeg
+resources/ffmpeg/ffmpeg.exe
+resources/ffmpeg/THIRD_PARTY_FFMPEG.txt

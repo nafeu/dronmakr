@@ -39,6 +39,8 @@
 
 Packaged desktop builds also check **GitHub Releases** for updates: use **Check for updates…** or **Download v…** in the tray when a newer version is available (menu checks the API at most once per hour).
 
+Desktop releases include a **vendored FFmpeg** binary (used when **Folysplitr** uploads browser recordings); you do not need a separate system FFmpeg install for that path. Notices: `resources/ffmpeg/THIRD_PARTY_FFMPEG.txt` in the bundle — see [resources/ffmpeg/LICENSE.third_party.ffmpeg](https://github.com/nafeu/dronmakr/blob/main/resources/ffmpeg/LICENSE.third_party.ffmpeg).
+
 **Requirements**
 
 - Python **3.10+** (the project was developed on Python 3.10.16)
