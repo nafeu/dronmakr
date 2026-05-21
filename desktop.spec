@@ -1,6 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 import importlib
+import importlib.util
 import sys
 from pathlib import Path
 
@@ -33,16 +34,22 @@ def _site_packages_pkg_dir(module_qname: str) -> Path:
     raise RuntimeError(f"Cannot locate filesystem folder for module {module_qname!r}")
 
 
+# Linux wheels for sounddevice often omit _sounddevice_data (bundled dylibs are Darwin/Windows only);
+# runtime falls back to the system libportaudio. Only ship the folder when the module exists.
+_has_sounddevice_data = importlib.util.find_spec("_sounddevice_data") is not None
+
 _extra_site_pkg_datas = [
     (
         str(_site_packages_pkg_dir("_soundfile_data")),
         "_soundfile_data",
     ),
-    (
-        str(_site_packages_pkg_dir("_sounddevice_data")),
-        "_sounddevice_data",
-    ),
 ]
+if _has_sounddevice_data:
+    _extra_site_pkg_datas.append(
+        (str(_site_packages_pkg_dir("_sounddevice_data")), "_sounddevice_data")
+    )
+
+_sounddevice_data_hiddenimports = ["_sounddevice_data"] if _has_sounddevice_data else []
 
 hiddenimports_base = collect_submodules("eventlet") + collect_submodules("pystray")
 tk_datas, tk_bins, tk_hidden = collect_all("tkinter")
@@ -64,7 +71,6 @@ a = Analysis(
         "_cffi_backend",
         "cffi",
         "_sounddevice",
-        "_sounddevice_data",
         "_soundfile",
         "_soundfile_data",
         "sounddevice",
@@ -76,6 +82,7 @@ a = Analysis(
         "tkinter",
         "_tkinter",
     ]
+    + _sounddevice_data_hiddenimports
     + tk_hidden,
     hookspath=[],
     hooksconfig={},
