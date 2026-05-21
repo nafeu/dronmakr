@@ -27,7 +27,12 @@ from processing_actions import (
     apply_processing_command,
     actions_without_normalize,
 )
-from generate_midi import generate_drone_midi, get_pattern_config
+from generate_midi import (
+    coerce_drone_midi_length_bars,
+    coerce_drone_midi_padding_bars,
+    generate_drone_midi,
+    get_pattern_config,
+)
 from generate_sample import generate_drone_sample, generate_beat_sample
 from generate_transition import (
     generate_closh_sample,
@@ -495,6 +500,20 @@ def generate_drone(
         "-s",
         help="Name of midi pattern used to play virtual instrument.",
     ),
+    length_bars: int = typer.Option(
+        16,
+        "--length",
+        "--bars",
+        help="MIDI musical length in bars: 4, 8, 16 (default), 32, or 64.",
+    ),
+    padded_silence_bars: int = typer.Option(
+        0,
+        "--padded-silence",
+        help=(
+            "Silence appended after the pattern (bars): 0 (default), "
+            "or 4 / 8 / 16 / 32 / 64. Extends MIDI duration for Pedalboard renders."
+        ),
+    ),
     iterations: int = typer.Option(
         1,
         "--iterations",
@@ -537,6 +556,13 @@ def generate_drone(
 ):
     """Generate n iterations of samples (.wav) with parameters"""
     start_time = time.time()
+
+    try:
+        length_bars = coerce_drone_midi_length_bars(length_bars)
+        padded_silence_bars = coerce_drone_midi_padding_bars(padded_silence_bars)
+    except ValueError as e:
+        print(with_prompt(f"Error: {e}"))
+        sys.exit(1)
 
     if not log_server:
         print(get_version())
@@ -581,6 +607,8 @@ def generate_drone(
                 f"  pattern            {pattern if pattern else GENERATED_LABEL}"
             )
         )
+        print(with_prompt(f"  length (bars)      {length_bars}"))
+        print(with_prompt(f"  padded silence     {padded_silence_bars} bars"))
         print(
             with_prompt(
                 f"  shift octave down  {shift_octave_down if shift_octave_down else GENERATED_LABEL}"
@@ -653,6 +681,8 @@ def generate_drone(
             shift_root_note=shift_root_note,
             filters=filters,
             notes=notes.split(",") if notes else None,
+            num_bars=length_bars,
+            padded_silence_bars=padded_silence_bars,
         )
         base_sample_name = f"{name or generate_drone_name()}_-_{selected_chart}_-_{generate_id()}"
         sample_name = format_name(f"drone___{base_sample_name}")

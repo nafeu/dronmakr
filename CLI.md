@@ -76,6 +76,8 @@ python dronmakr.py
 
 Open `http://0.0.0.0:3766` in a browser (or the URL printed in the terminal).
 
+On **Auditionr → Generate Samples**, the dropdown lists **beat** and **drone** by default. Extra generators aligned with `generate-bass` / `generate-transition` (`reese`, `donk`, sweeps, etc.) are experimental: append **`?flags=extended_generators`** to the URL (comma-separated flags are supported), or **`?flags=all_cli_options`** for the same behaviour.
+
 ## Desktop runtime (menu bar / tray, from source)
 
 The desktop launcher runs the Flask server in the background and shows a **menu bar** icon (macOS) or **system tray** icon (Windows). The UI opens in your default browser.
@@ -114,6 +116,8 @@ Build outputs go to `dist/`; archives to `dist-artifacts/`. Release asset names 
 
 ### `generate-drone`
 
+Options **`--length`** / **`--bars`** set how many **musical** bars the MIDI pattern spans (allowed: **4**, **8**, **16** default, **32**, **64**). **`--padded-silence`** appends extra **silent** bars at the end of the MIDI file (**0** default, or **4** / **8** / **16** / **32** / **64**), which lengthens Pedalboard/offline renders without changing the played pattern.
+
 Post-processing uses legacy tokens and/or bracket-parameter steps. Separate steps with commas or semicolons.
 
 **Default:** every synthesized export is **peak-normalized to −1 dBFS** after generation (same as the “Normalize” action). Steps you pass via `--post-processing` run **before** that final normalize.
@@ -136,6 +140,8 @@ python dronmakr.py generate-drone \
   --name "my_drone" \
   --instrument "Reaktor 6" \
   --chart-name "minor" \
+  --length 16 \
+  --padded-silence 8 \
   --iterations 2 \
   --post-processing "normalize:[]"
 ```

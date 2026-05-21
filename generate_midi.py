@@ -143,6 +143,44 @@ SUPPORTED_PATTERNS_INFO = [
 
 SUPPORTED_PATTERNS = [item[0] for item in SUPPORTED_PATTERNS_INFO]
 
+# Drone MIDI: fixed bar counts for CLI + Auditionr Generate Samples.
+DRONE_MIDI_LENGTH_BARS_ALLOWED = frozenset({4, 8, 16, 32, 64})
+DRONE_MIDI_PADDING_BARS_ALLOWED = frozenset({0, 4, 8, 16, 32, 64})
+DEFAULT_DRONE_MIDI_LENGTH_BARS = 16
+DEFAULT_DRONE_MIDI_PADDING_BARS = 0
+
+
+def coerce_drone_midi_length_bars(value, *, default: int = DEFAULT_DRONE_MIDI_LENGTH_BARS) -> int:
+    """Parse UI/API ``lengthBars`` (must be 4, 8, 16, 32, or 64)."""
+    if value is None or value == "":
+        return default
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        raise ValueError("lengthBars must be an integer") from None
+    if n not in DRONE_MIDI_LENGTH_BARS_ALLOWED:
+        raise ValueError(
+            f"lengthBars must be one of {sorted(DRONE_MIDI_LENGTH_BARS_ALLOWED)}"
+        )
+    return n
+
+
+def coerce_drone_midi_padding_bars(
+    value, *, default: int = DEFAULT_DRONE_MIDI_PADDING_BARS
+) -> int:
+    """Parse UI/API ``paddedSilenceBars`` (0 or 4/8/16/32/64)."""
+    if value is None or value == "":
+        return default
+    try:
+        n = int(value)
+    except (TypeError, ValueError):
+        raise ValueError("paddedSilenceBars must be an integer") from None
+    if n not in DRONE_MIDI_PADDING_BARS_ALLOWED:
+        raise ValueError(
+            f"paddedSilenceBars must be one of {sorted(DRONE_MIDI_PADDING_BARS_ALLOWED)}"
+        )
+    return n
+
 
 def get_patterns():
     """Return list of MIDI pattern names for drone generation (used by webui/auditionr)."""
@@ -325,7 +363,8 @@ def generate_drone_midi(
     note_density=2,  # Notes per beat (higher = more active)
     duration_variance=0.5,  # Variance in note lengths (0 = fixed, 1 = max randomness)
     velocity_range=(80, 120),  # MIDI note velocity range
-    num_bars=8,  # Default to 4 bars
+    num_bars: int = DEFAULT_DRONE_MIDI_LENGTH_BARS,
+    padded_silence_bars: int = DEFAULT_DRONE_MIDI_PADDING_BARS,
     humanization=0.02,  # Time shift variance in seconds (default: 20ms)
     swing: float = 0.0,  # Rhythmic swing amount (0 = straight, 1 = strong swing)
     shift_octave_down=None,
@@ -335,8 +374,28 @@ def generate_drone_midi(
     iteration=None,
     iterations=None,
 ):
+    """Generate MIDI for ``num_bars`` of musical content plus optional trailing silence."""
     print(generate_drone_midi_header())
-    """Generates a MIDI file based on the selected pattern with exact num_bars length."""
+
+    try:
+        num_bars = int(num_bars)
+    except (TypeError, ValueError):
+        raise ValueError("num_bars must be an integer") from None
+    if num_bars not in DRONE_MIDI_LENGTH_BARS_ALLOWED:
+        raise ValueError(
+            f"num_bars must be one of {sorted(DRONE_MIDI_LENGTH_BARS_ALLOWED)}"
+        )
+
+    try:
+        padded_silence_bars = int(padded_silence_bars)
+    except (TypeError, ValueError):
+        raise ValueError("padded_silence_bars must be an integer") from None
+    if padded_silence_bars not in DRONE_MIDI_PADDING_BARS_ALLOWED:
+        raise ValueError(
+            "padded_silence_bars must be one of "
+            f"{sorted(DRONE_MIDI_PADDING_BARS_ALLOWED)}"
+        )
+
     if not pattern:
         pattern = random.choice(SUPPORTED_PATTERNS)
 
@@ -406,7 +465,16 @@ def generate_drone_midi(
     beats_per_bar = 4
     seconds_per_beat = 60.0 / bpm
     bar_length = beats_per_bar * seconds_per_beat
-    total_duration = num_bars * bar_length  # Ensure exact num_bars length
+    total_duration = num_bars * bar_length  # Musical content length only
+    padding_duration = padded_silence_bars * bar_length
+    file_end_duration = total_duration + padding_duration
+    if padded_silence_bars:
+        print(
+            with_prompt(
+                f"padded silence at end {YELLOW}{padded_silence_bars}{RESET} bars "
+                f"({padding_duration:.2f}s)"
+            )
+        )
 
     # Process chord notes
     midi_notes = []
@@ -1282,10 +1350,13 @@ def generate_drone_midi(
     # Add instrument **without a name** to MIDI object
     midi.instruments.append(instrument)
 
-    # Ensure the MIDI file is exactly `num_bars` long
-    if midi.get_end_time() < total_duration:
+    # Pad to full musical length plus optional trailing silence (velocity-0 holder note).
+    if midi.get_end_time() < file_end_duration:
         empty_note = pretty_midi.Note(
-            velocity=0, pitch=60, start=midi.get_end_time(), end=total_duration
+            velocity=0,
+            pitch=60,
+            start=midi.get_end_time(),
+            end=file_end_duration,
         )
         instrument.notes.append(empty_note)
 

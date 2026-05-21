@@ -286,7 +286,8 @@
 
     .generatr-form .form-row select,
     .generatr-form .form-row input[type="text"],
-    .generatr-form .form-row input[type="number"] {
+    .generatr-form .form-row input[type="number"],
+    .generatr-form .form-row textarea {
       font-family: inherit;
       font-size: 0.85rem;
       padding: 0.4rem 0.5rem;
@@ -300,9 +301,18 @@
       cursor: pointer;
     }
 
+    .generatr-form .form-row textarea {
+      font-size: 0.82rem;
+      cursor: text;
+      resize: vertical;
+      min-height: 2.5rem;
+      line-height: 1.3;
+    }
+
     .generatr-form .form-row select:focus,
     .generatr-form .form-row input[type="text"]:focus,
-    .generatr-form .form-row input[type="number"]:focus {
+    .generatr-form .form-row input[type="number"]:focus,
+    .generatr-form .form-row textarea:focus {
       outline: none;
       border-color: var(--primary);
     }
@@ -1550,24 +1560,12 @@
           <div class="generatr-card">
             <form class="generatr-form" id="generatr-form">
               <div class="form-row form-row-full">
-                <label for="generatr-type">Type</label>
-                <select id="generatr-type" name="type">
-                  <option value="beat">beat</option>
+                <label for="generatr-kind">Sample kind</label>
+                <select id="generatr-kind" name="kind">
+                  <option value="beat" selected>beat</option>
                   <option value="drone">drone</option>
-                  <option value="bass">bass</option>
-                  <option value="transition">transition</option>
-                </select>
-              </div>
-              <div class="form-row form-row-full form-row-subcommand hidden" id="generatr-subcommand-row">
-                <label for="generatr-subcommand">Subcommand</label>
-                <select id="generatr-subcommand" name="subcommand">
                   <option value="reese">reese</option>
                   <option value="donk">donk</option>
-                </select>
-              </div>
-              <div class="form-row form-row-full form-row-subcommand hidden" id="generatr-transition-subcommand-row">
-                <label for="generatr-transition-subcommand">Subcommand</label>
-                <select id="generatr-transition-subcommand" name="transition_subcommand">
                   <option value="sweep">sweep</option>
                   <option value="closh">closh</option>
                   <option value="kickboom">kickboom</option>
@@ -1575,6 +1573,162 @@
                   <option value="riser">riser</option>
                   <option value="drop">drop</option>
                 </select>
+              </div>
+              <div id="generatr-panel-reese" class="hidden">
+                <div class="form-row">
+                  <label for="generatr-reese-tempo">Tempo (BPM)</label>
+                  <input type="number" id="generatr-reese-tempo" min="1" value="170">
+                </div>
+                <div class="form-row">
+                  <label for="generatr-reese-bars">Bars</label>
+                  <input type="number" id="generatr-reese-bars" min="1" value="4">
+                </div>
+                <div class="form-row">
+                  <label for="generatr-reese-iterations">Iterations</label>
+                  <input type="number" id="generatr-reese-iterations" min="1" value="1">
+                </div>
+                <div class="form-row form-row-full">
+                  <label for="generatr-reese-sound">Sound (--sound)</label>
+                  <textarea id="generatr-reese-sound" rows="2" placeholder='e.g. sub;neuro;wave_a:saw;wave_b:tri'></textarea>
+                </div>
+                <div class="form-row form-row-full">
+                  <label for="generatr-reese-movement">Movement (--movement)</label>
+                  <textarea id="generatr-reese-movement" rows="2" placeholder="filter_cutoff_low:180;filter_cutoff_high:3800;…"></textarea>
+                </div>
+                <div class="form-row form-row-full">
+                  <label for="generatr-reese-distortion">Distortion (--distortion)</label>
+                  <textarea id="generatr-reese-distortion" rows="2" placeholder="drive_soft:0.3;hard_mix:0.2"></textarea>
+                </div>
+                <div class="form-row form-row-full">
+                  <label for="generatr-reese-fx">FX (--fx)</label>
+                  <textarea id="generatr-reese-fx" rows="2" placeholder="stereo_width:0.75;chorus_mix:0.25"></textarea>
+                </div>
+                <div class="form-row form-row-full">
+                  <label for="generatr-reese-disable">Disable (--disable)</label>
+                  <input type="text" id="generatr-reese-disable" placeholder="comma: sub,fx,movement,distortion">
+                </div>
+              </div>
+              <div id="generatr-panel-donk" class="hidden">
+                <div class="form-row">
+                  <label for="generatr-donk-tempo">Tempo (BPM)</label>
+                  <input type="number" id="generatr-donk-tempo" min="1" value="120">
+                </div>
+                <div class="form-row">
+                  <label for="generatr-donk-bars">Bars</label>
+                  <input type="number" id="generatr-donk-bars" min="1" value="1">
+                </div>
+                <div class="form-row">
+                  <label for="generatr-donk-iterations">Iterations</label>
+                  <input type="number" id="generatr-donk-iterations" min="1" value="1">
+                </div>
+                <div class="form-row form-row-full">
+                  <label for="generatr-donk-sound">Sound (--sound)</label>
+                  <textarea id="generatr-donk-sound" rows="2" placeholder="wave:sine;base_freq:52;pitch_start_semitones:18;…"></textarea>
+                </div>
+              </div>
+              <div id="generatr-panel-tx-timing" class="hidden">
+                <div class="form-row">
+                  <label for="generatr-tx-tempo">Tempo (BPM)</label>
+                  <input type="number" id="generatr-tx-tempo" min="1" value="120">
+                </div>
+                <div class="form-row">
+                  <label for="generatr-tx-bars">Bars</label>
+                  <input type="number" id="generatr-tx-bars" min="1" value="8">
+                </div>
+                <div class="form-row">
+                  <label for="generatr-tx-iterations">Iterations</label>
+                  <input type="number" id="generatr-tx-iterations" min="1" value="1">
+                </div>
+              </div>
+              <div id="generatr-panel-tx-wash" class="hidden">
+                <div class="form-row form-row-full">
+                  <label for="generatr-tx-reverb">Reverb (--reverb)</label>
+                  <textarea id="generatr-tx-reverb" rows="2" placeholder="wet_level, length_sec, decay_sec, … (key:value;… or omit for random)"></textarea>
+                </div>
+                <div class="form-row form-row-full">
+                  <label for="generatr-tx-delay">Delay (--delay)</label>
+                  <textarea id="generatr-tx-delay" rows="2" placeholder="division:1/8;feedback:0.4;mix:0.3 — or leave empty / off"></textarea>
+                </div>
+              </div>
+              <div id="generatr-panel-tx-stretch" class="hidden">
+                <div class="form-row">
+                  <label for="generatr-tx-stretch">Stretch (--stretch)</label>
+                  <input type="number" id="generatr-tx-stretch" step="any" min="0.1" value="3">
+                </div>
+                <div class="form-row">
+                  <label for="generatr-tx-window-size">Window size (--window-size, sec)</label>
+                  <input type="number" id="generatr-tx-window-size" step="any" min="0.05" value="0.25">
+                </div>
+              </div>
+              <div id="generatr-panel-tx-sweep-strings" class="hidden">
+                <div class="form-row form-row-full">
+                  <label for="generatr-tx-sound">Sound (--sound)</label>
+                  <textarea id="generatr-tx-sound" rows="2" placeholder='e.g. voice:noise;type:white'></textarea>
+                </div>
+                <div class="form-row form-row-full">
+                  <label for="generatr-tx-curve">Curve (--curve)</label>
+                  <textarea id="generatr-tx-curve" rows="2" placeholder="shape:ease_in;peak_pos:0.9;decay_rate:4"></textarea>
+                </div>
+                <div class="form-row form-row-full">
+                  <label for="generatr-tx-filter-str">Filter (--filter)</label>
+                  <textarea id="generatr-tx-filter-str" rows="2" placeholder="type:hpf;cutoff_low:250;cutoff_high:11000"></textarea>
+                </div>
+                <div class="form-row form-row-full">
+                  <label for="generatr-tx-tremolo">Tremolo (--tremolo)</label>
+                  <textarea id="generatr-tx-tremolo" rows="2" placeholder="rate_min_hz:2;rate_max_hz:20;depth:0.8"></textarea>
+                </div>
+                <div class="form-row form-row-full">
+                  <label for="generatr-tx-phaser">Phaser (--phaser)</label>
+                  <textarea id="generatr-tx-phaser" rows="2"></textarea>
+                </div>
+                <div class="form-row form-row-full">
+                  <label for="generatr-tx-chorus">Chorus (--chorus)</label>
+                  <textarea id="generatr-tx-chorus" rows="2"></textarea>
+                </div>
+                <div class="form-row form-row-full">
+                  <label for="generatr-tx-flanger">Flanger (--flanger)</label>
+                  <textarea id="generatr-tx-flanger" rows="2"></textarea>
+                </div>
+                <div class="form-row form-row-full">
+                  <label for="generatr-tx-sweep-disable">Disable (--disable)</label>
+                  <input type="text" id="generatr-tx-sweep-disable" placeholder="tremolo,phaser,chorus,flanger or fx">
+                </div>
+              </div>
+              <div id="generatr-panel-tx-riser-mix" class="hidden">
+                <div class="form-row">
+                  <label for="generatr-tx-peak-pos">Peak position (--peak-pos)</label>
+                  <input type="number" id="generatr-tx-peak-pos" step="any" min="0" max="2" value="1">
+                </div>
+                <div class="form-row">
+                  <label for="generatr-tx-build-shape">Build shape (--build-shape)</label>
+                  <select id="generatr-tx-build-shape">
+                    <option value="ease_in" selected>ease_in</option>
+                    <option value="linear">linear</option>
+                    <option value="ease_out">ease_out</option>
+                  </select>
+                </div>
+                <div class="form-row">
+                  <label for="generatr-tx-longcrash-level">Longcrash level (--longcrash-level)</label>
+                  <input type="number" id="generatr-tx-longcrash-level" step="0.05" min="0" max="1" value="0.4">
+                </div>
+                <div class="form-row">
+                  <label for="generatr-tx-sweep-level">Sweep level (--sweep-level)</label>
+                  <input type="number" id="generatr-tx-sweep-level" step="0.05" min="0" max="1" value="0.6">
+                </div>
+              </div>
+              <div id="generatr-panel-tx-drop-mix" class="hidden">
+                <div class="form-row">
+                  <label for="generatr-tx-riser-level">Riser level (--riser-level)</label>
+                  <input type="number" id="generatr-tx-riser-level" step="0.05" min="0" max="1" value="0.4">
+                </div>
+                <div class="form-row">
+                  <label for="generatr-tx-synth-level">Synth level (--synth-level)</label>
+                  <input type="number" id="generatr-tx-synth-level" step="0.05" min="0" max="1" value="0.6">
+                </div>
+                <div class="form-row form-row-full">
+                  <label for="generatr-tx-synth">Synth (--synth)</label>
+                  <textarea id="generatr-tx-synth" rows="2" placeholder="voice:saw;freq_high:2600;freq_low:90;level:0.7"></textarea>
+                </div>
               </div>
               <div class="form-row hidden" id="generatr-drone-name-row">
                 <label for="generatr-drone-name">Sample name</label>
@@ -1616,6 +1770,27 @@
               <div class="form-row hidden" id="generatr-drone-pattern-row">
                 <label for="generatr-drone-pattern">MIDI pattern</label>
                 <select id="generatr-drone-pattern"></select>
+              </div>
+              <div class="form-row hidden" id="generatr-drone-length-row">
+                <label for="generatr-drone-length">Length (bars)</label>
+                <select id="generatr-drone-length" aria-label="MIDI length in bars">
+                  <option value="4">4</option>
+                  <option value="8">8</option>
+                  <option value="16" selected>16</option>
+                  <option value="32">32</option>
+                  <option value="64">64</option>
+                </select>
+              </div>
+              <div class="form-row hidden" id="generatr-drone-padded-silence-row">
+                <label for="generatr-drone-padded-silence">Padded silence (bars)</label>
+                <select id="generatr-drone-padded-silence" aria-label="Trailing silence after MIDI pattern for export">
+                  <option value="0" selected>0 (none)</option>
+                  <option value="4">4</option>
+                  <option value="8">8</option>
+                  <option value="16">16</option>
+                  <option value="32">32</option>
+                  <option value="64">64</option>
+                </select>
               </div>
               <div class="form-row hidden" id="generatr-drone-instrument-row">
                 <label for="generatr-drone-instrument">Instrument</label>
@@ -4164,11 +4339,7 @@
     }
 
     (function () {
-      /**
-       * Feature flags (auditionr only): ?flags=FLAG_A,FLAG_B
-       * Flags are trimmed, lowercased, and stored in a Set for quick lookup.
-       * Example: ?flags=all_cli_options — also shows bass and transition in Generate Samples.
-       */
+      /** Optional generators: ?flags=extended_generators (or legacy ?flags=all_cli_options). */
       function parseAuditionrFeatureFlags() {
         try {
           var params = new URLSearchParams(window.location.search);
@@ -4183,23 +4354,41 @@
         }
       }
 
-      var auditionrFeatureFlags = parseAuditionrFeatureFlags();
-      var FLAG_ALL_CLI_OPTIONS = "all_cli_options";
-
-      var typeSelect = document.getElementById("generatr-type");
-      if (typeSelect && !auditionrFeatureFlags.has(FLAG_ALL_CLI_OPTIONS)) {
-        var gatedTypeValues = { bass: true, transition: true };
-        var toRemove = [];
-        Array.from(typeSelect.options).forEach(function (opt) {
-          if (gatedTypeValues[opt.value]) toRemove.push(opt);
-        });
-        toRemove.forEach(function (opt) { opt.remove(); });
-        var stillValid = Array.from(typeSelect.options).some(function (o) { return o.value === typeSelect.value; });
-        if (!stillValid) typeSelect.value = "beat";
+      function generatrShowsExtendedKinds(flags) {
+        return flags.has("extended_generators") || flags.has("all_cli_options");
       }
 
-      var subcommandRow = document.getElementById("generatr-subcommand-row");
-      var transitionSubcommandRow = document.getElementById("generatr-transition-subcommand-row");
+      function generatrKindToApi(kind) {
+        if (kind === "beat" || kind === "drone") {
+          return { type: kind, subcommand: "" };
+        }
+        if (kind === "reese" || kind === "donk") {
+          return { type: "bass", subcommand: kind };
+        }
+        if (["sweep", "closh", "kickboom", "longcrash", "riser", "drop"].indexOf(kind) >= 0) {
+          return { type: "transition", subcommand: kind };
+        }
+        return { type: "beat", subcommand: "" };
+      }
+
+      function generatrTrimOrNull(s) {
+        var t = String(s || "").trim();
+        return t ? t : null;
+      }
+
+      var kindSelect = document.getElementById("generatr-kind");
+      (function gateGeneratrKindsDropdown() {
+        var flags = parseAuditionrFeatureFlags();
+        if (!kindSelect || generatrShowsExtendedKinds(flags)) return;
+        var keep = { beat: true, drone: true };
+        Array.from(kindSelect.options).slice().forEach(function (opt) {
+          if (!keep[opt.value]) opt.remove();
+        });
+        var stillValid = Array.from(kindSelect.options).some(function (o) {
+          return o.value === kindSelect.value;
+        });
+        if (!stillValid) kindSelect.value = "beat";
+      })();
       var droneRows = [
         document.getElementById("generatr-drone-name-row"),
         document.getElementById("generatr-drone-notes-row"),
@@ -4208,6 +4397,8 @@
         document.getElementById("generatr-drone-tags-row"),
         document.getElementById("generatr-drone-roots-row"),
         document.getElementById("generatr-drone-pattern-row"),
+        document.getElementById("generatr-drone-length-row"),
+        document.getElementById("generatr-drone-padded-silence-row"),
         document.getElementById("generatr-drone-instrument-row"),
         document.getElementById("generatr-drone-effect-row"),
         document.getElementById("generatr-drone-iterations-row"),
@@ -4224,6 +4415,14 @@
         document.getElementById("generatr-beat-variants-row")
       ];
       var generatrPostProcessingRow = document.getElementById("generatr-beat-post-processing-row");
+      var panelReese = document.getElementById("generatr-panel-reese");
+      var panelDonk = document.getElementById("generatr-panel-donk");
+      var panelTxTiming = document.getElementById("generatr-panel-tx-timing");
+      var panelTxWash = document.getElementById("generatr-panel-tx-wash");
+      var panelTxStretch = document.getElementById("generatr-panel-tx-stretch");
+      var panelTxSweepStrings = document.getElementById("generatr-panel-tx-sweep-strings");
+      var panelTxRiserMix = document.getElementById("generatr-panel-tx-riser-mix");
+      var panelTxDropMix = document.getElementById("generatr-panel-tx-drop-mix");
       var beatTempoInput = document.getElementById("generatr-beat-tempo");
       var beatLoopsInput = document.getElementById("generatr-beat-loops");
       var beatPatternInput = document.getElementById("generatr-beat-pattern");
@@ -4239,6 +4438,8 @@
       var droneTagsInput = document.getElementById("generatr-drone-tags");
       var droneRootsInput = document.getElementById("generatr-drone-roots");
       var dronePatternSelect = document.getElementById("generatr-drone-pattern");
+      var droneLengthSelect = document.getElementById("generatr-drone-length");
+      var dronePaddedSilenceSelect = document.getElementById("generatr-drone-padded-silence");
       var droneInstrumentSelect = document.getElementById("generatr-drone-instrument");
       var droneEffectSelect = document.getElementById("generatr-drone-effect");
       var droneIterationsInput = document.getElementById("generatr-drone-iterations");
@@ -4315,28 +4516,65 @@
           });
       }
 
-      function updateGeneratrSubcommandVisibility() {
-        var type = typeSelect.value;
-        subcommandRow.classList.toggle("hidden", type !== "bass");
-        transitionSubcommandRow.classList.toggle("hidden", type !== "transition");
+      function syncTransitionTimingDefaults(kind) {
+        var barsEl = document.getElementById("generatr-tx-bars");
+        if (!barsEl) return;
+        var defaults = {
+          sweep: "8",
+          closh: "4",
+          kickboom: "4",
+          longcrash: "8",
+          riser: "4",
+          drop: "4"
+        };
+        if (defaults[kind]) {
+          barsEl.value = defaults[kind];
+        }
+      }
+
+      function updateGeneratrKindVisibility() {
+        var kind = kindSelect ? kindSelect.value : "beat";
+        var api = generatrKindToApi(kind);
+
         beatRows.forEach(function (row) {
-          row.classList.toggle("hidden", type !== "beat");
+          if (row) row.classList.toggle("hidden", kind !== "beat");
         });
         droneRows.forEach(function (row) {
-          row.classList.toggle("hidden", type !== "drone");
+          if (row) row.classList.toggle("hidden", kind !== "drone");
         });
-        if (generatrPostProcessingRow) {
-          generatrPostProcessingRow.classList.toggle(
-            "hidden",
-            type !== "beat" && type !== "drone"
-          );
+
+        if (panelReese) panelReese.classList.toggle("hidden", kind !== "reese");
+        if (panelDonk) panelDonk.classList.toggle("hidden", kind !== "donk");
+
+        var isTransition = api.type === "transition";
+        if (panelTxTiming) panelTxTiming.classList.toggle("hidden", !isTransition);
+
+        var washKinds = { closh: 1, kickboom: 1, longcrash: 1, riser: 1, drop: 1 };
+        var stretchKinds = { longcrash: 1, riser: 1, drop: 1 };
+        var sweepStrKinds = { sweep: 1, riser: 1, drop: 1 };
+
+        if (panelTxWash) panelTxWash.classList.toggle("hidden", !washKinds[kind]);
+        if (panelTxStretch) panelTxStretch.classList.toggle("hidden", !stretchKinds[kind]);
+        if (panelTxSweepStrings) panelTxSweepStrings.classList.toggle("hidden", !sweepStrKinds[kind]);
+        if (panelTxRiserMix) panelTxRiserMix.classList.toggle("hidden", kind !== "riser");
+        if (panelTxDropMix) panelTxDropMix.classList.toggle("hidden", kind !== "drop");
+
+        if (api.type === "transition") {
+          syncTransitionTimingDefaults(kind);
         }
-        if (type === "beat" || type === "drone") {
+
+        if (generatrPostProcessingRow) {
+          generatrPostProcessingRow.classList.remove("hidden");
+        }
+
+        if (kind === "beat" || kind === "drone" || kind === "reese" || kind === "donk" || isTransition) {
           loadGeneratrSidebarOptions();
         }
       }
-      typeSelect.addEventListener("change", updateGeneratrSubcommandVisibility);
-      updateGeneratrSubcommandVisibility();
+      if (kindSelect) {
+        kindSelect.addEventListener("change", updateGeneratrKindVisibility);
+      }
+      updateGeneratrKindVisibility();
 
       var generatrPpFilter = document.getElementById("generatr-pp-filter");
       if (generatrPpFilter) {
@@ -4364,7 +4602,10 @@
       var tabGen = document.getElementById("sidebar-tab-btn-generate");
       var tabEdit = document.getElementById("sidebar-tab-btn-edit");
       if (tabGen) {
-        tabGen.addEventListener("click", function () { openAuditionrSidebarTab("generate"); });
+        tabGen.addEventListener("click", function () {
+          openAuditionrSidebarTab("generate");
+          loadGeneratrSidebarOptions();
+        });
       }
       if (tabEdit) {
         tabEdit.addEventListener("click", function () { openAuditionrSidebarTab("edit"); });
@@ -4611,14 +4852,17 @@
 
       form.addEventListener("submit", function (e) {
         e.preventDefault();
-        var type = typeSelect.value;
-        var subcommand = "";
+        var kind = kindSelect ? kindSelect.value : "beat";
+        var api = generatrKindToApi(kind);
+        var type = api.type;
         var body = { type: type };
-        if (type === "bass") subcommand = document.getElementById("generatr-subcommand").value;
-        else if (type === "transition") subcommand = document.getElementById("generatr-transition-subcommand").value;
-        if (subcommand) body.subcommand = subcommand;
+        if (api.subcommand) body.subcommand = api.subcommand;
+
+        function postCmds() {
+          return generatrPostProcessQueue.map(function (x) { return x.command; });
+        }
+
         if (type === "beat") {
-          var postCmds = generatrPostProcessQueue.map(function (x) { return x.command; });
           var tempoRaw = (beatTempoInput.value || "").trim();
           body.tempo = tempoRaw ? parseInt(tempoRaw, 10) : null;
           body.loops = parseInt(beatLoopsInput.value || "2", 10);
@@ -4630,9 +4874,8 @@
           body.variants = Array.from(
             beatVariantsList.querySelectorAll("input[type='checkbox']:checked")
           ).map(function (el) { return el.value; });
-          body.postProcessing = postCmds;
+          body.postProcessing = postCmds();
         } else if (type === "drone") {
-          var dronePostCmds = generatrPostProcessQueue.map(function (x) { return x.command; });
           body.name = (droneNameInput.value || "").trim();
           body.notes = (droneNotesInput.value || "").trim();
           body.chartName = (droneChartNameInput.value || "").trim();
@@ -4640,11 +4883,53 @@
           body.tags = (droneTagsInput.value || "").trim();
           body.roots = (droneRootsInput.value || "").trim();
           body.pattern = (dronePatternSelect.value || "").trim();
+          body.lengthBars = parseInt(droneLengthSelect.value || "16", 10);
+          body.paddedSilenceBars = parseInt(dronePaddedSilenceSelect.value || "0", 10);
           body.instrument = (droneInstrumentSelect.value || "").trim();
           body.effect = (droneEffectSelect.value || "").trim();
           body.iterations = Math.max(1, parseInt(droneIterationsInput.value || "1", 10) || 1);
           body.splitProcessing = !!droneSplitCheckbox.checked;
-          body.postProcessing = dronePostCmds;
+          body.postProcessing = postCmds();
+        } else if (kind === "reese") {
+          body.tempo = parseInt(document.getElementById("generatr-reese-tempo").value || "170", 10);
+          body.bars = parseInt(document.getElementById("generatr-reese-bars").value || "4", 10);
+          body.iterations = Math.max(1, parseInt(document.getElementById("generatr-reese-iterations").value || "1", 10));
+          body.sound = generatrTrimOrNull(document.getElementById("generatr-reese-sound").value);
+          body.movement = generatrTrimOrNull(document.getElementById("generatr-reese-movement").value);
+          body.distortion = generatrTrimOrNull(document.getElementById("generatr-reese-distortion").value);
+          body.fx = generatrTrimOrNull(document.getElementById("generatr-reese-fx").value);
+          body.disable = generatrTrimOrNull(document.getElementById("generatr-reese-disable").value);
+          body.postProcessing = postCmds();
+        } else if (kind === "donk") {
+          body.tempo = parseInt(document.getElementById("generatr-donk-tempo").value || "120", 10);
+          body.bars = parseInt(document.getElementById("generatr-donk-bars").value || "1", 10);
+          body.iterations = Math.max(1, parseInt(document.getElementById("generatr-donk-iterations").value || "1", 10));
+          body.sound = generatrTrimOrNull(document.getElementById("generatr-donk-sound").value);
+          body.postProcessing = postCmds();
+        } else if (type === "transition") {
+          body.tempo = parseInt(document.getElementById("generatr-tx-tempo").value || "120", 10);
+          body.bars = parseInt(document.getElementById("generatr-tx-bars").value || "8", 10);
+          body.iterations = Math.max(1, parseInt(document.getElementById("generatr-tx-iterations").value || "1", 10));
+          body.reverb = generatrTrimOrNull(document.getElementById("generatr-tx-reverb").value);
+          body.delay = generatrTrimOrNull(document.getElementById("generatr-tx-delay").value);
+          body.stretch = parseFloat(document.getElementById("generatr-tx-stretch").value || "3");
+          body.windowSize = parseFloat(document.getElementById("generatr-tx-window-size").value || "0.25");
+          body.sound = generatrTrimOrNull(document.getElementById("generatr-tx-sound").value);
+          body.curve = generatrTrimOrNull(document.getElementById("generatr-tx-curve").value);
+          body.filterStr = generatrTrimOrNull(document.getElementById("generatr-tx-filter-str").value);
+          body.tremolo = generatrTrimOrNull(document.getElementById("generatr-tx-tremolo").value);
+          body.phaser = generatrTrimOrNull(document.getElementById("generatr-tx-phaser").value);
+          body.chorus = generatrTrimOrNull(document.getElementById("generatr-tx-chorus").value);
+          body.flanger = generatrTrimOrNull(document.getElementById("generatr-tx-flanger").value);
+          body.disable = generatrTrimOrNull(document.getElementById("generatr-tx-sweep-disable").value);
+          body.peakPos = parseFloat(document.getElementById("generatr-tx-peak-pos").value || "1");
+          body.buildShape = (document.getElementById("generatr-tx-build-shape").value || "ease_in").trim();
+          body.longcrashLevel = parseFloat(document.getElementById("generatr-tx-longcrash-level").value || "0.4");
+          body.sweepLevel = parseFloat(document.getElementById("generatr-tx-sweep-level").value || "0.6");
+          body.riserLevel = parseFloat(document.getElementById("generatr-tx-riser-level").value || "0.4");
+          body.synthLevel = parseFloat(document.getElementById("generatr-tx-synth-level").value || "0.6");
+          body.synth = generatrTrimOrNull(document.getElementById("generatr-tx-synth").value);
+          body.postProcessing = postCmds();
         }
 
         btnGenerate.disabled = true;

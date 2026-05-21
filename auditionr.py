@@ -44,7 +44,13 @@ from utils import (
     PRESETS_PATH,
 )
 from chord_scale_catalog import get_chord_scale_picklists, warm_chord_scale_picklists
-from generate_midi import get_patterns, generate_drone_midi, get_pattern_config
+from generate_midi import (
+    coerce_drone_midi_length_bars,
+    coerce_drone_midi_padding_bars,
+    generate_drone_midi,
+    get_pattern_config,
+    get_patterns,
+)
 from processing_actions import (
     append_post_processing_shortcut,
     get_processing_actions_payload,
@@ -546,9 +552,39 @@ def reveal_in_explorer():
 # ---------------------------------------------------------------------------
 
 
-def _finalize_generatr_audio_export(output_wav_path: str) -> None:
-    """Apply default finalize step (peak normalize) after raw sample synthesis."""
-    apply_post_processing_actions(output_wav_path, [])
+def _normalize_post_processing_spec_from_payload(payload: dict) -> str | None:
+    """Match beat/drone: list of commands joins to comma-separated spec."""
+    post_processing = payload.get("postProcessing")
+    if isinstance(post_processing, list):
+        joined = ",".join(str(p).strip() for p in post_processing if str(p).strip())
+        return joined if joined else None
+    if post_processing is None:
+        return None
+    s = str(post_processing).strip()
+    return s if s else None
+
+
+def _optional_trimmed(payload: dict, key: str) -> str | None:
+    raw = payload.get(key)
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    return s if s else None
+
+
+def _positive_int_field(payload: dict, key: str, default: int) -> int:
+    try:
+        v = int(payload.get(key, default))
+    except (TypeError, ValueError):
+        v = default
+    return max(1, v)
+
+
+def _float_field(payload: dict, key: str, default: float) -> float:
+    try:
+        return float(payload.get(key, default))
+    except (TypeError, ValueError):
+        return default
 
 
 def _apply_drone_post_processing_to_wavs(
@@ -669,6 +705,9 @@ def _run_generate_drone(payload: dict) -> list[str]:
         if pattern not in allowed:
             raise ValueError(f"Unknown MIDI pattern '{pattern}'")
 
+    length_bars = coerce_drone_midi_length_bars(payload.get("lengthBars"))
+    padded_silence_bars = coerce_drone_midi_padding_bars(payload.get("paddedSilenceBars"))
+
     try:
         iterations = max(1, int(payload.get("iterations", 1)))
     except (TypeError, ValueError):
@@ -716,6 +755,8 @@ def _run_generate_drone(payload: dict) -> list[str]:
             shift_root_note=None,
             filters=filters,
             notes=notes_list,
+            num_bars=length_bars,
+            padded_silence_bars=padded_silence_bars,
         )
         base_sample_name = f"{name or generate_drone_name()}_-_{selected_chart}_-_{generate_id()}"
         sample_name = format_name(f"drone___{base_sample_name}")
@@ -742,121 +783,251 @@ def _run_generate_drone(payload: dict) -> list[str]:
     return results
 
 
-def _run_generate_bass(subcommand: str):
-    """One iteration of bass (reese | donk). Returns list of one path."""
+def _run_generate_bass(subcommand: str, payload: dict) -> list[str]:
+    """`generate-bass` CLI parity from Auditionr JSON body."""
+    post_spec = _normalize_post_processing_spec_from_payload(payload)
+    iterations = max(1, _positive_int_field(payload, "iterations", 1))
+    paths: list[str] = []
+
     if subcommand == "reese":
-        config = parse_reese_config(
-            sound=None, movement=None, distortion=None, fx=None, disable=None
-        )
-        beat_name = generate_beat_name()
-        name_parts = ["reese", beat_name, "170bpm", "4bars", generate_id()]
-        sample_name = format_name("___".join(name_parts))
-        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
-        output_path, _ = generate_reese_sample(
-            tempo=170, bars=4, output=output_path, config=config
-        )
-        print(with_prompt(f"generated: {output_path}"))
-        _finalize_generatr_audio_export(output_path)
-        return [output_path]
+        tempo = max(1, _positive_int_field(payload, "tempo", 170))
+        bars = max(1, _positive_int_field(payload, "bars", 4))
+        sound = _optional_trimmed(payload, "sound")
+        movement = _optional_trimmed(payload, "movement")
+        distortion = _optional_trimmed(payload, "distortion")
+        fx = _optional_trimmed(payload, "fx")
+        disable = _optional_trimmed(payload, "disable")
+        for _ in range(iterations):
+            config = parse_reese_config(
+                sound=sound,
+                movement=movement,
+                distortion=distortion,
+                fx=fx,
+                disable=disable,
+            )
+            beat_name = generate_beat_name()
+            name_parts = ["reese", beat_name, f"{tempo}bpm", f"{bars}bars", generate_id()]
+            sample_name = format_name("___".join(name_parts))
+            output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+            output_path, _ = generate_reese_sample(
+                tempo=tempo, bars=bars, output=output_path, config=config
+            )
+            paths.append(output_path)
+            print(with_prompt(f"generated: {output_path}"))
     elif subcommand == "donk":
-        config = parse_donk_config(sound=None)
-        beat_name = generate_beat_name()
-        name_parts = ["donk", beat_name, "120bpm", "1bars", generate_id()]
-        sample_name = format_name("___".join(name_parts))
-        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
-        output_path, _ = generate_donk_sample(
-            tempo=120, bars=1, output=output_path, config=config
-        )
-        print(with_prompt(f"generated: {output_path}"))
-        _finalize_generatr_audio_export(output_path)
-        return [output_path]
+        tempo = max(1, _positive_int_field(payload, "tempo", 120))
+        bars = max(1, _positive_int_field(payload, "bars", 1))
+        sound = _optional_trimmed(payload, "sound")
+        for _ in range(iterations):
+            config = parse_donk_config(sound=sound)
+            beat_name = generate_beat_name()
+            name_parts = ["donk", beat_name, f"{tempo}bpm", f"{bars}bars", generate_id()]
+            sample_name = format_name("___".join(name_parts))
+            output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+            output_path, _ = generate_donk_sample(
+                tempo=tempo, bars=bars, output=output_path, config=config
+            )
+            paths.append(output_path)
+            print(with_prompt(f"generated: {output_path}"))
     else:
         raise ValueError(f"Unknown bass subcommand: {subcommand}")
 
+    _apply_drone_post_processing_to_wavs(paths, post_spec)
+    return paths
 
-def _run_generate_transition(subcommand: str):
-    """One iteration of transition (sweep | closh | kickboom | longcrash | riser | drop). Returns list of one path."""
+
+def _run_generate_transition(subcommand: str, payload: dict) -> list[str]:
+    """`generate-transition` CLI parity from Auditionr JSON body."""
+    post_spec = _normalize_post_processing_spec_from_payload(payload)
+    tempo = max(1, _positive_int_field(payload, "tempo", 120))
+    iterations = max(1, _positive_int_field(payload, "iterations", 1))
+
+    defaults_bars = {
+        "sweep": 8,
+        "closh": 4,
+        "kickboom": 4,
+        "longcrash": 8,
+        "riser": 4,
+        "drop": 4,
+    }
+    bars = max(1, _positive_int_field(payload, "bars", defaults_bars.get(subcommand, 4)))
+
+    def _wash_config():
+        return parse_closh_config(
+            reverb=_optional_trimmed(payload, "reverb"),
+            delay=_optional_trimmed(payload, "delay"),
+        )
+
+    def _sweep_config_from_payload():
+        return parse_sweep_config(
+            sound=_optional_trimmed(payload, "sound"),
+            curve=_optional_trimmed(payload, "curve"),
+            filter_str=_optional_trimmed(payload, "filterStr"),
+            tremolo=_optional_trimmed(payload, "tremolo"),
+            phaser=_optional_trimmed(payload, "phaser"),
+            chorus=_optional_trimmed(payload, "chorus"),
+            flanger=_optional_trimmed(payload, "flanger"),
+            disable=_optional_trimmed(payload, "disable"),
+        )
+
+    paths: list[str] = []
+
     if subcommand == "sweep":
-        config = parse_sweep_config(
-            sound=None, curve=None, filter_str=None, tremolo=None,
-            phaser=None, chorus=None, flanger=None, disable=None,
-        )
-        beat_name = generate_beat_name()
-        name_parts = ["transition_sweep", beat_name, "120bpm", "8bars", generate_id()]
-        sample_name = format_name("___".join(name_parts))
-        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
-        output_path, _ = generate_sweep_sample(
-            tempo=120, bars=8, output=output_path, config=config
-        )
-        print(with_prompt(f"generated: {output_path}"))
-        _finalize_generatr_audio_export(output_path)
-        return [output_path]
+        for _ in range(iterations):
+            config = _sweep_config_from_payload()
+            beat_name = generate_beat_name()
+            name_parts = [
+                "transition_sweep",
+                beat_name,
+                f"{tempo}bpm",
+                f"{bars}bars",
+                generate_id(),
+            ]
+            sample_name = format_name("___".join(name_parts))
+            output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+            output_path, _ = generate_sweep_sample(
+                tempo=tempo, bars=bars, output=output_path, config=config
+            )
+            paths.append(output_path)
+            print(with_prompt(f"generated: {output_path}"))
     elif subcommand == "closh":
-        config = parse_closh_config(reverb=None, delay=None)
-        beat_name = generate_beat_name()
-        name_parts = ["transition_closh", beat_name, "120bpm", "4bars", generate_id()]
-        sample_name = format_name("___".join(name_parts))
-        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
-        output_path, _ = generate_closh_sample(
-            tempo=120, bars=4, output=output_path, config=config
-        )
-        print(with_prompt(f"generated: {output_path}"))
-        _finalize_generatr_audio_export(output_path)
-        return [output_path]
+        config = _wash_config()
+        for _ in range(iterations):
+            beat_name = generate_beat_name()
+            name_parts = [
+                "transition_closh",
+                beat_name,
+                f"{tempo}bpm",
+                f"{bars}bars",
+                generate_id(),
+            ]
+            sample_name = format_name("___".join(name_parts))
+            output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+            output_path, _ = generate_closh_sample(
+                tempo=tempo, bars=bars, output=output_path, config=config
+            )
+            paths.append(output_path)
+            print(with_prompt(f"generated: {output_path}"))
     elif subcommand == "kickboom":
-        config = parse_closh_config(reverb=None, delay=None)
-        beat_name = generate_beat_name()
-        name_parts = ["transition_kickboom", beat_name, "120bpm", "4bars", generate_id()]
-        sample_name = format_name("___".join(name_parts))
-        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
-        output_path, _ = generate_kickboom_sample(
-            tempo=120, bars=4, output=output_path, config=config
-        )
-        print(with_prompt(f"generated: {output_path}"))
-        _finalize_generatr_audio_export(output_path)
-        return [output_path]
+        config = _wash_config()
+        for _ in range(iterations):
+            beat_name = generate_beat_name()
+            name_parts = [
+                "transition_kickboom",
+                beat_name,
+                f"{tempo}bpm",
+                f"{bars}bars",
+                generate_id(),
+            ]
+            sample_name = format_name("___".join(name_parts))
+            output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+            output_path, _ = generate_kickboom_sample(
+                tempo=tempo, bars=bars, output=output_path, config=config
+            )
+            paths.append(output_path)
+            print(with_prompt(f"generated: {output_path}"))
     elif subcommand == "longcrash":
-        config = parse_closh_config(reverb=None, delay=None)
-        beat_name = generate_beat_name()
-        name_parts = ["transition_longcrash", beat_name, "120bpm", "8bars", generate_id()]
-        sample_name = format_name("___".join(name_parts))
-        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
-        output_path, _ = generate_longcrash_sample(
-            tempo=120, bars=8, output=output_path, config=config
-        )
-        print(with_prompt(f"generated: {output_path}"))
-        _finalize_generatr_audio_export(output_path)
-        return [output_path]
+        config = _wash_config()
+        stretch = float(_float_field(payload, "stretch", 3.0))
+        window_size = float(_float_field(payload, "windowSize", 0.25))
+        for _ in range(iterations):
+            beat_name = generate_beat_name()
+            name_parts = [
+                "transition_longcrash",
+                beat_name,
+                f"{tempo}bpm",
+                f"{bars}bars",
+                generate_id(),
+            ]
+            sample_name = format_name("___".join(name_parts))
+            output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+            output_path, _ = generate_longcrash_sample(
+                tempo=tempo,
+                bars=bars,
+                output=output_path,
+                config=config,
+                stretch=stretch,
+                window_size=window_size,
+            )
+            paths.append(output_path)
+            print(with_prompt(f"generated: {output_path}"))
     elif subcommand == "riser":
-        longcrash_config = parse_closh_config(reverb=None, delay=None)
-        sweep_config = parse_sweep_config()
-        beat_name = generate_beat_name()
-        name_parts = ["transition_riser", beat_name, "120bpm", "4bars", generate_id()]
-        sample_name = format_name("___".join(name_parts))
-        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
-        output_path, _ = generate_riser_sample(
-            tempo=120, bars=4, output=output_path,
-            longcrash_config=longcrash_config, sweep_config=sweep_config,
+        longcrash_cfg = _wash_config()
+        sweep_cfg = _sweep_config_from_payload()
+        stretch = float(_float_field(payload, "stretch", 3.0))
+        window_size = float(_float_field(payload, "windowSize", 0.25))
+        peak_pos = float(_float_field(payload, "peakPos", 1.0))
+        longcrash_level = float(_float_field(payload, "longcrashLevel", 0.4))
+        sweep_level = float(_float_field(payload, "sweepLevel", 0.6))
+        build_shape_raw = (
+            (_optional_trimmed(payload, "buildShape") or "ease_in").lower().replace("-", "_")
         )
-        print(with_prompt(f"generated: {output_path}"))
-        _finalize_generatr_audio_export(output_path)
-        return [output_path]
+        if build_shape_raw not in ("ease_in", "linear", "ease_out"):
+            build_shape_raw = "ease_in"
+        for _ in range(iterations):
+            beat_name = generate_beat_name()
+            name_parts = [
+                "transition_riser",
+                beat_name,
+                f"{tempo}bpm",
+                f"{bars}bars",
+                generate_id(),
+            ]
+            sample_name = format_name("___".join(name_parts))
+            output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+            output_path, _ = generate_riser_sample(
+                tempo=tempo,
+                bars=bars,
+                output=output_path,
+                longcrash_config=longcrash_cfg,
+                sweep_config=sweep_cfg,
+                stretch=stretch,
+                window_size=window_size,
+                longcrash_level=longcrash_level,
+                sweep_level=sweep_level,
+                peak_pos=peak_pos,
+                build_shape=build_shape_raw,  # type: ignore[arg-type]
+            )
+            paths.append(output_path)
+            print(with_prompt(f"generated: {output_path}"))
     elif subcommand == "drop":
-        longcrash_config = parse_closh_config(reverb=None, delay=None)
-        sweep_config = parse_sweep_config()
-        beat_name = generate_beat_name()
-        name_parts = ["transition_drop", beat_name, "120bpm", "4bars", generate_id()]
-        sample_name = format_name("___".join(name_parts))
-        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
-        output_path, _ = generate_drop_sample(
-            tempo=120, bars=4, output=output_path,
-            longcrash_config=longcrash_config, sweep_config=sweep_config,
-        )
-        print(with_prompt(f"generated: {output_path}"))
-        _finalize_generatr_audio_export(output_path)
-        return [output_path]
+        longcrash_cfg = _wash_config()
+        sweep_cfg = _sweep_config_from_payload()
+        stretch = float(_float_field(payload, "stretch", 3.0))
+        window_size = float(_float_field(payload, "windowSize", 0.25))
+        riser_level = float(_float_field(payload, "riserLevel", 0.4))
+        synth_level = float(_float_field(payload, "synthLevel", 0.6))
+        synth_opt = _optional_trimmed(payload, "synth")
+        for _ in range(iterations):
+            beat_name = generate_beat_name()
+            name_parts = [
+                "transition_drop",
+                beat_name,
+                f"{tempo}bpm",
+                f"{bars}bars",
+                generate_id(),
+            ]
+            sample_name = format_name("___".join(name_parts))
+            output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+            output_path, _ = generate_drop_sample(
+                tempo=tempo,
+                bars=bars,
+                output=output_path,
+                longcrash_config=longcrash_cfg,
+                sweep_config=sweep_cfg,
+                synth=synth_opt,
+                stretch=stretch,
+                window_size=window_size,
+                riser_level=riser_level,
+                synth_level=synth_level,
+            )
+            paths.append(output_path)
+            print(with_prompt(f"generated: {output_path}"))
     else:
         raise ValueError(f"Unknown transition subcommand: {subcommand}")
+
+    _apply_drone_post_processing_to_wavs(paths, post_spec)
+    return paths
 
 
 def _load_beat_patterns_for_generate() -> dict:
@@ -1090,9 +1261,9 @@ def _handle_api_generate():
         if gen_type == "drone":
             paths = _run_generate_drone(data)
         elif gen_type == "bass":
-            paths = _run_generate_bass(subcommand)
+            paths = _run_generate_bass(subcommand, data)
         elif gen_type == "transition":
-            paths = _run_generate_transition(subcommand)
+            paths = _run_generate_transition(subcommand, data)
         else:
             paths = _run_generate_beat(data)
         print(f"{RED}■ generate completed{RESET}")
