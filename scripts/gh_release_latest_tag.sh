@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Create a GitHub Release for the latest git tag (semver-sorted) using gh CLI.
 # Publishing triggers .github/workflows/release-desktop.yml when the workflow is enabled on the repo.
+# To bump version, push the new tag, and create that release in one step, use scripts/bump_and_release.sh.
 #
 # Prerequisites: gh authenticated (gh auth login), git, tags pushed to GitHub (--verify-tag).
 #

@@ -92,6 +92,8 @@ Optional verbose server logging:
 python dronmakr.py desktop --debug
 ```
 
+**Server error log file:** Unhandled backend errors and HTTP 500 tracebacks are written to a rotating file (see [README — Desktop (GitHub Releases)](https://github.com/nafeu/dronmakr/blob/main/README.md) for OS paths). The desktop tray includes **Server error log…** to open it. When you run `webui` or `desktop` from source, the startup banner also prints the path (under `dronmakr/logs/server-errors.log` in the repo).
+
 On first run you choose a `dronmakr-files` location. The app creates and manages `presets/`, `midi/`, `exports/`, `archive/`, `saved/`, `recordings/`, `splits/`, `trash/`, `packages/`, `history/`, `temp/`, `vst-preset-files/`, `config/`. Change it later under **Settings** (`FILES_ROOT`).
 
 On **Linux**, the tray icon may require GTK AppIndicator / `libappindicator` (or compatible) for `pystray`.

@@ -22,6 +22,18 @@ def _user_data_root() -> Path:
     return Path.home() / ".local" / "share" / "dronmakr"
 
 
+def get_server_logs_dir() -> Path:
+    """
+    Directory for server-process log files.
+
+    Packaged builds use the same user-data root as ``config/settings.json``; development
+    runs use ``./logs`` at the repo root.
+    """
+    if getattr(sys, "frozen", False):
+        return _user_data_root() / "logs"
+    return Path(__file__).resolve().parent / "logs"
+
+
 def _compute_settings_path() -> str:
     """
     Resolve config/settings.json relative to this package, not process cwd.

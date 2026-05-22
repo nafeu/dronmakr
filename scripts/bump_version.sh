@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Bump __version__ in version.py (semver), git commit + annotated tag + push origin.
+# To bump and immediately create the GitHub Release for the new tag, use scripts/bump_and_release.sh.
 #
 # Examples:
 #   ./scripts/bump_version.sh patch

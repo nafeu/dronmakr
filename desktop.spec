@@ -127,6 +127,7 @@ a = Analysis(
         "desktop_native_dialog",
         "plugin_default_paths",
         "native_folder_picker",
+        "server_error_logging",
         "tkinter",
         "_tkinter",
     ]

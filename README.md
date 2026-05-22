@@ -58,6 +58,16 @@ For distribution without these prompts you need your own **Apple Developer Progr
 
 On recent builds (or after a silent failure), **`~/Library/Application Support/dronmakr/last-startup-error.txt`** may contain Python tracebacks captured from the launcher.
 
+While the packaged app runs, **`HTTP 500` responses and other server-side errors** (for example failures on Auditionr’s `/api/generatr/options`) are appended to a **rotating log file**:
+
+- **macOS:** `~/Library/Application Support/dronmakr/logs/server-errors.log`
+- **Windows:** `%AppData%\dronmakr\logs\server-errors.log`
+- **Linux:** `~/.local/share/dronmakr/logs/server-errors.log`
+
+From the tray, use **Server error log…** to reveal that file in Finder / Explorer / your file manager. Older segments are kept as `server-errors.log.1`, `.2`, etc. (up to a few MB per file).
+
+When running from a **git checkout**, the same file is under **`dronmakr/logs/server-errors.log`** at the repo root; the terminal also prints that path when you start `webui` or `desktop`.
+
 Packaged desktop builds also poll **GitHub Releases**: when an update exists, native tray prompts can offer **Open updater** on startup; otherwise use **Check for updates…** or **Updater (<tag>)** in the tray. The updater opens a Tk window in a separate process (download progress, install / DMG reveal). Clearing `PLUGIN_PATHS` after first run stays empty—defaults apply only when `settings.json` is first created.
 
 Desktop releases include a **vendored FFmpeg** binary (used when **Folysplitr** uploads browser recordings); you do not need a separate system FFmpeg install for that path. Notices: `resources/ffmpeg/THIRD_PARTY_FFMPEG.txt` in the bundle — see [resources/ffmpeg/LICENSE.third_party.ffmpeg](https://github.com/nafeu/dronmakr/blob/main/resources/ffmpeg/LICENSE.third_party.ffmpeg).
@@ -136,10 +146,13 @@ You can use the `ASSERT_INSTRUMENT` env var to list any plugins that you want to
 
 **Maintainers:** publishing a **GitHub Release** (not only a tag) runs [`.github/workflows/release-desktop.yml`](.github/workflows/release-desktop.yml) on macOS, Windows, and Linux and uploads the matching archives to that release.
 
-**Version bump:** from the repo root, run [`scripts/bump_version.sh`](scripts/bump_version.sh) with **`major`**, **`minor`**, or **`patch`** ([SemVer](https://semver.org/) bump applied to [`version.py`](version.py)). It edits `version.py`, commits **`Bump version to v…`**, creates an annotated tag **`v*.*.*`**, and **`git push`es** branch + tag to **`origin`** (use **`--dry-run`** to preview). Example patch release:
+**Version bump:** from the repo root, run [`scripts/bump_version.sh`](scripts/bump_version.sh) with **`major`**, **`minor`**, or **`patch`** ([SemVer](https://semver.org/) bump applied to [`version.py`](version.py)). It edits `version.py`, commits **`Bump version to v…`**, creates an annotated tag **`v*.*.*`**, and **`git push`es** branch + tag to **`origin`** (use **`--dry-run`** to preview).
+
+**Bump + GitHub Release in one step:** [`scripts/bump_and_release.sh`](scripts/bump_and_release.sh) runs `bump_version.sh`, then `gh release create` for the new tag (same workflow trigger as tagging alone). Preview with **`--dry-run`**; append **`--`** to pass extra **`gh`** flags (for example **`--draft`**).
 
 ```sh
 ./scripts/bump_version.sh patch
+./scripts/bump_and_release.sh patch
 ```
 
 On **Linux**, the tray icon may require GTK AppIndicator / `libappindicator` (or compatible) for `pystray`.

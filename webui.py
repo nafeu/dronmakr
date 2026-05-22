@@ -67,6 +67,11 @@ from config_validation import validate_server_config_names
 from processing_actions import get_processing_actions_payload
 from folysplitr import ensure_recordings_dir, ensure_splits_dirs, register_folysplitr
 
+from server_error_logging import (
+    ensure_server_error_file_logging,
+    register_flask_server_error_signals,
+)
+
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
 if _DESKTOP_THREADING:
@@ -412,6 +417,7 @@ def api_health():
 register_auditionr(app, socketio)
 register_beatbuildr(app, socketio)
 register_folysplitr(app)
+register_flask_server_error_signals(app)
 
 
 def _macos_default_http_handler_app_path() -> str | None:
@@ -479,6 +485,7 @@ def run(
     if debug:
         app.config["TEMPLATES_AUTO_RELOAD"] = True
 
+    ensure_server_error_file_logging(announce=True)
     print(get_version())
     ensure_settings()
     if has_configured_files_root():
@@ -567,6 +574,7 @@ def start_server(
     """Start web server in a background thread for desktop runtime."""
     global DEBUG_WEBSOCKETS
     DEBUG_WEBSOCKETS = debug
+    ensure_server_error_file_logging(announce=True)
     if stderr_logging:
         configure_desktop_process_logging(
             logging.DEBUG if debug else logging.INFO

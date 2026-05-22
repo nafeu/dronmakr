@@ -46,6 +46,7 @@ from pystray import Icon, Menu, MenuItem
 
 from bundle_paths import get_bundle_app_root
 from desktop_native_dialog import tray_ask_yes_no, tray_show_error, tray_show_info
+from server_error_logging import reveal_server_error_log_for_user
 from settings import get_files_root, has_configured_files_root
 from updater import fetch_update_info_throttled, peek_cached_update_info
 from webui import open_webui_in_browser, start_server
@@ -221,7 +222,9 @@ def main(debug: bool = False) -> None:
         tray_show_error(
             "dronmakr",
             "The dronmakr server did not become ready in time.\n"
-            "Check the terminal or log output for startup errors.",
+            "If you have a terminal window attached, copy any traceback from there;\n"
+            "otherwise tray → Server error log… opens the rotating server log folder.\n"
+            "Launcher-only crashes still write beside your app data folder — see README.",
         )
         sys.exit(1)
 
@@ -248,6 +251,12 @@ def main(debug: bool = False) -> None:
 
     def open_about(icon_: Icon, item_: object) -> None:
         open_webui_in_browser(about_url)
+
+    def open_server_logs(_icon_: Icon, _item_: object) -> None:
+        try:
+            reveal_server_error_log_for_user()
+        except Exception as e:
+            tray_show_error("Server log", str(e))
 
     def browse_files(icon_: Icon, item_: object) -> None:
         root = get_files_root(allow_default=False)
@@ -316,6 +325,7 @@ def main(debug: bool = False) -> None:
         MenuItem("Launch patchcraftr", launch_patchcraftr),
         MenuItem("Settings", open_settings),
         MenuItem("About", open_about),
+        MenuItem("Server error log…", open_server_logs),
     ]
     if getattr(sys, "frozen", False):
         items.extend(
