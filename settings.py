@@ -306,6 +306,12 @@ def _ensure_settings_file() -> None:
         return
     os.makedirs(os.path.dirname(SETTINGS_PATH), exist_ok=True)
     settings = _migrate_from_env()
+    # First-ever file only: sensible HOST OS plugin folders when nothing came from .env.
+    pp = settings.get("PLUGIN_PATHS")
+    if not (isinstance(pp, str) and pp.strip()):
+        from plugin_default_paths import default_plugin_paths_csv
+
+        settings["PLUGIN_PATHS"] = default_plugin_paths_csv()
     with open(SETTINGS_PATH, "w") as f:
         json.dump(settings, f, indent=2)
 

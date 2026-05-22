@@ -13,6 +13,11 @@ if __name__ == "__main__":
 
         print("smoke: soundfile OK", _sf.__libsndfile_version__, flush=True)
         raise SystemExit(0)
+    if len(sys.argv) > 1 and sys.argv[1] == "--update-ui":
+        from desktop_update_ui import main as _spawn_update_gui  # noqa: PLC0415
+
+        _spawn_update_gui()
+        raise SystemExit(0)
     if len(sys.argv) > 1 and sys.argv[1] == "--run-patchcraftr":
         from settings import ensure_settings
 
@@ -31,25 +36,18 @@ if __name__ == "__main__":
     os.environ["DRONMAKR_ASYNC_MODE"] = "threading"
 
 import socket
-import tarfile
 import threading
 import time
 import urllib.error
 import urllib.request
-import zipfile
 
 from PIL import Image
 from pystray import Icon, Menu, MenuItem
 
 from bundle_paths import get_bundle_app_root
+from desktop_native_dialog import tray_ask_yes_no, tray_show_error, tray_show_info
 from settings import get_files_root, has_configured_files_root
-from updater import (
-    UpdateInfo,
-    download_update,
-    fetch_update_info_throttled,
-    peek_cached_update_info,
-    reveal_file,
-)
+from updater import fetch_update_info_throttled, peek_cached_update_info
 from webui import open_webui_in_browser, start_server
 
 _HEALTH_PATH = "/api/health"
@@ -164,109 +162,25 @@ def _wait_for_health(base_url: str, timeout_s: float = 30.0) -> bool:
     return False
 
 
-def _tk_root():
-    import tkinter as tk
-
-    root = tk.Tk()
-    root.withdraw()
-    return root
-
-
-def _messagebox_error(title: str, message: str) -> None:
-    try:
-        from tkinter import messagebox
-
-        root = _tk_root()
-        try:
-            messagebox.showerror(title, message)
-        finally:
-            root.destroy()
-    except Exception:  # noqa: BLE001
-        print(f"[desktop] {title}: {message}", flush=True)
-
-
-def _messagebox_askyesno(title: str, message: str) -> bool:
-    import tkinter as tk
-    from tkinter import messagebox
-
-    root = tk.Tk()
-    root.withdraw()
-    try:
-        return bool(messagebox.askyesno(title, message))
-    finally:
-        root.destroy()
-
-
-def _messagebox_showinfo(title: str, message: str) -> None:
-    import tkinter as tk
-    from tkinter import messagebox
-
-    root = tk.Tk()
-    root.withdraw()
-    try:
-        messagebox.showinfo(title, message)
-    finally:
-        root.destroy()
-
-
-def _find_staged_executable(root: str) -> str:
-    if not root or not os.path.exists(root):
-        return ""
-    target_name = "dronmakr.exe" if sys.platform == "win32" else "dronmakr"
-    for dirpath, _dirnames, filenames in os.walk(root):
-        if target_name in filenames:
-            return os.path.join(dirpath, target_name)
-    return ""
-
-
-def _launch_executable(path: str) -> None:
-    if sys.platform == "win32":
-        subprocess.Popen([path], creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)  # type: ignore[attr-defined]
-    elif sys.platform == "darwin":
-        subprocess.Popen(["open", path] if path.endswith(".app") else [path])
+def _spawn_update_ui() -> None:
+    """Run the Tk updater in a separate OS process so it owns the GUI main thread."""
+    cwd = str(_patchcraftr_work_dir())
+    exe = sys.executable
+    if getattr(sys, "frozen", False):
+        argv = [exe, "--update-ui"]
+        kwargs = {"cwd": cwd}
+        if sys.platform == "win32":
+            det = getattr(subprocess, "DETACHED_PROCESS", 0)
+            cng = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+            kwargs["creationflags"] = int(det | cng)
+        subprocess.Popen(argv, **kwargs)  # type: ignore[arg-type]
     else:
-        subprocess.Popen([path])
-
-
-def _install_after_download_confirm(update: UpdateInfo) -> None:
-    target_dir = os.path.join(str(Path.home()), "Downloads", "dronmakr-updates")
-    try:
-        downloaded = download_update(update, target_dir)
-        staged = os.path.join(target_dir, "staged")
-        os.makedirs(staged, exist_ok=True)
-        extracted_root = ""
-        if downloaded.endswith(".zip"):
-            with zipfile.ZipFile(downloaded, "r") as zf:
-                zf.extractall(staged)
-            extracted_root = staged
-        elif downloaded.endswith(".tar.gz"):
-            with tarfile.open(downloaded, "r:gz") as tf:
-                tf.extractall(staged)
-            extracted_root = staged
-        executable = _find_staged_executable(extracted_root)
-        if executable:
-            _launch_executable(executable)
-            os._exit(0)
-        reveal_file(downloaded)
-        _messagebox_showinfo(
-            "Update downloaded",
-            "Package downloaded. Install manually, then relaunch.",
+        script_path = Path(__file__).resolve()
+        subprocess.Popen(
+            [exe, str(script_path), "--update-ui"],
+            cwd=cwd,
+            start_new_session=sys.platform != "win32",
         )
-    except Exception as e:  # noqa: BLE001
-        _messagebox_error("Update failed", str(e))
-
-
-def _run_update_download_flow() -> None:
-    update = fetch_update_info_throttled(force=True)
-    if not update:
-        _messagebox_showinfo("dronmakr", "You are on the latest release.")
-        return
-    if not _messagebox_askyesno(
-        "Update available",
-        f"A newer version ({update.tag}) is available. Download now?",
-    ):
-        return
-    _install_after_download_confirm(update)
 
 
 def _maybe_offer_update_on_startup() -> None:
@@ -275,12 +189,14 @@ def _maybe_offer_update_on_startup() -> None:
     update = fetch_update_info_throttled(force=True)
     if not update:
         return
-    if not _messagebox_askyesno(
+    if tray_ask_yes_no(
         "Update available",
-        f"A newer version ({update.tag}) is available. Download now?",
+        f"A newer dronmakr release exists ({update.tag}). Open the updater window?",
+        yes_label="Open updater",
+        no_label="Not now",
+        default_no=True,
     ):
-        return
-    _install_after_download_confirm(update)
+        _spawn_update_ui()
 
 
 def main(debug: bool = False) -> None:
@@ -302,7 +218,7 @@ def main(debug: bool = False) -> None:
     ready = _wait_for_health(base_url, timeout_s=30.0)
 
     if not ready:
-        _messagebox_error(
+        tray_show_error(
             "dronmakr",
             "The dronmakr server did not become ready in time.\n"
             "Check the terminal or log output for startup errors.",
@@ -352,34 +268,26 @@ def main(debug: bool = False) -> None:
         try:
             _launch_patchcraftr_gui()
         except Exception as e:  # noqa: BLE001
-            _messagebox_error("patchcraftr", str(e))
+            tray_show_error("patchcraftr", str(e))
 
     def check_updates(icon_: Icon, item_: object) -> None:
         if not getattr(sys, "frozen", False):
-            _messagebox_showinfo(
+            tray_show_info(
                 "dronmakr",
                 "Update checks apply to the packaged desktop app only.",
             )
             return
-        _run_update_download_flow()
+        _spawn_update_ui()
 
     def download_update_now(icon_: Icon, item_: object) -> None:
-        info = peek_cached_update_info()
-        if not info:
-            return
-        if not _messagebox_askyesno(
-            "Update available",
-            f"Download {info.tag} now?",
-        ):
-            return
-        _install_after_download_confirm(info)
+        _spawn_update_ui()
 
     def download_update_visible(_item: MenuItem) -> bool:
         return peek_cached_update_info() is not None
 
     def download_update_label(_item: MenuItem) -> str:
         info = peek_cached_update_info()
-        return f"Download {info.tag}…" if info else "Download update…"
+        return f"Updater ({info.tag})…" if info else "Updater…"
 
     stop_menu_poll = threading.Event()
 

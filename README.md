@@ -58,7 +58,7 @@ For distribution without these prompts you need your own **Apple Developer Progr
 
 On recent builds (or after a silent failure), **`~/Library/Application Support/dronmakr/last-startup-error.txt`** may contain Python tracebacks captured from the launcher.
 
-Packaged desktop builds also check **GitHub Releases** for updates: use **Check for updates…** or **Download v…** in the tray when a newer version is available (menu checks the API at most once per hour).
+Packaged desktop builds also poll **GitHub Releases**: when an update exists, native tray prompts can offer **Open updater** on startup; otherwise use **Check for updates…** or **Updater (<tag>)** in the tray. The updater opens a Tk window in a separate process (download progress, install / DMG reveal). Clearing `PLUGIN_PATHS` after first run stays empty—defaults apply only when `settings.json` is first created.
 
 Desktop releases include a **vendored FFmpeg** binary (used when **Folysplitr** uploads browser recordings); you do not need a separate system FFmpeg install for that path. Notices: `resources/ffmpeg/THIRD_PARTY_FFMPEG.txt` in the bundle — see [resources/ffmpeg/LICENSE.third_party.ffmpeg](https://github.com/nafeu/dronmakr/blob/main/resources/ffmpeg/LICENSE.third_party.ffmpeg).
 

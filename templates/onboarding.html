@@ -31,9 +31,16 @@
     const filesRoot = document.getElementById("filesRoot");
     const message = document.getElementById("message");
     document.getElementById("pickBtn").addEventListener("click", async () => {
+      message.textContent = "";
       const res = await fetch("/api/settings/pick-folder", { method: "POST" });
       const data = await res.json();
-      if (data.path) filesRoot.value = data.path;
+      if (data.path) {
+        filesRoot.value = data.path;
+      } else if (data.cancelled) {
+        message.textContent = "Folder selection cancelled.";
+      } else if (data.error) {
+        message.textContent = data.error;
+      }
     });
     document.getElementById("saveBtn").addEventListener("click", async () => {
       message.textContent = "";

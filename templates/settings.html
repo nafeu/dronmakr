@@ -552,6 +552,8 @@
           if (data.path) {
             input.value = appendComma(input.value, escapePathCsvToken(data.path));
             showToast("Folder added.");
+          } else if (data.cancelled) {
+            showToast("Folder selection cancelled.");
           } else if (data.error) {
             showToast("Folder picker failed: " + data.error, true);
           }

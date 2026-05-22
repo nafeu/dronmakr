@@ -34,6 +34,7 @@ from beatbuildr import (
     ensure_drum_kits,
     ensure_all_sample_caches,
 )
+from native_folder_picker import pick_folder_subprocess
 from settings import (
     DRUM_PATH_KEYS,
     DEFAULT_DRUM_PATH_PRESET_NAME,
@@ -380,80 +381,21 @@ def api_drum_path_presets_set_active():
     return jsonify({"ok": True, "activePreset": result})
 
 
-def _pick_folder_native():
-    """Open native folder picker. Tries tkinter first, then platform fallbacks."""
-    import subprocess
-    import sys
-
-    # 1. Try tkinter (works when Python was built with tk support)
-    try:
-        import tkinter as tk
-        from tkinter import filedialog
-
-        root = tk.Tk()
-        root.withdraw()
-        root.attributes("-topmost", True)
-        path = filedialog.askdirectory(parent=root, title="Select folder")
-        root.destroy()
-        return (path or "").strip()
-    except ImportError:
-        pass
-    except Exception:
-        pass
-
-    # 2. Fallback: macOS osascript (always available on macOS)
-    if sys.platform == "darwin":
-        try:
-            # Activate Finder so the folder dialog appears in front of the browser
-            script = 'tell application "Finder" to activate\nreturn POSIX path of (choose folder)'
-            result = subprocess.run(
-                ["osascript", "-e", script],
-                capture_output=True,
-                text=True,
-                timeout=120,
-            )
-            if result.returncode == 0 and result.stdout:
-                return result.stdout.strip()
-            # returncode 1 = user cancelled
-            return ""
-        except FileNotFoundError:
-            pass
-        except subprocess.TimeoutExpired:
-            return ""
-
-    # 3. Fallback: Linux zenity / kdialog
-    if sys.platform.startswith("linux"):
-        for cmd in [
-            ["zenity", "--file-selection", "--directory"],
-            ["kdialog", "--getexistingdirectory"],
-        ]:
-            try:
-                result = subprocess.run(
-                    cmd, capture_output=True, text=True, timeout=120
-                )
-                if result.returncode == 0 and result.stdout:
-                    return result.stdout.strip()
-                if result.returncode != 0:
-                    return ""  # user cancelled
-            except FileNotFoundError:
-                continue
-            except subprocess.TimeoutExpired:
-                return ""
-
-    return None  # no picker available
 
 
 @app.route("/api/settings/pick-folder", methods=["POST"])
 def api_settings_pick_folder():
-    """Open native folder picker and return selected path. Requires display."""
-    path = _pick_folder_native()
-    if path is not None:
-        return jsonify({"path": path})
+    """Open native folder picker and return selected path. Safe from Flask worker threads (no Tk)."""
+    result = pick_folder_subprocess()
+    if result.status == "ok":
+        return jsonify({"path": result.path})
+    if result.status == "cancelled":
+        return jsonify({"path": "", "cancelled": True})
     return (
         jsonify(
             {
                 "path": "",
-                "error": "No folder picker available. Install python3-tk (Linux) or use a Python build with tkinter.",
+                "error": "No folder picker available (install zenity/kdialog on Linux, or PowerShell on Windows).",
             }
         ),
         500,

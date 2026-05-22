@@ -122,6 +122,11 @@ a = Analysis(
         "patchcraftr_gui",
         "patchcraftr_live_monitor",
         "pedalboard_isolated_runner",
+        "desktop_update_ui",
+        "desktop_update_install",
+        "desktop_native_dialog",
+        "plugin_default_paths",
+        "native_folder_picker",
         "tkinter",
         "_tkinter",
     ]
