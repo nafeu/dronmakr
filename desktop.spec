@@ -4,7 +4,7 @@ import importlib.util
 import sys
 from pathlib import Path
 
-from PyInstaller.utils.hooks import collect_all, collect_submodules
+from PyInstaller.utils.hooks import collect_all, collect_submodules, get_module_file_attribute
 
 # Resolve version for macOS Info.plist (SPECPATH is defined by PyInstaller when this file runs).
 # PyInstaller sets SPECPATH to the *directory* that contains desktop.spec—not the path to the file itself.
@@ -20,13 +20,50 @@ _has_sounddevice_data = importlib.util.find_spec("_sounddevice_data") is not Non
 
 _sounddevice_data_hiddenimports = ["_sounddevice_data"] if _has_sounddevice_data else []
 
-hiddenimports_base = collect_submodules("eventlet") + collect_submodules("pystray")
+
+def _soundfile_packaged_binaries():
+    """Libs shipped in the PyPI soundfile wheel — same pairing as contrib hook-soundfile."""
+    module_dir = Path(get_module_file_attribute("soundfile")).parent
+    data_dir = module_dir / "_soundfile_data"
+    if not data_dir.is_dir():
+        return []
+    destdir = str(data_dir.relative_to(module_dir))
+    return [(str(p.resolve()), destdir) for p in sorted(data_dir.glob("libsndfile*.*"))]
+
+
+_soundfile_bins = _soundfile_packaged_binaries()
+
+# Fail fast if the macOS wheel is broken (e.g. pip --no-binary / bad env). Otherwise the app
+# crashes at runtime with a confusing cffi path to libsndfile.dylib.
+if sys.platform == "darwin":
+    _sf_data = Path(get_module_file_attribute("soundfile")).parent / "_soundfile_data"
+    if not _sf_data.is_dir() or not any(_sf_data.glob("libsndfile*.*")):
+        raise FileNotFoundError(
+            "soundfile macOS wheel is missing _soundfile_data/libsndfile*.dylib. "
+            "Reinstall: pip uninstall -y soundfile && pip install soundfile "
+            "(do not use --no-binary=soundfile)."
+        )
+
+# Frozen desktop_app sets DRONMAKR_ASYNC_MODE=threading; engineio.async_drivers.threading
+# imports simple_websocket → wsproto. PyInstaller does not trace that chain — without these,
+# SocketIO(..., async_mode="threading") raises ValueError: Invalid async_mode specified.
+_hidden_socketio_threading = (
+    ["engineio.async_drivers.threading", "engineio.async_drivers._websocket_wsgi"]
+    + collect_submodules("simple_websocket")
+    + collect_submodules("wsproto")
+)
+
+hiddenimports_base = (
+    collect_submodules("eventlet")
+    + collect_submodules("pystray")
+    + _hidden_socketio_threading
+)
 tk_datas, tk_bins, tk_hidden = collect_all("tkinter")
 
 a = Analysis(
     ["desktop_app.py"],
     pathex=[],
-    binaries=tk_bins,
+    binaries=tk_bins + _soundfile_bins,
     datas=[
         ("templates", "templates"),
         ("static", "static"),

@@ -104,9 +104,30 @@ Build outputs go to `dist/`; archives to `dist-artifacts/`. Release asset names 
 
 **macOS:** PyInstaller emits **`dist/dronmakr.app`** (Finder bundle). **`build_desktop.sh`** produces **`dist-artifacts/dronmakr-v*-macos-*.tar.gz`** containing that `.app`, plus **`dist-artifacts/dronmakr-v*-macos-*.dmg`** (drag-to-Applications layout). CI publishes both formats for Apple Silicon builds.
 
+**Test the macOS bundle locally** (same bits you would publish—no GitHub download needed):
+
+```bash
+source venv/bin/activate   # after ./build_desktop.sh prerequisites
+bash build_desktop.sh      # or: pyinstaller --noconfirm --clean desktop.spec
+```
+
+Then confirm PySoundFile’s dylib landed next to **`_soundfile_data`** inside the freeze:
+
+```bash
+ls dist/dronmakr.app/Contents/Frameworks/_soundfile_data/
+```
+
+You should see **`libsndfile_<arch>.dylib`** (Apple Silicon builds use **`libsndfile_arm64.dylib`**). To reproduce runtime errors **with Terminal output**, run the executable directly (Finder launch hides stderr):
+
+```bash
+dist/dronmakr.app/Contents/MacOS/dronmakr
+```
+
+To compare dragging **`dronmakr.app`** into `/Applications` versus running it straight from **`dist/`**, behavior should match. If `/Applications` misbehaves, replace the old bundle completely (quit the running app first, trash the old `.app`, unpack again—partial overwrites sometimes leave stale `Contents/Frameworks` files behind).
+
 Desktop builds populate **FFmpeg** under `resources/ffmpeg/` via [`scripts/vendor_ffmpeg.py`](scripts/vendor_ffmpeg.py) automatically when you run the build scripts (`build_desktop.sh` / `.ps1`/CI invoke it before PyInstaller). The packaged binary is used for **Folysplitr** browser recording uploads so end users don’t need a separate system FFmpeg install. Third-party FFmpeg notices ship as `resources/ffmpeg/THIRD_PARTY_FFMPEG.txt` inside the bundle; see [`resources/ffmpeg/LICENSE.third_party.ffmpeg`](resources/ffmpeg/LICENSE.third_party.ffmpeg) for redistribution notes.
 
-**PySoundFile / PortAudio bundled libs:** Do **not** paste all of **`_soundfile_data`** into **`datas`** — macOS `.app` freezes need **`libsndfile*`** delivered as **`binaries`** ( **`pyinstaller-hooks-contrib`** `hook-soundfile`; **`libsndfile*`** beside **`soundfile.py`** on macOS/Windows wheels). **`desktop.spec`** only adds **`hiddenimports`** for **`soundfile`** / **`_soundfile*`** so analysis picks up that hook; Linux falls back to a system **`sndfile`** when wheels ship no bundled `.so`.
+**PySoundFile / PortAudio bundled libs:** Do **not** paste **`_soundfile_data`** wholesale into **`datas`** — **`libsndfile*`** must be **`binaries`** so macOS resolves them beside **`soundfile`**. **`pyinstaller-hooks-contrib`** `hook-soundfile` does this; **`desktop.spec`** also appends those dylibs explicitly (same filenames/dest paths) plus **`hiddenimports`** for **`soundfile`** / **`_soundfile*`** — belt-and-suspenders if analysis misses the hook edge case; **`build_desktop.sh`** fails macOS builds if **`Frameworks/_soundfile_data/libsndfile*.dylib`** is absent. Linux falls back to a system **`sndfile`** PyInstaller resolves when wheels ship no bundled `.so`.
 
 When running **`python webui.py` / tray from source**, Folysplitr still falls back to `ffmpeg` on your **`PATH`** (or **`DRONMAKR_FFMPEG_PATH`**) unless you ran the vendor script locally.
 
