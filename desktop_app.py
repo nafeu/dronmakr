@@ -7,6 +7,12 @@ import traceback
 from pathlib import Path
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "--smoke-imports":
+        # Minimal import check for CI / pre-release: loads PySoundFile + bundled libsndfile only.
+        import soundfile as _sf  # noqa: PLC0415
+
+        print("smoke: soundfile OK", _sf.__libsndfile_version__, flush=True)
+        raise SystemExit(0)
     if len(sys.argv) > 1 and sys.argv[1] == "--run-patchcraftr":
         from settings import ensure_settings
 

@@ -117,7 +117,7 @@ Then confirm PySoundFile’s dylib landed next to **`_soundfile_data`** inside t
 ls dist/dronmakr.app/Contents/Frameworks/_soundfile_data/
 ```
 
-You should see **`libsndfile_<arch>.dylib`** (Apple Silicon builds use **`libsndfile_arm64.dylib`**). To reproduce runtime errors **with Terminal output**, run the executable directly (Finder launch hides stderr):
+You should see **`libsndfile_<arch>.dylib`** (Apple Silicon builds use **`libsndfile_arm64.dylib`**) and **`libsndfile.dylib`** (alias used when **`platform.machine()`** is empty in the frozen binary). To reproduce runtime errors **with Terminal output**, run the executable directly (Finder launch hides stderr):
 
 ```bash
 dist/dronmakr.app/Contents/MacOS/dronmakr
@@ -125,9 +125,18 @@ dist/dronmakr.app/Contents/MacOS/dronmakr
 
 To compare dragging **`dronmakr.app`** into `/Applications` versus running it straight from **`dist/`**, behavior should match. If `/Applications` misbehaves, replace the old bundle completely (quit the running app first, trash the old `.app`, unpack again—partial overwrites sometimes leave stale `Contents/Frameworks` files behind).
 
+**Reproduce the frozen `soundfile` / `libsndfile` crash locally:** PySoundFile tries **`libsndfile_<uname -m>.dylib`** under **`Contents/Frameworks/_soundfile_data/`** first (`arm64` → **`libsndfile_arm64.dylib`**). Only after that fails do you see fallbacks mentioning **`libsndfile.dylib`**. Inspect any bundle the same way:
+
+```bash
+bash scripts/reproduce_soundfile_bundle_macos.sh diagnose dist/dronmakr.app
+bash scripts/reproduce_soundfile_bundle_macos.sh diagnose /Applications/dronmakr.app
+```
+
+To **force** the same class of traceback without touching **`/Applications`**, clone the `.app`, delete the bundled dylibs, and run that copy ([`scripts/reproduce_soundfile_bundle_macos.sh`](scripts/reproduce_soundfile_bundle_macos.sh) `break-copy`).
+
 Desktop builds populate **FFmpeg** under `resources/ffmpeg/` via [`scripts/vendor_ffmpeg.py`](scripts/vendor_ffmpeg.py) automatically when you run the build scripts (`build_desktop.sh` / `.ps1`/CI invoke it before PyInstaller). The packaged binary is used for **Folysplitr** browser recording uploads so end users don’t need a separate system FFmpeg install. Third-party FFmpeg notices ship as `resources/ffmpeg/THIRD_PARTY_FFMPEG.txt` inside the bundle; see [`resources/ffmpeg/LICENSE.third_party.ffmpeg`](resources/ffmpeg/LICENSE.third_party.ffmpeg) for redistribution notes.
 
-**PySoundFile / PortAudio bundled libs:** Do **not** paste **`_soundfile_data`** wholesale into **`datas`** — **`libsndfile*`** must be **`binaries`** so macOS resolves them beside **`soundfile`**. **`pyinstaller-hooks-contrib`** `hook-soundfile` does this; **`desktop.spec`** also appends those dylibs explicitly (same filenames/dest paths) plus **`hiddenimports`** for **`soundfile`** / **`_soundfile*`** — belt-and-suspenders if analysis misses the hook edge case; **`build_desktop.sh`** fails macOS builds if **`Frameworks/_soundfile_data/libsndfile*.dylib`** is absent. Linux falls back to a system **`sndfile`** PyInstaller resolves when wheels ship no bundled `.so`.
+**PySoundFile / PortAudio bundled libs:** Do **not** paste **`_soundfile_data`** wholesale into **`datas`** — **`libsndfile*`** must be **`binaries`**. Hooks + **`desktop.spec`** collect the wheel’s **`libsndfile_<arch>.dylib`** and also ship **`libsndfile.dylib`** as a copy of that file—some frozen macOS interpreters report **`platform.machine()`** as empty, which makes PySoundFile’s tier-1 path **`libsndfile.dylib`** (not present in upstream wheels). **`scripts/verify_frozen_soundfile_macos.py`** asserts those files exist and runs **`Contents/MacOS/dronmakr --smoke-imports`**; **`build_desktop.sh`** and **release-desktop** workflows invoke it automatically on macOS. Linux falls back to a system **`sndfile`** when wheels ship no bundled `.so`.
 
 When running **`python webui.py` / tray from source**, Folysplitr still falls back to `ffmpeg` on your **`PATH`** (or **`DRONMAKR_FFMPEG_PATH`**) unless you ran the vendor script locally.
 

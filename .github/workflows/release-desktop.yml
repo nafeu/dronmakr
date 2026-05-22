@@ -39,13 +39,11 @@ jobs:
         run: |
           source venv/bin/activate
           pyinstaller --noconfirm --clean desktop.spec
-          SF_DIR="dist/dronmakr.app/Contents/Frameworks/_soundfile_data"
-          SF_COUNT="$(find "$SF_DIR" -maxdepth 1 -name 'libsndfile*.dylib' 2>/dev/null | wc -l | tr -d ' ')"
-          if [[ ! -d "$SF_DIR" || "${SF_COUNT:-0}" -lt 1 ]]; then
-            echo "error: bundled libsndfile*.dylib missing under $SF_DIR"
-            ls -la "$SF_DIR" 2>/dev/null || true
-            exit 1
-          fi
+
+      - name: Verify bundled libsndfile (PySoundFile)
+        run: |
+          source venv/bin/activate
+          python scripts/verify_frozen_soundfile_macos.py dist/dronmakr.app
 
       - name: Create archive and DMG
         run: |

@@ -1,6 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 import importlib.util
+import shutil
 import sys
 from pathlib import Path
 
@@ -22,13 +23,50 @@ _sounddevice_data_hiddenimports = ["_sounddevice_data"] if _has_sounddevice_data
 
 
 def _soundfile_packaged_binaries():
-    """Libs shipped in the PyPI soundfile wheel — same pairing as contrib hook-soundfile."""
+    """Libs shipped in the PyPI soundfile wheel — same pairing as contrib hook-soundfile.
+
+    Also bundles libsndfile.dylib as a copy of the arch-specific wheel dylib: PySoundFile builds
+    the packaged path as 'libsndfile_' + platform.machine() + '.dylib'. Some frozen/macOS combos
+    report an empty machine string, which makes tier-1 load 'libsndfile.dylib' (not shipped by
+    the wheel) and crash with a bogus Frameworks/... path before system fallbacks run.
+    """
     module_dir = Path(get_module_file_attribute("soundfile")).parent
     data_dir = module_dir / "_soundfile_data"
     if not data_dir.is_dir():
         return []
     destdir = str(data_dir.relative_to(module_dir))
-    return [(str(p.resolve()), destdir) for p in sorted(data_dir.glob("libsndfile*.*"))]
+    binaries = [(str(p.resolve()), destdir) for p in sorted(data_dir.glob("libsndfile*.*"))]
+
+    if sys.platform == "darwin":
+        arm = data_dir / "libsndfile_arm64.dylib"
+        x86 = data_dir / "libsndfile_x86_64.dylib"
+        import os as _os
+        import platform as _plat
+
+        pm = (_plat.machine() or "").strip().lower()
+        if not pm and hasattr(_os, "uname"):
+            pm = (_os.uname()[4] or "").strip().lower()
+
+        chosen = None
+        if pm in ("arm64", "aarch64") and arm.is_file():
+            chosen = arm
+        elif pm in ("x86_64", "amd64") and x86.is_file():
+            chosen = x86
+        elif arm.is_file():
+            chosen = arm
+        elif x86.is_file():
+            chosen = x86
+        else:
+            _dylibs = sorted(data_dir.glob("libsndfile*.dylib"))
+            chosen = _dylibs[0] if _dylibs else None
+        if chosen is not None:
+            alias_dir = _spec_root / "build" / "pyi_soundfile_dylib_alias"
+            alias_dir.mkdir(parents=True, exist_ok=True)
+            alias_dylib = alias_dir / "libsndfile.dylib"
+            shutil.copyfile(chosen, alias_dylib)
+            binaries.append((str(alias_dylib.resolve()), destdir))
+
+    return binaries
 
 
 _soundfile_bins = _soundfile_packaged_binaries()

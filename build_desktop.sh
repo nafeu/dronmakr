@@ -30,14 +30,9 @@ fi
 
 pyinstaller --noconfirm --clean desktop.spec
 
-# PySoundFile expects libsndfile_*.dylib next to frozen _soundfile_data; missing files give a useless cffi traceback.
+# PySoundFile + libsndfile: arch dylib plus libsndfile.dylib alias + import smoke test.
 if [[ "$UNAME_S" == "darwin" ]]; then
-  SF_DIR="${ROOT_DIR}/dist/dronmakr.app/Contents/Frameworks/_soundfile_data"
-  SF_COUNT="$(find "$SF_DIR" -maxdepth 1 -name 'libsndfile*.dylib' 2>/dev/null | wc -l | tr -d '[:space:]')"
-  if [[ ! -d "$SF_DIR" || "${SF_COUNT:-0}" -lt 1 ]]; then
-    echo "error: bundled libsndfile*.dylib missing under ${SF_DIR}; see build/desktop/warn-desktop.txt for sndfile hook warnings." >&2
-    exit 1
-  fi
+  python scripts/verify_frozen_soundfile_macos.py "${ROOT_DIR}/dist/dronmakr.app"
 fi
 
 UNAME_M="$(uname -m | tr '[:upper:]' '[:lower:]')"
