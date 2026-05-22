@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import tempfile
 from pathlib import Path
 
 from PIL import Image, ImageOps
@@ -81,8 +82,8 @@ def main() -> None:
     parser.add_argument(
         "--out",
         type=Path,
-        default=_REPO_ROOT / "packaging/macos/icns-layer-1024.png",
-        help="Intermediate 1024² PNG consumed by scripts/build_mac_app_icns.sh",
+        default=Path(tempfile.gettempdir()) / "dronmakr-icns-layer-1024.png",
+        help="Intermediate 1024² PNG (build_mac_app_icns.sh passes a tempfile).",
     )
     args = parser.parse_args()
     compose(

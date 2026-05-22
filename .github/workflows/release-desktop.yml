@@ -32,8 +32,8 @@ jobs:
           source venv/bin/activate
           python scripts/vendor_ffmpeg.py
 
-      - name: Build macOS app icon (.icns)
-        run: bash scripts/build_mac_app_icns.sh
+      - name: Require committed macOS app icon
+        run: test -f static/branding/macos/dronmakr.icns
 
       - name: Build with PyInstaller
         run: |

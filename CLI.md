@@ -100,7 +100,7 @@ On **Linux**, the tray icon may require GTK AppIndicator / `libappindicator` (or
 
 Build outputs go to `dist/`; archives to `dist-artifacts/`. Release asset names must include `macos-arm64`, `macos-x64`, `linux-x64`, or `windows-x64` so the packaged app’s updater can find them.
 
-**macOS:** Before PyInstaller, `build_desktop.sh` runs [`scripts/build_mac_app_icns.sh`](scripts/build_mac_app_icns.sh). It calls [`scripts/compose_mac_app_icon_layer.py`](scripts/compose_mac_app_icon_layer.py) to paint **`--theme-a`** (from [`templates/_app_css_root.html`](templates/_app_css_root.html)) full-bleed behind `static/branding/android-chrome-512x512.png`, then emits [`packaging/macos/dronmakr.icns`](packaging/macos/dronmakr.icns). Override: `python scripts/compose_mac_app_icon_layer.py --theme-a '#353531'` (then re-run `build_mac_app_icns.sh`).
+**macOS icon:** GitHub Actions uses the **committed** file [`static/branding/macos/dronmakr.icns`](static/branding/macos/dronmakr.icns) (see [`static/branding/macos/README.md`](static/branding/macos/README.md)). Regenerate on a Mac with [`scripts/build_mac_app_icns.sh`](scripts/build_mac_app_icns.sh) (Pillow + `sips`/`iconutil`) after theme or artwork changes, then commit the `.icns`. `build_desktop.sh` only checks that the file exists.
 
 **macOS:** PyInstaller emits **`dist/dronmakr.app`** (Finder bundle). **`build_desktop.sh`** produces **`dist-artifacts/dronmakr-v*-macos-*.tar.gz`** containing that `.app`, plus **`dist-artifacts/dronmakr-v*-macos-*.dmg`** (drag-to-Applications layout). CI publishes both formats for Apple Silicon builds.
 

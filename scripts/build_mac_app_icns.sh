@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Build packaging/macos/dronmakr.icns from PWA/app icon PNGs (macOS PyInstaller BUNDLE).
-# Requires macOS (sips + iconutil). Safe to re-run; output is gitignored.
+# Optional LOCAL helper: compose a 1024² layer (needs Pillow) and build static/branding/macos/dronmakr.icns.
+# CI and release builds do NOT run this — they use the committed file in static/branding/macos/dronmakr.icns.
 
 set -euo pipefail
 
@@ -8,7 +8,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 SRC="${ROOT_DIR}/static/branding/android-chrome-512x512.png"
-OUT_DIR="${ROOT_DIR}/packaging/macos"
+OUT_DIR="${ROOT_DIR}/static/branding/macos"
 OUT_ICNS="${OUT_DIR}/dronmakr.icns"
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
@@ -23,8 +23,13 @@ fi
 
 mkdir -p "$OUT_DIR"
 
-LAYER_1024="${OUT_DIR}/icns-layer-1024.png"
-echo "Composing Finder icon backdrop from templates/_app_css_root.html (--theme-a)…"
+LAYER_1024="$(mktemp "${TMPDIR:-/tmp}/dronmakr-icns-layer.XXXXXX")"
+cleanup() {
+  rm -f "$LAYER_1024"
+}
+trap cleanup EXIT
+
+echo "Composing layer (Pillow) + building .icns → ${OUT_ICNS}"
 python3 "${ROOT_DIR}/scripts/compose_mac_app_icon_layer.py" --source "$SRC" --out "$LAYER_1024"
 
 ICONSET="${OUT_ICNS}.iconset"
@@ -47,4 +52,4 @@ rm -f "$OUT_ICNS"
 iconutil -c icns "$ICONSET" -o "$OUT_ICNS"
 rm -rf "$ICONSET"
 
-echo "Wrote $OUT_ICNS"
+echo "Wrote $OUT_ICNS — commit static/branding/macos/dronmakr.icns before publishing a GitHub Release."

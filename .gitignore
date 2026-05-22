@@ -92,7 +92,3 @@ dronmakr-files/
 resources/ffmpeg/ffmpeg
 resources/ffmpeg/ffmpeg.exe
 resources/ffmpeg/THIRD_PARTY_FFMPEG.txt
-
-# macOS app icon for PyInstaller (generate via scripts/build_mac_app_icns.sh before PyInstaller)
-packaging/macos/dronmakr.icns
-packaging/macos/icns-layer-1024.png

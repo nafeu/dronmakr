@@ -16,7 +16,11 @@ python scripts/vendor_ffmpeg.py
 
 UNAME_S="$(uname -s | tr '[:upper:]' '[:lower:]')"
 if [[ "$UNAME_S" == "darwin" ]]; then
-  bash scripts/build_mac_app_icns.sh
+  if [[ ! -f "static/branding/macos/dronmakr.icns" ]]; then
+    echo "error: static/branding/macos/dronmakr.icns is missing. Add the committed icon (see static/branding/macos/README.md)" >&2
+    echo "  or run: bash scripts/build_mac_app_icns.sh" >&2
+    exit 1
+  fi
 fi
 
 if ! python -c "import tkinter" >/dev/null 2>&1; then

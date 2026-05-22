@@ -15,7 +15,7 @@ if str(_spec_root) not in sys.path:
 from version import __version__ as _DESKTOP_APP_VERSION  # noqa: E402
 
 _brand_ico = _spec_root / "static" / "branding" / "favicon.ico"
-_mac_icns = _spec_root / "packaging" / "macos" / "dronmakr.icns"
+_mac_icns = _spec_root / "static" / "branding" / "macos" / "dronmakr.icns"
 
 
 def _site_packages_pkg_dir(module_qname: str) -> Path:
@@ -126,7 +126,8 @@ if sys.platform == "darwin":
 
     if not _mac_icns.is_file():
         raise FileNotFoundError(
-            f"Missing {_mac_icns}. On macOS run scripts/build_mac_app_icns.sh before PyInstaller."
+            f"Missing {_mac_icns}. Commit a Finder icon there (see static/branding/macos/README.md) "
+            "or run scripts/build_mac_app_icns.sh locally to generate it."
         )
 
     app = _OSXBundle(
