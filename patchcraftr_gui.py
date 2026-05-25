@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import queue
 import subprocess
 import sys
 import tempfile
 import threading
+import time
+from contextlib import contextmanager
 
 try:
     import tkinter as tk
@@ -30,7 +33,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 import tkinter.font as tkfont
 from tkinter import messagebox, ttk
-from typing import Any
+from typing import Any, Callable
 
 from pedalboard import Pedalboard
 from patchcraftr_live_monitor import (
@@ -64,8 +67,11 @@ from preset_authoring import (
     write_plugin_state_to_vstpreset,
 )
 from settings import ensure_settings, load_settings, save_settings
+from server_error_logging import ensure_server_error_file_logging
 from utils import PRESETS_DIR, generate_id
 
+
+_LOG = logging.getLogger("dronmakr.patchcraftr")
 
 # Mirrors templates/_app_css_root.html (keep in sync with web UI CSS variables).
 WEB_UI_THEME: dict[str, str] = {
@@ -126,17 +132,110 @@ class PatchcraftrApp(tk.Tk):
         self._editor_active = False
 
         self._msg_q: queue.Queue[tuple[str, str]] = queue.Queue()
-
-        self._build_ui()
-        self._refresh_plugin_map()
-        self.after(150, self._pump_messages)
+        self._main_thread_jobs: queue.Queue[Callable[[], None]] = queue.Queue()
 
         try:
-            assert_plugin_paths_configured()
-        except PresetAuthoringConfigError as e:
-            messagebox.showerror("patchcraftr", str(e), parent=self)
+            _LOG.info("Patchcraftr UI constructing (Tk main thread)")
+        except Exception:
+            pass
+
+        self._build_ui()
+        self._refresh_plugin_map_apply({})
+        self.after(160, self._initial_plugin_catalog_scan)
+        self.after(150, self._pump_messages)
 
         ensure_authoring_dirs()
+
+    def _schedule_ui(self, fn: Callable[[], None]) -> None:
+        self._main_thread_jobs.put(fn)
+
+    def _refresh_plugin_map_apply(self, m: dict[str, str]) -> None:
+        self._plugin_map = m
+        self._plugin_labels_sorted = sorted(m.keys(), key=str.lower)
+
+    def _initial_plugin_catalog_scan(self) -> None:
+        """Non-blocking SETTINGS + PLUGIN_PATHS validation and first catalog load."""
+
+        def work() -> None:
+            try:
+                assert_plugin_paths_configured()
+            except PresetAuthoringConfigError as e:
+                self._schedule_ui(
+                    lambda err=str(e): messagebox.showerror("patchcraftr", err, parent=self)
+                )
+                return
+            t0 = time.time()
+            try:
+                m = build_plugin_label_map()
+            except Exception:
+                _LOG.exception("Plug-in catalog scan failed (startup)")
+                self._schedule_ui(
+                    lambda: self._enqueue_msg(
+                        "error",
+                        "Plug-in catalog scan failed. See errors.log for details.",
+                    )
+                )
+                return
+            dt = time.time() - t0
+            self._schedule_ui(lambda mm=m, secs=dt: self._finish_plugin_catalog_scan(mm, secs))
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _finish_plugin_catalog_scan(self, m: dict[str, str], seconds: float) -> None:
+        self._refresh_plugin_map_apply(m)
+        _LOG.info(
+            "Plug-in picker catalog updated: %s items (scan %.2fs)",
+            len(self._plugin_labels_sorted),
+            seconds,
+        )
+
+    def _refresh_plugin_map(self) -> None:
+        """Rebuild plug-in labels on the Tk thread (brief disk scan — avoid during drag)."""
+        self._refresh_plugin_map_apply(build_plugin_label_map())
+
+    def _enqueue_msg(self, kind: str, text: str) -> None:
+        if kind == "error":
+            _LOG.error("Patchcraftr message [%s]: %s", kind, text)
+        else:
+            _LOG.info("Patchcraftr message [%s]: %s", kind, text)
+        self._msg_q.put((kind, text))
+
+    @contextmanager
+    def _modal_busy(self, message: str):
+        """
+        Show a lightweight modal splash so long-running Pedalboard work does not look like dead UI.
+
+        On some hosts ``load_plugin`` can take many seconds while the Tk main thread still must run this work;
+        grab + drawing here makes that state obvious and avoids contradictory user input.
+        """
+        splash = tk.Toplevel(self)
+        self._theme_dialog_shell(splash)
+        splash.title("patchcraftr")
+        splash.transient(self)
+        splash.resizable(False, False)
+        ttk.Label(splash, text=message, wraplength=460, justify="left").pack(padx=28, pady=28)
+        splash.update_idletasks()
+        w, h = splash.winfo_reqwidth(), splash.winfo_reqheight()
+        self.update_idletasks()
+        px = self.winfo_rootx() + max(40, (self.winfo_width() - w) // 2)
+        py = self.winfo_rooty() + max(40, (self.winfo_height() - h) // 2)
+        splash.geometry(f"+{px}+{py}")
+        try:
+            splash.grab_set()
+        except tk.TclError:
+            pass
+        splash.update()
+        try:
+            yield splash
+        finally:
+            try:
+                splash.grab_release()
+            except tk.TclError:
+                pass
+            try:
+                splash.destroy()
+            except tk.TclError:
+                pass
 
     def _init_mono_font_family(self) -> None:
         try:
@@ -459,6 +558,16 @@ class PatchcraftrApp(tk.Tk):
         return self._slot_labels[idx]
 
     def _pump_messages(self) -> None:
+        while True:
+            try:
+                job = self._main_thread_jobs.get_nowait()
+            except queue.Empty:
+                break
+            try:
+                job()
+            except Exception:
+                _LOG.exception("Patchcraftr UI job failed")
+
         try:
             while True:
                 kind, text = self._msg_q.get_nowait()
@@ -479,12 +588,14 @@ class PatchcraftrApp(tk.Tk):
     def _rendered_preview_fallback(self) -> None:
         thr = getattr(self, "_offline_preview_thread", None)
         if thr is not None and thr.is_alive():
+            _LOG.info("Rendered preview: already running, ignored click")
             messagebox.showinfo(
                 "patchcraftr",
                 "A preview is already rendering.",
                 parent=self,
             )
             return
+        _LOG.info("UI: rendered preview (offline WAV) requested")
         self._sync_editor_midi_style_ref()
         self._sync_editor_fx_dry_source_ref()
         has_inst = self._inst_plugin is not None and bool(self._inst_plugin_path)
@@ -517,6 +628,7 @@ class PatchcraftrApp(tk.Tk):
             args=(has_inst,),
             daemon=True,
         )
+        _LOG.info("Rendered preview: background thread started (has_inst=%s)", has_inst)
         self._offline_preview_thread.start()
 
     def _rendered_preview_worker(self, has_inst: bool) -> None:
@@ -544,7 +656,9 @@ class PatchcraftrApp(tk.Tk):
             os.close(fd)
             sf.write(path, arr, SAMPLE_RATE, subtype="PCM_16")
             self._play_wav_path(path)
+            _LOG.info("Rendered preview: WAV written and playback requested")
         except Exception as e:
+            _LOG.exception("Rendered preview worker failed: %s", e)
             self.after(
                 0,
                 lambda err=str(e): self._enqueue_msg(
@@ -583,13 +697,6 @@ class PatchcraftrApp(tk.Tk):
             r = subprocess.run(["aplay", path], check=False, capture_output=True)
             if r.returncode != 0:
                 subprocess.run(["xdg-open", path], check=False)
-
-    def _enqueue_msg(self, kind: str, text: str) -> None:
-        self._msg_q.put((kind, text))
-
-    def _refresh_plugin_map(self) -> None:
-        self._plugin_map = build_plugin_label_map()
-        self._plugin_labels_sorted = sorted(self._plugin_map.keys(), key=str.lower)
 
     def _validate_loaded_plugin_as_instrument(self, plug: Any) -> str | None:
         """Return a user-facing error string if ``plug`` cannot be used as an instrument slot."""
@@ -682,17 +789,47 @@ class PatchcraftrApp(tk.Tk):
         self, path: str, hint_name: str | None = None
     ) -> tuple[Any, str] | None:
         cur_hint = hint_name
+        short = format_plugin_name(path)
         while True:
             try:
-                return load_pedalboard_plugin(path, cur_hint or None)
+                with self._modal_busy(f"Loading plug-in…\n{short}"):
+                    plug, pname = load_pedalboard_plugin(path, cur_hint or None)
+                pname_s = pname or getattr(plug, "name", "") or ""
+                _LOG.info(
+                    "Pedalboard load_plugin OK path=%r hint=%s plugin_name=%r is_inst=%s is_effect=%s",
+                    path,
+                    cur_hint if cur_hint is not None else "(default)",
+                    pname_s[:120] if pname_s else "",
+                    getattr(plug, "is_instrument", "?"),
+                    getattr(plug, "is_effect", "?"),
+                )
+                return plug, pname
             except PluginVariantRequired as e:
+                _LOG.info(
+                    "Plug-in asks for variant (path=%r): choose among %s",
+                    format_plugin_name(e.plugin_path),
+                    ", ".join(e.variants[:8]) + ("…" if len(e.variants) > 8 else ""),
+                )
                 pick = self._resolve_variant(e.plugin_path, e.variants)
                 if pick is None:
+                    _LOG.info("User cancelled variant picker for %r", short)
                     return None
                 cur_hint = pick
+            except Exception:
+                _LOG.exception("load_pedalboard_plugin failed (%r)", path)
+                raise
 
-    def _pick_plugin_path(self, title: str) -> str | None:
-        if not self._plugin_labels_sorted:
+    def _pick_plugin_path(
+        self,
+        title: str,
+        *,
+        sorted_labels: list[str] | None = None,
+        plugin_map: dict[str, str] | None = None,
+    ) -> str | None:
+        labels_sorted = self._plugin_labels_sorted if sorted_labels is None else sorted_labels
+        pmap = self._plugin_map if plugin_map is None else plugin_map
+        _LOG.debug("Plug-in picker open: %s (%s titles)", title, len(labels_sorted))
+        if not labels_sorted:
             messagebox.showwarning(
                 "patchcraftr",
                 "No plug-ins found. Set PLUGIN_PATHS in Settings.",
@@ -714,7 +851,7 @@ class PatchcraftrApp(tk.Tk):
         self._theme_listbox(lb)
         lb.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
 
-        labels = list(self._plugin_labels_sorted)
+        labels = list(labels_sorted)
 
         def refill(filter_txt: str = "") -> None:
             lb.delete(0, tk.END)
@@ -736,7 +873,7 @@ class PatchcraftrApp(tk.Tk):
             sel = lb.curselection()
             if sel:
                 lab = lb.get(sel[0])
-                out[0] = self._plugin_map.get(lab)
+                out[0] = pmap.get(lab)
             dlg.destroy()
 
         bf = ttk.Frame(dlg)
@@ -771,10 +908,38 @@ class PatchcraftrApp(tk.Tk):
         return display_data
 
     def _fx_set_slot(self, idx: int) -> None:
-        self._refresh_plugin_map()
+        _LOG.info("UI: FX slot %s — scanning plug-ins before opening picker", idx + 1)
 
-        plugins_ok = bool(self._plugin_labels_sorted)
+        def work() -> None:
+            try:
+                t0 = time.time()
+                m = build_plugin_label_map()
+                scan_s = time.time() - t0
+            except Exception:
+                _LOG.exception("FX slot %s: plug-in catalog scan failed", idx + 1)
+                self._schedule_ui(
+                    lambda: self._enqueue_msg(
+                        "error",
+                        f"Could not enumerate plug-ins for FX slot {idx + 1}.\nSee errors.log for details.",
+                    )
+                )
+                return
+
+            self._schedule_ui(lambda: self._resume_fx_set_slot_dialog(idx, m, scan_s))
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _resume_fx_set_slot_dialog(self, idx: int, m: dict[str, str], scan_s: float) -> None:
+        self._refresh_plugin_map_apply(m)
+        _LOG.info(
+            "FX slot %s picker: catalog refreshed (%s plug-ins, scan %.2fs)",
+            idx + 1,
+            len(self._plugin_labels_sorted),
+            scan_s,
+        )
         presets_ready = bool(self._saved_effect_presets_rows())
+        plugins_ok = bool(self._plugin_labels_sorted)
+
         if not plugins_ok and not presets_ready:
             messagebox.showwarning(
                 "patchcraftr",
@@ -782,6 +947,8 @@ class PatchcraftrApp(tk.Tk):
                 parent=self,
             )
             return
+
+        lbls_ordered = sorted(m.keys(), key=str.lower)
 
         dlg = tk.Toplevel(self)
         self._theme_dialog_shell(dlg)
@@ -831,7 +998,7 @@ class PatchcraftrApp(tk.Tk):
         lb_pr.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         lb_pr_sb.pack(side=tk.RIGHT, fill=tk.Y)
 
-        all_plugin_labels = list(self._plugin_labels_sorted)
+        all_plugin_labels = list(lbls_ordered)
         preset_pairs = self._saved_effect_preset_display_rows()
         preset_visible: list[dict] = []
 
@@ -889,6 +1056,7 @@ class PatchcraftrApp(tk.Tk):
         bf = ttk.Frame(dlg)
         bf.pack(fill=tk.X, pady=(8, 8), padx=10)
 
+        pmap_snap = m
         browse_path_holder: dict[str, str | None] = {"path": None}
         preset_row_holder: dict[str, Any | None] = {"row": None}
 
@@ -904,7 +1072,7 @@ class PatchcraftrApp(tk.Tk):
                 return
             if psi:
                 lab = lb_pl.get(psi[0])
-                browse_path_holder["path"] = self._plugin_map.get(lab)
+                browse_path_holder["path"] = pmap_snap.get(lab)
             elif pri:
                 ix = pri[0]
                 if ix < len(preset_visible):
@@ -921,12 +1089,18 @@ class PatchcraftrApp(tk.Tk):
 
         if browse_path_holder["path"]:
             p = browse_path_holder["path"]
-            self.after(120, lambda i=idx, pa=p: self._fx_apply_browse_path(i, pa))
+            self.after(80, lambda i=idx, pa=p: self._fx_apply_browse_path(i, pa))
         elif preset_row_holder["row"] is not None:
             prow = preset_row_holder["row"]
-            self.after(120, lambda i=idx, r=prow: self._fx_apply_saved_effect_row(i, r))
+            self.after(80, lambda i=idx, r=prow: self._fx_apply_saved_effect_row(i, r))
 
     def _fx_apply_saved_effect_row(self, idx: int, row: dict, *, open_editor: bool = True) -> None:
+        _LOG.info(
+            "FX slot %s: load from saved preset row id=%s plugin=%r",
+            idx + 1,
+            str(row.get("id", ""))[:12],
+            format_plugin_name(str(row.get("plugin_path", "") or "")),
+        )
         try:
             loaded = self._load_plugin_with_variants(
                 row["plugin_path"], row.get("plugin_name") or None
@@ -961,6 +1135,7 @@ class PatchcraftrApp(tk.Tk):
             path = self._pick_plugin_path(f"FX slot {idx + 1}")
         if not path:
             return
+        _LOG.info("FX slot %s: load browsed plug-in %r", idx + 1, format_plugin_name(path))
         try:
             loaded = self._load_plugin_with_variants(path)
             if loaded is None:
@@ -988,10 +1163,58 @@ class PatchcraftrApp(tk.Tk):
             self._enqueue_msg("error", str(e))
 
     def _inst_choose_plugin(self) -> None:
-        path = self._pick_plugin_path("Instrument plug-in")
+        _LOG.info("UI: Choose instrument clicked")
+
+        def work() -> None:
+            try:
+                assert_plugin_paths_configured()
+            except PresetAuthoringConfigError as e:
+                self._schedule_ui(
+                    lambda err=str(e): messagebox.showerror("patchcraftr", err, parent=self)
+                )
+                return
+            try:
+                t0 = time.time()
+                m = build_plugin_label_map()
+                scan_s = time.time() - t0
+            except Exception:
+                _LOG.exception("Choose instrument: catalog scan failed")
+                self._schedule_ui(
+                    lambda: self._enqueue_msg(
+                        "error",
+                        "Could not enumerate plug-ins for Pick instrument.\nSee errors.log for details.",
+                    )
+                )
+                return
+
+            self._schedule_ui(
+                lambda: self._resume_instrument_choose_after_catalog(m, scan_s),
+            )
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _resume_instrument_choose_after_catalog(self, m: dict[str, str], scan_s: float) -> None:
+        self._refresh_plugin_map_apply(m)
+        lbls = self._plugin_labels_sorted
+        _LOG.info(
+            "Choose instrument picker: catalog %s plugs (scan %.2fs)",
+            len(lbls),
+            scan_s,
+        )
+        path = self._pick_plugin_path(
+            "Instrument plug-in",
+            sorted_labels=lbls,
+            plugin_map=m,
+        )
         if not path:
+            _LOG.info("Choose instrument: cancelled or empty picker")
             return
         try:
+            _LOG.info(
+                "Choose instrument: selected %r (%s)",
+                path,
+                format_plugin_name(path),
+            )
             loaded = self._load_plugin_with_variants(path)
             if loaded is None:
                 return
@@ -1007,7 +1230,7 @@ class PatchcraftrApp(tk.Tk):
             self._inst_plugin_lbl.configure(
                 text=f"{format_plugin_name(path)} · {self._inst_plugin_name or 'default'}"
             )
-            self.after(120, self._inst_edit_plugin)
+            self.after(80, self._inst_edit_plugin)
         except Exception as e:
             self._enqueue_msg("error", str(e))
 
@@ -1042,6 +1265,11 @@ class PatchcraftrApp(tk.Tk):
 
         close_evt = threading.Event()
         self._editor_active = True
+        _LOG.info(
+            "Opening Pedalboard show_editor instrument=%s fx_slot=%s",
+            instrument_editor,
+            fx_slot_index,
+        )
         self._sync_editor_midi_style_ref()
         self._sync_editor_fx_dry_source_ref()
         monitor = PatchcraftrLiveMonitor(
@@ -1051,6 +1279,11 @@ class PatchcraftrApp(tk.Tk):
             fx_preview_source_ref=self._editor_fx_source_ref,
         )
         monitor.start()
+        _LOG.info(
+            "Live preview monitor running (instrument_editor=%s fx_slot=%s)",
+            instrument_editor,
+            fx_slot_index,
+        )
         try:
             editor_plugin.show_editor(close_evt)
         except BaseException as e:
@@ -1058,6 +1291,7 @@ class PatchcraftrApp(tk.Tk):
         finally:
             monitor.stop()
             self._editor_active = False
+            _LOG.info("Closed Pedalboard editor (instrument=%s slot=%s)", instrument_editor, fx_slot_index)
             if instrument_editor:
                 self._inst_editor_was_shown_before = True
             if fx_slot_index is not None:
@@ -1066,6 +1300,7 @@ class PatchcraftrApp(tk.Tk):
                     reopened.editor_opened_before = True
 
     def _inst_edit_plugin(self) -> None:
+        _LOG.info("UI: Edit instrument clicked")
         if self._inst_plugin is None:
             messagebox.showwarning("patchcraftr", "Choose an instrument plug-in first.", parent=self)
             return
@@ -1078,17 +1313,24 @@ class PatchcraftrApp(tk.Tk):
             old = self._inst_plugin
             blob = serialize_plugin_preset_bytes(old)
             try:
-                wp, pname = reload_pedalboard_plugin_preserving_state(
-                    self._inst_plugin_path,
-                    self._inst_plugin_name or None,
-                    old,
-                )
-            except PluginVariantRequired as e:
-                pick = self._resolve_variant(e.plugin_path, e.variants)
-                if pick is None:
-                    return
-                wp, pname = load_pedalboard_plugin(self._inst_plugin_path, pick)
-                apply_vstpreset_bytes_to_plugin(wp, blob)
+                try:
+                    with self._modal_busy(
+                        "Refreshing instrument plug-in…\n" + format_plugin_name(self._inst_plugin_path),
+                    ):
+                        wp, pname = reload_pedalboard_plugin_preserving_state(
+                            self._inst_plugin_path,
+                            self._inst_plugin_name or None,
+                            old,
+                        )
+                except PluginVariantRequired as e:
+                    pick = self._resolve_variant(e.plugin_path, e.variants)
+                    if pick is None:
+                        return
+                    with self._modal_busy(
+                        "Loading instrument variant…\n" + format_plugin_name(self._inst_plugin_path),
+                    ):
+                        wp, pname = load_pedalboard_plugin(self._inst_plugin_path, pick)
+                    apply_vstpreset_bytes_to_plugin(wp, blob)
             except Exception as e:
                 self._enqueue_msg(
                     "error",
@@ -1116,17 +1358,24 @@ class PatchcraftrApp(tk.Tk):
         old = st.plugin
         blob = serialize_plugin_preset_bytes(old)
         try:
-            wp, pname = reload_pedalboard_plugin_preserving_state(
-                st.plugin_path,
-                st.plugin_name or None,
-                old,
-            )
-        except PluginVariantRequired as e:
-            pick = self._resolve_variant(e.plugin_path, e.variants)
-            if pick is None:
-                return False
-            wp, pname = load_pedalboard_plugin(st.plugin_path, pick)
-            apply_vstpreset_bytes_to_plugin(wp, blob)
+            try:
+                with self._modal_busy(
+                    "Refreshing FX plug-in…\n" + format_plugin_name(st.plugin_path),
+                ):
+                    wp, pname = reload_pedalboard_plugin_preserving_state(
+                        st.plugin_path,
+                        st.plugin_name or None,
+                        old,
+                    )
+            except PluginVariantRequired as e:
+                pick = self._resolve_variant(e.plugin_path, e.variants)
+                if pick is None:
+                    return False
+                with self._modal_busy(
+                    "Loading FX variant…\n" + format_plugin_name(st.plugin_path),
+                ):
+                    wp, pname = load_pedalboard_plugin(st.plugin_path, pick)
+                apply_vstpreset_bytes_to_plugin(wp, blob)
         except Exception as e:
             self._enqueue_msg(
                 "error",
@@ -1155,6 +1404,7 @@ class PatchcraftrApp(tk.Tk):
         return [s.plugin for s in self._fx_slots if s is not None]
 
     def _fx_edit_slot(self, idx: int) -> None:
+        _LOG.info("UI: Open FX plug-in editor for slot %s", idx + 1)
         st = self._fx_slots[idx]
         if st is None:
             messagebox.showwarning("patchcraftr", "Slot is empty.", parent=self)
@@ -1174,25 +1424,17 @@ class PatchcraftrApp(tk.Tk):
         )
 
     def _fx_clear_slot(self, idx: int) -> None:
+        _LOG.info("UI: clear FX slot %s", idx + 1)
         self._fx_slots[idx] = None
         self._refresh_slot_labels()
 
     def _save_patch(self) -> None:
-        has_inst = self._inst_plugin is not None and bool(self._inst_plugin_path)
-        tuples: list[tuple[str, str, Any, tuple[str, str, str, str]]] = []
-        for st in self._fx_slots:
-            if st is None:
-                continue
-            uid_e = st.effect_uid or generate_id()
-            safe_nm = st.effect_display_name.replace("/", "-")[:64]
-            preset_path_slot = st.preset_path or os.path.join(
-                PRESETS_DIR, f"{safe_nm}_{uid_e}.vstpreset"
-            )
-            write_plugin_state_to_vstpreset(preset_path_slot, st.plugin)
-            meta = (st.effect_display_name, uid_e, preset_path_slot, "")
-            tuples.append((st.plugin_path, st.plugin_name, st.plugin, meta))
+        _LOG.info("UI: Save patch clicked")
 
-        has_fx = len(tuples) > 0
+        has_inst = self._inst_plugin is not None and bool(self._inst_plugin_path)
+
+        has_fx = any(s is not None for s in self._fx_slots)
+
         nm_inst = self._inst_name.get().strip()
         nm_fx = self._chain_name.get().strip()
 
@@ -1249,46 +1491,62 @@ class PatchcraftrApp(tk.Tk):
                 )
                 return
 
+        tuples: list[tuple[str, str, Any, tuple[str, str, str, str]]] = []
         try:
-            if has_inst:
-                uid_inst = generate_id()
-                preset_path_inst = os.path.join(PRESETS_DIR, f"{nm_inst}_{uid_inst}.vstpreset")
-                write_plugin_state_to_vstpreset(preset_path_inst, self._inst_plugin)
-                upsert_preset_entry(
-                    {
-                        "id": uid_inst,
-                        "name": nm_inst,
-                        "plugin_path": self._inst_plugin_path,
-                        "plugin_name": self._inst_plugin_name,
-                        "preset_path": preset_path_inst,
-                        "type": "instrument",
-                    }
-                )
+            with self._modal_busy("Saving patch…"):
+                for st in self._fx_slots:
+                    if st is None:
+                        continue
+                    uid_e = st.effect_uid or generate_id()
+                    safe_nm = st.effect_display_name.replace("/", "-")[:64]
+                    preset_path_slot = st.preset_path or os.path.join(
+                        PRESETS_DIR, f"{safe_nm}_{uid_e}.vstpreset"
+                    )
+                    write_plugin_state_to_vstpreset(preset_path_slot, st.plugin)
+                    meta = (st.effect_display_name, uid_e, preset_path_slot, "")
+                    tuples.append((st.plugin_path, st.plugin_name, st.plugin, meta))
 
-            if has_fx:
-                uid_fx = generate_id()
-                if len(tuples) == 1:
-                    path_s, pname_s, _plug_s, meta = tuples[0]
-                    preset_path_eff = meta[2]
+                has_fx_saves = len(tuples) > 0
+
+                if has_inst:
+                    uid_inst = generate_id()
+                    preset_path_inst = os.path.join(PRESETS_DIR, f"{nm_inst}_{uid_inst}.vstpreset")
+                    write_plugin_state_to_vstpreset(preset_path_inst, self._inst_plugin)
                     upsert_preset_entry(
                         {
-                            "id": uid_fx,
-                            "name": nm_fx,
-                            "type": "effect",
-                            "plugin_path": path_s,
-                            "plugin_name": pname_s,
-                            "preset_path": preset_path_eff,
+                            "id": uid_inst,
+                            "name": nm_inst,
+                            "plugin_path": self._inst_plugin_path,
+                            "plugin_name": self._inst_plugin_name,
+                            "preset_path": preset_path_inst,
+                            "type": "instrument",
                         }
                     )
-                else:
-                    upsert_preset_entry(
-                        {
-                            "id": uid_fx,
-                            "name": nm_fx,
-                            "type": "effect_chain",
-                            "effects": effect_chain_tuple_to_json_effects(tuples),
-                        }
-                    )
+
+                if has_fx_saves:
+                    uid_fx = generate_id()
+                    if len(tuples) == 1:
+                        path_s, pname_s, _plug_s, meta = tuples[0]
+                        preset_path_eff = meta[2]
+                        upsert_preset_entry(
+                            {
+                                "id": uid_fx,
+                                "name": nm_fx,
+                                "type": "effect",
+                                "plugin_path": path_s,
+                                "plugin_name": pname_s,
+                                "preset_path": preset_path_eff,
+                            }
+                        )
+                    else:
+                        upsert_preset_entry(
+                            {
+                                "id": uid_fx,
+                                "name": nm_fx,
+                                "type": "effect_chain",
+                                "effects": effect_chain_tuple_to_json_effects(tuples),
+                            }
+                        )
 
         except Exception as e:
             self._enqueue_msg("error", str(e))
@@ -1297,11 +1555,22 @@ class PatchcraftrApp(tk.Tk):
         parts = []
         if has_inst:
             parts.append(f"instrument “{nm_inst}”")
-        if has_fx:
+        if tuples:
             parts.append(f"effect “{nm_fx}”" + (" [chain]" if len(tuples) > 1 else " [single FX]"))
 
         self._enqueue_msg("info", "Saved " + " and ".join(parts) + ".")
-        self._refresh_plugin_map()
+        _LOG.info(
+            "Save patch completed has_inst=%s fx_slots_written=%s",
+            has_inst,
+            len(tuples),
+        )
+
+        try:
+            t0 = time.time()
+            self._refresh_plugin_map()
+            _LOG.debug("Plug-in map refresh after save %.3fs", time.time() - t0)
+        except Exception:
+            _LOG.exception("Post-save plug-in map refresh failed")
 
     @staticmethod
     def _parse_ignore_plugins_setting(raw: str) -> list[str]:
@@ -1319,6 +1588,7 @@ class PatchcraftrApp(tk.Tk):
         return any(p and p in label for p in patterns)
 
     def _open_ignore_plugins_dialog(self) -> None:
+        _LOG.info("UI: IGNORE_PLUGINS configure clicked")
         plugin_dirs, _, _, custom_plugins = plugin_settings_tuple()
         if not plugin_dirs or plugin_dirs == [""]:
             messagebox.showwarning(
@@ -1328,12 +1598,37 @@ class PatchcraftrApp(tk.Tk):
             )
             return
 
-        all_paths = list_installed_plugins(plugin_dirs, custom_plugins)
-        labels_by_display: dict[str, str] = {}
-        for p in all_paths:
-            lab = format_plugin_name(p)
-            labels_by_display.setdefault(lab, p)
+        def work() -> None:
+            try:
+                t0 = time.time()
+                all_paths = list_installed_plugins(plugin_dirs, custom_plugins)
+                labels_map: dict[str, str] = {}
+                for p in all_paths:
+                    lab = format_plugin_name(p)
+                    labels_map.setdefault(lab, p)
+                scan_s = time.time() - t0
+            except Exception:
+                _LOG.exception("IGNORE_PLUGINS: list_installed_plugins failed")
+                self._schedule_ui(
+                    lambda: self._enqueue_msg(
+                        "error",
+                        "Could not scan plug-ins for IGNORE_PLUGINS dialog.\nSee errors.log.",
+                    )
+                )
+                return
+            frozen = dict(labels_map)
+            self._schedule_ui(
+                lambda: self._present_ignore_plugins_dialog(frozen, scan_s),
+            )
 
+        threading.Thread(target=work, daemon=True).start()
+
+    def _present_ignore_plugins_dialog(self, labels_by_display: dict[str, str], scan_s: float) -> None:
+        _LOG.info(
+            "IGNORE_PLUGINS dialog scan done: %s labels in %.2fs",
+            len(labels_by_display),
+            scan_s,
+        )
         dlg = tk.Toplevel(self)
         self._theme_dialog_shell(dlg)
         dlg.title("Configure plugin list (IGNORE_PLUGINS)")
@@ -1485,25 +1780,22 @@ class PatchcraftrApp(tk.Tk):
         dlg.protocol("WM_DELETE_WINDOW", cancel_dialog)
 
     def _confirm_new_patch(self) -> None:
+        _LOG.info("UI: + new patch clicked")
         if not messagebox.askyesno(
             "patchcraftr · new patch",
             "Discard the current form and start blank?\n\n"
             "Instrument, FX slots, and patch names will be cleared.",
             parent=self,
         ):
+            _LOG.info("New patch: user cancelled")
             return
+        _LOG.info("New patch: form reset")
         self._reset_patch_form()
-
-
-def _patchcraftr_clear_topmost(root: tk.Tk) -> None:
-    try:
-        root.attributes("-topmost", False)
-    except tk.TclError:
-        pass
 
 
 def _raise_patchcraftr_window(root: tk.Tk) -> None:
     """When launched from the tray or another app, bring this Tk window to the foreground."""
+    _LOG.debug("Raising Patchcraftr window (pid=%s platform=%s)", os.getpid(), sys.platform)
     if sys.platform == "darwin":
         try:
             from AppKit import NSApplication  # type: ignore[import-not-found]
@@ -1532,8 +1824,6 @@ def _raise_patchcraftr_window(root: tk.Tk) -> None:
         root.update_idletasks()
         root.deiconify()
         root.lift()
-        root.attributes("-topmost", True)
-        root.after(100, lambda r=root: _patchcraftr_clear_topmost(r))
     except tk.TclError:
         pass
     try:
@@ -1545,7 +1835,9 @@ def _raise_patchcraftr_window(root: tk.Tk) -> None:
 def main() -> None:
     ensure_settings()
     ensure_authoring_dirs()
+    path = ensure_server_error_file_logging(announce=sys.stderr.isatty())
     app = PatchcraftrApp()
+    _LOG.info("Patchcraftr mainloop starting (errors.log=%s)", path)
     app.after(50, lambda: _raise_patchcraftr_window(app))
     app.mainloop()
 

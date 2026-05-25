@@ -1,8 +1,9 @@
 """
-File logging for server-side errors (Flask 500s, unhandled exceptions, Werkzeug errors).
+Rotating ``errors.log`` for dronmakr: server/traceback errors plus optional app diagnostics.
 
-Writes ERROR-level logs and above to a rotating file so desktop users (no visible console)
-can still inspect failures (e.g. Auditionr API 500).
+The ``dronmakr`` logger family (including ``dronmakr.server``, ``dronmakr.patchcraftr``, …)
+writes at INFO and above into this file. Unhandled Flask request exceptions attach full
+tracebacks via ``register_flask_server_error_signals``.
 """
 
 from __future__ import annotations
@@ -17,44 +18,46 @@ from flask import Flask
 from flask.signals import got_request_exception
 from settings import get_server_logs_dir
 
-_SERVER_ERROR_LOG_BASENAME = "server-errors.log"
+_APP_ERROR_LOG_BASENAME = "errors.log"
 _MAX_BYTES = 2 * 1024 * 1024
 _BACKUP_COUNT = 4
 
 _file_handler_installed = False
 _flask_signal_registered = False
 
+_DRAONMAKR_LOGGER = "dronmakr"
+
+
+def errors_log_path() -> Path:
+    """Resolved path for the rotating ``errors.log`` file."""
+    return get_server_logs_dir() / _APP_ERROR_LOG_BASENAME
+
 
 def server_error_log_path() -> Path:
-    """Resolved path for the rotating server error log file."""
-    return get_server_logs_dir() / _SERVER_ERROR_LOG_BASENAME
+    """Resolved path — alias for backwards compatibility (:func:`errors_log_path`)."""
+    return errors_log_path()
 
 
 def ensure_server_error_file_logging(*, announce: bool = False) -> str:
     """
-    Attach a rotating file handler at ERROR+ to the root logger (idempotent).
+    Attach a rotating file handler at INFO+ to logger ``dronmakr`` (idempotent).
 
-    Returns absolute path of ``server-errors.log``. When ``announce`` is True, prints one
+    Returns absolute path of ``errors.log``. When ``announce`` is True, prints one
     line (with ANSI prompt when ``utils.with_main_prompt`` is available).
 
-    Intended to run when the unified web UI starts (`webui.run` / `webui.start_server`),
-    not on bare ``import webui`` — so importing the app module does not create files.
+    Intended to run when unified web/desktop starts and when Patchcraftr opens,
+    so imports do not create files prematurely.
     """
     global _file_handler_installed
 
     logs_dir = get_server_logs_dir()
     logs_dir.mkdir(parents=True, exist_ok=True)
-    path = (logs_dir / _SERVER_ERROR_LOG_BASENAME).resolve()
+    path = (logs_dir / _APP_ERROR_LOG_BASENAME).resolve()
     abs_path = str(path)
 
     if _file_handler_installed:
         if announce:
-            try:
-                from utils import with_main_prompt as _wp
-
-                print(_wp(f"Server error log: {abs_path}"), flush=True)
-            except Exception:
-                print(f"[dronmakr] Server error log: {abs_path}", flush=True)
+            _announce_log_path(abs_path)
         return abs_path
 
     _file_handler_installed = True
@@ -65,23 +68,33 @@ def ensure_server_error_file_logging(*, announce: bool = False) -> str:
         encoding="utf-8",
         delay=False,
     )
-    fh.setLevel(logging.ERROR)
+    fh.setLevel(logging.INFO)
     fh.setFormatter(
         logging.Formatter(
             fmt="%(asctime)s %(levelname)s [%(name)s] %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S",
         )
     )
-    logging.getLogger().addHandler(fh)
+
+    app_log = logging.getLogger(_DRAONMAKR_LOGGER)
+    app_log.setLevel(logging.INFO)
+    app_log.addHandler(fh)
+    # Child loggers like dronmakr.server / dronmakr.patchcraftr propagate here;
+    # do not also send everything on the Python root logger to stderr via this handler.
+    app_log.propagate = False
 
     if announce:
-        try:
-            from utils import with_main_prompt as _wp
-
-            print(_wp(f"Server error log: {abs_path}"), flush=True)
-        except Exception:
-            print(f"[dronmakr] Server error log: {abs_path}", flush=True)
+        _announce_log_path(abs_path)
     return abs_path
+
+
+def _announce_log_path(abs_path: str) -> None:
+    try:
+        from utils import with_main_prompt as _wp
+
+        print(_wp(f"Error log (errors.log): {abs_path}"), flush=True)
+    except Exception:
+        print(f"[dronmakr] Error log (errors.log): {abs_path}", flush=True)
 
 
 def register_flask_server_error_signals(app: Flask) -> None:
@@ -125,7 +138,7 @@ def register_flask_server_error_signals(app: Flask) -> None:
 
 
 def reveal_server_error_log_for_user() -> Path:
-    """Create log file/dir if missing; open file manager revealing ``server-errors.log``."""
+    """Create log file/dir if missing; reveal ``errors.log`` in the OS file manager."""
     p = Path(ensure_server_error_file_logging())
     if not p.is_file():
         p.touch(exist_ok=True)
@@ -133,7 +146,6 @@ def reveal_server_error_log_for_user() -> Path:
     if plat == "darwin":
         subprocess.Popen(["open", "-R", str(p)], close_fds=True)
     elif plat == "win32":
-        # Explorer requires `/select,<path>` (comma, no space after /select — MSDN convention).
         subprocess.Popen(["explorer", "/select," + str(p)], close_fds=False)
     else:
         subprocess.Popen(["xdg-open", str(p.parent)], close_fds=True)

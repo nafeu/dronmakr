@@ -58,15 +58,15 @@ For distribution without these prompts you need your own **Apple Developer Progr
 
 On recent builds (or after a silent failure), **`~/Library/Application Support/dronmakr/last-startup-error.txt`** may contain Python tracebacks captured from the launcher.
 
-While the packaged app runs, **`HTTP 500` responses and other server-side errors** (for example failures on Auditionr’s `/api/generatr/options`) are appended to a **rotating log file**:
+While the packaged app runs (and when you use **Patchcraftr / web UI**), **diagnostics and errors** — for example Flask **HTTP 500** tracebacks, Patchcraftr button flows, and **Pedalboard** plug-in load failures — are appended to a **rotating log file**:
 
-- **macOS:** `~/Library/Application Support/dronmakr/logs/server-errors.log`
-- **Windows:** `%AppData%\dronmakr\logs\server-errors.log`
-- **Linux:** `~/.local/share/dronmakr/logs/server-errors.log`
+- **macOS:** `~/Library/Application Support/dronmakr/logs/errors.log`
+- **Windows:** `%AppData%\dronmakr\logs\errors.log`
+- **Linux:** `~/.local/share/dronmakr/logs/errors.log`
 
-From the tray, use **Server error log…** to reveal that file in Finder / Explorer / your file manager. Older segments are kept as `server-errors.log.1`, `.2`, etc. (up to a few MB per file).
+From the tray, use **Report issue (errors.log)…** to reveal that file in Finder / Explorer / your file manager. Older segments are kept as `errors.log.1`, `.2`, etc. (up to a few MB per file). Older builds wrote `server-errors.log` instead; logs now use the single **`errors.log`** name.
 
-When running from a **git checkout**, the same file is under **`dronmakr/logs/server-errors.log`** at the repo root; the terminal also prints that path when you start `webui` or `desktop`.
+When running from a **git checkout**, the same file is under **`dronmakr/logs/errors.log`** at the repo root; the terminal prints that path when you start `webui` or **`desktop`** (and Patchcraftr logs there when launched from source).
 
 Packaged desktop builds also poll **GitHub Releases**: when an update exists, native tray prompts can offer **Open updater** on startup; otherwise use **Check for updates…** or **Updater (<tag>)** in the tray. The updater opens a Tk window in a separate process (download progress, install / DMG reveal). Clearing `PLUGIN_PATHS` after first run stays empty—defaults apply only when `settings.json` is first created.
 

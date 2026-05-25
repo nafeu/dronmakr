@@ -92,7 +92,7 @@ Optional verbose server logging:
 python dronmakr.py desktop --debug
 ```
 
-**Server error log file:** Unhandled backend errors and HTTP 500 tracebacks are written to a rotating file (see [README — Desktop (GitHub Releases)](https://github.com/nafeu/dronmakr/blob/main/README.md) for OS paths). The desktop tray includes **Server error log…** to open it. When you run `webui` or `desktop` from source, the startup banner also prints the path (under `dronmakr/logs/server-errors.log` in the repo).
+**Application error log (`errors.log`):** Unhandled backend exceptions, Patchcraftr desktop logs, Pedalboard load traces, and similar diagnostics are written to a rotating file (see [README — Desktop (GitHub Releases)](https://github.com/nafeu/dronmakr/blob/main/README.md) for OS paths). The desktop tray includes **Report issue (errors.log)…** to open it. When you run `webui` or `desktop` from source, the startup banner prints the path (typically `dronmakr/logs/errors.log` in the repo).
 
 On first run you choose a `dronmakr-files` location. The app creates and manages `presets/`, `midi/`, `exports/`, `archive/`, `saved/`, `recordings/`, `splits/`, `trash/`, `packages/`, `history/`, `temp/`, `vst-preset-files/`, `config/`. Change it later under **Settings** (`FILES_ROOT`).
 

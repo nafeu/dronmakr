@@ -223,7 +223,7 @@ def main(debug: bool = False) -> None:
             "dronmakr",
             "The dronmakr server did not become ready in time.\n"
             "If you have a terminal window attached, copy any traceback from there;\n"
-            "otherwise tray → Server error log… opens the rotating server log folder.\n"
+            "otherwise tray → Report issue opens the rotating log file (`errors.log`).\n"
             "Launcher-only crashes still write beside your app data folder — see README.",
         )
         sys.exit(1)
@@ -252,11 +252,11 @@ def main(debug: bool = False) -> None:
     def open_about(icon_: Icon, item_: object) -> None:
         open_webui_in_browser(about_url)
 
-    def open_server_logs(_icon_: Icon, _item_: object) -> None:
+    def open_error_log(_icon_: Icon, _item_: object) -> None:
         try:
             reveal_server_error_log_for_user()
         except Exception as e:
-            tray_show_error("Server log", str(e))
+            tray_show_error("Error log", str(e))
 
     def browse_files(icon_: Icon, item_: object) -> None:
         root = get_files_root(allow_default=False)
@@ -325,7 +325,7 @@ def main(debug: bool = False) -> None:
         MenuItem("Edit VST/AU plugin patches", launch_patchcraftr),
         MenuItem("Settings", open_settings),
         MenuItem("About", open_about),
-        MenuItem("Report issue", open_server_logs),
+        MenuItem("Report issue", open_error_log),
     ]
     if getattr(sys, "frozen", False):
         items.extend(
