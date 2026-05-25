@@ -35,6 +35,7 @@ from utils import (
 from generate_sample import generate_beat_sample
 from paths import get_managed_file
 from processing_actions import apply_post_processing_actions
+from bundle_paths import bundled_asset_path
 
 # Injected by register_beatbuildr(app, socketio); used by socket handlers for emits.
 _socketio = None
@@ -616,7 +617,7 @@ def serve_kit_sample(filename: str):
 def ensure_beat_patterns():
     """Ensure config/beat-patterns.json exists, copy from sample if needed."""
     beat_patterns_file = BEAT_PATTERNS_FILE
-    beat_patterns_sample = "resources/beat-patterns-sample.json"
+    beat_patterns_sample = str(bundled_asset_path("resources", "beat-patterns-sample.json"))
 
     if not os.path.exists(beat_patterns_file):
         os.makedirs(os.path.dirname(beat_patterns_file), exist_ok=True)
@@ -626,7 +627,7 @@ def ensure_beat_patterns():
 
 
 DRUM_KITS_FILE = get_managed_file("config", "drum-kits.json")
-DRUM_KITS_SAMPLE = "resources/drum-kits-sample.json"
+DRUM_KITS_SAMPLE = str(bundled_asset_path("resources", "drum-kits-sample.json"))
 VALID_CONFIG_NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 

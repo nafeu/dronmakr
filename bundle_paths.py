@@ -21,6 +21,16 @@ def get_bundle_app_root() -> Path:
     return Path(__file__).resolve().parent
 
 
+def bundled_asset_path(*relative_segments: str) -> Path:
+    """
+    Resolved path under the bundle or repo root (not CWD-relative).
+
+    Tray/desktop launches often leave ``os.getcwd()`` as the user's home or ``/``.
+    Prefer this for bundled ``resources/*`` shipped next to templates/static.
+    """
+    return get_bundle_app_root().joinpath(*relative_segments)
+
+
 def resolve_ffmpeg_executable() -> Path | None:
     """Bundled FFmpeg (desktop) wins; then DRONMAKR_FFMPEG_PATH; then ffmpeg on PATH."""
     override = (os.environ.get("DRONMAKR_FFMPEG_PATH") or "").strip()

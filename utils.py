@@ -8,6 +8,7 @@ import sys
 import uuid
 
 from version import __version__
+from bundle_paths import bundled_asset_path
 from paths import get_managed_dir, get_managed_file
 
 BLUE = "\033[34m"
@@ -28,7 +29,9 @@ LEGACY_PRESETS_PATH = get_managed_file("presets", "presets.json")
 POST_PROCESSING_SHORTCUTS_PATH = get_managed_file(
     "config", "post-processing-shortcuts.json"
 )
-POST_PROCESSING_SHORTCUTS_SAMPLE = "resources/post-processing-shortcuts-sample.json"
+POST_PROCESSING_SHORTCUTS_SAMPLE = str(
+    bundled_asset_path("resources", "post-processing-shortcuts-sample.json")
+)
 SAVED_DIR = get_managed_dir("saved")
 SPLITS_DIR = get_managed_dir("splits")
 TEMP_DIR = get_managed_dir("temp")
