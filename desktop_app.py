@@ -318,14 +318,14 @@ def main(debug: bool = False) -> None:
         Menu.SEPARATOR,
         MenuItem("Open dronmakr in browser", open_home),
         MenuItem(
-            "Browse files",
+            "Browse generated files",
             browse_files,
             enabled=browse_files_enabled,
         ),
-        MenuItem("Launch patchcraftr", launch_patchcraftr),
+        MenuItem("Edit VST/AU plugin patches", launch_patchcraftr),
         MenuItem("Settings", open_settings),
         MenuItem("About", open_about),
-        MenuItem("Server error log…", open_server_logs),
+        MenuItem("Report issue", open_server_logs),
     ]
     if getattr(sys, "frozen", False):
         items.extend(
@@ -335,7 +335,7 @@ def main(debug: bool = False) -> None:
                     download_update_now,
                     visible=download_update_visible,
                 ),
-                MenuItem("Check for updates…", check_updates),
+                MenuItem("Check for updates...", check_updates),
             ]
         )
     items.append(Menu.SEPARATOR)
