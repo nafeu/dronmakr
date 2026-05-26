@@ -20,12 +20,12 @@ def default_plugin_paths_csv() -> str:
     sep = ","
     if sys.platform == "darwin":
         home = os.path.expanduser("~")
+        # VST3 + Audio Unit paths only — Pedalboard does not host legacy macOS VST2 (.vst) bundles,
+        # so omit .../Plug-Ins/VST from defaults to avoid broken pickers (e.g. Vital.vst).
         rows = [
             "/Library/Audio/Plug-Ins/Components",
-            "/Library/Audio/Plug-Ins/VST",
             "/Library/Audio/Plug-Ins/VST3",
             _abs((home, "Library", "Audio", "Plug-Ins", "Components")),
-            _abs((home, "Library", "Audio", "Plug-Ins", "VST")),
             _abs((home, "Library", "Audio", "Plug-Ins", "VST3")),
         ]
         return sep.join(rows)

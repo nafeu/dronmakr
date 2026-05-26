@@ -98,7 +98,7 @@ On first run you choose a `dronmakr-files` location. The app creates and manages
 
 On **Linux**, the tray icon may require GTK AppIndicator / `libappindicator` (or compatible) for `pystray`.
 
-**PLUGIN_PATHS (first install):** The first time **`config/settings.json`** is created, **`PLUGIN_PATHS`** is seeded with canonical **AU/VST** scan folders for the current OS (system + user `Library/Audio/Plug-Ins/...` on macOS, `%ProgramFiles%`/Common Files on Windows, common `~/` + `/usr/...` paths on Linux).
+**PLUGIN_PATHS (first install):** The first time **`config/settings.json`** is created, **`PLUGIN_PATHS`** is seeded with canonical folders for external plug-ins (**macOS:** `Components` + `VST3` — VST3 and AU only; legacy **VST2** `.vst` bundles are not scanned; **Windows/Linux:** `%ProgramFiles%`/Common Files and common Linux paths).
 
 **Updates:** Use **Check for updates…** or **Updater** in the tray. That opens a small **Tk** helper (separate OS process so it respects the GUI main thread): check GitHub Releases, stream the download with a progress bar, then launch **`dronmakr.app`** / **`dronmakr.exe`** **or open a `.dmg`**. Tray prompts on macOS/Windows avoid calling Tk directly from pystray’s callback threads.
 

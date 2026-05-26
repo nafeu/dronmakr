@@ -91,7 +91,7 @@ cp .env-sample .env
 Edit `.env` with paths and plugins, for example:
 
 ```env
-PLUGIN_PATHS="/Library/Audio/Plug-Ins/Components,/Library/Audio/Plug-Ins/VST,/Library/Audio/Plug-Ins/VST3"
+PLUGIN_PATHS="/Library/Audio/Plug-Ins/Components,/Library/Audio/Plug-Ins/VST3"
 ASSERT_INSTRUMENT="Reaktor 6"
 IGNORE_PLUGINS=""
 CUSTOM_PLUGINS=""
@@ -111,18 +111,18 @@ For **advanced command-line usage** (batch generators, packaging presets, local 
 
 ## Project Limitations
 
-The VST/AU running functionality of this project is built ontop of [pedalboard.io](https://spotify.github.io/pedalboard/reference/pedalboard.io.html) which is a python wrapper on the [JUCE framework](https://juce.com/). There are [known compatibility issues](https://spotify.github.io/pedalboard/reference/pedalboard.html#pedalboard.VST3Plugin). Some of the ones that I've been able to get working are as follows:
+The VST/AU running functionality of this project is built ontop of [pedalboard.io](https://spotify.github.io/pedalboard/reference/pedalboard.io.html) which is a python wrapper on the [JUCE framework](https://juce.com/). On **macOS**, Pedalboard supports **VST3** (`.vst3`) and **Audio Unit** (`.component`) only — **not** legacy **VST2** bundles under `Plug-Ins/VST/` (`.vst`); use each vendor’s VST3 or AU build instead. There are [known compatibility issues](https://spotify.github.io/pedalboard/reference/pedalboard.html#pedalboard.VST3Plugin). Some of the ones that I've been able to get working are as follows:
 
 _* All testing was done on `macOS Sequoia 15.1` on an `Apple M4 Pro` machine._
 
 | Plugin Name | VST3 Works | AU Works |
 | --- | --- | --- |
+| Vital | Yes | ? |
 | Massive | Yes | ? |
 | FM8 | Yes | ? |
 | Reaktor 6 | Yes | ? |
 | Replika | Yes | ? |
 | Raum | Yes | ? |
-| Vital | Yes | ? |
 | Phasis | Yes | ? |
 | Saltygrain | No | Yes |
 

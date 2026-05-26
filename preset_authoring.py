@@ -117,11 +117,23 @@ def list_installed_plugins(plugin_dirs: list[str], custom_plugins: list[str]) ->
         plugin_dir = plugin_dir.strip()
         if os.path.exists(plugin_dir):
             paths.extend(glob.glob(os.path.join(plugin_dir, "*.vst3")))
-            paths.extend(glob.glob(os.path.join(plugin_dir, "*.vst")))
+            # macOS: Pedalboard loads VST3 and Audio Unit only — not legacy VST2 (.vst bundles).
+            if sys.platform != "darwin":
+                paths.extend(glob.glob(os.path.join(plugin_dir, "*.vst")))
             paths.extend(glob.glob(os.path.join(plugin_dir, "*.dll")))
             paths.extend(glob.glob(os.path.join(plugin_dir, "*.so")))
             paths.extend(glob.glob(os.path.join(plugin_dir, "*.component")))
     return paths
+
+
+def macos_pedalboard_rejects_vst2_path(plugin_path: str) -> bool:
+    """True if ``plugin_path`` is a legacy macOS VST2 bundle path (``.vst`` but not ``.vst3``)."""
+    if sys.platform != "darwin":
+        return False
+    base = plugin_path.rstrip("/")
+    low = base.lower()
+    # Guard against odd names ending in ".vstsomething"
+    return low.endswith(".vst") and not low.endswith(".vst3")
 
 
 def format_plugin_name(plugin_path: str) -> str:
@@ -164,6 +176,15 @@ def _parse_variants_from_load_error(error_message: str) -> list[str]:
 
 def load_pedalboard_plugin(plugin_path: str, plugin_name: str | None = None):
     """Return ``(plugin, effective_plugin_name)`` or raise ``PluginVariantRequired``."""
+    if macos_pedalboard_rejects_vst2_path(plugin_path):
+        raise ValueError(
+            "On macOS, dronmakr uses Spotify Pedalboard, which only loads VST3 (`.vst3`) and "
+            "Audio Unit (`.component`) plug-ins — not legacy VST2 bundles (`.vst`) such as:\n\n"
+            f"  {plugin_path}\n\n"
+            "Use Vital’s VST3 under Library/Audio/Plug-Ins/VST3/, or install the AU under "
+            "Library/Audio/Plug-Ins/Components/ and point PLUGIN_PATHS there. "
+            "You can remove `.../Plug-Ins/VST` from PLUGIN_PATHS in Settings to hide incompatible entries."
+        ) from None
     try:
         if plugin_name:
             return pedalboard.load_plugin(plugin_path, plugin_name=plugin_name), plugin_name
