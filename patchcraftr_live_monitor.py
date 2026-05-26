@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
 import threading
@@ -41,6 +42,9 @@ MIDI_PREVIEW_STYLES: list[tuple[str, str]] = [
     ("c_scale_up", "C major scale ↑"),
 ]
 DEFAULT_MIDI_PREVIEW_STYLE = MIDI_PREVIEW_STYLES[0][0]
+
+
+_LOG = logging.getLogger("dronmakr.patchcraftr")
 
 
 def midi_preview_style_ids() -> tuple[str, ...]:
@@ -117,6 +121,8 @@ class PatchcraftrLiveMonitor:
         self._playback_stream: Any = None
         self._logged_chain_err = False
         self._logged_upstream_synth_err = False
+        self._logged_write_err = False
+        self._logged_instrument_live_err = False
         self._wav_loop: np.ndarray | None = None
         self._wav_pos = 0
         self._wav_load_attempted = False
@@ -303,6 +309,10 @@ class PatchcraftrLiveMonitor:
             )
         except Exception:
             if not self._logged_upstream_synth_err:
+                _LOG.exception(
+                    "Patchcraftr: instrument→audio render failed once in preview thread "
+                    "(further failures suppressed)"
+                )
                 traceback.print_exc()
                 self._logged_upstream_synth_err = True
             arr = np.zeros((frames, CHANNELS), dtype=np.float32)
@@ -334,6 +344,10 @@ class PatchcraftrLiveMonitor:
                     out = self._shape_outputs_to_stream(out, frames)
             except Exception:
                 if not self._logged_chain_err:
+                    _LOG.exception(
+                        "Patchcraftr: stepped FX Pedalboard render failed once in preview thread "
+                        "(further failures suppressed)"
+                    )
                     traceback.print_exc()
                     self._logged_chain_err = True
                 out = np.zeros((frames, CHANNELS), dtype=np.float32)
@@ -348,6 +362,10 @@ class PatchcraftrLiveMonitor:
             )
         except Exception:
             if not self._logged_chain_err:
+                _LOG.exception(
+                    "Patchcraftr: effect/Pedalboard render failed once in preview thread "
+                    "(further failures suppressed)"
+                )
                 traceback.print_exc()
                 self._logged_chain_err = True
             out = np.zeros((frames, CHANNELS), dtype=np.float32)
@@ -363,6 +381,35 @@ class PatchcraftrLiveMonitor:
         block_dur = frames / sr
         rng = np.random.default_rng()
 
+        try:
+            def_dev = getattr(sd.default, "device", None)
+            out_idx = None
+            if isinstance(def_dev, (list, tuple)) and len(def_dev) > 1:
+                try:
+                    out_idx = int(def_dev[1])
+                except (TypeError, ValueError):
+                    out_idx = None
+            elif isinstance(def_dev, int):
+                out_idx = def_dev
+
+            if out_idx is None or out_idx < 0:
+                _LOG.warning(
+                    "sounddevice reports no default OUTPUT device (%r). Patchcraftr previews may be silent.",
+                    def_dev,
+                )
+            else:
+                try:
+                    desc = sd.query_devices(out_idx)
+                except Exception:
+                    desc = {}
+                _LOG.info(
+                    "Patchcraftr live preview targeting output device #%s (%s)",
+                    out_idx,
+                    desc.get("name", desc),
+                )
+        except Exception:
+            _LOG.exception("sounddevice: failed while inspecting default playback device")
+
         stream = None
         idx = 0
 
@@ -377,7 +424,19 @@ class PatchcraftrLiveMonitor:
             with self._stream_gate:
                 self._playback_stream = stream
             stream.start()
+            _LOG.info(
+                "Patchcraftr sounddevice OutputStream started (samplerate=%s, block=%s frames)",
+                sr,
+                frames,
+            )
+        except Exception:
+            _LOG.exception(
+                "Patchcraftr could not create or start sounddevice playback — plug-in previews will be silent. "
+                "On packaged macOS builds, confirm PortAudio is bundled (or check errors.log)."
+            )
+            return
 
+        try:
             while not self._stop.is_set():
                 buf: np.ndarray
 
@@ -403,6 +462,12 @@ class PatchcraftrLiveMonitor:
                             reset=False,
                         )
                     except Exception:
+                        if not self._logged_instrument_live_err:
+                            _LOG.exception(
+                                "Patchcraftr: standalone instrument MIDI preview failed once "
+                                "(further suppressing)"
+                            )
+                            self._logged_instrument_live_err = True
                         arr = np.zeros((frames, CHANNELS), dtype=np.float32)
                     buf = self._shape_outputs_to_stream(arr, frames)
                 elif getattr(plugin, "is_effect", False) or isinstance(plugin, Pedalboard):
@@ -415,8 +480,13 @@ class PatchcraftrLiveMonitor:
 
                 try:
                     stream.write(np.ascontiguousarray(buf))
-                except Exception:
-                    pass
+                except Exception as ex:
+                    if not self._logged_write_err:
+                        _LOG.exception(
+                            "Patchcraftr sounddevice stream.write failed: %s (no audible preview)",
+                            ex,
+                        )
+                        self._logged_write_err = True
 
                 idx += 1
         finally:

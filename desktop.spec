@@ -97,18 +97,20 @@ hiddenimports_base = (
     + _hidden_socketio_threading
 )
 tk_datas, tk_bins, tk_hidden = collect_all("tkinter")
+_sd_collect_datas, _sd_collect_bins, _sd_collect_hidden = collect_all("sounddevice")
 
 a = Analysis(
     ["desktop_app.py"],
     pathex=[],
-    binaries=tk_bins + _soundfile_bins,
+    binaries=tk_bins + _soundfile_bins + _sd_collect_bins,
     datas=[
         ("templates", "templates"),
         ("static", "static"),
         ("resources", "resources"),
         ("patchcraftr_gui.py", "."),
     ]
-    + tk_datas,
+    + tk_datas
+    + _sd_collect_datas,
     hiddenimports=hiddenimports_base
     + [
         "_cffi_backend",
@@ -132,7 +134,8 @@ a = Analysis(
         "_tkinter",
     ]
     + _sounddevice_data_hiddenimports
-    + tk_hidden,
+    + tk_hidden
+    + list(_sd_collect_hidden),
     hookspath=[],
     hooksconfig={},
     runtime_hooks=["patchcraftr_rth_tk.py"],

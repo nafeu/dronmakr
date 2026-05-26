@@ -110,39 +110,73 @@ def generate_drone_sample(
     with open(presets_path, "r") as f:
         presets = json.load(f)
 
-    # Separate instruments and effects (standalone effect or chains)
-    instruments = [p for p in presets if p["type"] == "instrument"]
-    fx_presets = [p for p in presets if p["type"] in ("effect", "effect_chain")]
+    if not isinstance(presets, list):
+        raise ValueError(
+            f"{presets_path} must contain a JSON array of preset objects, "
+            f"not {type(presets).__name__}"
+        )
 
-    if not instruments or not fx_presets:
-        raise ValueError(f"No valid instruments or effects found in {presets_path}")
+    instruments = [p for p in presets if isinstance(p, dict) and p.get("type") == "instrument"]
+    fx_presets = [
+        p for p in presets if isinstance(p, dict) and p.get("type") in ("effect", "effect_chain")
+    ]
+
+    if not instruments:
+        raise ValueError(
+            f"No instrument presets in {presets_path}. Save at least one synth/instrument preset "
+            "from Patchcraftr (saved as type “instrument”)."
+        )
 
     if not instrument:
         instrument_preset = random.choice(instruments)
     else:
         for preset in instruments:
-            if preset["name"] == instrument:
+            if preset.get("name") == instrument:
                 instrument_preset = preset
                 break
         else:
             raise ValueError(f"No instrument found with the name '{instrument}'")
 
-    if not effect:
+    if effect:
+        effect_preset = next((p for p in fx_presets if p.get("name") == effect), None)
+        if effect_preset is None:
+            avail = sorted({p.get("name", "") for p in fx_presets if isinstance(p.get("name"), str)})
+            hint = ""
+            if not fx_presets:
+                hint = " There are no saved effect or effect_chain presets yet — save FX from Patchcraftr."
+            elif avail:
+                hint = f" Available effect names (sample): {', '.join(avail[:12])}"
+                if len(avail) > 12:
+                    hint += ", …"
+            raise ValueError(
+                f"No saved effect or effect_chain preset named '{effect}' in {presets_path}.{hint}"
+            )
+    elif fx_presets:
         effect_preset = random.choice(fx_presets)
     else:
-        effect_preset = next((p for p in fx_presets if p["name"] == effect), None)
-        if effect_preset is None:
-            raise ValueError(f"No saved effect named '{effect}'")
+        # Instrument-only rigs (common right after authoring a first synth preset).
+        effect_preset = None
 
-    slots = effect_slot_entries(effect_preset)
-    if not slots:
-        raise ValueError(f"Effect preset '{effect_preset['name']}' has no processors to load.")
+    slots: list[dict] = []
+    if effect_preset is not None:
+        slots = effect_slot_entries(effect_preset)
+        if not slots:
+            raise ValueError(f"Effect preset '{effect_preset.get('name', '')}' has no processors to load.")
 
-    print(
-        with_prompt(
-            f"selected {GREEN}{instrument_preset['name']}{RESET} sound processed with {GREEN}{effect_preset['name']}{RESET}"
+    if effect_preset is not None:
+        print(
+            with_prompt(
+                f"selected {GREEN}{instrument_preset['name']}{RESET} sound processed with "
+                f"{GREEN}{effect_preset['name']}{RESET}"
+            )
         )
-    )
+    else:
+        print(
+            with_prompt(
+                f"selected {GREEN}{instrument_preset['name']}{RESET} only "
+                f"(no FX presets saved — skipping effect chain)"
+            )
+        )
 
     # Load the instrument plugin with `plugin_name` if available
     if instrument_preset.get("plugin_name"):
@@ -171,33 +205,38 @@ def generate_drone_sample(
         else:
             instrument_plugin.raw_state = ins_blob
 
-    print(with_prompt(f"loading effect {GREEN}{effect_preset['name']}{RESET}"))
+    if slots:
+        print(with_prompt(f"loading effect {GREEN}{effect_preset['name']}{RESET}"))
 
-    for eff in slots:
-        if eff.get("plugin_name"):
-            print(
-                with_prompt(
-                    f"inserting {GREEN}{extract_plugin(eff['plugin_path'])}{RESET} as {GREEN}{eff['plugin_name']}{RESET}"
+        for eff in slots:
+            if eff.get("plugin_name"):
+                print(
+                    with_prompt(
+                        f"inserting {GREEN}{extract_plugin(eff['plugin_path'])}{RESET} as {GREEN}{eff['plugin_name']}{RESET}"
+                    )
                 )
-            )
-            effect_plugin = pedalboard.load_plugin(eff["plugin_path"], plugin_name=eff["plugin_name"])
-        else:
-            print(
-                with_prompt(
-                    f"inserting {GREEN}{extract_plugin(eff['plugin_path'])}{RESET}"
+                effect_plugin = pedalboard.load_plugin(
+                    eff["plugin_path"], plugin_name=eff["plugin_name"]
                 )
-            )
-            effect_plugin = pedalboard.load_plugin(eff["plugin_path"])
-
-        with open(eff["preset_path"], "rb") as f:
-            eblob = f.read()
-            print(with_prompt(f"using effect step {GREEN}{eff['name']}{RESET}"))
-            if hasattr(effect_plugin, "preset_data"):
-                effect_plugin.preset_data = eblob
             else:
-                effect_plugin.raw_state = eblob
+                print(
+                    with_prompt(
+                        f"inserting {GREEN}{extract_plugin(eff['plugin_path'])}{RESET}"
+                    )
+                )
+                effect_plugin = pedalboard.load_plugin(eff["plugin_path"])
 
-        loaded_effects.append(effect_plugin)
+            with open(eff["preset_path"], "rb") as f:
+                eblob = f.read()
+                print(with_prompt(f"using effect step {GREEN}{eff['name']}{RESET}"))
+                if hasattr(effect_plugin, "preset_data"):
+                    effect_plugin.preset_data = eblob
+                else:
+                    effect_plugin.raw_state = eblob
+
+            loaded_effects.append(effect_plugin)
+    else:
+        print(with_prompt("Skipping effect plug-ins — none listed in presets.json."))
 
     # Load MIDI file and get messages
     midi_messages, audio_length_s = midi_to_messages(input_path)
