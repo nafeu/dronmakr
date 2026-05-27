@@ -24,6 +24,18 @@ _ASYNC_THREADING_ENV = "DRONMAKR_ASYNC_MODE"
 _WORKER_TIMEOUT_S = int(os.environ.get("DRONMAKR_PEDALBOARD_WORKER_TIMEOUT", "3600"))
 
 
+def ensure_pedalboard_midi_utils() -> None:
+    """Pedalboard imports this lazily when rendering instrument MIDI; frozen builds must bundle it."""
+    try:
+        import pedalboard.midi_utils  # noqa: F401, PLC0415
+    except ImportError as e:
+        raise RuntimeError(
+            "pedalboard.midi_utils is missing. Instrument MIDI rendering cannot run. "
+            "If you are using the packaged desktop app, rebuild/reinstall dronmakr; "
+            "otherwise reinstall pedalboard in your Python environment."
+        ) from e
+
+
 def _should_delegate_to_worker() -> bool:
     if os.environ.get(_WORKER_CHILD_ENV):
         return False
@@ -150,6 +162,7 @@ def delegate_apply_effect_if_needed(
 def run_stdio_worker() -> None:
     """Entry: read one JSON job from stdin, write one JSON line to stdout."""
     _patch_print_to_stderr()
+    ensure_pedalboard_midi_utils()
     try:
         raw = sys.stdin.read()
         job = json.loads(raw)

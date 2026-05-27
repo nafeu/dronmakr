@@ -55,6 +55,26 @@ def fx_preview_source_ids() -> tuple[str, ...]:
     return tuple(s for s, _ in FX_PREVIEW_SOURCES)
 
 
+def default_sounddevice_output_index(sd_module: Any) -> int | None:
+    """
+    Return sounddevice's default output device index, or None if unavailable.
+
+    ``sd.default.device`` is often a NumPy array ``[input_idx, output_idx]``, not a list/tuple.
+    """
+    def_dev = getattr(sd_module.default, "device", None)
+    if def_dev is None:
+        return None
+    if isinstance(def_dev, int):
+        return def_dev if def_dev >= 0 else None
+    try:
+        if hasattr(def_dev, "__len__") and len(def_dev) > 1:
+            out_idx = int(def_dev[1])
+            return out_idx if out_idx >= 0 else None
+    except (TypeError, ValueError, IndexError):
+        return None
+    return None
+
+
 def _resolve_fx_preview_wav_path() -> str:
     """Same resource as preset authoring (`resources/CDEFGABC.wav`)."""
     from preset_authoring import preview_sample_wav_path
@@ -374,6 +394,16 @@ class PatchcraftrLiveMonitor:
     def _audio_loop(self) -> None:
         import sounddevice as sd  # noqa: WPS433
 
+        try:
+            from pedalboard_isolated_runner import ensure_pedalboard_midi_utils
+
+            ensure_pedalboard_midi_utils()
+        except Exception:
+            _LOG.exception(
+                "Patchcraftr: pedalboard.midi_utils unavailable — instrument MIDI preview will be silent"
+            )
+            return
+
         plugin = self._plugin
         sr = SAMPLE_RATE
         block_dur = BLOCK_DUR_SEC
@@ -381,18 +411,10 @@ class PatchcraftrLiveMonitor:
         block_dur = frames / sr
         rng = np.random.default_rng()
 
+        out_idx = default_sounddevice_output_index(sd)
         try:
-            def_dev = getattr(sd.default, "device", None)
-            out_idx = None
-            if isinstance(def_dev, (list, tuple)) and len(def_dev) > 1:
-                try:
-                    out_idx = int(def_dev[1])
-                except (TypeError, ValueError):
-                    out_idx = None
-            elif isinstance(def_dev, int):
-                out_idx = def_dev
-
-            if out_idx is None or out_idx < 0:
+            if out_idx is None:
+                def_dev = getattr(sd.default, "device", None)
                 _LOG.warning(
                     "sounddevice reports no default OUTPUT device (%r). Patchcraftr previews may be silent.",
                     def_dev,
@@ -412,22 +434,28 @@ class PatchcraftrLiveMonitor:
 
         stream = None
         idx = 0
+        preview_blocks = 0
+
+        out_kwargs: dict = {
+            "samplerate": sr,
+            "channels": CHANNELS,
+            "dtype": "float32",
+            "blocksize": 0,
+            "latency": "low",
+        }
+        if out_idx is not None:
+            out_kwargs["device"] = out_idx
 
         try:
-            stream = sd.OutputStream(
-                samplerate=sr,
-                channels=CHANNELS,
-                dtype="float32",
-                blocksize=frames,
-                latency="high",
-            )
+            stream = sd.OutputStream(**out_kwargs)
             with self._stream_gate:
                 self._playback_stream = stream
             stream.start()
             _LOG.info(
-                "Patchcraftr sounddevice OutputStream started (samplerate=%s, block=%s frames)",
+                "Patchcraftr sounddevice OutputStream started (samplerate=%s, block=%s frames, device=%s)",
                 sr,
                 frames,
+                out_kwargs.get("device", "default"),
             )
         except Exception:
             _LOG.exception(
@@ -480,6 +508,14 @@ class PatchcraftrLiveMonitor:
 
                 try:
                     stream.write(np.ascontiguousarray(buf))
+                    if preview_blocks == 0:
+                        peak = float(np.max(np.abs(buf)))
+                        _LOG.info(
+                            "Patchcraftr preview first block peak=%.6f (near 0 ⇒ plug-in or MIDI silent; "
+                            "audible issue ⇒ check output device / errors.log)",
+                            peak,
+                        )
+                    preview_blocks += 1
                 except Exception as ex:
                     if not self._logged_write_err:
                         _LOG.exception(

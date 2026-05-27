@@ -37,12 +37,14 @@ from typing import Any, Callable
 
 from pedalboard import Pedalboard
 from patchcraftr_live_monitor import (
+    CHANNELS,
     DEFAULT_FX_PREVIEW_SOURCE,
     DEFAULT_MIDI_PREVIEW_STYLE,
     FX_PREVIEW_SOURCES,
     MIDI_PREVIEW_STYLES,
     PatchcraftrLiveMonitor,
     SAMPLE_RATE,
+    default_sounddevice_output_index,
     render_preview_clip,
 )
 from preset_authoring import (
@@ -1832,10 +1834,51 @@ def _raise_patchcraftr_window(root: tk.Tk) -> None:
         pass
 
 
+def _probe_patchcraftr_audio_output() -> None:
+    """Quick sounddevice smoke test so errors.log shows why live preview may be silent."""
+    try:
+        import numpy as np
+        import sounddevice as sd  # noqa: WPS433
+    except Exception:
+        _LOG.exception("Patchcraftr: sounddevice unavailable — live preview will not work")
+        return
+
+    out_kwargs: dict = {
+        "samplerate": SAMPLE_RATE,
+        "channels": CHANNELS,
+        "dtype": "float32",
+        "blocksize": 0,
+        "latency": "low",
+    }
+    try:
+        out_idx = default_sounddevice_output_index(sd)
+        if out_idx is not None:
+            out_kwargs["device"] = out_idx
+    except Exception:
+        pass
+
+    try:
+        with sd.OutputStream(**out_kwargs) as stream:
+            stream.start()
+            stream.write(np.zeros((512, CHANNELS), dtype=np.float32))
+            stream.stop()
+        _LOG.info(
+            "Patchcraftr audio probe OK (OutputStream write succeeded, device=%s)",
+            out_kwargs.get("device", "default"),
+        )
+    except Exception:
+        _LOG.exception(
+            "Patchcraftr audio probe failed — editor live preview may be silent. "
+            "Try “Rendered preview (offline WAV playback)” or rebuild the desktop app after "
+            "sounddevice bundling updates."
+        )
+
+
 def main() -> None:
     ensure_settings()
     ensure_authoring_dirs()
     path = ensure_server_error_file_logging(announce=sys.stderr.isatty())
+    _probe_patchcraftr_audio_output()
     app = PatchcraftrApp()
     _LOG.info("Patchcraftr mainloop starting (errors.log=%s)", path)
     app.after(50, lambda: _raise_patchcraftr_window(app))

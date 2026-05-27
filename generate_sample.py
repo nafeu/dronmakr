@@ -106,6 +106,10 @@ def generate_drone_sample(
 
     loaded_effects = []
 
+    from pedalboard_isolated_runner import ensure_pedalboard_midi_utils
+
+    ensure_pedalboard_midi_utils()
+
     # Load presets from JSON
     with open(presets_path, "r") as f:
         presets = json.load(f)
