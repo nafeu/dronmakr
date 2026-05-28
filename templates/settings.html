@@ -140,9 +140,14 @@
       transition: background 0.15s ease, border-color 0.15s ease;
     }
 
-    .btn-add:hover {
+    .btn-add:hover:not(:disabled) {
       border-color: var(--primary);
       background: rgba(255, 149, 5, 0.15);
+    }
+
+    .btn-add:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
     }
 
     .append-row {
@@ -365,7 +370,7 @@
           <label for="drumPresetSelect">Drum Path Preset</label>
           <select id="drumPresetSelect"></select>
         </div>
-        <button type="button" id="deleteDrumPresetBtn" class="btn-add" title="Delete preset"><i
+        <button type="button" id="deleteDrumPresetBtn" class="btn-add" title="Delete preset" disabled><i
             class="fa-solid fa-trash"></i></button>
         <div class="field-group">
           <label for="drumPresetNewName">Create New Preset</label>
@@ -511,6 +516,11 @@
       return out;
     }
 
+    function syncDeleteDrumPresetBtn() {
+      const selected = drumPresetSelect.value;
+      deleteDrumPresetBtn.disabled = !selected || selected === defaultDrumPreset;
+    }
+
     function renderDrumPresetOptions() {
       drumPresetSelect.innerHTML = "";
       const names = Object.keys(drumPresets).sort((a, b) => a.localeCompare(b));
@@ -523,7 +533,7 @@
       if (activeDrumPreset && drumPresets[activeDrumPreset]) {
         drumPresetSelect.value = activeDrumPreset;
       }
-      deleteDrumPresetBtn.disabled = drumPresetSelect.value === defaultDrumPreset;
+      syncDeleteDrumPresetBtn();
     }
 
     async function loadDrumPathPresets() {
@@ -579,6 +589,7 @@
 
     drumPresetSelect.addEventListener("change", async () => {
       const selected = drumPresetSelect.value;
+      syncDeleteDrumPresetBtn();
       if (!selected || selected === activeDrumPreset) return;
       try {
         if (activeDrumPreset) {
@@ -593,7 +604,7 @@
         if (!res.ok || !data.ok) throw new Error(data.error || "Failed to switch preset");
         activeDrumPreset = data.activePreset;
         applyDrumPresetToFields(activeDrumPreset);
-        deleteDrumPresetBtn.disabled = activeDrumPreset === defaultDrumPreset;
+        syncDeleteDrumPresetBtn();
         showToast(`Switched to "${activeDrumPreset}".`);
       } catch (err) {
         showToast(err.message, true);

@@ -5,56 +5,362 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ pagename }} | dronmakr v{{ version }}</title>
   {% include '_app_favicons.html' %}
+  <link rel="stylesheet" href="/static/vendor/fonts/fragment-mono.css">
+  <link rel="stylesheet" href="/static/vendor/fontawesome/css/all.min.css">
   <style>
-    body { background: #111; color: #ff9505; font-family: monospace; margin: 0; padding: 2rem; }
-    main { max-width: 50rem; margin: 0 auto; border: 1px solid #353531; border-radius: 6px; padding: 1rem; }
-    h1 { margin-top: 0; font-size: 1rem; }
-    p { color: #b6a58a; }
-    .row { display: flex; gap: 0.5rem; margin-top: 1rem; }
-    input { flex: 1; padding: 0.6rem; background: #050505; border: 1px solid #353531; color: #ff9505; }
-    button { padding: 0.6rem 0.8rem; background: #ff9505; color: #111; border: 1px solid #ff9505; cursor: pointer; }
-    #message { margin-top: 0.8rem; min-height: 1.2rem; color: #ec4e20; }
+    {% include '_app_css_root.html' %}
+
+    body {
+      background: var(--secondary);
+      color: var(--primary);
+      font-family: monospace;
+      margin: 0;
+      padding: 2rem 1rem 3rem;
+    }
+
+    main {
+      max-width: 56rem;
+      margin: 0 auto;
+      border: 1px solid var(--theme-a);
+      border-radius: 6px;
+      padding: 1.25rem;
+      background: #050505;
+    }
+
+    h1 {
+      margin: 0 0 0.35rem 0;
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--theme-a);
+    }
+
+    .intro {
+      font-size: 0.75rem;
+      color: var(--theme-b);
+      margin: 0 0 1.25rem 0;
+      line-height: 1.45;
+    }
+
+    .onboarding-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .section-block {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .section-title {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--theme-a);
+      margin: 0.75rem 0 0 0;
+    }
+
+    .section-block:first-child .section-title {
+      margin-top: 0;
+      padding-top: 0;
+      border-top: none;
+    }
+
+    .section-desc {
+      font-size: 0.72rem;
+      color: var(--theme-b);
+      margin: -0.35rem 0 0 0;
+      line-height: 1.4;
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+
+    .field-group label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--theme-a);
+    }
+
+    .field-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-start;
+    }
+
+    .field-row textarea,
+    .field-group textarea {
+      flex: 1;
+      min-width: 0;
+      min-height: 3rem;
+      padding: 0.5rem 0.75rem;
+      font-family: inherit;
+      font-size: 0.8rem;
+      line-height: 1.4;
+      background: #0a0a0a;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      color: var(--primary);
+      resize: vertical;
+    }
+
+    .field-row textarea:focus,
+    .field-group textarea:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .btn-add {
+      flex-shrink: 0;
+      width: 2rem;
+      height: 2rem;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0a0a0a;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      color: var(--primary);
+      cursor: pointer;
+      font-size: 0.75rem;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .btn-add:hover {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.15);
+    }
+
+    .btn-save {
+      margin-top: 0.5rem;
+      padding: 0.55rem 1rem;
+      font-family: inherit;
+      font-size: 0.8rem;
+      background: var(--primary);
+      color: var(--secondary);
+      border: 1px solid var(--primary);
+      border-radius: 4px;
+      cursor: pointer;
+      align-self: flex-start;
+      transition: opacity 0.15s ease;
+    }
+
+    .btn-save:hover {
+      opacity: 0.9;
+    }
+
+    .btn-save:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    #message {
+      margin-top: 0.75rem;
+      min-height: 1.2rem;
+      font-size: 0.75rem;
+      color: var(--theme-c);
+    }
   </style>
 </head>
 <body>
   <main>
-    <h1>Set up your dronmakr files directory</h1>
-    <p>Choose where dronmakr should create and manage `dronmakr-files` data directories.</p>
-    <div class="row">
-      <input id="filesRoot" value="{{ files_root }}" placeholder="/path/to/dronmakr-files">
-      <button id="pickBtn" type="button">Pick</button>
-      <button id="saveBtn" type="button">Save</button>
-    </div>
+    <h1>Welcome to dronmakr</h1>
+    <p class="intro">For dronmakr to work properly, we need to decide where we want to store all of our generated files, where to pull VST/AU plugins from and where to load drum samples from.</p>
+    <form id="onboardingForm" class="onboarding-form">
+      <div class="section-block">
+        <div class="field-group" data-key="FILES_ROOT" data-is-path="true">
+          <label for="FILES_ROOT">Storage</label>
+          <div class="field-row">
+            <textarea id="FILES_ROOT" name="FILES_ROOT" rows="2"
+              placeholder="/path/to/dronmakr-files">{{ settings.get('FILES_ROOT', '') }}</textarea>
+            <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-folder-open"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-block">
+        <div class="field-group" data-key="PLUGIN_PATHS" data-is-path="true">
+          <label for="PLUGIN_PATHS">VIRTUAL INSTRUMENTS & FX (optional)</label>
+          <div class="field-row">
+            <textarea id="PLUGIN_PATHS" name="PLUGIN_PATHS" rows="2"
+              placeholder="Please enter a comma seperated list of paths to VST3/AU install directories">{{ settings.get('PLUGIN_PATHS', '') }}</textarea>
+            <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-block">
+        <div class="section-title">Drum Sample Library (optional)</div>
+        <p class="section-desc">Where can we load your drum samples from?</p>
+        <div class="field-group" data-key="DRUM_KICK_PATHS" data-is-path="true">
+          <label for="DRUM_KICK_PATHS">KICKS</label>
+          <div class="field-row">
+            <textarea id="DRUM_KICK_PATHS" name="DRUM_KICK_PATHS" rows="2"
+              placeholder="Path(s) to kick samples">{{ settings.get('DRUM_KICK_PATHS', '') }}</textarea>
+            <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
+          </div>
+        </div>
+        <div class="field-group" data-key="DRUM_SNARE_PATHS" data-is-path="true">
+          <label for="DRUM_SNARE_PATHS">SNARES</label>
+          <div class="field-row">
+            <textarea id="DRUM_SNARE_PATHS" name="DRUM_SNARE_PATHS" rows="2"
+              placeholder="Path(s) to snare samples">{{ settings.get('DRUM_SNARE_PATHS', '') }}</textarea>
+            <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
+          </div>
+        </div>
+        <div class="field-group" data-key="DRUM_HIHAT_PATHS" data-is-path="true">
+          <label for="DRUM_HIHAT_PATHS">HIHATS</label>
+          <div class="field-row">
+            <textarea id="DRUM_HIHAT_PATHS" name="DRUM_HIHAT_PATHS" rows="2"
+              placeholder="Path(s) to hihat samples">{{ settings.get('DRUM_HIHAT_PATHS', '') }}</textarea>
+            <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
+          </div>
+        </div>
+        <div class="field-group" data-key="DRUM_CLAP_PATHS" data-is-path="true">
+          <label for="DRUM_CLAP_PATHS">CLAPS</label>
+          <div class="field-row">
+            <textarea id="DRUM_CLAP_PATHS" name="DRUM_CLAP_PATHS" rows="2"
+              placeholder="Path(s) to clap samples">{{ settings.get('DRUM_CLAP_PATHS', '') }}</textarea>
+            <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
+          </div>
+        </div>
+        <div class="field-group" data-key="DRUM_PERC_PATHS" data-is-path="true">
+          <label for="DRUM_PERC_PATHS">PERCS</label>
+          <div class="field-row">
+            <textarea id="DRUM_PERC_PATHS" name="DRUM_PERC_PATHS" rows="2"
+              placeholder="Path(s) to percussion samples">{{ settings.get('DRUM_PERC_PATHS', '') }}</textarea>
+            <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
+          </div>
+        </div>
+        <div class="field-group" data-key="DRUM_TOM_PATHS" data-is-path="true">
+          <label for="DRUM_TOM_PATHS">TOMS</label>
+          <div class="field-row">
+            <textarea id="DRUM_TOM_PATHS" name="DRUM_TOM_PATHS" rows="2"
+              placeholder="Path(s) to tom samples">{{ settings.get('DRUM_TOM_PATHS', '') }}</textarea>
+            <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
+          </div>
+        </div>
+        <div class="field-group" data-key="DRUM_SHAKER_PATHS" data-is-path="true">
+          <label for="DRUM_SHAKER_PATHS">SHAKERS</label>
+          <div class="field-row">
+            <textarea id="DRUM_SHAKER_PATHS" name="DRUM_SHAKER_PATHS" rows="2"
+              placeholder="Path(s) to shaker samples">{{ settings.get('DRUM_SHAKER_PATHS', '') }}</textarea>
+            <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
+          </div>
+        </div>
+        <div class="field-group" data-key="DRUM_CYMBAL_PATHS" data-is-path="true">
+          <label for="DRUM_CYMBAL_PATHS">CYMBALS</label>
+          <div class="field-row">
+            <textarea id="DRUM_CYMBAL_PATHS" name="DRUM_CYMBAL_PATHS" rows="2"
+              placeholder="Path(s) to cymbal samples">{{ settings.get('DRUM_CYMBAL_PATHS', '') }}</textarea>
+            <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-save" id="saveBtn">Continue</button>
+    </form>
     <div id="message"></div>
   </main>
   <script>
-    const filesRoot = document.getElementById("filesRoot");
+    const form = document.getElementById("onboardingForm");
     const message = document.getElementById("message");
-    document.getElementById("pickBtn").addEventListener("click", async () => {
-      message.textContent = "";
-      const res = await fetch("/api/settings/pick-folder", { method: "POST" });
-      const data = await res.json();
-      if (data.path) {
-        filesRoot.value = data.path;
-      } else if (data.cancelled) {
-        message.textContent = "Folder selection cancelled.";
-      } else if (data.error) {
-        message.textContent = data.error;
+    const saveBtn = document.getElementById("saveBtn");
+
+    function appendComma(current, addition) {
+      const cur = (current || "").trim();
+      const add = (addition || "").trim();
+      if (!add) return cur;
+      if (!cur) return add;
+      return cur + "," + add;
+    }
+
+    function escapePathCsvToken(path) {
+      const s = String(path || "").trim();
+      if (!s) return "";
+      let out = "";
+      for (let i = 0; i < s.length; i++) {
+        const ch = s[i];
+        if (ch === "\\") out += "\\\\";
+        else if (ch === ",") out += "\\,";
+        else out += ch;
       }
-    });
-    document.getElementById("saveBtn").addEventListener("click", async () => {
-      message.textContent = "";
-      const res = await fetch("/api/settings/files-root", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: filesRoot.value }),
+      return out;
+    }
+
+    document.querySelectorAll("[data-is-path='true'] .btn-add").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const group = btn.closest(".field-group");
+        const key = group.dataset.key;
+        const input = document.getElementById(key);
+        message.textContent = "";
+        try {
+          const res = await fetch("/api/settings/pick-folder", { method: "POST" });
+          const data = await res.json();
+          if (data.path) {
+            input.value = appendComma(input.value, escapePathCsvToken(data.path));
+          } else if (data.cancelled) {
+            message.textContent = "Folder selection cancelled.";
+          } else if (data.error) {
+            message.textContent = data.error;
+          }
+        } catch (e) {
+          message.textContent = "Failed to open folder picker: " + e.message;
+        }
       });
-      const data = await res.json();
-      if (!res.ok || !data.ok) {
-        message.textContent = data.error || "Failed to save path";
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      message.textContent = "";
+      saveBtn.disabled = true;
+      const filesRoot = (document.getElementById("FILES_ROOT").value || "").trim();
+      if (!filesRoot) {
+        message.textContent = "A dronmakr files directory is required.";
+        saveBtn.disabled = false;
         return;
       }
-      window.location.href = "/";
+      try {
+        const rootRes = await fetch("/api/settings/files-root", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: filesRoot }),
+        });
+        const rootData = await rootRes.json();
+        if (!rootRes.ok || !rootData.ok) {
+          message.textContent = rootData.error || "Failed to save files directory";
+          saveBtn.disabled = false;
+          return;
+        }
+        const settingsData = {};
+        document.querySelectorAll("textarea[name]").forEach((el) => {
+          if (el.name && el.name !== "FILES_ROOT") {
+            settingsData[el.name] = el.value;
+          }
+        });
+        const settingsRes = await fetch("/api/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(settingsData),
+        });
+        const settingsResult = await settingsRes.json();
+        if (!settingsRes.ok || !settingsResult.ok) {
+          message.textContent = settingsResult.error || "Failed to save optional settings";
+          saveBtn.disabled = false;
+          return;
+        }
+        window.location.href = "/";
+      } catch (err) {
+        message.textContent = "Error: " + err.message;
+        saveBtn.disabled = false;
+      }
     });
   </script>
 </body>

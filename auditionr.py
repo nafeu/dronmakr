@@ -19,6 +19,8 @@ from flask import request, jsonify, send_from_directory
 from settings import (
     ensure_settings,
     get_active_drum_path_preset_name,
+    has_configured_drum_paths,
+    has_configured_plugin_paths,
     set_active_drum_path_preset,
 )
 from utils import (
@@ -1230,6 +1232,8 @@ def _handle_api_generate_options():
             "droneChordScaleRoots": pick["roots"],
             "droneChordScaleTags": pick["tags"],
             "droneChordScaleChartNames": pick["chartNames"],
+            "drumPathsConfigured": has_configured_drum_paths(),
+            "pluginPathsConfigured": has_configured_plugin_paths(),
         }
     )
 

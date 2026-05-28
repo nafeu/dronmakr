@@ -291,6 +291,52 @@ def has_configured_files_root(settings: dict | None = None) -> bool:
     return bool(get_files_root(settings=settings, allow_default=False))
 
 
+def has_configured_drum_paths(settings: dict | None = None) -> bool:
+    """True when the active drum path preset has at least one non-empty path list."""
+    src = settings if isinstance(settings, dict) else load_settings()
+    active = get_active_drum_path_preset_name(src)
+    presets = get_drum_path_presets(src)
+    entry = presets.get(active, {})
+    for key in DRUM_PATH_KEYS:
+        value = entry.get(key, "")
+        if isinstance(value, str) and value.strip() and parse_escaped_csv(value):
+            return True
+    return False
+
+
+def has_configured_plugin_paths(settings: dict | None = None) -> bool:
+    """True when PLUGIN_PATHS / CUSTOM_PLUGINS are set and at least one plug-in is discovered."""
+    import glob
+    import sys
+
+    src = settings if isinstance(settings, dict) else load_settings()
+    plugin_paths_raw = src.get("PLUGIN_PATHS", "")
+    custom_raw = src.get("CUSTOM_PLUGINS", "")
+    plugin_paths = (
+        [p.strip() for p in plugin_paths_raw.split(",") if p.strip()]
+        if isinstance(plugin_paths_raw, str)
+        else []
+    )
+    custom_plugins = (
+        [p.strip() for p in custom_raw.split(",") if p.strip()]
+        if isinstance(custom_raw, str)
+        else []
+    )
+    if not plugin_paths and not custom_plugins:
+        return False
+    discovered = list(custom_plugins)
+    for plugin_dir in plugin_paths:
+        if not plugin_dir or not os.path.exists(plugin_dir):
+            continue
+        discovered.extend(glob.glob(os.path.join(plugin_dir, "*.vst3")))
+        if sys.platform != "darwin":
+            discovered.extend(glob.glob(os.path.join(plugin_dir, "*.vst")))
+        discovered.extend(glob.glob(os.path.join(plugin_dir, "*.dll")))
+        discovered.extend(glob.glob(os.path.join(plugin_dir, "*.so")))
+        discovered.extend(glob.glob(os.path.join(plugin_dir, "*.component")))
+    return bool(discovered)
+
+
 def ensure_managed_files_root(root: str | None = None) -> str:
     resolved_root = normalize_files_root(root) if root is not None else get_files_root(allow_default=True)
     if not resolved_root:

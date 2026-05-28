@@ -638,6 +638,43 @@
       letter-spacing: 0.03em;
     }
 
+    .generatr-config-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      min-height: 12rem;
+      padding: 1.5rem 1rem;
+      text-align: center;
+      color: var(--theme-b);
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+
+    .generatr-config-empty.hidden {
+      display: none !important;
+    }
+
+    .generatr-config-empty-icon {
+      font-size: 1.75rem;
+      color: var(--theme-a);
+    }
+
+    .generatr-config-empty a {
+      color: var(--primary);
+      text-decoration: none;
+      border-bottom: 1px solid color-mix(in srgb, var(--primary) 45%, transparent);
+    }
+
+    .generatr-config-empty a:hover {
+      border-bottom-color: var(--primary);
+    }
+
+    #generatr-form.generatr-form-hidden {
+      display: none !important;
+    }
+
     /* Drone picker: combo input + search affordance */
     .generatr-input-with-picker {
       display: flex;
@@ -1635,6 +1672,14 @@
                 <span class="generatr-busy-text">Generating</span>
               </div>
           <div class="generatr-card">
+            <div class="generatr-config-empty hidden" id="generatr-config-empty-beat" role="status">
+              <div class="generatr-config-empty-icon"><i class="fa-solid fa-drum"></i></div>
+              <p>Please configure drum paths first: <a href="/settings">Settings</a></p>
+            </div>
+            <div class="generatr-config-empty hidden" id="generatr-config-empty-drone" role="status">
+              <div class="generatr-config-empty-icon"><i class="fa-solid fa-sliders"></i></div>
+              <p>Please configure virtual instrument paths first: <a href="/settings">Settings</a></p>
+            </div>
             <form class="generatr-form" id="generatr-form">
               <div class="form-row form-row-full">
                 <label for="generatr-kind">Sample kind</label>
@@ -4540,6 +4585,10 @@
       var sidebarToggle = document.getElementById("sidebar-toggle");
       var sidebarToggleIcon = document.getElementById("sidebar-toggle-icon");
       var generatrSidebarOptionsLoaded = false;
+      var generatrDrumPathsConfigured = false;
+      var generatrPluginPathsConfigured = false;
+      var generatrConfigEmptyBeat = document.getElementById("generatr-config-empty-beat");
+      var generatrConfigEmptyDrone = document.getElementById("generatr-config-empty-drone");
       var generatrChordPicklists = { roots: [], tags: [], chartNames: [] };
       var chordPickerModal = document.getElementById("generatr-chord-picker-modal");
       var chordPickerTitle = document.getElementById("generatr-chord-picker-title");
@@ -4638,10 +4687,16 @@
             generatrChordPicklists.roots = Array.isArray(data.droneChordScaleRoots) ? data.droneChordScaleRoots : [];
             generatrChordPicklists.tags = Array.isArray(data.droneChordScaleTags) ? data.droneChordScaleTags : [];
             generatrChordPicklists.chartNames = Array.isArray(data.droneChordScaleChartNames) ? data.droneChordScaleChartNames : [];
+            generatrDrumPathsConfigured = data.drumPathsConfigured !== false;
+            generatrPluginPathsConfigured = data.pluginPathsConfigured !== false;
             generatrSidebarOptionsLoaded = true;
+            updateGeneratrConfigEmptyState();
           })
           .catch(function (err) {
             console.error("Failed to load generate options:", err);
+            generatrDrumPathsConfigured = true;
+            generatrPluginPathsConfigured = true;
+            updateGeneratrConfigEmptyState();
           });
       }
 
@@ -4658,6 +4713,21 @@
         };
         if (defaults[kind]) {
           barsEl.value = defaults[kind];
+        }
+      }
+
+      function updateGeneratrConfigEmptyState() {
+        var kind = kindSelect ? kindSelect.value : "beat";
+        var showBeatEmpty = kind === "beat" && !generatrDrumPathsConfigured;
+        var showDroneEmpty = kind === "drone" && !generatrPluginPathsConfigured;
+        if (generatrConfigEmptyBeat) {
+          generatrConfigEmptyBeat.classList.toggle("hidden", !showBeatEmpty);
+        }
+        if (generatrConfigEmptyDrone) {
+          generatrConfigEmptyDrone.classList.toggle("hidden", !showDroneEmpty);
+        }
+        if (form) {
+          form.classList.toggle("generatr-form-hidden", showBeatEmpty || showDroneEmpty);
         }
       }
 
@@ -4699,6 +4769,7 @@
         if (kind === "beat" || kind === "drone" || kind === "reese" || kind === "donk" || isTransition) {
           loadGeneratrSidebarOptions();
         }
+        updateGeneratrConfigEmptyState();
       }
       if (kindSelect) {
         kindSelect.addEventListener("change", updateGeneratrKindVisibility);

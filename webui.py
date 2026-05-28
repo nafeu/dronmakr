@@ -43,7 +43,9 @@ from settings import (
     get_drum_path_presets,
     get_setting,
     get_files_root,
+    has_configured_drum_paths,
     has_configured_files_root,
+    has_configured_plugin_paths,
     load_settings,
     set_files_root,
     save_settings,
@@ -142,15 +144,41 @@ def settings_page():
     )
 
 
+def _settings_for_onboarding() -> dict:
+    """Settings dict with FILES_ROOT and active drum preset paths flattened for forms."""
+    settings = load_settings()
+    settings["FILES_ROOT"] = get_files_root(settings=settings, allow_default=False)
+    active = get_active_drum_path_preset_name(settings)
+    presets = get_drum_path_presets(settings)
+    active_paths = presets.get(active, {})
+    for key in DRUM_PATH_KEYS:
+        settings[key] = active_paths.get(key, "")
+    if not (isinstance(settings.get("PLUGIN_PATHS"), str) and settings["PLUGIN_PATHS"].strip()):
+        from plugin_default_paths import default_plugin_paths_csv
+
+        settings["PLUGIN_PATHS"] = default_plugin_paths_csv()
+    return settings
+
+
 @app.route("/onboarding")
 def onboarding_page():
     """First-run onboarding to select the dronmakr files root."""
-    settings = load_settings()
     return render_template(
         "onboarding.html",
         version=__version__,
         pagename="onboarding",
-        files_root=get_files_root(settings=settings, allow_default=False),
+        settings=_settings_for_onboarding(),
+    )
+
+
+@app.route("/api/settings/config-status")
+def api_settings_config_status():
+    """Return whether drum and plugin path settings are usable."""
+    return jsonify(
+        {
+            "drumPathsConfigured": has_configured_drum_paths(),
+            "pluginPathsConfigured": has_configured_plugin_paths(),
+        }
     )
 
 
