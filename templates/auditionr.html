@@ -671,7 +671,7 @@
       border-bottom-color: var(--primary);
     }
 
-    #generatr-form.generatr-form-hidden {
+    #generatr-form.generatr-form-hidden > *:not(.generatr-kind-row) {
       display: none !important;
     }
 
@@ -1681,7 +1681,7 @@
               <p>Please configure virtual instrument paths first: <a href="/settings">Settings</a></p>
             </div>
             <form class="generatr-form" id="generatr-form">
-              <div class="form-row form-row-full">
+              <div class="form-row form-row-full generatr-kind-row">
                 <label for="generatr-kind">Sample kind</label>
                 <select id="generatr-kind" name="kind">
                   <option value="beat" selected>beat</option>
