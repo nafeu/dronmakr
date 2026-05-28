@@ -3790,7 +3790,10 @@
     }
 
     function auditionrBasename(absPath) {
-      return absPath.split("/").pop();
+      if (!absPath) return "";
+      var normalized = String(absPath).replace(/\\/g, "/").replace(/\/+$/, "");
+      var parts = normalized.split("/");
+      return parts[parts.length - 1] || normalized;
     }
 
     /** GET /exports/... — encode #, ?, etc. so the path is not truncated as a URL fragment. */

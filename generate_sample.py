@@ -83,11 +83,15 @@ def effect_slot_entries(effect_preset: dict) -> list[dict]:
 def generate_drone_sample(
     input_path="input.mid",
     output_path="generated_sample.wav",
-    presets_path=PRESETS_PATH,
+    presets_path=None,
     instrument=None,
     effect=None,
 ):
-    presets_path = presets_path or resolve_presets_index_path() or PRESETS_PATH
+    presets_path = presets_path or resolve_presets_index_path()
+    if not presets_path:
+        raise FileNotFoundError(
+            "config/presets.json does not exist — open Patchcraftr from the desktop tray (Launch patchcraftr)."
+        )
 
     # Desktop tray mode: Flask runs on a worker thread; many plug-ins require the process main thread.
     from pedalboard_isolated_runner import delegate_generate_drone_sample_if_needed
@@ -279,10 +283,14 @@ def generate_drone_sample(
     return output_path
 
 
-def apply_effect(input_path, effect_chain, presets_path=PRESETS_PATH):
+def apply_effect(input_path, effect_chain, presets_path=None):
     """Applies an effect chain from presets to a WAV file and overwrites it after backing up."""
 
-    presets_path = presets_path or PRESETS_PATH
+    presets_path = presets_path or resolve_presets_index_path()
+    if not presets_path:
+        raise FileNotFoundError(
+            "config/presets.json does not exist — open Patchcraftr from the desktop tray (Launch patchcraftr)."
+        )
     from pedalboard_isolated_runner import delegate_apply_effect_if_needed
 
     if delegate_apply_effect_if_needed(

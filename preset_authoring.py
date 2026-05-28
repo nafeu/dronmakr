@@ -15,13 +15,14 @@ from pedalboard import Pedalboard
 from pedalboard.io import AudioFile
 
 from generate_midi import SUPPORTED_PATTERNS_INFO
+from paths import get_managed_file
 from settings import get_setting
 from utils import (
     MAGENTA,
     RESET,
     generate_id,
     PRESETS_DIR,
-    PRESETS_PATH,
+    resolve_presets_index_path,
     TEMP_DIR,
     with_patchcraftr_prompt as with_prompt,
 )
@@ -280,10 +281,15 @@ def preview_plugin(plugin, effect_chain_tuples: list):
                 pass
 
 
+def _presets_index_path() -> str:
+    return resolve_presets_index_path() or get_managed_file("config", "presets.json")
+
+
 def load_presets_json() -> list:
-    if not os.path.exists(PRESETS_PATH):
+    presets_path = _presets_index_path()
+    if not os.path.exists(presets_path):
         return []
-    with open(PRESETS_PATH, "r", encoding="utf-8") as f:
+    with open(presets_path, "r", encoding="utf-8") as f:
         try:
             return json.load(f)
         except json.JSONDecodeError:
@@ -291,8 +297,9 @@ def load_presets_json() -> list:
 
 
 def save_presets_json(presets_data: list) -> None:
-    os.makedirs(os.path.dirname(PRESETS_PATH) or ".", exist_ok=True)
-    with open(PRESETS_PATH, "w", encoding="utf-8") as f:
+    presets_path = _presets_index_path()
+    os.makedirs(os.path.dirname(presets_path) or ".", exist_ok=True)
+    with open(presets_path, "w", encoding="utf-8") as f:
         json.dump(presets_data, f, indent=4)
 
 
@@ -302,9 +309,10 @@ def name_exists(
     exclude_uid: str | None = None,
     types: tuple[str, ...] | None = None,
 ) -> bool:
-    if not os.path.exists(PRESETS_PATH):
+    presets_path = _presets_index_path()
+    if not os.path.exists(presets_path):
         return False
-    with open(PRESETS_PATH, "r", encoding="utf-8") as f:
+    with open(presets_path, "r", encoding="utf-8") as f:
         presets_data = json.load(f)
     lowered = name.lower().strip()
     for preset in presets_data:
@@ -378,12 +386,13 @@ def upsert_preset_entry(preset_data: dict) -> None:
 
 
 def list_presets(show_chain_plugins: bool = False, show_patterns: bool = False) -> None:
-    if not os.path.exists(PRESETS_PATH):
+    presets_path = _presets_index_path()
+    if not os.path.exists(presets_path):
         print("No presets found.")
         return
 
     try:
-        with open(PRESETS_PATH, "r", encoding="utf-8") as f:
+        with open(presets_path, "r", encoding="utf-8") as f:
             presets_data = json.load(f)
     except json.JSONDecodeError:
         print(with_prompt("Error reading preset index file."))

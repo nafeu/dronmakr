@@ -567,7 +567,9 @@ def generate_drone(
     if not log_server:
         print(get_version())
 
-    if not os.path.exists(PRESETS_PATH):
+    from utils import resolve_presets_index_path
+
+    if not resolve_presets_index_path():
         print(
             with_prompt(
                 "'config/presets.json' does not exist — open Patchcraftr from the desktop tray (Launch patchcraftr)."

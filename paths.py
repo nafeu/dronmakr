@@ -18,6 +18,16 @@ def get_managed_file(*parts: str) -> str:
     return str(get_files_root_path().joinpath(*parts))
 
 
+def normalize_path_basename(path: str) -> str:
+    """Final path segment for URLs and API tokens (Windows backslashes safe)."""
+    if not path:
+        return ""
+    cleaned = str(path).strip().replace("\\", "/").rstrip("/")
+    if not cleaned:
+        return ""
+    return os.path.basename(cleaned) or cleaned.split("/")[-1]
+
+
 def ensure_parent_dir(path: str) -> None:
     parent = os.path.dirname(path)
     if parent:

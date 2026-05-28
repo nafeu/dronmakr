@@ -43,7 +43,6 @@ from utils import (
     with_process_drone_sample_prompt,
     RED,
     RESET,
-    PRESETS_PATH,
 )
 from chord_scale_catalog import get_chord_scale_picklists, warm_chord_scale_picklists
 from generate_midi import (
@@ -65,7 +64,7 @@ from processing_actions import (
     remove_post_processing_shortcut,
 )
 from generate_sample import apply_effect, generate_drone_sample, generate_beat_sample
-from paths import get_managed_file
+from paths import get_managed_file, normalize_path_basename
 from generate_transition import (
     generate_closh_sample,
     generate_kickboom_sample,
@@ -224,13 +223,17 @@ def _resolve_managed_audio_path(path_value: str) -> str | None:
         return None
 
     if raw.startswith("/exports/"):
-        candidate = os.path.join(EXPORTS_DIR, os.path.basename(raw))
+        slug = raw[len("/exports/") :].strip()
+        candidate = os.path.join(EXPORTS_DIR, normalize_path_basename(slug))
     elif raw.startswith("/archive/"):
-        candidate = os.path.join(ARCHIVE_DIR, os.path.basename(raw))
+        slug = raw[len("/archive/") :].strip()
+        candidate = os.path.join(ARCHIVE_DIR, normalize_path_basename(slug))
     elif raw.startswith("/saved/"):
-        candidate = os.path.join(SAVED_DIR, os.path.basename(raw))
+        slug = raw[len("/saved/") :].strip()
+        candidate = os.path.join(SAVED_DIR, normalize_path_basename(slug))
     elif raw.startswith("/trash/"):
-        candidate = os.path.join(TRASH_DIR, os.path.basename(raw))
+        slug = raw[len("/trash/") :].strip()
+        candidate = os.path.join(TRASH_DIR, normalize_path_basename(slug))
     else:
         candidate = raw
 
@@ -259,7 +262,8 @@ def _open_files_with_default_player(file_paths):
 
 def serve_exported_file(filename):
     """Allows direct access to exported .wav files"""
-    return send_from_directory(EXPORTS_DIR, filename)
+    safe_name = normalize_path_basename(filename)
+    return send_from_directory(EXPORTS_DIR, safe_name)
 
 
 def skip_file():
@@ -681,7 +685,10 @@ def _export_split_drone_post_processing_variants(
 
 def _run_generate_drone(payload: dict) -> list[str]:
     """`generate-drone` CLI parity (omits UI for --shift-octave-down, --shift-root-note, --dry-run, --log-server, --play)."""
-    if not os.path.exists(PRESETS_PATH):
+    from utils import resolve_presets_index_path
+
+    presets_path = resolve_presets_index_path()
+    if not presets_path:
         raise FileNotFoundError(
             "config/presets.json does not exist — open Patchcraftr from the desktop tray (Launch patchcraftr)."
         )
@@ -766,6 +773,7 @@ def _run_generate_drone(payload: dict) -> list[str]:
         generated_sample = generate_drone_sample(
             input_path=midi_file,
             output_path=f"{output_path}.wav",
+            presets_path=presets_path,
             instrument=instrument,
             effect=effect,
         )

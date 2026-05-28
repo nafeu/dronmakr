@@ -355,6 +355,12 @@ def set_files_root(path: str) -> str:
     settings = load_settings()
     settings[FILES_ROOT_KEY] = resolved
     save_settings(settings)
+    try:
+        from utils import refresh_managed_path_constants
+
+        refresh_managed_path_constants()
+    except Exception:
+        pass
     return resolved
 
 

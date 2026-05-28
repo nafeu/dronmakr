@@ -39,6 +39,27 @@ TRASH_DIR = get_managed_dir("trash")
 PACKAGES_DIR = get_managed_dir("packages")
 
 
+def refresh_managed_path_constants() -> None:
+    """Rebind module-level managed paths after FILES_ROOT changes in-process."""
+    global ARCHIVE_DIR, EXPORTS_DIR, MIDI_DIR, PRESETS_DIR, PRESETS_PATH
+    global LEGACY_PRESETS_PATH, POST_PROCESSING_SHORTCUTS_PATH
+    global SAVED_DIR, SPLITS_DIR, TEMP_DIR, TRASH_DIR, PACKAGES_DIR
+    ARCHIVE_DIR = get_managed_dir("archive")
+    EXPORTS_DIR = get_managed_dir("exports")
+    MIDI_DIR = get_managed_dir("midi")
+    PRESETS_DIR = get_managed_dir("presets")
+    PRESETS_PATH = get_managed_file("config", "presets.json")
+    LEGACY_PRESETS_PATH = get_managed_file("presets", "presets.json")
+    POST_PROCESSING_SHORTCUTS_PATH = get_managed_file(
+        "config", "post-processing-shortcuts.json"
+    )
+    SAVED_DIR = get_managed_dir("saved")
+    SPLITS_DIR = get_managed_dir("splits")
+    TEMP_DIR = get_managed_dir("temp")
+    TRASH_DIR = get_managed_dir("trash")
+    PACKAGES_DIR = get_managed_dir("packages")
+
+
 def get_cli_version():
     return f"{RED}{APP_NAME} ■ v{__version__}\n{RESET}  github.com/nafeu/dronmakr (phrakturemusic@proton.me)"
 
@@ -1062,15 +1083,17 @@ def resolve_presets_index_path() -> str:
     Preferred location is config/presets.json. If a legacy presets/presets.json
     exists, copy it forward.
     """
-    if os.path.exists(PRESETS_PATH):
-        return PRESETS_PATH
-    if os.path.exists(LEGACY_PRESETS_PATH):
-        os.makedirs(os.path.dirname(PRESETS_PATH), exist_ok=True)
+    presets_path = get_managed_file("config", "presets.json")
+    legacy_presets_path = get_managed_file("presets", "presets.json")
+    if os.path.exists(presets_path):
+        return presets_path
+    if os.path.exists(legacy_presets_path):
+        os.makedirs(os.path.dirname(presets_path), exist_ok=True)
         try:
-            shutil.copy2(LEGACY_PRESETS_PATH, PRESETS_PATH)
-            return PRESETS_PATH
+            shutil.copy2(legacy_presets_path, presets_path)
+            return presets_path
         except OSError:
-            return LEGACY_PRESETS_PATH
+            return legacy_presets_path
     return ""
 
 
