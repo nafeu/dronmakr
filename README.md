@@ -4,7 +4,7 @@
 
 <p align="center"><em>pronounced “drone maker”</em></p>
 
-<p align="center">Python-based suite of sample generation, editing, and packaging tools with browser-ui for auditioning, beatbuilding, collections, and more.</p>
+<p align="center">Sample generation, editing, and packaging — with a local browser UI for auditioning, beat building, collections, and more.</p>
 
 <p align="center">
   <a href="https://discord.gg/BysAyRje57"><img src="https://img.shields.io/discord/1358944581873307871?label=discord&logo=discord&style=for-the-badge" alt="Discord" /></a>
@@ -15,153 +15,134 @@
 
 ![Beatbuildr Preview](preview-beatbuildr.png)
 
-![Folysplitr Preview](preview-folyspiltr.png)
+![Folysplitr Preview](preview-folysplitr.png)
 
 ![Collections Preview](preview-collections.png)
 
-## Made Using `dronmakr`
+## Made with dronmakr
 
 - [Ember Proxima - Ambient Drone Pack](https://www.youtube.com/watch?v=DcgXYEDiIHc)
 - Parts of the [Primordialis OST](https://store.steampowered.com/app/3011360/Primordialis/)
 
-## Installation
+---
 
-### Desktop (GitHub Releases)
+## Desktop build
 
-1. Open **[Releases](https://github.com/nafeu/dronmakr/releases/latest)** and download the build for your platform:
-   - **macOS (Apple Silicon):** Prefer **`dronmakr-v*-macos-arm64.dmg`** (drag **dronmakr.app** into **Applications**). A **`dronmakr-v*-macos-arm64.tar.gz`** is also available if you prefer unpacking manually.
-   - **macOS (Intel):** **`dronmakr-v*-macos-x64.tar.gz`** from a maintainer-built artifact (Intel builds are not produced by CI today).
-   - **Linux (x86_64):** `dronmakr-v*-linux-x64.tar.gz`
-   - **Windows:** `dronmakr-v*-windows-x64.zip`
-2. **macOS (DMG):** Open the `.dmg`, drag **`dronmakr.app`** into **Applications**, then eject the disk image. Launch **dronmakr** from Launchpad / Spotlight (**⌘Space**, type **dronmakr**).
-3. **macOS / Linux (tar.gz)** or **Windows (zip):** Extract the archive. On macOS you get **`dronmakr.app`**; on Linux / Windows you get a **`dronmakr`** folder with the launcher inside.
-4. Run:
-   - **macOS:** open **`dronmakr.app`** (from `/Applications` or the extracted folder).
-   - **Linux:** `./dronmakr/dronmakr`
-   - **Windows:** `dronmakr.exe`
-5. Runtime behavior: builds use **no separate terminal window** on **macOS** (launcher is Finder-only). Watch the **menu bar** (near the Wi‑Fi / clock area) for the **dronmakr tray icon**. Open **Open dronmakr in browser** from its menu—the local server listens on `127.0.0.1`. On **Windows / Linux**, a **console window** may remain open (logs). **On first launch** you choose where to store **`dronmakr-files`** (often via onboarding in the browser).
+Prebuilt apps are published on **[GitHub Releases](https://github.com/nafeu/dronmakr/releases/latest)**.
 
-GitHub CI builds are **not Apple-notarized**. After downloading, macOS may block the embedded Python libraries (`library load disallowed by system policy`). Typical workarounds:
+| Platform | Download |
+| --- | --- |
+| macOS (Apple Silicon) | `dronmakr-v*-macos-arm64.dmg` (or `.tar.gz`) |
+| Linux (x86_64) | `dronmakr-v*-linux-x64.tar.gz` |
+| Windows | `dronmakr-v*-windows-x64.zip` |
 
-- **Preferred:** Open **System Settings → Privacy & Security** after a blocked launch and choose **Open Anyway**, **or** Control-click **`dronmakr.app` → Open** and confirm once.
-- **Alternative:** clear quarantine flags after you trust the build (copied apps inherit them until cleared):
+**macOS (Intel):** not published on [Releases](https://github.com/nafeu/dronmakr/releases/latest) yet — planned for a future build. Until then, use [Manual installation](#manual-installation) on Intel Macs.
 
-  ```sh
-  xattr -dr com.apple.quarantine /Applications/dronmakr.app
-  ```
+**Install & run**
 
-For distribution without these prompts you need your own **Apple Developer Program** subscription, **Developer ID Application** signing, **`codesign`**, **notarization** (`notarytool`), and **stapling**. That pipeline is outside this repo’s automated CI today.
+1. Install or extract the archive for your platform.
+2. Launch **dronmakr** (`dronmakr.app`, `./dronmakr/dronmakr`, or `dronmakr.exe`).
+3. Use the **system tray / menu bar icon** → **Open dronmakr in browser** (local server on `127.0.0.1`).
+4. On first launch, pick where to store **`dronmakr-files`** (generated audio, presets, config).
 
-**If launching from Spotlight / Finder “does nothing”:** the packaged app waits for startup to finish—check the **menu bar icon** before assuming it failed (see step **5**). To surface errors, open **Terminal** and run:
+**Requirements:** VST3 and/or AU plug-ins if you use Patchcraftr or drone generation. Configure paths in **Settings** after setup.
 
-```sh
-/Applications/dronmakr.app/Contents/MacOS/dronmakr
-```
+---
 
-On recent builds (or after a silent failure), **`~/Library/Application Support/dronmakr/last-startup-error.txt`** may contain Python tracebacks captured from the launcher.
+## Manual installation
 
-While the packaged app runs (and when you use **Patchcraftr / web UI**), **diagnostics and errors** — for example Flask **HTTP 500** tracebacks, Patchcraftr button flows, and **Pedalboard** plug-in load failures — are appended to a **rotating log file**:
+Run from a git checkout (development or contributors).
 
-- **macOS:** `~/Library/Application Support/dronmakr/logs/errors.log`
-- **Windows:** `%AppData%\dronmakr\logs\errors.log`
-- **Linux:** `~/.local/share/dronmakr/logs/errors.log`
-
-From the tray, use **Report issue (errors.log)…** to reveal that file in Finder / Explorer / your file manager. Older segments are kept as `errors.log.1`, `.2`, etc. (up to a few MB per file). Older builds wrote `server-errors.log` instead; logs now use the single **`errors.log`** name.
-
-When running from a **git checkout**, the same file is under **`dronmakr/logs/errors.log`** at the repo root; the terminal prints that path when you start `webui` or **`desktop`** (and Patchcraftr logs there when launched from source).
-
-Packaged desktop builds also poll **GitHub Releases**: when an update exists, native tray prompts can offer **Open updater** on startup; otherwise use **Check for updates…** or **Updater (<tag>)** in the tray. The updater opens a Tk window in a separate process (download progress, install / DMG reveal). Clearing `PLUGIN_PATHS` after first run stays empty—defaults apply only when `settings.json` is first created.
-
-Desktop releases include a **vendored FFmpeg** binary (used when **Folysplitr** uploads browser recordings); you do not need a separate system FFmpeg install for that path. Notices: `resources/ffmpeg/THIRD_PARTY_FFMPEG.txt` in the bundle — see [resources/ffmpeg/LICENSE.third_party.ffmpeg](https://github.com/nafeu/dronmakr/blob/main/resources/ffmpeg/LICENSE.third_party.ffmpeg).
-
-**Requirements**
-
-- Python **3.10+** (the project was developed on Python 3.10.16)
-- macOS (may work on Windows or Linux; contributors welcome)
-- A VST3 or AU library with a few working instruments and effects (for preset capture workflows—see [CLI.md](https://github.com/nafeu/dronmakr/blob/main/CLI.md))
+**Requirements:** Python **3.10+**, git, and VST3/AU plug-ins for preset-based workflows.
 
 ```sh
 git clone https://github.com/nafeu/dronmakr.git
 cd dronmakr
 python -m venv venv
-source venv/bin/activate   # Windows: venv\Scripts\activate
+source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install --upgrade pip
 pip install -r requirements.txt
-cp .env-sample .env
 ```
 
-Edit `.env` with paths and plugins, for example:
-
-```env
-PLUGIN_PATHS="/Library/Audio/Plug-Ins/Components,/Library/Audio/Plug-Ins/VST3"
-ASSERT_INSTRUMENT="Reaktor 6"
-IGNORE_PLUGINS=""
-CUSTOM_PLUGINS=""
-```
-
-### Usage
-
-**Open the web UI** by clicking on the app tray icon and clicking `open dronmakr in browser` or if manually running server use:
+**Run the desktop tray + browser UI** (recommended):
 
 ```sh
-python dronmakr.py
+python dronmakr.py desktop
 ```
 
-Then open the URL shown in the terminal (defaults to the unified web UI on port **3766**).
+**Or run the web server only:**
 
-For **advanced command-line usage** (batch generators, packaging presets, local PyInstaller builds), see **[CLI.md on GitHub](https://github.com/nafeu/dronmakr/blob/main/CLI.md)**.
+```sh
+python dronmakr.py webui
+```
 
-## Project Limitations
+Open the URL printed in the terminal (default port **3766**). Configure plug-in paths, drum libraries, and storage in **Settings** or during onboarding.
 
-The VST/AU running functionality of this project is built ontop of [pedalboard.io](https://spotify.github.io/pedalboard/reference/pedalboard.io.html) which is a python wrapper on the [JUCE framework](https://juce.com/). On **macOS**, Pedalboard supports **VST3** (`.vst3`) and **Audio Unit** (`.component`) only — **not** legacy **VST2** bundles under `Plug-Ins/VST/` (`.vst`); use each vendor’s VST3 or AU build instead. There are [known compatibility issues](https://spotify.github.io/pedalboard/reference/pedalboard.html#pedalboard.VST3Plugin). Some of the ones that I've been able to get working are as follows:
+Optional: copy `.env-sample` to `.env` to migrate legacy env vars into `config/settings.json` on first run.
 
-_* All testing was done on `macOS Sequoia 15.1` on an `Apple M4 Pro` machine._
+**CLI & advanced usage:** see **[CLI.md](CLI.md)** (generators, Patchcraftr, local desktop builds).
 
-| Plugin Name | VST3 Works | AU Works |
-| --- | --- | --- |
-| Vital | Yes | ? |
-| Massive | Yes | ? |
-| FM8 | Yes | ? |
-| Reaktor 6 | Yes | ? |
-| Replika | Yes | ? |
-| Raum | Yes | ? |
-| Phasis | Yes | ? |
-| Saltygrain | No | Yes |
-
-Terminal tips for preset capture (e.g. spacebar preview) are described in [CLI.md](https://github.com/nafeu/dronmakr/blob/main/CLI.md).
+---
 
 ## FAQ
 
-Join the [Phrakture Discord Community](https://discord.gg/BysAyRje57) for better support.
+**Where are generated files stored?**
 
-> Where are my samples stored once generated?
+In your chosen **`dronmakr-files`** root (set on first launch). New audio goes to `exports/`; MIDI to `midi/`. Auditionr moves samples into `saved/` or `trash/` as you work.
 
-Initially, all audio is stored in the `exports` folder and all generated MIDI is stored in `midi`. When using the auditioner, you can move samples into the `saved` or `trash` folders.
+**Where are error logs?**
 
-> "Reaktor 6" is being recognized as an effect instead of an instrument, what do I do?
+Rotating log file **`errors.log`**:
 
-You can use the `ASSERT_INSTRUMENT` env var to list any plugins that you want to launch strictly as an *instrument*.
+- **Desktop macOS:** `~/Library/Application Support/dronmakr/logs/errors.log`
+- **Desktop Windows:** `%AppData%\dronmakr\logs\errors.log`
+- **Desktop Linux:** `~/.local/share/dronmakr/logs/errors.log`
+- **From source:** `logs/errors.log` in the repo root
+
+Use the tray menu **Report issue (errors.log)…** to reveal the file. Startup failures on macOS may also write `~/Library/Application Support/dronmakr/last-startup-error.txt`.
+
+**How do I report a bug?**
+
+Open a [GitHub Issue](https://github.com/nafeu/dronmakr/issues) and attach relevant lines from `errors.log`. Discord: [Phrakture community](https://discord.gg/BysAyRje57).
+
+**Does the desktop build include FFmpeg?**
+
+Yes. Desktop releases ship a **vendored FFmpeg** for Folysplitr browser recording uploads — no separate system install needed. Attribution: [resources/ffmpeg/LICENSE.third_party.ffmpeg](resources/ffmpeg/LICENSE.third_party.ffmpeg).
+
+**macOS says the app is blocked or won’t open**
+
+CI builds are not Apple-notarized. After download, use **System Settings → Privacy & Security → Open Anyway**, or **Control-click the app → Open** once. If needed: `xattr -dr com.apple.quarantine /Applications/dronmakr.app`. To see startup errors in Terminal: `/Applications/dronmakr.app/Contents/MacOS/dronmakr`.
+
+**Plug-in compatibility**
+
+Audio runs through [Pedalboard](https://spotify.github.io/pedalboard/) (JUCE). On **macOS**, use **VST3** (`.vst3`) and **AU** (`.component`) — not legacy VST2 (`.vst`). Some plug-ins have [known Pedalboard issues](https://spotify.github.io/pedalboard/reference/pedalboard.html#pedalboard.VST3Plugin).
+
+**A synth shows up as an effect (e.g. Reaktor 6)**
+
+Add its name to **`ASSERT_INSTRUMENT`** in **Settings** so it is treated as an instrument.
+
+**Desktop updates**
+
+Packaged builds can check **GitHub Releases** from the tray (**Check for updates…** / updater prompt on startup).
+
+**Linux tray icon missing**
+
+Install GTK AppIndicator / `libappindicator` (or equivalent) for `pystray`.
+
+**Maintainers: version bump & release**
+
+```sh
+./scripts/bump_version.sh patch              # bump, commit, tag, push
+./scripts/bump_and_release.sh patch          # above + AI release notes + gh release
+```
+
+Publishing a GitHub Release triggers [`.github/workflows/release-desktop.yml`](.github/workflows/release-desktop.yml) (macOS, Windows, Linux artifacts).
+
+---
 
 ## Contributing
 
-- Contributors welcome! Open PRs or Github Issues
-
-**Maintainers:** publishing a **GitHub Release** (not only a tag) runs [`.github/workflows/release-desktop.yml`](.github/workflows/release-desktop.yml) on macOS, Windows, and Linux and uploads the matching archives to that release.
-
-**Version bump:** from the repo root, run [`scripts/bump_version.sh`](scripts/bump_version.sh) with **`major`**, **`minor`**, or **`patch`** ([SemVer](https://semver.org/) bump applied to [`version.py`](version.py)). It edits `version.py`, commits **`Bump version to v…`**, creates an annotated tag **`v*.*.*`**, and **`git push`es** branch + tag to **`origin`** (use **`--dry-run`** to preview).
-
-**Bump + GitHub Release in one step:** [`scripts/bump_and_release.sh`](scripts/bump_and_release.sh) runs `bump_version.sh`, asks the **Cursor agent CLI** to draft concise release notes from commits between the previous tag and the new one, then `gh release create` for the new tag (same workflow trigger as tagging alone). Requires **`cursor agent login`** (or **`agent login`**). Preview with **`--dry-run`**; use **`--skip-ai-notes`** to fall back to **`gh --generate-notes`**; append **`--`** to pass extra **`gh`** flags (for example **`--draft`**).
-
-```sh
-./scripts/bump_version.sh patch
-./scripts/bump_and_release.sh patch
-```
-
-On **Linux**, the tray icon may require GTK AppIndicator / `libappindicator` (or compatible) for `pystray`.
-
-### Manual setup (from this repository)
-
-Use this path if you want to run from source or contribute.
+PRs and issues welcome on GitHub.
 
 ## License
 
