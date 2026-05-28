@@ -15,6 +15,8 @@
 
 ![Beatbuildr Preview](preview-beatbuildr.png)
 
+![Folysplitr Preview](preview-folyspiltr.png)
+
 ![Collections Preview](preview-collections.png)
 
 ## Made Using `dronmakr`
@@ -148,7 +150,7 @@ You can use the `ASSERT_INSTRUMENT` env var to list any plugins that you want to
 
 **Version bump:** from the repo root, run [`scripts/bump_version.sh`](scripts/bump_version.sh) with **`major`**, **`minor`**, or **`patch`** ([SemVer](https://semver.org/) bump applied to [`version.py`](version.py)). It edits `version.py`, commits **`Bump version to v…`**, creates an annotated tag **`v*.*.*`**, and **`git push`es** branch + tag to **`origin`** (use **`--dry-run`** to preview).
 
-**Bump + GitHub Release in one step:** [`scripts/bump_and_release.sh`](scripts/bump_and_release.sh) runs `bump_version.sh`, then `gh release create` for the new tag (same workflow trigger as tagging alone). Preview with **`--dry-run`**; append **`--`** to pass extra **`gh`** flags (for example **`--draft`**).
+**Bump + GitHub Release in one step:** [`scripts/bump_and_release.sh`](scripts/bump_and_release.sh) runs `bump_version.sh`, asks the **Cursor agent CLI** to draft concise release notes from commits between the previous tag and the new one, then `gh release create` for the new tag (same workflow trigger as tagging alone). Requires **`cursor agent login`** (or **`agent login`**). Preview with **`--dry-run`**; use **`--skip-ai-notes`** to fall back to **`gh --generate-notes`**; append **`--`** to pass extra **`gh`** flags (for example **`--draft`**).
 
 ```sh
 ./scripts/bump_version.sh patch
