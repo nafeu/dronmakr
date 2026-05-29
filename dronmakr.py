@@ -18,7 +18,6 @@ from settings import ensure_settings
 from settings import get_active_drum_path_preset_name, set_active_drum_path_preset
 from config_validation import validate_server_config_names
 from preset_authoring import list_presets
-from desktop_app import main as run_desktop_app
 from webui import run as run_webui
 from beatbuildr import generate_random_drum_kit
 from processing_actions import (
@@ -1933,6 +1932,8 @@ def desktop(
     ),
 ):
     """Run menu bar / system tray launcher (local server + open in browser)."""
+    from desktop_app import main as run_desktop_app
+
     run_desktop_app(debug=debug)
 
 
