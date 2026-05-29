@@ -483,11 +483,12 @@ def generate_beat_sample(
         return (list(arr) * ((n // len(arr)) + 1))[:n] if arr else [0] * n
 
     if kit_paths:
-        def _load(row: str, fallback_row: str | None = None) -> AudioSegment:
+        def _load(row: str, fallback_row: str | None = None) -> AudioSegment | None:
             path = kit_paths.get(row) or (kit_paths.get(fallback_row) if fallback_row else None)
             if not path:
-                raise ValueError(f"No sample path for row {row}")
+                return None
             return load_sample_from_path(path)
+
         kick = _load("kick")
         snare = _load("snar")
         ghost_snare = _load("ghos", "snar")
@@ -642,9 +643,9 @@ def generate_beat_sample(
         step_start_ms = base_start_ms + swing_offset_ms
         position_ms = max(0, int(round(step_start_ms)))
 
-        def overlay_row(row_key: str, pattern_value: int, sample: AudioSegment, base_ms: float):
+        def overlay_row(row_key: str, pattern_value: int, sample: AudioSegment | None, base_ms: float):
             nonlocal track
-            if not pattern_value:
+            if not pattern_value or sample is None:
                 return
             velocity = _random_velocity_for_row(row_key)
             human_offset = _timing_randomization_offset_ms_for_row(row_key)
