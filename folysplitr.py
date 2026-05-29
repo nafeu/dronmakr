@@ -107,6 +107,21 @@ def _resolve_audio_path(file_ref: str) -> Path | None:
     return resolved
 
 
+_SPLIT_RECORDING_NAME_RE = re.compile(r"^(?P<base>.+)-split-(?P<idx>\d+)(?:-\d+)?$")
+
+
+def _recordings_queue_sort_key(path: Path) -> tuple[float, str, int, str]:
+    """Newest recordings first; split siblings in chronological (split-01, -02, ...) order."""
+    try:
+        mtime = path.stat().st_mtime
+    except OSError:
+        mtime = 0.0
+    match = _SPLIT_RECORDING_NAME_RE.match(path.stem)
+    if match:
+        return (-mtime, match.group("base"), int(match.group("idx")), path.name)
+    return (-mtime, path.stem, 0, path.name)
+
+
 def _sanitize_folysplitr_collection_name(name: str) -> str:
     """Lowercase kebab-case: only a-z and hyphen; default split."""
     s = (name or "").strip().lower()
@@ -303,7 +318,7 @@ def register_folysplitr(app):
         for file in RECORDINGS_DIR.glob("*.wav"):
             if file.is_file():
                 audio_files.append(file)
-        for file in sorted(audio_files, key=lambda p: p.stat().st_mtime, reverse=True):
+        for file in sorted(audio_files, key=_recordings_queue_sort_key):
             files.append(_public_audio_payload(file))
         return jsonify({"ok": True, "files": files})
 

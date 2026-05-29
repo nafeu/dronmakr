@@ -859,6 +859,21 @@
       sanitizeMarkers(splitrMarkers, splitrDurationSeconds).forEach(addMarker);
     }
 
+    function splitRecordingSortParts(filename) {
+      var match = (filename || "").match(/^(.*)-split-(\d+)(?:-\d+)?\.[^.]+$/);
+      if (!match) return null;
+      return { base: match[1], idx: parseInt(match[2], 10) };
+    }
+
+    function compareSplitRecordingEntries(a, b) {
+      var pa = splitRecordingSortParts((a && a.filename) || "");
+      var pb = splitRecordingSortParts((b && b.filename) || "");
+      if (pa && pb && pa.base === pb.base) {
+        return pa.idx - pb.idx;
+      }
+      return ((a && a.filename) || "").localeCompare((b && b.filename) || "");
+    }
+
     async function splitUsingMarkers() {
       var item = getActiveSplitrItem();
       if (!item) throw new Error("No active sample");
@@ -884,6 +899,7 @@
       if (!res.ok || !payload.ok) throw new Error(payload.error || "Split failed");
 
       var createdFiles = Array.isArray(payload.files) ? payload.files.slice() : [];
+      createdFiles.sort(compareSplitRecordingEntries);
       var removeIdx = recordingsList.findIndex(function (r) { return r.path === (payload.originalPath || originalPath); });
       if (removeIdx < 0) removeIdx = originalIdx;
       if (removeIdx < 0) removeIdx = 0;
@@ -891,7 +907,11 @@
       if (createdFiles.length) {
         Array.prototype.splice.apply(recordingsList, [removeIdx, 0].concat(createdFiles));
       }
-      splitrIndex = removeIdx;
+      var activePath = payload.activeFile && payload.activeFile.path;
+      if (activePath) {
+        splitrIndex = recordingsList.findIndex(function (r) { return r.path === activePath; });
+      }
+      if (splitrIndex < 0) splitrIndex = removeIdx;
       if (splitrIndex >= recordingsList.length) splitrIndex = Math.max(0, recordingsList.length - 1);
       renderSplitrCurrent();
     }
@@ -1180,7 +1200,15 @@
       });
       var payload = await res.json();
       if (!res.ok || !payload.ok) throw new Error(payload.error || "Move failed");
-      setSplitrOrganizeSuccess(payload.file);
+      if (destination === "trash") {
+        clearSplitrOrganizeFeedback();
+        setStatus("Moved to trash.");
+      } else if (destination === "archive") {
+        clearSplitrOrganizeFeedback();
+        setStatus("Moved to archive.");
+      } else {
+        setSplitrOrganizeSuccess(payload.file);
+      }
       await refreshRecordingsList();
       var current = payload.file && payload.file.path;
       if (current) {
