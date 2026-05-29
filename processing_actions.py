@@ -90,6 +90,9 @@ _LEGACY_COLON_TOKEN_DEFINITIONS = [
     {"token": "fade:in 5s", "type": "fade", "label": "In 5s", "command": "fade_sample_start", "params": {"seconds": 5}},
     {"token": "fade:out 2s", "type": "fade", "label": "Out 2s", "command": "fade_sample_end", "params": {"seconds": 2}},
     {"token": "fade:out 5s", "type": "fade", "label": "Out 5s", "command": "fade_sample_end", "params": {"seconds": 5}},
+    {"token": "fade:out 50ms", "type": "fade", "label": "Out 50ms", "command": "fade_sample_end", "params": {"seconds": 0.05}},
+    {"token": "fade:out 200ms", "type": "fade", "label": "Out 200ms", "command": "fade_sample_end", "params": {"seconds": 0.2}},
+    {"token": "fade:out 500ms", "type": "fade", "label": "Out 500ms", "command": "fade_sample_end", "params": {"seconds": 0.5}},
     {"token": "eq:lows +5db", "type": "eq", "label": "Lows +5dB", "command": "eq_lows_sample", "params": {"db": 5}},
     {"token": "eq:lows -5db", "type": "eq", "label": "Lows -5dB", "command": "eq_lows_sample", "params": {"db": -5}},
     {"token": "eq:mids +5db", "type": "eq", "label": "Mids +5dB", "command": "eq_mids_sample", "params": {"db": 5}},
@@ -1349,9 +1352,36 @@ def _validate_shortcuts_raw_list(raw_list: object, *, path_label: str) -> list[d
     return out
 
 
+_ADDITIVE_SHORTCUT_DEFAULTS: list[dict[str, str]] = [
+    {"name": "out 50ms", "type": "fade", "command": "fade:[style=out][duration_ms=50]"},
+    {"name": "out 200ms", "type": "fade", "command": "fade:[style=out][duration_ms=200]"},
+    {"name": "out 500ms", "type": "fade", "command": "fade:[style=out][duration_ms=500]"},
+]
+
+
+def _ensure_additive_shortcut_defaults() -> None:
+    """Append built-in shortcuts that were added after a user config was created."""
+    if not _ADDITIVE_SHORTCUT_DEFAULTS:
+        return
+    doc = read_post_processing_shortcuts_document()
+    shortcuts = list(doc.get("shortcuts") or [])
+    existing_names = {str(row.get("name") or "").strip() for row in shortcuts}
+    changed = False
+    for row in _ADDITIVE_SHORTCUT_DEFAULTS:
+        name = str(row.get("name") or "").strip()
+        if not name or name in existing_names:
+            continue
+        shortcuts.append(dict(row))
+        existing_names.add(name)
+        changed = True
+    if changed:
+        write_post_processing_shortcuts_document_atomic(shortcuts)
+
+
 def load_post_processing_shortcuts_models() -> list[dict[str, str]]:
     """Normalized shortcut rows from disk: name, command, type."""
     ensure_post_processing_shortcuts_file()
+    _ensure_additive_shortcut_defaults()
     with open(POST_PROCESSING_SHORTCUTS_PATH, "r", encoding="utf-8") as f:
         data = json.load(f)
     raw_list = data.get("shortcuts")
