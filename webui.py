@@ -51,6 +51,7 @@ from settings import (
     save_settings,
     set_active_drum_path_preset,
     ensure_managed_files_root,
+    ensure_folysplitr_drum_path_preset,
 )
 
 # Helpers for unified socket connect
@@ -518,6 +519,7 @@ def run(
     ensure_settings()
     if has_configured_files_root():
         ensure_managed_files_root()
+        ensure_folysplitr_drum_path_preset()
     ensure_beat_patterns()
     ensure_drum_kits()
     ensure_recordings_dir()
@@ -617,6 +619,7 @@ def start_server(
     if has_configured_files_root():
         print(with_prompt("[desktop] startup: ensure managed files root"))
         ensure_managed_files_root()
+        ensure_folysplitr_drum_path_preset()
     print(with_prompt("[desktop] startup: ensure beat patterns"))
     ensure_beat_patterns()
     print(with_prompt("[desktop] startup: ensure drum kits"))

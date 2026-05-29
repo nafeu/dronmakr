@@ -82,7 +82,19 @@ DRUM_PATH_KEYS = [
     "DRUM_CYMBAL_PATHS",
 ]
 DEFAULT_DRUM_PATH_PRESET_NAME = "default"
+FOLYSPLITR_DRUM_PATH_PRESET_NAME = "folysplitr"
 DRUM_PATH_PRESET_NAME_KEY = "DRUM_PATH_PRESET"
+# Folysplitr exports splits into category folders under FILES_ROOT/splits/.
+DRUM_PATH_KEY_TO_SPLIT_CATEGORY = {
+    "DRUM_KICK_PATHS": "kick",
+    "DRUM_HIHAT_PATHS": "hihat",
+    "DRUM_PERC_PATHS": "perc",
+    "DRUM_TOM_PATHS": "tom",
+    "DRUM_SNARE_PATHS": "snare",
+    "DRUM_SHAKER_PATHS": "shaker",
+    "DRUM_CLAP_PATHS": "clap",
+    "DRUM_CYMBAL_PATHS": "cymbal",
+}
 DEFAULT_KEYS = [
     "PLUGIN_PATHS",
     "QT_LOGGING_RULES",
@@ -347,6 +359,64 @@ def ensure_managed_files_root(root: str | None = None) -> str:
     return resolved_root
 
 
+def build_folysplitr_drum_path_preset(files_root: str) -> dict[str, str]:
+    """Return DRUM_* path values for the folysplitr preset under files_root/splits/."""
+    resolved_root = normalize_files_root(files_root)
+    if not resolved_root:
+        raise ValueError("A valid files root path is required")
+    splits_root = os.path.join(resolved_root, "splits")
+    return {
+        key: os.path.abspath(os.path.join(splits_root, category))
+        for key, category in DRUM_PATH_KEY_TO_SPLIT_CATEGORY.items()
+    }
+
+
+def _apply_folysplitr_drum_path_preset(settings: dict, files_root: str) -> None:
+    """Ensure splits category dirs and a folysplitr drum path preset exist for files_root."""
+    paths = build_folysplitr_drum_path_preset(files_root)
+    splits_root = os.path.join(normalize_files_root(files_root), "splits")
+    os.makedirs(splits_root, exist_ok=True)
+    for category in DRUM_PATH_KEY_TO_SPLIT_CATEGORY.values():
+        os.makedirs(os.path.join(splits_root, category), exist_ok=True)
+
+    entries = get_drum_path_preset_entries(settings)
+    new_entry = {
+        DRUM_PATH_PRESET_NAME_KEY: FOLYSPLITR_DRUM_PATH_PRESET_NAME,
+        **paths,
+    }
+    updated = False
+    for index, entry in enumerate(entries):
+        if entry.get(DRUM_PATH_PRESET_NAME_KEY) == FOLYSPLITR_DRUM_PATH_PRESET_NAME:
+            entries[index] = new_entry
+            updated = True
+            break
+    if not updated:
+        entries.append(new_entry)
+    settings["DRUM_PATH_PRESETS"] = entries
+
+
+def ensure_folysplitr_drum_path_preset(files_root: str | None = None) -> dict[str, str]:
+    """
+    Ensure the folysplitr drum path preset exists and points at files_root/splits/*.
+    Returns the preset's DRUM_* path map.
+    """
+    resolved = (
+        normalize_files_root(files_root)
+        if files_root is not None
+        else get_files_root(allow_default=False)
+    )
+    if not resolved:
+        raise ValueError("FILES_ROOT is not configured")
+    paths = build_folysplitr_drum_path_preset(resolved)
+    settings = load_settings()
+    existing = get_drum_path_presets(settings).get(FOLYSPLITR_DRUM_PATH_PRESET_NAME, {})
+    if existing == paths:
+        return paths
+    _apply_folysplitr_drum_path_preset(settings, resolved)
+    save_settings(settings)
+    return paths
+
+
 def set_files_root(path: str) -> str:
     resolved = normalize_files_root(path)
     if not resolved:
@@ -354,6 +424,7 @@ def set_files_root(path: str) -> str:
     ensure_managed_files_root(resolved)
     settings = load_settings()
     settings[FILES_ROOT_KEY] = resolved
+    _apply_folysplitr_drum_path_preset(settings, resolved)
     save_settings(settings)
     try:
         from utils import refresh_managed_path_constants
