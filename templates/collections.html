@@ -397,6 +397,68 @@
       border-bottom: none;
     }
 
+    .packaging-preview-scroll {
+      max-width: 100%;
+      width: 100%;
+      max-height: min(50vh, 22rem);
+      overflow: auto;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      background: #0a0a0a;
+      box-sizing: border-box;
+    }
+
+    .packaging-preview-list {
+      list-style: none;
+      margin: 0;
+      padding: 0.4rem 0;
+      min-width: min-content;
+    }
+
+    .packaging-preview-list li {
+      font-size: 0.68rem;
+      color: var(--primary);
+      padding: 0.35rem 0.65rem;
+      border-bottom: 1px solid rgba(53, 53, 49, 0.6);
+      white-space: nowrap;
+    }
+
+    .packaging-preview-list li:last-child {
+      border-bottom: none;
+    }
+
+    .packaging-preview-list li.packaging-preview-empty {
+      color: var(--theme-a);
+      font-style: italic;
+      border-bottom: none;
+    }
+
+    .packaging-preview-list li.packaging-root-folder-row {
+      color: var(--primary);
+      font-size: 0.7rem;
+    }
+
+    .packaging-preview-list li.packaging-folder-row {
+      color: var(--theme-b);
+      letter-spacing: 0.02em;
+      border-bottom: none;
+      padding-top: 0.45rem;
+      padding-bottom: 0.15rem;
+    }
+
+    .packaging-preview-list li.packaging-folder-row:first-child {
+      padding-top: 0.2rem;
+    }
+
+    .packaging-preview-list li.packaging-file-row {
+      color: var(--primary);
+    }
+
+    .packaging-preview-list li.packaging-file-row::before {
+      content: "└ ";
+      color: var(--theme-a);
+    }
+
     .collections-filters .collections-filter-btn {
       padding: 0 0.65rem;
       font-family: inherit;
@@ -516,6 +578,81 @@
       border-top: 1px solid var(--theme-a);
     }
 
+    .packaging-layout-label-row {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .packaging-layout-label-row .packaging-preview-label {
+      margin-top: 0;
+    }
+
+    .packaging-info-btn {
+      border: none;
+      background: none;
+      color: var(--theme-b);
+      cursor: pointer;
+      padding: 0;
+      font-size: 0.85rem;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .packaging-info-btn:hover {
+      color: var(--primary);
+    }
+
+    .packaging-help-modal-content {
+      max-width: min(92vw, 520px);
+    }
+
+    .packaging-help-body {
+      font-size: 0.75rem;
+      color: var(--primary);
+      line-height: 1.5;
+      max-height: min(70vh, 28rem);
+      overflow: auto;
+    }
+
+    .packaging-help-body h3 {
+      font-size: 0.78rem;
+      color: var(--primary);
+      margin: 0.85rem 0 0.35rem 0;
+    }
+
+    .packaging-help-body h3:first-child {
+      margin-top: 0;
+    }
+
+    .packaging-help-body p {
+      margin: 0 0 0.5rem 0;
+      color: var(--theme-b);
+    }
+
+    .packaging-help-body code {
+      font-family: inherit;
+      font-size: 0.68rem;
+      color: var(--primary);
+      background: #0a0a0a;
+      padding: 0.1rem 0.25rem;
+      border-radius: 2px;
+    }
+
+    .packaging-help-example {
+      margin: 0.35rem 0 0.5rem 0;
+      padding: 0.45rem 0.55rem;
+      background: #0a0a0a;
+      border: 1px solid var(--theme-a);
+      border-radius: 4px;
+      font-size: 0.66rem;
+      color: var(--theme-b);
+      white-space: pre-wrap;
+      line-height: 1.45;
+    }
+
     .packaging-radio {
       display: flex;
       align-items: center;
@@ -540,21 +677,7 @@
       text-transform: uppercase;
       letter-spacing: 0.06em;
       margin-top: 0.25rem;
-    }
-
-    .packaging-preview {
-      margin: 0.35rem 0 0 0;
-      padding: 0.55rem 0.65rem;
-      font-size: 0.68rem;
-      color: var(--theme-b);
-      background: #0a0a0a;
-      border: 1px solid var(--theme-a);
-      border-radius: 4px;
-      white-space: pre-wrap;
-      word-break: break-all;
-      max-height: 6.5rem;
-      overflow: auto;
-      line-height: 1.45;
+      margin-bottom: 0.5rem;
     }
 
     .packaging-export-btn {
@@ -792,7 +915,13 @@
             </label>
           </div>
           <div class="packaging-layout-group">
-            <div class="packaging-preview-label">Package layout</div>
+            <div class="packaging-layout-label-row">
+              <div class="packaging-preview-label">Package layout</div>
+              <button type="button" id="pkg-layout-info-btn" class="packaging-info-btn"
+                title="About package layout options" aria-label="About package layout options">
+                <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+              </button>
+            </div>
             <label class="packaging-radio">
               <input type="radio" name="pkg-layout" value="root" checked>
               <span>Save all in root folder</span>
@@ -808,7 +937,9 @@
           </div>
           <div>
             <div class="packaging-preview-label">Export name preview</div>
-            <pre class="packaging-preview" id="pkg-preview" aria-live="polite">—</pre>
+            <div class="packaging-preview-scroll">
+              <ul id="pkg-preview" class="packaging-preview-list" aria-live="polite"></ul>
+            </div>
           </div>
           <button type="button" id="pkg-export-btn" class="packaging-export-btn" disabled>
             <i class="fa-solid fa-file-export" aria-hidden="true"></i> Export package
@@ -834,6 +965,52 @@
       <div id="collections-error-text" class="confirm-modal-text"></div>
       <div class="confirm-modal-buttons">
         <button type="button" id="collections-error-close" class="confirm-modal-btn primary"><i
+            class="fa-solid fa-xmark"></i> Close</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="collections-layout-help-overlay" class="confirm-modal-overlay" hidden>
+    <div class="confirm-modal-content packaging-help-modal-content">
+      <div class="packaging-help-body">
+        <h3>How sample names are read</h3>
+        <p>Dronmakr exports often use triple underscores: <code>type___collection___style___id</code>. The
+          middle segments drive folder grouping; the last segment is a unique id.</p>
+        <p>Example source name:<br><code>drumpattern___vaelthorn___170bpm___4bars___a1b2c3d4</code></p>
+
+        <h3>Save all in root folder</h3>
+        <p>Every exported <code>.wav</code> is written directly inside the package folder — no subfolders.</p>
+        <div class="packaging-help-example">author_-_mypack/
+  └ mypack__01__author.wav
+  └ mypack__02__author.wav</div>
+
+        <h3>Create collection subfolders</h3>
+        <p>Groups by the <strong>collection / generated name</strong> (2nd <code>___</code> segment). Each
+          sample is placed inside its matching subfolder under the package root.</p>
+        <div class="packaging-help-example">author_-_mypack/
+  vaelthorn/
+    └ mypack__01__author.wav
+    └ mypack__02__author.wav
+  nebula/
+    └ mypack__03__author.wav</div>
+
+        <h3>Create style subfolders</h3>
+        <p>Groups by the <strong>style / meta</strong> segments between the collection name and the unique id.
+          Each sample goes into the subfolder for its style key.</p>
+        <div class="packaging-help-example">author_-_mypack/
+  170bpm_4bars/
+    └ mypack__01__author.wav
+    └ mypack__02__author.wav
+  140bpm_8bars/
+    └ mypack__03__author.wav</div>
+
+        <h3>Non-standard filenames</h3>
+        <p>If a sample does not use <code>___</code> naming, grouping falls back to sample type (e.g. bass, drone),
+          a prefix segment, the first filename token, or <code>misc</code>.</p>
+        <p>Folder depth is always one level: package → subfolder → files.</p>
+      </div>
+      <div class="confirm-modal-buttons">
+        <button type="button" id="collections-layout-help-close" class="confirm-modal-btn primary"><i
             class="fa-solid fa-xmark"></i> Close</button>
       </div>
     </div>
@@ -882,27 +1059,21 @@
         var listEl = document.getElementById("packaging-selected-list");
         var n = selectedForPackage.size;
         countEl.textContent = n === 1 ? "1 sample selected" : n + " samples selected";
-        var entries = [];
-        selectedForPackage.forEach(function (meta, path) {
-          entries.push({ path: path, name: meta.name, type: meta.type });
-        });
-        entries.sort(function (a, b) {
-          return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
-        });
+        var entries = selectedEntriesSorted();
         listEl.innerHTML = "";
         if (entries.length === 0) {
           var emptyLi = document.createElement("li");
           emptyLi.className = "packaging-selected-empty";
           emptyLi.textContent = "No samples selected.";
           listEl.appendChild(emptyLi);
-          return;
+        } else {
+          entries.forEach(function (e) {
+            var li = document.createElement("li");
+            li.textContent = e.name;
+            li.title = e.path + " · " + e.type;
+            listEl.appendChild(li);
+          });
         }
-        entries.forEach(function (e) {
-          var li = document.createElement("li");
-          li.textContent = e.name;
-          li.title = e.path + " · " + e.type;
-          listEl.appendChild(li);
-        });
         updatePackagingPreview();
         updateExportBtnState();
       }
@@ -919,6 +1090,23 @@
         }
         s = s.replace(/_+/g, "_").replace(/^_+|_+$/g, "");
         return s;
+      }
+
+      function defaultSubfolderKey(stem, layoutMode, sampleType) {
+        stem = (stem || "").trim();
+        var parts = stem.split("___");
+        var st = (sampleType || "").trim().toLowerCase();
+        if (layoutMode === "collection") {
+          if (parts.length >= 2 && parts[1].trim()) return parts[1].trim();
+          if (st && st !== "other") return st;
+          if (parts.length >= 2 && parts[0].trim()) return parts[0].trim();
+        } else {
+          if (st && st !== "other") return st;
+          if (parts.length >= 2 && parts[1].trim()) return parts[1].trim();
+        }
+        var tokenMatch = stem.match(/^[^_\-\s]+/);
+        if (tokenMatch && tokenMatch[0]) return tokenMatch[0];
+        return "misc";
       }
 
       function parseSampleStem(stem) {
@@ -982,69 +1170,173 @@
         return el ? el.value : "root";
       }
 
-      function subfolderKeyForStem(stem, layoutMode) {
+      function subfolderKeyForStem(stem, layoutMode, sampleType) {
         if (layoutMode !== "collection" && layoutMode !== "style") {
           return "";
         }
         var p = parseSampleStem(stem);
-        var raw = layoutMode === "collection"
-          ? String(p.generated || "").trim()
-          : String(p.style || "").trim();
+        var parts = (stem || "").split("___");
+        var raw = "";
+        if (layoutMode === "collection") {
+          raw = String(p.generated || "").trim();
+        } else if (parts.length >= 2) {
+          raw = String(p.style || "").trim();
+        }
+        if (!raw) {
+          raw = defaultSubfolderKey(stem, layoutMode, sampleType);
+        }
         if (!raw) return "";
         var slug = normalizePiece(raw);
         return slug || "";
       }
 
-      function countSubfolderKeys(stems, layoutMode) {
-        var counts = {};
-        stems.forEach(function (stem) {
-          var k = subfolderKeyForStem(stem, layoutMode);
-          if (k) counts[k] = (counts[k] || 0) + 1;
-        });
-        return counts;
+      function getPackageRootFolderName() {
+        var pkg = normalizePiece((document.getElementById("pkg-package-name").value || "").trim() || "package");
+        var auth = normalizePiece((document.getElementById("pkg-author-name").value || "").trim() || "author");
+        return auth + "_-_" + pkg;
       }
 
-      function relativeExportPathPreview(pkg, auth, sampleIndex, totalSelected, stem, includeGen, includeStyle, layoutMode, allStems) {
-        var base = buildExportBasenamePreview(pkg, auth, sampleIndex, totalSelected, stem, includeGen, includeStyle) + ".wav";
-        if (layoutMode === "root") return base;
-        var counts = countSubfolderKeys(allStems, layoutMode);
-        var key = subfolderKeyForStem(stem, layoutMode);
-        if (key && counts[key] >= 2) return key + "/" + base;
-        return base;
-      }
-
-      function selectedStemsSorted() {
-        var names = [];
-        selectedForPackage.forEach(function (meta) {
-          names.push(meta.name);
-        });
-        names.sort(function (a, b) {
-          return a.toLowerCase().localeCompare(b.toLowerCase());
-        });
-        return names;
-      }
-
-      function updatePackagingPreview() {
-        var el = document.getElementById("pkg-preview");
+      function buildExportPreviewItemsFromEntries(entries) {
         var pkg = document.getElementById("pkg-package-name").value;
         var auth = document.getElementById("pkg-author-name").value;
         var ig = document.getElementById("pkg-include-generated").checked;
         var ist = document.getElementById("pkg-include-style").checked;
         var layoutMode = getPackagingLayoutMode();
-        var stems = selectedStemsSorted();
-        var n = Math.max(selectedForPackage.size, 1);
-        if (stems.length === 0) {
-          stems = ["reese___vaelthorn___170bpm___4bars___a1b2c3d4"];
+        var total = entries.length;
+        return entries.map(function (entry, i) {
+          var fileName = buildExportBasenamePreview(
+            pkg, auth, i + 1, total, entry.name, ig, ist
+          ) + ".wav";
+          var subfolderKey = layoutMode === "root"
+            ? ""
+            : subfolderKeyForStem(entry.name, layoutMode, entry.type);
+          return {
+            path: entry.path,
+            name: entry.name,
+            type: entry.type,
+            fileName: fileName,
+            subfolderKey: subfolderKey
+          };
+        });
+      }
+
+      function selectedEntriesSorted() {
+        var entries = [];
+        selectedForPackage.forEach(function (meta, path) {
+          entries.push({ path: path, name: meta.name, type: meta.type });
+        });
+        entries.sort(function (a, b) {
+          return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+        });
+        return entries;
+      }
+
+      function getLayoutDemoEntries(layoutMode) {
+        if (layoutMode === "collection") {
+          return [
+            { path: "", name: "drumpattern___vaelthorn___170bpm___4bars___a1", type: "drumpattern" },
+            { path: "", name: "drumpattern___vaelthorn___140bpm___8bars___a2", type: "drumpattern" },
+            { path: "", name: "drumpattern___nebula___120bpm___4bars___b1", type: "drumpattern" }
+          ];
         }
-        var lines = [];
-        var show = Math.min(2, stems.length);
-        for (var i = 0; i < show; i++) {
-          lines.push(relativeExportPathPreview(pkg, auth, i + 1, Math.max(selectedForPackage.size, 1), stems[i], ig, ist, layoutMode, stems));
+        if (layoutMode === "style") {
+          return [
+            { path: "", name: "drumpattern___vaelthorn___170bpm___4bars___a1", type: "drumpattern" },
+            { path: "", name: "drumpattern___nebula___170bpm___4bars___b1", type: "drumpattern" },
+            { path: "", name: "drumpattern___nebula___140bpm___8bars___b2", type: "drumpattern" }
+          ];
         }
-        if (selectedForPackage.size > 2) {
-          lines.push("… +" + (selectedForPackage.size - 2) + " more");
+        return [
+          { path: "", name: "drumpattern___vaelthorn___170bpm___4bars___a1", type: "drumpattern" }
+        ];
+      }
+
+      function buildSelectedExportPreviewItems() {
+        return buildExportPreviewItemsFromEntries(selectedEntriesSorted());
+      }
+
+      function appendExportPreviewFileRow(listEl, fileName, indentRem, sourceName) {
+        var li = document.createElement("li");
+        li.className = "packaging-file-row";
+        li.style.paddingLeft = indentRem + "rem";
+        li.textContent = fileName;
+        if (sourceName) li.title = sourceName;
+        listEl.appendChild(li);
+      }
+
+      function renderExportPreviewTree(listEl, items, layoutMode) {
+        listEl.innerHTML = "";
+        if (items.length === 0) {
+          var emptyLi = document.createElement("li");
+          emptyLi.className = "packaging-preview-empty";
+          emptyLi.textContent = "—";
+          listEl.appendChild(emptyLi);
+          return;
         }
-        el.textContent = lines.join("\n");
+
+        var rootName = getPackageRootFolderName();
+        var rootLi = document.createElement("li");
+        rootLi.className = "packaging-folder-row packaging-root-folder-row";
+        rootLi.textContent = rootName + "/";
+        listEl.appendChild(rootLi);
+
+        if (layoutMode === "root") {
+          items.forEach(function (item) {
+            appendExportPreviewFileRow(listEl, item.fileName, 1.15, item.name);
+          });
+          return;
+        }
+
+        var folderMap = {};
+        var rootFiles = [];
+        items.forEach(function (item) {
+          if (item.subfolderKey) {
+            if (!folderMap[item.subfolderKey]) folderMap[item.subfolderKey] = [];
+            folderMap[item.subfolderKey].push(item);
+          } else {
+            rootFiles.push(item);
+          }
+        });
+
+        Object.keys(folderMap).sort(function (a, b) {
+          return a.localeCompare(b);
+        }).forEach(function (folder) {
+          var folderLi = document.createElement("li");
+          folderLi.className = "packaging-folder-row";
+          folderLi.style.paddingLeft = "1.15rem";
+          folderLi.textContent = folder + "/";
+          folderLi.title = "Grouped by " + (layoutMode === "collection" ? "collection" : "style") + ": " + folder;
+          listEl.appendChild(folderLi);
+          folderMap[folder].sort(function (a, b) {
+            return a.fileName.localeCompare(b.fileName);
+          }).forEach(function (item) {
+            appendExportPreviewFileRow(listEl, item.fileName, 2.3, item.name);
+          });
+        });
+
+        rootFiles.sort(function (a, b) {
+          return a.fileName.localeCompare(b.fileName);
+        }).forEach(function (item) {
+          appendExportPreviewFileRow(listEl, item.fileName, 1.15, item.name);
+        });
+      }
+
+      function updatePackagingPreview() {
+        var el = document.getElementById("pkg-preview");
+        var layoutMode = getPackagingLayoutMode();
+        var selected = selectedEntriesSorted();
+        var items = selected.length === 0
+          ? buildExportPreviewItemsFromEntries(getLayoutDemoEntries(layoutMode))
+          : buildSelectedExportPreviewItems();
+        renderExportPreviewTree(el, items, layoutMode);
+      }
+
+      function showLayoutHelpModal() {
+        document.getElementById("collections-layout-help-overlay").hidden = false;
+      }
+
+      function hideLayoutHelpModal() {
+        document.getElementById("collections-layout-help-overlay").hidden = true;
       }
 
       function updateExportBtnState() {
@@ -1251,6 +1543,11 @@
         radio.addEventListener("change", function () {
           updatePackagingPreview();
         });
+      });
+      document.getElementById("pkg-layout-info-btn").addEventListener("click", showLayoutHelpModal);
+      document.getElementById("collections-layout-help-close").addEventListener("click", hideLayoutHelpModal);
+      document.getElementById("collections-layout-help-overlay").addEventListener("click", function (e) {
+        if (e.target === e.currentTarget) hideLayoutHelpModal();
       });
       document.getElementById("collections-error-close").addEventListener("click", hideCollectionsError);
       document.getElementById("pkg-export-btn").addEventListener("click", function () {

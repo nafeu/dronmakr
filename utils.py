@@ -1261,12 +1261,48 @@ def _package_layout_mode(raw: str | None) -> str:
     return "root"
 
 
-def _export_subfolder_slug_from_stem(stem: str, mode: str) -> str:
+def _default_subfolder_key(stem: str, mode: str, sample_type: str = "") -> str:
+    """
+    Fallback folder key for samples that do not use the triple-underscore naming
+    convention (or are missing generated/style segments).
+    """
+    stem = (stem or "").strip()
+    parts = stem.split("___")
+    st = (sample_type or "").strip().lower()
+    if mode == "collection":
+        if len(parts) >= 2 and parts[1].strip():
+            return parts[1].strip()
+        if st and st != "other":
+            return st
+        if len(parts) >= 2 and parts[0].strip():
+            return parts[0].strip()
+    else:
+        if st and st != "other":
+            return st
+        if len(parts) >= 2 and parts[1].strip():
+            return parts[1].strip()
+    token = re.split(r"[_\-\s]+", stem)[0] if stem else ""
+    if token:
+        return token
+    return "misc"
+
+
+def _export_subfolder_slug_from_stem(
+    stem: str, mode: str, sample_type: str = ""
+) -> str:
     """Normalized folder slug from sample stem; empty if none (file stays in package root)."""
     if mode not in ("collection", "style"):
         return ""
     gen, style, _uid = parse_saved_sample_stem(stem)
-    raw = (gen or "").strip() if mode == "collection" else (style or "").strip()
+    parts = (stem or "").split("___")
+    if mode == "collection":
+        raw = (gen or "").strip()
+    elif len(parts) >= 2:
+        raw = (style or "").strip()
+    else:
+        raw = ""
+    if not raw:
+        raw = _default_subfolder_key(stem, mode, sample_type)
     if not raw:
         return ""
     slug = _normalize_name_piece(raw)
@@ -1278,7 +1314,9 @@ def _export_subfolder_slug_from_stem(stem: str, mode: str) -> str:
 def _export_subfolder_counts(ordered: list[dict], mode: str) -> dict[str, int]:
     counts: dict[str, int] = {}
     for entry in ordered:
-        slug = _export_subfolder_slug_from_stem(entry.get("name") or "", mode)
+        slug = _export_subfolder_slug_from_stem(
+            entry.get("name") or "", mode, entry.get("type") or ""
+        )
         if not slug:
             continue
         counts[slug] = counts.get(slug, 0) + 1
@@ -1469,9 +1507,6 @@ def export_collections_package(
 
     os.makedirs(package_dir, exist_ok=True)
     layout = _package_layout_mode(package_layout)
-    subfolder_counts = (
-        _export_subfolder_counts(ordered, layout) if layout != "root" else {}
-    )
     total = len(ordered)
     exported_names: list[str] = []
     abs_sources: list[str] = []
@@ -1493,11 +1528,12 @@ def export_collections_package(
                 include_generated,
                 include_style,
             )
-            slug = _export_subfolder_slug_from_stem(stem, layout)
+            slug = _export_subfolder_slug_from_stem(
+                stem, layout, entry.get("type") or ""
+            )
             if (
                 layout != "root"
                 and slug
-                and subfolder_counts.get(slug, 0) >= 2
             ):
                 dest_subdir = os.path.join(package_dir, slug)
                 os.makedirs(dest_subdir, exist_ok=True)
