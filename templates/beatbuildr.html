@@ -2125,9 +2125,17 @@
       const steps = getSteps();
       ROWS.forEach(row => {
         state.pattern[row] = new Array(steps).fill(0);
-        state.buffers[row] = null;
         state.velocityRandomization[row] = [1, 1];
         state.timingRandomization[row] = 0;
+      });
+      state.undoState = null;
+      state.redoState = null;
+    }
+
+    function clearSequencerPattern() {
+      const steps = getSteps();
+      ROWS.forEach(row => {
+        state.pattern[row] = new Array(steps).fill(0);
       });
       state.undoState = null;
       state.redoState = null;
@@ -2811,6 +2819,9 @@
         patternNameInput.value = "";
         browserKitNameInput.value = "";
         initEmptyPattern();
+        ROWS.forEach((row) => {
+          state.buffers[row] = null;
+        });
         if (state.socket && state.socket.connected) state.socket.emit("requestNewKit");
         renderGrid();
         updateUndoRedoButtons();
@@ -2819,8 +2830,9 @@
     });
 
     document.getElementById("clear-sequencer-btn").addEventListener("click", () => {
-      initEmptyPattern();
+      clearSequencerPattern();
       renderGrid();
+      updateUndoRedoButtons();
       schedulePersistBeatbuildr();
     });
 
