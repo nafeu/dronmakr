@@ -131,6 +131,38 @@ def fade_sample_end(input_path, fade_out_time_s):
     log_sample_processing_line(f"Applied fade-out ({fade_out_time_s}s)")
 
 
+def pad_sample(input_path, amount, side="after"):
+    """Append or prepend silence equal to ``amount`` × current sample length (0–2 = 0–200%)."""
+    amount = float(amount)
+    if amount <= 0:
+        return
+    side = str(side or "after").strip().lower()
+    if side not in ("before", "after"):
+        raise ValueError("padding side must be 'before' or 'after'")
+    if amount > 2:
+        raise ValueError("padding amount must be between 0 and 2")
+
+    audio, sample_rate = sf.read(input_path)
+    pad_samples = int(round(len(audio) * amount))
+    if pad_samples <= 0:
+        return
+
+    if audio.ndim == 1:
+        silence = np.zeros(pad_samples, dtype=audio.dtype)
+    else:
+        silence = np.zeros((pad_samples, audio.shape[1]), dtype=audio.dtype)
+
+    if side == "before":
+        padded = np.concatenate([silence, audio], axis=0)
+    else:
+        padded = np.concatenate([audio, silence], axis=0)
+
+    sf.write(input_path, padded, sample_rate)
+    log_sample_processing_line(
+        f"Applied padding ({amount * 100:.0f}% {side})"
+    )
+
+
 def increase_sample_gain(input_path, db):
     """Increases the gain of the audio file by `db` decibels and overwrites the file."""
     audio, sample_rate = sf.read(input_path)

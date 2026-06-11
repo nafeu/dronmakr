@@ -496,6 +496,99 @@
       margin: 0 4px;
     }
 
+    .splitr-param-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      margin-top: 0.35rem;
+      width: 100%;
+    }
+
+    .splitr-param-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      width: 100%;
+    }
+
+    .splitr-param-row label,
+    .splitr-param-row .splitr-param-label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 0.5rem;
+      font-size: 0.72rem;
+      color: var(--theme-b);
+    }
+
+    .splitr-param-row select {
+      width: 100%;
+      font-family: inherit;
+      font-size: 0.74rem;
+      border-radius: 4px;
+      border: 1px solid var(--theme-a);
+      background: #121211;
+      color: var(--primary);
+      padding: 0.34rem 0.4rem;
+      height: 2rem;
+      box-sizing: border-box;
+    }
+
+    .splitr-slider-wrap {
+      position: relative;
+      width: 100%;
+      height: 1.35rem;
+    }
+
+    .splitr-slider-wrap input[type="range"] {
+      width: 100%;
+      margin: 0;
+      height: 1.35rem;
+      background: transparent;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .splitr-slider-wrap input[type="range"]::-webkit-slider-runnable-track {
+      height: 4px;
+      border-radius: 2px;
+      background: var(--theme-a);
+    }
+
+    .splitr-slider-wrap input[type="range"]::-moz-range-track {
+      height: 4px;
+      border-radius: 2px;
+      background: var(--theme-a);
+    }
+
+    .splitr-slider-wrap input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--primary);
+      margin-top: -4px;
+      border: none;
+    }
+
+    .splitr-slider-wrap input[type="range"]::-moz-range-thumb {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--primary);
+      border: none;
+    }
+
+    .splitr-param-value {
+      font-size: 0.68rem;
+      color: var(--primary);
+      white-space: nowrap;
+    }
+
+    .splitr-apply-params-btn {
+      align-self: flex-start;
+    }
+
     .splitr-index {
       font-size: 0.78rem;
       color: var(--theme-b);
@@ -786,6 +879,173 @@
 
     function splitRound(v) {
       return Math.max(0, Math.round(v * 1000) / 1000);
+    }
+
+    function splitrFmtSpecNum(x) {
+      if (typeof x !== "number" || isNaN(x)) return "0";
+      var ax = Math.abs(x);
+      var r = ax >= 100 ? 2 : (ax >= 10 ? 3 : 5);
+      return Number(x.toFixed(r)).toString();
+    }
+
+    function splitrSliderPhysical(schema, uRaw) {
+      var u = Math.max(0, Math.min(1, parseFloat(uRaw)));
+      if (schema.range_db) return schema.range_db[0] + (schema.range_db[1] - schema.range_db[0]) * u;
+      if (schema.range_hz) return schema.range_hz[0] + (schema.range_hz[1] - schema.range_hz[0]) * u;
+      if (schema.range_ms) return schema.range_ms[0] + (schema.range_ms[1] - schema.range_ms[0]) * u;
+      if (schema.range_linear) return schema.range_linear[0] + (schema.range_linear[1] - schema.range_linear[0]) * u;
+      return u;
+    }
+
+    function splitrFormatSliderDisplay(schema, uRaw) {
+      var phys = splitrSliderPhysical(schema, uRaw);
+      if (schema.range_db) return splitrFmtSpecNum(phys) + " dB";
+      if (schema.range_hz) return splitrFmtSpecNum(phys) + " Hz";
+      if (schema.range_ms) return splitrFmtSpecNum(phys) + " ms";
+      if (schema.display_scale) {
+        return splitrFmtSpecNum(phys * schema.display_scale) + (schema.display_suffix || "");
+      }
+      if (schema.range_linear) return splitrFmtSpecNum(phys);
+      return splitrFmtSpecNum(phys);
+    }
+
+    function splitrReadControl(container, key) {
+      var el = container.querySelector('[data-schema-key="' + key + '"]');
+      if (!el) return null;
+      return el.value;
+    }
+
+    function splitrBuildSpecFromControls(typeKey, container) {
+      var schemas = (processingCatalog.paramSchemas && processingCatalog.paramSchemas[typeKey]) || [];
+      function phys(sk) {
+        var sch = schemas.filter(function (s) { return s.key === sk; })[0];
+        if (!sch) return 0;
+        return splitrSliderPhysical(sch, splitrReadControl(container, sk));
+      }
+      switch (typeKey) {
+        case "padding": {
+          var side = splitrReadControl(container, "side") || "after";
+          var amt = phys("amount_ui");
+          return "padding:[side=" + side + "][amount=" + splitrFmtSpecNum(amt) + "]";
+        }
+        default:
+          return null;
+      }
+    }
+
+    function splitrApplyBracketParams(container, typeKey, bracketParams) {
+      if (!container || !bracketParams) return;
+      var schemas = (processingCatalog.paramSchemas && processingCatalog.paramSchemas[typeKey]) || [];
+      schemas.forEach(function (schema) {
+        var bk = schema.widget === "slider" && schema.maps_to ? schema.maps_to : schema.key;
+        if (!Object.prototype.hasOwnProperty.call(bracketParams, bk)) return;
+        var el = container.querySelector('[data-schema-key="' + schema.key + '"]');
+        if (!el) return;
+        if (schema.widget === "slider") {
+          var phys = parseFloat(String(bracketParams[bk]));
+          if (!isFinite(phys)) return;
+          var a0 = schema.range_linear ? schema.range_linear[0] : 0;
+          var a1 = schema.range_linear ? schema.range_linear[1] : 1;
+          var u = (phys - a0) / (a1 - a0);
+          el.value = String(Math.max(0, Math.min(1, u)));
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+        } else if (schema.widget === "select") {
+          el.value = String(bracketParams[bk]);
+        }
+      });
+    }
+
+    function renderSplitrParamControls(typeKey) {
+      var schemas = (processingCatalog.paramSchemas && processingCatalog.paramSchemas[typeKey]) || [];
+      if (!schemas.length) return null;
+      var wrap = document.createElement("div");
+      wrap.className = "splitr-param-controls";
+      wrap.dataset.splitrParamType = typeKey;
+      schemas.forEach(function (schema) {
+        if (schema.widget === "slider") {
+          var row = document.createElement("div");
+          row.className = "splitr-param-row";
+          var labelRow = document.createElement("div");
+          labelRow.className = "splitr-param-label-row";
+          var label = document.createElement("span");
+          label.textContent = schema.label;
+          var valueEl = document.createElement("span");
+          valueEl.className = "splitr-param-value";
+          labelRow.appendChild(label);
+          labelRow.appendChild(valueEl);
+          var sliderWrap = document.createElement("div");
+          sliderWrap.className = "splitr-slider-wrap";
+          var input = document.createElement("input");
+          input.type = "range";
+          input.min = 0;
+          input.max = 1;
+          input.step = schema.step != null ? schema.step : 0.01;
+          input.value = schema.default != null ? String(schema.default) : "0.5";
+          input.dataset.schemaKey = schema.key;
+          function refresh() {
+            valueEl.textContent = splitrFormatSliderDisplay(schema, input.value);
+          }
+          input.addEventListener("input", refresh);
+          refresh();
+          sliderWrap.appendChild(input);
+          row.appendChild(labelRow);
+          row.appendChild(sliderWrap);
+          wrap.appendChild(row);
+        } else if (schema.widget === "select") {
+          var row2 = document.createElement("label");
+          row2.className = "splitr-param-row";
+          var span = document.createElement("span");
+          span.textContent = schema.label;
+          var sel = document.createElement("select");
+          sel.dataset.schemaKey = schema.key;
+          (schema.options || []).forEach(function (opt) {
+            var o = document.createElement("option");
+            o.value = opt.value;
+            o.textContent = opt.label;
+            sel.appendChild(o);
+          });
+          var def = schema.default || ((schema.options || [])[0] || {}).value;
+          if (def !== undefined) sel.value = String(def);
+          row2.appendChild(span);
+          row2.appendChild(sel);
+          wrap.appendChild(row2);
+        }
+      });
+      var applyBtn = document.createElement("button");
+      applyBtn.type = "button";
+      applyBtn.className = "splitr-apply-params-btn";
+      applyBtn.textContent = "Apply";
+      applyBtn.addEventListener("click", async function () {
+        var spec = splitrBuildSpecFromControls(typeKey, wrap);
+        if (!spec) return;
+        try {
+          await splitrApplyProcessingSpec(spec);
+          setStatus("Applied " + typeKey + ".");
+        } catch (e) {
+          setStatus(e.message || "Process failed.", true);
+        }
+      });
+      wrap.appendChild(applyBtn);
+      return wrap;
+    }
+
+    async function splitrApplyProcessingSpec(processingSpec) {
+      var item = getActiveSplitrItem();
+      if (!item) return;
+      var res = await fetch("/api/folysplitr/process", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: item.path, processing_spec: processingSpec })
+      });
+      var payload = await res.json();
+      if (!res.ok || !payload.ok) throw new Error(payload.error || "Process failed");
+      await refreshRecordingsList();
+      var current = payload.file && payload.file.path;
+      if (current) {
+        splitrIndex = recordingsList.findIndex(function (r) { return r.path === current; });
+        if (splitrIndex < 0) splitrIndex = 0;
+      }
+      renderSplitrCurrent();
     }
 
     function defaultMarkersFromDuration(duration) {
@@ -1372,12 +1632,32 @@
         return;
       }
 
+      var paramControls = renderSplitrParamControls(splitrActiveProcessingType);
+      if (paramControls) splitrActionsEl.appendChild(paramControls);
+
       (processingCatalog.actions || [])
         .filter(function (action) { return action.type === splitrActiveProcessingType; })
         .forEach(function (action) {
           addActionButton(action.label, async function () {
             try {
-              await splitrProcess(action.command, action.params || {});
+              var specStr = action.spec || action.token;
+              var paramWrap = splitrActionsEl.querySelector('[data-splitr-param-type="' + splitrActiveProcessingType + '"]');
+              if (paramWrap && specStr && specStr.indexOf("[") !== -1) {
+                var bracketParams = {};
+                var re = /\[([^\]=]+)\s*=\s*([^\]]*)\]/g;
+                var m;
+                while ((m = re.exec(specStr)) !== null) {
+                  var raw = m[2].trim();
+                  var num = parseFloat(raw);
+                  bracketParams[m[1].trim()] = isFinite(num) && String(num) === raw ? num : raw;
+                }
+                splitrApplyBracketParams(paramWrap, splitrActiveProcessingType, bracketParams);
+              }
+              if (specStr) {
+                await splitrApplyProcessingSpec(specStr);
+              } else {
+                await splitrProcess(action.command, action.params || {});
+              }
               setStatus("Applied " + action.label + ".");
             } catch (e) {
               setStatus(e.message || "Process failed.", true);

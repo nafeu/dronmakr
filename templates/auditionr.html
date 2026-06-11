@@ -2078,7 +2078,7 @@
 
     loadGeneratrPostProcessQueueFromStorage();
 
-    var EDIT_SECTION_ORDER = ["fade", "eq", "gain", "filter", "noisegate", "timestretch", "paulstretch", "pitch", "reverb", "delay", "compress", "overdrive", "distort", "chorus", "flanger", "phaser"];
+    var EDIT_SECTION_ORDER = ["fade", "padding", "eq", "gain", "filter", "noisegate", "timestretch", "paulstretch", "pitch", "reverb", "delay", "compress", "overdrive", "distort", "chorus", "flanger", "phaser"];
     /** Beat multipliers for tempo-sync delay preview (matches dsp.delay_division_to_seconds). */
     var EDIT_DELAY_DIV_BEATS = {
       "1/64": 1 / 16,
@@ -2260,6 +2260,9 @@
       if (schema.range_db) return fmtSpecNum(phys) + " dB";
       if (schema.range_hz) return fmtSpecNum(phys) + " Hz";
       if (schema.range_ms) return fmtSpecNum(phys) + " ms";
+      if (schema.display_scale) {
+        return fmtSpecNum(phys * schema.display_scale) + (schema.display_suffix || "");
+      }
       if (schema.range_linear) return fmtSpecNum(phys);
       return fmtSpecNum(phys);
     }
@@ -3277,6 +3280,11 @@
           var style = readEditControl(sectionEl, "style") || "in";
           var ms = phys("duration_ms_ui");
           return "fade:[style=" + style + "][duration_ms=" + fmtSpecNum(ms) + "]";
+        }
+        case "padding": {
+          var side = readEditControl(sectionEl, "side") || "after";
+          var amt = phys("amount_ui");
+          return "padding:[side=" + side + "][amount=" + fmtSpecNum(amt) + "]";
         }
         case "eq": {
           var band = readEditControl(sectionEl, "band") || "lows";

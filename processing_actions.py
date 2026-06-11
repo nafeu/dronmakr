@@ -57,6 +57,7 @@ from process_sample import (
     fade_sample_start,
     increase_sample_gain,
     normalize_sample,
+    pad_sample,
     trim_sample_end,
     trim_sample_start,
 )
@@ -68,6 +69,7 @@ PROCESSING_TYPES = [
     {"key": "gain", "label": "Gain"},
     {"key": "filter", "label": "Filter"},
     {"key": "normalize", "label": "Normalize"},
+    {"key": "padding", "label": "Padding"},
     {"key": "noisegate", "label": "Noisegate"},
     {"key": "timestretch", "label": "Time stretch"},
     {"key": "paulstretch", "label": "Paulstretch"},
@@ -389,6 +391,32 @@ _PARAM_SCHEMAS_UI: dict[str, list[dict]] = {
         },
     ],
     "normalize": [],
+    "padding": [
+        {
+            "key": "side",
+            "label": "Side",
+            "widget": "select",
+            "options": [
+                {"value": "before", "label": "Before (prepend silence)"},
+                {"value": "after", "label": "After (append silence)"},
+            ],
+            "default": "after",
+        },
+        {
+            "key": "amount_ui",
+            "label": "Amount",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.01,
+            "default": 0.25,
+            "maps_to": "amount",
+            "range_linear": [0, 2],
+            "display_scale": 100,
+            "display_suffix": "%",
+            "hint": "Silence length as a percentage of the current sample (200% doubles total length).",
+        },
+    ],
     "noisegate": [
         {
             "key": "threshold_db_ui",
@@ -1070,6 +1098,19 @@ def action_from_bracket_segment(seg: str) -> dict:
     if ptype == "normalize":
         return {"token": seg_stripped, "command": "normalize_sample", "params": {}}
 
+    if ptype == "padding":
+        side = str(params.get("side", "after")).strip().lower()
+        if side not in ("before", "after"):
+            raise ValueError("padding: requires side=before|after")
+        amount = float(params.get("amount", 0))
+        if amount < 0 or amount > 2:
+            raise ValueError("padding: amount must be between 0 and 2")
+        return {
+            "token": seg_stripped,
+            "command": "pad_sample",
+            "params": {"amount": amount, "side": side},
+        }
+
     if ptype == "cut":
         edge = str(params.get("edge", "")).lower()
         if edge not in ("start", "end"):
@@ -1356,6 +1397,9 @@ _ADDITIVE_SHORTCUT_DEFAULTS: list[dict[str, str]] = [
     {"name": "out 50ms", "type": "fade", "command": "fade:[style=out][duration_ms=50]"},
     {"name": "out 200ms", "type": "fade", "command": "fade:[style=out][duration_ms=200]"},
     {"name": "out 500ms", "type": "fade", "command": "fade:[style=out][duration_ms=500]"},
+    {"name": "1.25x", "type": "padding", "command": "padding:[side=after][amount=0.25]"},
+    {"name": "1.5x", "type": "padding", "command": "padding:[side=after][amount=0.5]"},
+    {"name": "2x", "type": "padding", "command": "padding:[side=after][amount=1]"},
 ]
 
 
@@ -1775,6 +1819,12 @@ def apply_processing_command(file_path: str, command: str, params: dict | None =
             )
         case "normalize_sample":
             normalize_sample(file_path)
+        case "pad_sample":
+            pad_sample(
+                file_path,
+                p.get("amount", 0),
+                side=p.get("side", "after"),
+            )
         case "noisegate_sample":
             apply_noise_gate_to_sample(
                 file_path,

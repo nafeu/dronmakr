@@ -20,7 +20,11 @@ import soundfile as sf
 from flask import jsonify, request, send_from_directory
 from werkzeug.utils import secure_filename
 from process_sample import trim_sample_start, trim_sample_end, reverse_sample
-from processing_actions import apply_processing_command, get_processing_actions_payload
+from processing_actions import (
+    apply_processing_command,
+    get_processing_actions_payload,
+    parse_single_processing_spec,
+)
 from paths import get_files_root_path
 from bundle_paths import resolve_ffmpeg_executable
 from utils import EXPORTS_DIR
@@ -363,13 +367,21 @@ def register_folysplitr(app):
         params = request.get_json(silent=True) or {}
         source = _resolve_audio_path(params.get("path", ""))
         command = (params.get("command") or "").strip()
+        processing_spec = (params.get("processing_spec") or "").strip()
         if source is None or not source.exists() or not source.is_file():
             return jsonify({"ok": False, "error": "File does not exist"}), 404
-        if not command:
+        if not command and not processing_spec:
             return jsonify({"ok": False, "error": "Missing command"}), 400
         try:
             _save_undo_snapshot(source)
-            if command == "trim_sample_start":
+            if processing_spec:
+                action = parse_single_processing_spec(processing_spec)
+                apply_processing_command(
+                    str(source),
+                    action.get("command", ""),
+                    action.get("params") or {},
+                )
+            elif command == "trim_sample_start":
                 trim_sample_start(str(source), float(params.get("seconds", 0)))
             elif command == "trim_sample_end":
                 trim_sample_end(str(source), float(params.get("seconds", 0)))
