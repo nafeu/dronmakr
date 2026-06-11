@@ -18,6 +18,8 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.error
+import urllib.request
 import webbrowser
 
 from flask import Flask, jsonify, redirect, render_template, request, send_from_directory, url_for
@@ -449,6 +451,44 @@ register_folysplitr(app)
 register_flask_server_error_signals(app)
 
 
+def _print_webui_startup_header() -> None:
+    """Print version banner first, then errors.log path and other startup lines."""
+    print(get_version())
+    ensure_server_error_file_logging(announce=True)
+
+
+def _health_probe_url(host: str, port: int) -> str:
+    probe_host = "127.0.0.1" if host in ("0.0.0.0", "::") else host
+    return f"http://{probe_host}:{int(port)}/api/health"
+
+
+def _wait_for_server_health(host: str, port: int, timeout_s: float = 30.0) -> bool:
+    url = _health_probe_url(host, port)
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        try:
+            with urllib.request.urlopen(url, timeout=1.0) as resp:
+                if resp.getcode() == 200:
+                    return True
+        except (urllib.error.URLError, TimeoutError, OSError, ValueError):
+            pass
+        time.sleep(0.15)
+    return False
+
+
+def _print_webui_ready_messages(*, debug: bool, port: int) -> None:
+    open_url = f"http://localhost:{port}"
+    if debug:
+        print(with_prompt(f"Open: {open_url} in your browser."))
+        print(
+            with_final_main_prompt(
+                "Dev mode: template changes apply on refresh (no restart needed)."
+            )
+        )
+    else:
+        print(with_final_main_prompt(f"Open: {open_url} in your browser."))
+
+
 def _macos_default_http_handler_app_path() -> str | None:
     """Path to the .app bundle Launch Services uses for http: URLs (macOS only)."""
     if sys.platform != "darwin":
@@ -514,8 +554,7 @@ def run(
     if debug:
         app.config["TEMPLATES_AUTO_RELOAD"] = True
 
-    ensure_server_error_file_logging(announce=True)
-    print(get_version())
+    _print_webui_startup_header()
     ensure_settings()
     if has_configured_files_root():
         ensure_managed_files_root()
@@ -534,16 +573,6 @@ def run(
     ensure_all_sample_caches()
     print(with_prompt("Sample cache ready."))
 
-    if debug:
-        print(with_prompt(f"Open: http://localhost:{port} in your browser."))
-        print(
-            with_final_main_prompt(
-                "Dev mode: template changes apply on refresh (no restart needed)."
-            )
-        )
-    else:
-        print(with_final_main_prompt(f"Open: http://localhost:{port} in your browser."))
-
     def _run_server():
         socketio.run(
             app,
@@ -556,7 +585,10 @@ def run(
     server_thread = threading.Thread(target=_run_server, daemon=False)
     server_thread.start()
 
-    time.sleep(1)
+    if not _wait_for_server_health(host, port):
+        print(with_prompt("Server did not become ready in time."), flush=True)
+
+    _print_webui_ready_messages(debug=debug, port=port)
 
     if open_browser and server_thread.is_alive():
         open_webui_in_browser(f"http://localhost:{port}")
@@ -604,7 +636,7 @@ def start_server(
     """Start web server in a background thread for desktop runtime."""
     global DEBUG_WEBSOCKETS
     DEBUG_WEBSOCKETS = debug
-    ensure_server_error_file_logging(announce=True)
+    _print_webui_startup_header()
     if stderr_logging:
         configure_desktop_process_logging(
             logging.DEBUG if debug else logging.INFO
