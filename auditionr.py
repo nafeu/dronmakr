@@ -74,6 +74,7 @@ from generate_transition import (
     generate_drop_sample,
     parse_closh_config,
     parse_sweep_config,
+    parse_sweep_config_from_legacy_strings,
 )
 from generate_bass import (
     generate_donk_sample,
@@ -593,6 +594,41 @@ def _float_field(payload: dict, key: str, default: float) -> float:
         return default
 
 
+def _optional_bool_field(payload: dict, key: str) -> bool | None:
+    if key not in payload:
+        return None
+    raw = payload.get(key)
+    if isinstance(raw, bool):
+        return raw
+    if isinstance(raw, str):
+        lowered = raw.strip().lower()
+        if lowered in ("true", "1", "yes", "on"):
+            return True
+        if lowered in ("false", "0", "no", "off"):
+            return False
+    if isinstance(raw, (int, float)):
+        return bool(raw)
+    return None
+
+
+def _optional_float_field(payload: dict, key: str) -> float | None:
+    if key not in payload or payload.get(key) is None:
+        return None
+    try:
+        return float(payload[key])
+    except (TypeError, ValueError):
+        return None
+
+
+def _optional_int_field(payload: dict, key: str) -> int | None:
+    if key not in payload or payload.get(key) is None:
+        return None
+    try:
+        return int(payload[key])
+    except (TypeError, ValueError):
+        return None
+
+
 def _apply_drone_post_processing_to_wavs(
     wav_paths: list[str], post_processing: str | None
 ) -> None:
@@ -869,7 +905,45 @@ def _run_generate_transition(subcommand: str, payload: dict) -> list[str]:
         )
 
     def _sweep_config_from_payload():
-        return parse_sweep_config(
+        if subcommand == "sweep":
+            return parse_sweep_config(
+                voice=_optional_trimmed(payload, "voice"),
+                curve_shape=_optional_trimmed(payload, "curveShape"),
+                curve_peak=_optional_float_field(payload, "curvePeak"),
+                curve_decay=_optional_float_field(payload, "curveDecay"),
+                filter_enabled=_optional_bool_field(payload, "filterEnabled"),
+                filter_type=_optional_trimmed(payload, "filterType"),
+                filter_cutoff_low=_optional_int_field(payload, "filterCutoffLow"),
+                filter_cutoff_high=_optional_int_field(payload, "filterCutoffHigh"),
+                tremolo_enabled=_optional_bool_field(payload, "tremoloEnabled"),
+                tremolo_rate_min=_optional_float_field(payload, "tremoloRateMin"),
+                tremolo_rate_max=_optional_float_field(payload, "tremoloRateMax"),
+                tremolo_depth=_optional_float_field(payload, "tremoloDepth"),
+                phaser_enabled=_optional_bool_field(payload, "phaserEnabled"),
+                phaser_rate_min=_optional_float_field(payload, "phaserRateMin"),
+                phaser_rate_max=_optional_float_field(payload, "phaserRateMax"),
+                phaser_depth=_optional_float_field(payload, "phaserDepth"),
+                phaser_centre=_optional_float_field(payload, "phaserCentre"),
+                phaser_feedback=_optional_float_field(payload, "phaserFeedback"),
+                phaser_mix=_optional_float_field(payload, "phaserMix"),
+                chorus_enabled=_optional_bool_field(payload, "chorusEnabled"),
+                chorus_rate_min=_optional_float_field(payload, "chorusRateMin"),
+                chorus_rate_max=_optional_float_field(payload, "chorusRateMax"),
+                chorus_depth=_optional_float_field(payload, "chorusDepth"),
+                chorus_delay=_optional_float_field(payload, "chorusDelay"),
+                chorus_mix=_optional_float_field(payload, "chorusMix"),
+                flanger_enabled=_optional_bool_field(payload, "flangerEnabled"),
+                flanger_rate_min=_optional_float_field(payload, "flangerRateMin"),
+                flanger_rate_max=_optional_float_field(payload, "flangerRateMax"),
+                flanger_depth=_optional_float_field(payload, "flangerDepth"),
+                flanger_delay=_optional_float_field(payload, "flangerDelay"),
+                flanger_feedback=_optional_float_field(payload, "flangerFeedback"),
+                flanger_mix=_optional_float_field(payload, "flangerMix"),
+                gain_enabled=_optional_bool_field(payload, "gainEnabled"),
+                gain_min=_optional_float_field(payload, "gainMin"),
+                gain_max=_optional_float_field(payload, "gainMax"),
+            )
+        return parse_sweep_config_from_legacy_strings(
             sound=_optional_trimmed(payload, "sound"),
             curve=_optional_trimmed(payload, "curve"),
             filter_str=_optional_trimmed(payload, "filterStr"),

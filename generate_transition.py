@@ -59,6 +59,24 @@ VOICE_TYPES: tuple[Literal["noise", "sine", "saw", "tri", "square"], ...] = (
     "tri",
     "square",
 )
+SWEEP_VOICE_CHOICES: tuple[str, ...] = (
+    "whitenoise",
+    "pinknoise",
+    "brownnoise",
+    "bluenoise",
+    "sine",
+    "saw",
+    "tri",
+    "square",
+)
+_NOISE_VOICE_MAP: dict[str, Literal["white", "pink", "brown", "blue"]] = {
+    "whitenoise": "white",
+    "pinknoise": "pink",
+    "brownnoise": "brown",
+    "bluenoise": "blue",
+}
+GAIN_MIN_RANGE = (0.0, 0.2)
+GAIN_MAX_RANGE = (0.75, 1.0)
 OSC_FREQ_LOW_RANGE = (55, 220)  # A1 to A3
 OSC_FREQ_HIGH_RANGE = (880, 4000)  # A5 to ~B7 (used only when freq_high explicit)
 OSC_OCTAVE_SPAN_RANGE = (
@@ -163,106 +181,431 @@ def _resolve_choice(parsed: dict[str, str], key: str, choices: tuple[str, ...]) 
     return next(c for c in choices if c.lower() == val.lower())
 
 
-def _resolve_phaser_params(parsed: dict[str, str]) -> dict[str, float]:
+def _resolve_optional_float(
+    value: float | None,
+    default_range: tuple[float, float],
+    min_val: float | None = None,
+    max_val: float | None = None,
+) -> float:
+    if value is None:
+        v = random.uniform(*default_range)
+    else:
+        v = float(value)
+    if min_val is not None:
+        v = max(min_val, v)
+    if max_val is not None:
+        v = min(max_val, v)
+    return v
+
+
+def _resolve_optional_int(
+    value: int | None,
+    default_range: tuple[int, int],
+    min_val: int | None = None,
+    max_val: int | None = None,
+) -> int:
+    if value is None:
+        v = random.randint(*default_range)
+    else:
+        v = int(value)
+    if min_val is not None:
+        v = max(min_val, v)
+    if max_val is not None:
+        v = min(max_val, v)
+    return v
+
+
+def _resolve_optional_choice(
+    value: str | None, choices: tuple[str, ...]
+) -> str:
+    if value is None or _is_random(value):
+        return random.choice(choices)
+    lowered = {c.lower(): c for c in choices}
+    return lowered.get(value.lower(), random.choice(choices))
+
+
+def _parse_disable_set(disable: str | None) -> set[str]:
+    disabled: set[str] = set()
+    if not disable:
+        return disabled
+    for d in re.split(r"[\s,]+", disable.strip().lower()):
+        d = d.strip()
+        if d == "fx":
+            disabled.update(("filter", "tremolo", "phaser", "chorus", "flanger", "gain"))
+        elif d in ("filter", "tremolo", "phaser", "chorus", "flanger", "gain"):
+            disabled.add(d)
+    return disabled
+
+
+def _resolve_effect_enabled(
+    explicit: bool | None,
+    disabled: set[str],
+    name: str,
+    *,
+    default_when_unset: bool,
+) -> bool:
+    if name in disabled:
+        return False
+    if explicit is not None:
+        return explicit
+    return default_when_unset
+
+
+def _resolve_osc_voice_params(voice: Literal["sine", "saw", "tri", "square"]) -> dict[str, Any]:
+    """Randomize oscillator sweep params for a fixed waveform voice."""
+    C5_HZ = 523.25
+    freq_high = C5_HZ
+    octaves = random.uniform(*OSC_OCTAVE_SPAN_RANGE)
+    min_low_allowed = max(20.0, freq_high / (2.0**5))
+    freq_low = max(freq_high / (2.0**octaves), min_low_allowed)
+    if freq_low >= freq_high:
+        freq_low = max(20.0, freq_high / 2.0)
+    max_span_low = max(freq_high / (2.0**5), 20.0)
+    if freq_low < max_span_low:
+        freq_low = max_span_low
     return {
-        "rate_hz": _resolve_float(parsed, "rate_hz", PHASER_RATE_RANGE, 0.1, 10),
-        "depth": _resolve_float(parsed, "depth", PHASER_DEPTH_RANGE, 0, 1),
-        "centre_frequency_hz": _resolve_float(
-            parsed, "centre_frequency_hz", PHASER_CENTRE_RANGE, 100, 10000
-        ),
-        "feedback": _resolve_float(parsed, "feedback", PHASER_FEEDBACK_RANGE, 0, 1),
-        "mix": _resolve_float(parsed, "mix", PHASER_MIX_RANGE, 0, 1),
+        "voice": voice,
+        "osc_freq_low": freq_low,
+        "osc_freq_high": freq_high,
+        "osc_level": random.uniform(*OSC_LEVEL_RANGE),
+        "pulse_width": random.uniform(*PULSE_WIDTH_RANGE),
+        "pwm_sweep": random.uniform(*PWM_SWEEP_RANGE),
+        "detune_cents": random.uniform(*DETUNE_CENTS_RANGE),
+        "detune_mix": random.uniform(*DETUNE_MIX_RANGE),
+        "resonance": random.uniform(0, 1),
     }
+
+
+def _resolve_sweep_voice_params(voice: str | None) -> dict[str, Any]:
+    """Resolve --voice (whitenoise, pinknoise, …, sine, saw, tri, square)."""
+    picked = _resolve_optional_choice(voice, SWEEP_VOICE_CHOICES)
+    if picked in _NOISE_VOICE_MAP:
+        return {
+            "voice": "noise",
+            "sweep_voice": picked,
+            "noise_type": _NOISE_VOICE_MAP[picked],
+            "noise_level": random.uniform(*NOISE_LEVEL_RANGE),
+        }
+    osc_voice = picked  # type: ignore[assignment]
+    return {"sweep_voice": picked, **_resolve_osc_voice_params(osc_voice)}
+
+
+def _resolve_phaser_params_from_explicit(
+    *,
+    rate_min: float | None,
+    rate_max: float | None,
+    depth: float | None,
+    centre: float | None,
+    feedback: float | None,
+    mix: float | None,
+) -> dict[str, float]:
+    resolved_rate_min = _resolve_optional_float(rate_min, PHASER_RATE_RANGE, 0.1, 10)
+    resolved_rate_max = _resolve_optional_float(rate_max, PHASER_RATE_RANGE, 0.1, 10)
+    resolved_rate_max = max(resolved_rate_max, resolved_rate_min + 0.05)
+    return {
+        "rate_min_hz": resolved_rate_min,
+        "rate_max_hz": resolved_rate_max,
+        "depth": _resolve_optional_float(depth, PHASER_DEPTH_RANGE, 0, 1),
+        "centre_frequency_hz": _resolve_optional_float(
+            centre, PHASER_CENTRE_RANGE, 100, 10000
+        ),
+        "feedback": _resolve_optional_float(feedback, PHASER_FEEDBACK_RANGE, 0, 1),
+        "mix": _resolve_optional_float(mix, PHASER_MIX_RANGE, 0, 1),
+    }
+
+
+def _resolve_chorus_params_from_explicit(
+    *,
+    rate_min: float | None,
+    rate_max: float | None,
+    depth: float | None,
+    delay: float | None,
+    mix: float | None,
+) -> dict[str, float]:
+    resolved_rate_min = _resolve_optional_float(rate_min, CHORUS_RATE_RANGE, 0.1, 10)
+    resolved_rate_max = _resolve_optional_float(rate_max, CHORUS_RATE_RANGE, 0.1, 10)
+    resolved_rate_max = max(resolved_rate_max, resolved_rate_min + 0.05)
+    return {
+        "rate_min_hz": resolved_rate_min,
+        "rate_max_hz": resolved_rate_max,
+        "depth": _resolve_optional_float(depth, CHORUS_DEPTH_RANGE, 0, 1),
+        "centre_delay_ms": _resolve_optional_float(delay, CHORUS_DELAY_RANGE, 1, 20),
+        "feedback": 0.0,
+        "mix": _resolve_optional_float(mix, CHORUS_MIX_RANGE, 0, 1),
+    }
+
+
+def _resolve_flanger_params_from_explicit(
+    *,
+    rate_min: float | None,
+    rate_max: float | None,
+    depth: float | None,
+    delay: float | None,
+    feedback: float | None,
+    mix: float | None,
+) -> dict[str, float]:
+    resolved_rate_min = _resolve_optional_float(rate_min, FLANGER_RATE_RANGE, 0.1, 5)
+    resolved_rate_max = _resolve_optional_float(rate_max, FLANGER_RATE_RANGE, 0.1, 5)
+    resolved_rate_max = max(resolved_rate_max, resolved_rate_min + 0.05)
+    return {
+        "rate_min_hz": resolved_rate_min,
+        "rate_max_hz": resolved_rate_max,
+        "depth": _resolve_optional_float(depth, FLANGER_DEPTH_RANGE, 0, 1),
+        "centre_delay_ms": _resolve_optional_float(delay, FLANGER_DELAY_RANGE, 0.5, 10),
+        "feedback": _resolve_optional_float(feedback, FLANGER_FEEDBACK_RANGE, 0, 0.8),
+        "mix": _resolve_optional_float(mix, FLANGER_MIX_RANGE, 0, 1),
+    }
+
+
+def _resolve_phaser_params(parsed: dict[str, str]) -> dict[str, float]:
+    rate = _resolve_float(parsed, "rate_hz", PHASER_RATE_RANGE, 0.1, 10)
+    return _resolve_phaser_params_from_explicit(
+        rate_min=rate,
+        rate_max=rate,
+        depth=_resolve_float(parsed, "depth", PHASER_DEPTH_RANGE, 0, 1),
+        centre=_resolve_float(parsed, "centre_frequency_hz", PHASER_CENTRE_RANGE, 100, 10000),
+        feedback=_resolve_float(parsed, "feedback", PHASER_FEEDBACK_RANGE, 0, 1),
+        mix=_resolve_float(parsed, "mix", PHASER_MIX_RANGE, 0, 1),
+    )
 
 
 def _resolve_chorus_params(parsed: dict[str, str]) -> dict[str, float]:
-    return {
-        "rate_hz": _resolve_float(parsed, "rate_hz", CHORUS_RATE_RANGE, 0.1, 10),
-        "depth": _resolve_float(parsed, "depth", CHORUS_DEPTH_RANGE, 0, 1),
-        "centre_delay_ms": _resolve_float(
-            parsed, "centre_delay_ms", CHORUS_DELAY_RANGE, 1, 20
-        ),
-        "feedback": _resolve_float(parsed, "feedback", (0, 0.5), 0, 0.5),
-        "mix": _resolve_float(parsed, "mix", CHORUS_MIX_RANGE, 0, 1),
-    }
+    rate = _resolve_float(parsed, "rate_hz", CHORUS_RATE_RANGE, 0.1, 10)
+    return _resolve_chorus_params_from_explicit(
+        rate_min=rate,
+        rate_max=rate,
+        depth=_resolve_float(parsed, "depth", CHORUS_DEPTH_RANGE, 0, 1),
+        delay=_resolve_float(parsed, "centre_delay_ms", CHORUS_DELAY_RANGE, 1, 20),
+        mix=_resolve_float(parsed, "mix", CHORUS_MIX_RANGE, 0, 1),
+    )
 
 
 def _resolve_flanger_params(parsed: dict[str, str]) -> dict[str, float]:
-    return {
-        "rate_hz": _resolve_float(parsed, "rate_hz", FLANGER_RATE_RANGE, 0.1, 5),
-        "depth": _resolve_float(parsed, "depth", FLANGER_DEPTH_RANGE, 0, 1),
-        "centre_delay_ms": _resolve_float(
-            parsed, "centre_delay_ms", FLANGER_DELAY_RANGE, 0.5, 10
-        ),
-        "feedback": _resolve_float(parsed, "feedback", FLANGER_FEEDBACK_RANGE, 0, 0.8),
-        "mix": _resolve_float(parsed, "mix", FLANGER_MIX_RANGE, 0, 1),
-    }
+    rate = _resolve_float(parsed, "rate_hz", FLANGER_RATE_RANGE, 0.1, 5)
+    return _resolve_flanger_params_from_explicit(
+        rate_min=rate,
+        rate_max=rate,
+        depth=_resolve_float(parsed, "depth", FLANGER_DEPTH_RANGE, 0, 1),
+        delay=_resolve_float(parsed, "centre_delay_ms", FLANGER_DELAY_RANGE, 0.5, 10),
+        feedback=_resolve_float(parsed, "feedback", FLANGER_FEEDBACK_RANGE, 0, 0.8),
+        mix=_resolve_float(parsed, "mix", FLANGER_MIX_RANGE, 0, 1),
+    )
 
 
 def _resolve_sound_params(parsed: dict[str, str]) -> dict[str, Any]:
-    """Resolve voice-specific params from parsed --sound string."""
+    """Resolve legacy --sound string params (riser/drop compatibility)."""
     voice = _resolve_choice(parsed, "voice", VOICE_TYPES)
-
-    result: dict[str, Any] = {"voice": voice}
-
     if voice == "noise":
-        result["noise_type"] = _resolve_choice(parsed, "type", NOISE_TYPES)
-        result["noise_level"] = _resolve_float(
-            parsed, "noise_level", NOISE_LEVEL_RANGE, 0.2, 1.0
+        noise_type = _resolve_choice(parsed, "type", NOISE_TYPES)
+        noise_key = {
+            "white": "whitenoise",
+            "pink": "pinknoise",
+            "brown": "brownnoise",
+            "blue": "bluenoise",
+        }[noise_type]
+        return {
+            "voice": "noise",
+            "sweep_voice": noise_key,
+            "noise_type": noise_type,
+            "noise_level": _resolve_float(parsed, "noise_level", NOISE_LEVEL_RANGE, 0.2, 1.0),
+        }
+    osc = _resolve_osc_voice_params(voice)  # type: ignore[arg-type]
+    osc["sweep_voice"] = voice
+    if parsed.get("freq_high") and not _is_random(parsed.get("freq_high")):
+        osc["osc_freq_high"] = _resolve_float(
+            parsed, "freq_high", OSC_FREQ_HIGH_RANGE, 40, 523.25
         )
-    else:
-        # Oscillator: sine, saw, tri, square
-        # Constraint: peak pitch fixed at (or below) C5, start up to 5 octaves lower.
-        C5_HZ = 523.25
-
-        # Resolve requested high freq; always clamp to C5 so the peak is never above it.
-        freq_high_raw = parsed.get("freq_high")
-        if freq_high_raw and not _is_random(freq_high_raw):
-            freq_high = _resolve_float(
-                parsed, "freq_high", OSC_FREQ_HIGH_RANGE, 40, C5_HZ
-            )
-        else:
-            # Default: use C5 as the peak frequency.
-            freq_high = C5_HZ
-
-        # Resolve octave span (for randomization / when freq_low not explicitly set).
-        octaves = _resolve_float(parsed, "octaves", OSC_OCTAVE_SPAN_RANGE, 1.0, 5.0)
-
-        # Resolve low freq; if not given, derive from high and octave span.
-        freq_low_raw = parsed.get("freq_low")
-        if freq_low_raw and not _is_random(freq_low_raw):
-            freq_low = _resolve_float(parsed, "freq_low", OSC_FREQ_LOW_RANGE, 20, 2000)
-        else:
-            min_low_allowed = max(20.0, freq_high / (2.0**5))  # at most 5 octaves below
-            freq_low = max(freq_high / (2.0**octaves), min_low_allowed)
-
-        # Final safety: ensure ordering and max 5-octave span.
-        if freq_low >= freq_high:
-            freq_low = max(20.0, freq_high / 2.0)
-        max_span_low = max(freq_high / (2.0**5), 20.0)
-        if freq_low < max_span_low:
-            freq_low = max_span_low
-        result["osc_freq_low"] = freq_low
-        result["osc_freq_high"] = freq_high
-        result["osc_level"] = _resolve_float(parsed, "level", OSC_LEVEL_RANGE, 0.1, 1.0)
-        result["pulse_width"] = _resolve_float(
-            parsed, "pulse_width", PULSE_WIDTH_RANGE, 0.1, 0.9
-        )
-        result["pwm_sweep"] = _resolve_float(
-            parsed, "pwm_sweep", PWM_SWEEP_RANGE, 0, 0.5
-        )
-        result["detune_cents"] = _resolve_float(
-            parsed, "detune_cents", DETUNE_CENTS_RANGE, 1, 50
-        )
-        result["detune_mix"] = _resolve_float(
-            parsed, "detune_mix", DETUNE_MIX_RANGE, 0, 1
-        )
-        result["resonance"] = _resolve_float(parsed, "resonance", (0, 1), 0, 1)
-
-    return result
+    if parsed.get("freq_low") and not _is_random(parsed.get("freq_low")):
+        osc["osc_freq_low"] = _resolve_float(parsed, "freq_low", OSC_FREQ_LOW_RANGE, 20, 2000)
+    if parsed.get("level") and not _is_random(parsed.get("level")):
+        osc["osc_level"] = _resolve_float(parsed, "level", OSC_LEVEL_RANGE, 0.1, 1.0)
+    return osc
 
 
 def parse_sweep_config(
+    *,
+    voice: str | None = None,
+    curve_shape: str | None = None,
+    curve_peak: float | None = None,
+    curve_decay: float | None = None,
+    filter_enabled: bool | None = None,
+    filter_type: str | None = None,
+    filter_cutoff_low: int | None = None,
+    filter_cutoff_high: int | None = None,
+    tremolo_enabled: bool | None = None,
+    tremolo_rate_min: float | None = None,
+    tremolo_rate_max: float | None = None,
+    tremolo_depth: float | None = None,
+    phaser_enabled: bool | None = None,
+    phaser_rate_min: float | None = None,
+    phaser_rate_max: float | None = None,
+    phaser_depth: float | None = None,
+    phaser_centre: float | None = None,
+    phaser_feedback: float | None = None,
+    phaser_mix: float | None = None,
+    chorus_enabled: bool | None = None,
+    chorus_rate_min: float | None = None,
+    chorus_rate_max: float | None = None,
+    chorus_depth: float | None = None,
+    chorus_delay: float | None = None,
+    chorus_mix: float | None = None,
+    flanger_enabled: bool | None = None,
+    flanger_rate_min: float | None = None,
+    flanger_rate_max: float | None = None,
+    flanger_depth: float | None = None,
+    flanger_delay: float | None = None,
+    flanger_feedback: float | None = None,
+    flanger_mix: float | None = None,
+    gain_enabled: bool | None = None,
+    gain_min: float | None = None,
+    gain_max: float | None = None,
+    disable: str | None = None,
+) -> dict[str, Any]:
+    """Resolve sweep config from explicit CLI / API options (omit for random)."""
+    disabled = _parse_disable_set(disable)
+    voice_params = _resolve_sweep_voice_params(voice)
+
+    resolved_tremolo_rate_min = _resolve_optional_float(
+        tremolo_rate_min, TREMOLO_RATE_MIN_RANGE, 0.05, 20
+    )
+    resolved_tremolo_rate_max = _resolve_optional_float(
+        tremolo_rate_max, TREMOLO_RATE_MAX_RANGE, 2, 50
+    )
+    resolved_tremolo_rate_max = max(
+        resolved_tremolo_rate_max, resolved_tremolo_rate_min + 1.0
+    )
+
+    use_filter = _resolve_effect_enabled(
+        filter_enabled, disabled, "filter", default_when_unset=True
+    )
+    use_tremolo = _resolve_effect_enabled(
+        tremolo_enabled, disabled, "tremolo", default_when_unset=True
+    )
+    phaser_explicit = any(
+        v is not None
+        for v in (
+            phaser_rate_min,
+            phaser_rate_max,
+            phaser_depth,
+            phaser_centre,
+            phaser_feedback,
+            phaser_mix,
+        )
+    )
+    chorus_explicit = any(
+        v is not None
+        for v in (chorus_rate_min, chorus_rate_max, chorus_depth, chorus_delay, chorus_mix)
+    )
+    flanger_explicit = any(
+        v is not None
+        for v in (
+            flanger_rate_min,
+            flanger_rate_max,
+            flanger_depth,
+            flanger_delay,
+            flanger_feedback,
+            flanger_mix,
+        )
+    )
+    use_phaser = _resolve_effect_enabled(
+        phaser_enabled,
+        disabled,
+        "phaser",
+        default_when_unset=phaser_explicit or random.random() < 0.5,
+    )
+    use_chorus = _resolve_effect_enabled(
+        chorus_enabled,
+        disabled,
+        "chorus",
+        default_when_unset=chorus_explicit or random.random() < 0.5,
+    )
+    use_flanger = _resolve_effect_enabled(
+        flanger_enabled,
+        disabled,
+        "flanger",
+        default_when_unset=flanger_explicit or random.random() < 0.5,
+    )
+    use_gain = _resolve_effect_enabled(
+        gain_enabled, disabled, "gain", default_when_unset=True
+    )
+
+    cutoff_low = _resolve_optional_int(filter_cutoff_low, CUTOFF_LOW_RANGE, 50, 5000)
+    cutoff_high = _resolve_optional_int(filter_cutoff_high, CUTOFF_HIGH_RANGE, 1000, 20000)
+    cutoff_high = max(cutoff_high, cutoff_low + 500)
+
+    return {
+        **voice_params,
+        "build_shape": _resolve_optional_choice(curve_shape, BUILD_SHAPES),  # type: ignore[arg-type]
+        "decay_rate": _resolve_optional_float(curve_decay, DECAY_RATE_RANGE, 0.5, 15.0),
+        "peak_pos": _resolve_optional_float(curve_peak, PEAK_POS_RANGE, 0.15, 0.85),
+        "filter_enabled": use_filter,
+        "cutoff_low": cutoff_low,
+        "cutoff_high": cutoff_high,
+        "filter_sweep_type": (
+            "none"
+            if not use_filter
+            else _resolve_optional_choice(filter_type, FILTER_SWEEP_TYPES)
+        ),
+        "filter_lfo_width": 0.0,
+        "filter_lfo_rate_min": _resolve_optional_float(
+            None, FILTER_LFO_RATE_MIN_RANGE, 0.05, 10
+        ),
+        "filter_lfo_rate_peak": _resolve_optional_float(
+            None, FILTER_LFO_RATE_PEAK_RANGE, 2, 50
+        ),
+        "tremolo_enabled": use_tremolo,
+        "tremolo_depth": (
+            0.0
+            if not use_tremolo
+            else _resolve_optional_float(tremolo_depth, TREMOLO_DEPTH_RANGE, 0, 1)
+        ),
+        "tremolo_rate_min": resolved_tremolo_rate_min,
+        "tremolo_rate_max": resolved_tremolo_rate_max,
+        "phaser_enabled": use_phaser,
+        "phaser_params": (
+            _resolve_phaser_params_from_explicit(
+                rate_min=phaser_rate_min,
+                rate_max=phaser_rate_max,
+                depth=phaser_depth,
+                centre=phaser_centre,
+                feedback=phaser_feedback,
+                mix=phaser_mix,
+            )
+            if use_phaser
+            else {}
+        ),
+        "chorus_enabled": use_chorus,
+        "chorus_params": (
+            _resolve_chorus_params_from_explicit(
+                rate_min=chorus_rate_min,
+                rate_max=chorus_rate_max,
+                depth=chorus_depth,
+                delay=chorus_delay,
+                mix=chorus_mix,
+            )
+            if use_chorus
+            else {}
+        ),
+        "flanger_enabled": use_flanger,
+        "flanger_params": (
+            _resolve_flanger_params_from_explicit(
+                rate_min=flanger_rate_min,
+                rate_max=flanger_rate_max,
+                depth=flanger_depth,
+                delay=flanger_delay,
+                feedback=flanger_feedback,
+                mix=flanger_mix,
+            )
+            if use_flanger
+            else {}
+        ),
+        "gain_enabled": use_gain,
+        "gain_min": _resolve_optional_float(gain_min, GAIN_MIN_RANGE, 0, 1),
+        "gain_max": _resolve_optional_float(gain_max, GAIN_MAX_RANGE, 0, 1),
+    }
+
+
+def parse_sweep_config_from_legacy_strings(
     sound: str | None = None,
     curve: str | None = None,
     filter_str: str | None = None,
@@ -272,20 +615,8 @@ def parse_sweep_config(
     flanger: str | None = None,
     disable: str | None = None,
 ) -> dict[str, Any]:
-    """
-    Parse encoded param strings into a resolved config dict.
-    --sound: voice (noise|sine|saw|tri|square), then voice-specific params.
-    E.g. --sound "voice:noise;type:white;noise_level:0.6" or --sound "voice:square;freq_low:110;octaves:3" or --sound "voice:saw;freq_low:55;freq_high:880"
-    """
-    disabled = set()
-    if disable:
-        for d in re.split(r"[\s,]+", disable.strip().lower()):
-            d = d.strip()
-            if d == "fx":
-                disabled.update(("tremolo", "phaser", "chorus", "flanger"))
-            elif d in ("tremolo", "phaser", "chorus", "flanger"):
-                disabled.add(d)
-
+    """Bridge legacy key:value strings (riser/drop) to parse_sweep_config."""
+    disabled = _parse_disable_set(disable)
     s = _parse_param_string(sound)
     c = _parse_param_string(curve)
     f = _parse_param_string(filter_str)
@@ -294,52 +625,94 @@ def parse_sweep_config(
     ch = _parse_param_string(chorus)
     fl = _parse_param_string(flanger)
 
-    tremolo_rate_min = _resolve_float(t, "rate_min_hz", TREMOLO_RATE_MIN_RANGE, 0.05, 20)
-    tremolo_rate_max = _resolve_float(t, "rate_max_hz", TREMOLO_RATE_MAX_RANGE, 2, 50)
-    tremolo_rate_max = max(tremolo_rate_max, tremolo_rate_min + 1.0)
+    voice_raw = s.get("voice")
+    voice: str | None = None
+    if voice_raw and not _is_random(voice_raw):
+        if voice_raw.lower() == "noise":
+            noise_type = s.get("type", "white").lower()
+            voice = {
+                "white": "whitenoise",
+                "pink": "pinknoise",
+                "brown": "brownnoise",
+                "blue": "bluenoise",
+            }.get(noise_type, "whitenoise")
+        elif voice_raw.lower() in {"sine", "saw", "tri", "square"}:
+            voice = voice_raw.lower()
 
-    sound_params = _resolve_sound_params(s)
+    filter_type = f.get("type") if f and "type" in f else None
+    if filter_type and filter_type.lower() == "none":
+        filter_enabled = False
+        filter_type = None
+    else:
+        filter_enabled = "filter" not in disabled
 
-    return {
-        **sound_params,
-        "build_shape": _resolve_choice(c, "shape", BUILD_SHAPES),
-        "decay_rate": _resolve_float(c, "decay_rate", DECAY_RATE_RANGE, 0.5, 15.0),
-        "peak_pos": _resolve_float(c, "peak_pos", PEAK_POS_RANGE, 0.15, 0.85),
-        "cutoff_low": _resolve_int(f, "cutoff_low", CUTOFF_LOW_RANGE, 50, 5000),
-        "cutoff_high": _resolve_int(f, "cutoff_high", CUTOFF_HIGH_RANGE, 1000, 20000),
-        "filter_sweep_type": (
-            _resolve_choice(f, "type", FILTER_SWEEP_TYPES)
-            if f and "type" in f
-            else "lpf"
-        ),
-        "filter_lfo_width": _resolve_float(
-            f, "lfo_width", FILTER_LFO_WIDTH_RANGE, 0, 0.5
-        ),
-        "filter_lfo_rate_min": _resolve_float(
-            f, "lfo_rate_min", FILTER_LFO_RATE_MIN_RANGE, 0.05, 10
-        ),
-        "filter_lfo_rate_peak": _resolve_float(
-            f, "lfo_rate_peak", FILTER_LFO_RATE_PEAK_RANGE, 2, 50
-        ),
-        "tremolo_depth": (
-            0.0
-            if "tremolo" in disabled
-            else _resolve_float(t, "depth", TREMOLO_DEPTH_RANGE, 0, 1)
-        ),
-        "tremolo_rate_min": tremolo_rate_min,
-        "tremolo_rate_max": tremolo_rate_max,
-        "phaser_enabled": "phaser" not in disabled
-        and (phaser is not None or random.random() < 0.5),
-        "phaser_params": _resolve_phaser_params(ph) if "phaser" not in disabled else {},
-        "chorus_enabled": "chorus" not in disabled
-        and (chorus is not None or random.random() < 0.5),
-        "chorus_params": _resolve_chorus_params(ch) if "chorus" not in disabled else {},
-        "flanger_enabled": "flanger" not in disabled
-        and (flanger is not None or random.random() < 0.5),
-        "flanger_params": (
-            _resolve_flanger_params(fl) if "flanger" not in disabled else {}
-        ),
-    }
+    tremolo_enabled = "tremolo" not in disabled
+    phaser_enabled = "phaser" not in disabled and (
+        phaser is not None or random.random() < 0.5
+    )
+    chorus_enabled = "chorus" not in disabled and (
+        chorus is not None or random.random() < 0.5
+    )
+    flanger_enabled = "flanger" not in disabled and (
+        flanger is not None or random.random() < 0.5
+    )
+
+    def _legacy_float(parsed: dict[str, str], key: str) -> float | None:
+        val = parsed.get(key)
+        if val is None or _is_random(val):
+            return None
+        try:
+            return float(val)
+        except (TypeError, ValueError):
+            return None
+
+    def _legacy_int(parsed: dict[str, str], key: str) -> int | None:
+        val = parsed.get(key)
+        if val is None or _is_random(val):
+            return None
+        try:
+            return int(float(val))
+        except (TypeError, ValueError):
+            return None
+
+    cfg = parse_sweep_config(
+        voice=voice,
+        curve_shape=c.get("shape"),
+        curve_peak=_legacy_float(c, "peak_pos"),
+        curve_decay=_legacy_float(c, "decay_rate"),
+        filter_enabled=filter_enabled,
+        filter_type=filter_type,
+        filter_cutoff_low=_legacy_int(f, "cutoff_low"),
+        filter_cutoff_high=_legacy_int(f, "cutoff_high"),
+        tremolo_enabled=tremolo_enabled,
+        tremolo_rate_min=_legacy_float(t, "rate_min_hz"),
+        tremolo_rate_max=_legacy_float(t, "rate_max_hz"),
+        tremolo_depth=_legacy_float(t, "depth"),
+        phaser_enabled=phaser_enabled,
+        phaser_rate_min=_legacy_float(ph, "rate_hz"),
+        phaser_rate_max=_legacy_float(ph, "rate_hz"),
+        phaser_depth=_legacy_float(ph, "depth"),
+        phaser_centre=_legacy_float(ph, "centre_frequency_hz"),
+        phaser_feedback=_legacy_float(ph, "feedback"),
+        phaser_mix=_legacy_float(ph, "mix"),
+        chorus_enabled=chorus_enabled,
+        chorus_rate_min=_legacy_float(ch, "rate_hz"),
+        chorus_rate_max=_legacy_float(ch, "rate_hz"),
+        chorus_depth=_legacy_float(ch, "depth"),
+        chorus_delay=_legacy_float(ch, "centre_delay_ms"),
+        chorus_mix=_legacy_float(ch, "mix"),
+        flanger_enabled=flanger_enabled,
+        flanger_rate_min=_legacy_float(fl, "rate_hz"),
+        flanger_rate_max=_legacy_float(fl, "rate_hz"),
+        flanger_depth=_legacy_float(fl, "depth"),
+        flanger_delay=_legacy_float(fl, "centre_delay_ms"),
+        flanger_feedback=_legacy_float(fl, "feedback"),
+        flanger_mix=_legacy_float(fl, "mix"),
+    )
+
+    if sound:
+        cfg.update(_resolve_sound_params(s))
+    return cfg
 
 
 def _generate_noise(
@@ -502,29 +875,105 @@ def _riser_build_curve(
     return cutoff_frac, envelope, lfo_rate_frac
 
 
-def _build_modulation_board_from_config(
+def _curve_rate_hz(
+    lfo_rate_frac: np.ndarray, index: int, rate_min: float, rate_max: float
+) -> float:
+    shaped = float(np.clip(lfo_rate_frac[index], 0.0, 1.0) ** 3)
+    return rate_min + (rate_max - rate_min) * shaped
+
+
+def _apply_modulation_effects_with_curve(
+    audio: np.ndarray,
+    lfo_rate_frac: np.ndarray,
+    *,
     phaser_enabled: bool,
     chorus_enabled: bool,
     flanger_enabled: bool,
     phaser_params: dict,
     chorus_params: dict,
     flanger_params: dict,
-) -> tuple[Pedalboard | None, dict]:
-    """Build a Pedalboard from config. Params dicts already have resolved values."""
-    plugins = []
+) -> tuple[np.ndarray, dict]:
+    """Apply phaser/chorus/flanger in blocks with LFO rate following the sweep curve."""
+    out = audio.astype(np.float32, copy=True)
     mod_params: dict = {}
+    num_samples = len(out)
+
     if phaser_enabled and phaser_params:
         mod_params["phaser"] = phaser_params
-        plugins.append(Phaser(**phaser_params))
+        p_min = float(phaser_params["rate_min_hz"])
+        p_max = float(phaser_params["rate_max_hz"])
+        for start in range(0, num_samples, BLOCK_SIZE):
+            end = min(start + BLOCK_SIZE, num_samples)
+            mid = start + (end - start) // 2
+            rate = _curve_rate_hz(lfo_rate_frac, mid, p_min, p_max)
+            board = Pedalboard(
+                [
+                    Phaser(
+                        rate_hz=rate,
+                        depth=float(phaser_params["depth"]),
+                        centre_frequency_hz=float(phaser_params["centre_frequency_hz"]),
+                        feedback=float(phaser_params["feedback"]),
+                        mix=float(phaser_params["mix"]),
+                    )
+                ]
+            )
+            block = out[start:end].reshape(1, -1)
+            processed = board(block, SAMPLE_RATE)
+            out[start:end] = (
+                np.mean(processed, axis=0) if processed.shape[0] == 2 else processed[0]
+            )
+
     if chorus_enabled and chorus_params:
         mod_params["chorus"] = chorus_params
-        plugins.append(Chorus(**chorus_params))
+        c_min = float(chorus_params["rate_min_hz"])
+        c_max = float(chorus_params["rate_max_hz"])
+        for start in range(0, num_samples, BLOCK_SIZE):
+            end = min(start + BLOCK_SIZE, num_samples)
+            mid = start + (end - start) // 2
+            rate = _curve_rate_hz(lfo_rate_frac, mid, c_min, c_max)
+            board = Pedalboard(
+                [
+                    Chorus(
+                        rate_hz=rate,
+                        depth=float(chorus_params["depth"]),
+                        centre_delay_ms=float(chorus_params["centre_delay_ms"]),
+                        feedback=float(chorus_params.get("feedback", 0.0)),
+                        mix=float(chorus_params["mix"]),
+                    )
+                ]
+            )
+            block = out[start:end].reshape(1, -1)
+            processed = board(block, SAMPLE_RATE)
+            out[start:end] = (
+                np.mean(processed, axis=0) if processed.shape[0] == 2 else processed[0]
+            )
+
     if flanger_enabled and flanger_params:
         mod_params["flanger"] = flanger_params
-        plugins.append(Chorus(**flanger_params))
-    if not plugins:
-        return None, {}
-    return Pedalboard(plugins), mod_params
+        f_min = float(flanger_params["rate_min_hz"])
+        f_max = float(flanger_params["rate_max_hz"])
+        for start in range(0, num_samples, BLOCK_SIZE):
+            end = min(start + BLOCK_SIZE, num_samples)
+            mid = start + (end - start) // 2
+            rate = _curve_rate_hz(lfo_rate_frac, mid, f_min, f_max)
+            board = Pedalboard(
+                [
+                    Chorus(
+                        rate_hz=rate,
+                        depth=float(flanger_params["depth"]),
+                        centre_delay_ms=float(flanger_params["centre_delay_ms"]),
+                        feedback=float(flanger_params["feedback"]),
+                        mix=float(flanger_params["mix"]),
+                    )
+                ]
+            )
+            block = out[start:end].reshape(1, -1)
+            processed = board(block, SAMPLE_RATE)
+            out[start:end] = (
+                np.mean(processed, axis=0) if processed.shape[0] == 2 else processed[0]
+            )
+
+    return out, mod_params
 
 
 def _compute_tremolo_gain(
@@ -619,6 +1068,16 @@ def generate_sweep_sample(
     cutoff_frac, envelope, lfo_rate_frac = _riser_build_curve(
         t, peak_pos, decay_rate, build_shape
     )
+    gain_enabled = cfg.get("gain_enabled", True)
+    gain_min = float(cfg.get("gain_min", 0.0))
+    gain_max = float(cfg.get("gain_max", 1.0))
+    if gain_max < gain_min:
+        gain_min, gain_max = gain_max, gain_min
+    if gain_enabled:
+        envelope = gain_min + envelope * (gain_max - gain_min)
+    else:
+        envelope = np.ones_like(envelope, dtype=np.float64)
+
     base_cutoffs_hz = cutoff_low + cutoff_frac * (cutoff_high - cutoff_low)
 
     filter_sweep_type = (cfg.get("filter_sweep_type") or "lpf").lower()
@@ -723,22 +1182,16 @@ def generate_sweep_sample(
             trem_block = tremolo_gain[start:end]
             out[start:end] = (filtered * env_block * trem_block).astype(np.float32)
 
-    # Apply modulation effects (phaser, chorus, flanger) via pedalboard
-    mod_board, mod_params = _build_modulation_board_from_config(
-        phaser_enabled,
-        chorus_enabled,
-        flanger_enabled,
-        phaser_params,
-        chorus_params,
-        flanger_params,
+    out, mod_params = _apply_modulation_effects_with_curve(
+        out,
+        lfo_rate_frac,
+        phaser_enabled=phaser_enabled,
+        chorus_enabled=chorus_enabled,
+        flanger_enabled=flanger_enabled,
+        phaser_params=phaser_params,
+        chorus_params=chorus_params,
+        flanger_params=flanger_params,
     )
-    if mod_board is not None:
-        audio_2d = out.reshape(1, -1).astype(np.float32)
-        processed = mod_board(audio_2d, SAMPLE_RATE)
-        if processed.shape[0] == 2:
-            out = np.mean(processed, axis=0).astype(np.float32)
-        else:
-            out = processed[0].astype(np.float32)
 
     sf.write(output, _normalize_audio(out), SAMPLE_RATE, subtype="PCM_16")
 
@@ -771,6 +1224,10 @@ def generate_sweep_sample(
         "filter_lfo_width": filter_lfo_width,
         "filter_lfo_rate_min": filter_lfo_rate_min,
         "filter_lfo_rate_peak": filter_lfo_rate_peak,
+        "sweep_voice": cfg.get("sweep_voice"),
+        "gain_enabled": gain_enabled,
+        "gain_min": gain_min,
+        "gain_max": gain_max,
     }
     return output, params_used
 

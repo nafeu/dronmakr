@@ -42,6 +42,7 @@ from generate_transition import (
     generate_drop_sample,
     parse_closh_config,
     parse_sweep_config,
+    parse_sweep_config_from_legacy_strings,
 )
 from generate_bass import (
     generate_donk_sample,
@@ -1052,50 +1053,105 @@ def transition_sweep(
         120, "--tempo", "-t", help="Tempo in BPM (default: 120)."
     ),
     bars: int = typer.Option(8, "--bars", "-b", help="Length in bars (default: 8)."),
-    sound: str | None = typer.Option(
+    voice: str | None = typer.Option(
         None,
-        "--sound",
-        "-s",
-        help="Sound: voice (noise|sine|saw|tri|square). Oscillator params: freq_low, freq_high, octaves (2.5-4.5), level, pulse_width, pwm_sweep, detune_cents, detune_mix, resonance.",
+        "--voice",
+        "-v",
+        help="Source voice: whitenoise, pinknoise, brownnoise, bluenoise, sine, saw, tri, square. Omit for random.",
     ),
-    curve: str | None = typer.Option(
+    curve_shape: str | None = typer.Option(
         None,
-        "--curve",
-        "-c",
-        help="Build curve: shape, decay_rate, peak_pos. E.g. shape:ease_in;decay_rate:4;peak_pos:0.5.",
+        "--curve-shape",
+        help="Build curve shape: ease_in, linear, ease_out. Omit for random.",
     ),
-    filter_str: str | None = typer.Option(
-        None,
-        "--filter",
-        "-f",
-        help="Filter: cutoff_low, cutoff_high, type (lpf|hpf|bpf|bsf|none), lfo_width, lfo_rate_min, lfo_rate_peak.",
+    curve_peak: float | None = typer.Option(
+        None, "--curve-peak", help="Curve peak position 0.15–0.85. Omit for random."
     ),
-    tremolo: str | None = typer.Option(
-        None,
-        "--tremolo",
-        "-T",
-        help="Tremolo: rate_min_hz, rate_max_hz, depth. E.g. depth:0.8;rate_min_hz:2;rate_max_hz:20.",
+    curve_decay: float | None = typer.Option(
+        None, "--curve-decay", help="Curve decay rate 0.5–15. Omit for random."
     ),
-    phaser: str | None = typer.Option(
+    filter_type: str | None = typer.Option(
         None,
-        "--phaser",
-        help="Phaser: rate_hz, depth, centre_frequency_hz, feedback, mix. Use _ for random. Omit to randomize enable.",
+        "--filter-type",
+        help="Filter type: lpf, hpf, bpf, bsf. Omit for random (filter on by default).",
     ),
-    chorus: str | None = typer.Option(
-        None,
-        "--chorus",
-        help="Chorus: rate_hz, depth, centre_delay_ms, feedback, mix.",
+    filter_cutoff_low: int | None = typer.Option(
+        None, "--filter-cutoff-low", help="Filter cutoff low Hz (50–5000). Omit for random."
     ),
-    flanger: str | None = typer.Option(
-        None,
-        "--flanger",
-        help="Flanger: rate_hz, depth, centre_delay_ms, feedback, mix.",
+    filter_cutoff_high: int | None = typer.Option(
+        None, "--filter-cutoff-high", help="Filter cutoff high Hz (1000–20000). Omit for random."
+    ),
+    tremolo_rate_min: float | None = typer.Option(
+        None, "--tremolo-rate-min", help="Tremolo LFO rate min Hz. Omit for random."
+    ),
+    tremolo_rate_max: float | None = typer.Option(
+        None, "--tremolo-rate-max", help="Tremolo LFO rate max Hz. Omit for random."
+    ),
+    tremolo_depth: float | None = typer.Option(
+        None, "--tremolo-depth", help="Tremolo depth 0–1. Omit for random."
+    ),
+    phaser_rate_min: float | None = typer.Option(
+        None, "--phaser-rate-min", help="Phaser LFO rate min Hz. Omit for random."
+    ),
+    phaser_rate_max: float | None = typer.Option(
+        None, "--phaser-rate-max", help="Phaser LFO rate max Hz. Omit for random."
+    ),
+    phaser_depth: float | None = typer.Option(
+        None, "--phaser-depth", help="Phaser depth 0–1. Omit for random."
+    ),
+    phaser_centre: float | None = typer.Option(
+        None, "--phaser-centre", help="Phaser centre frequency Hz. Omit for random."
+    ),
+    phaser_feedback: float | None = typer.Option(
+        None, "--phaser-feedback", help="Phaser feedback 0–1. Omit for random."
+    ),
+    phaser_mix: float | None = typer.Option(
+        None, "--phaser-mix", help="Phaser wet mix 0–1. Omit for random."
+    ),
+    chorus_rate_min: float | None = typer.Option(
+        None, "--chorus-rate-min", help="Chorus LFO rate min Hz. Omit for random."
+    ),
+    chorus_rate_max: float | None = typer.Option(
+        None, "--chorus-rate-max", help="Chorus LFO rate max Hz. Omit for random."
+    ),
+    chorus_depth: float | None = typer.Option(
+        None, "--chorus-depth", help="Chorus depth 0–1. Omit for random."
+    ),
+    chorus_delay: float | None = typer.Option(
+        None, "--chorus-delay", help="Chorus centre delay ms. Omit for random."
+    ),
+    chorus_mix: float | None = typer.Option(
+        None, "--chorus-mix", help="Chorus wet mix 0–1. Omit for random."
+    ),
+    flanger_rate_min: float | None = typer.Option(
+        None, "--flanger-rate-min", help="Flanger LFO rate min Hz. Omit for random."
+    ),
+    flanger_rate_max: float | None = typer.Option(
+        None, "--flanger-rate-max", help="Flanger LFO rate max Hz. Omit for random."
+    ),
+    flanger_depth: float | None = typer.Option(
+        None, "--flanger-depth", help="Flanger depth 0–1. Omit for random."
+    ),
+    flanger_delay: float | None = typer.Option(
+        None, "--flanger-delay", help="Flanger centre delay ms. Omit for random."
+    ),
+    flanger_feedback: float | None = typer.Option(
+        None, "--flanger-feedback", help="Flanger feedback 0–0.8. Omit for random."
+    ),
+    flanger_mix: float | None = typer.Option(
+        None, "--flanger-mix", help="Flanger wet mix 0–1. Omit for random."
+    ),
+    gain_min: float | None = typer.Option(
+        None, "--gain-min", help="Sweep gain at curve start (0–1). Omit for random."
+    ),
+    gain_max: float | None = typer.Option(
+        None, "--gain-max", help="Sweep gain at curve peak (0–1). Omit for random."
     ),
     disable: str | None = typer.Option(
         None,
         "--disable",
         "-d",
-        help="Disable effects: comma-separated list of tremolo,phaser,chorus,flanger or fx (disables all).",
+        help="Disable effects: filter,tremolo,phaser,chorus,flanger,gain or fx (all).",
     ),
     iterations: int = typer.Option(
         1, "--iterations", "-n", help="Number of samples to generate."
@@ -1114,11 +1170,7 @@ def transition_sweep(
         ),
     ),
 ):
-    """Generate a noise riser (techno/trance/house).
-
-    Params use key:value;key2:value2 syntax. Use _ or empty for random.
-    Quote values: --sound "voice:noise;type:white" --sound "voice:square;freq_low:110"
-    """
+    """Generate a sweep transition (noise or oscillator with modulated filter)."""
     start_time = time.time()
     iterations = max(1, iterations)
 
@@ -1135,13 +1187,35 @@ def transition_sweep(
     results = []
     for i in range(iterations):
         config = parse_sweep_config(
-            sound=sound,
-            curve=curve,
-            filter_str=filter_str,
-            tremolo=tremolo,
-            phaser=phaser,
-            chorus=chorus,
-            flanger=flanger,
+            voice=voice,
+            curve_shape=curve_shape,
+            curve_peak=curve_peak,
+            curve_decay=curve_decay,
+            filter_type=filter_type,
+            filter_cutoff_low=filter_cutoff_low,
+            filter_cutoff_high=filter_cutoff_high,
+            tremolo_rate_min=tremolo_rate_min,
+            tremolo_rate_max=tremolo_rate_max,
+            tremolo_depth=tremolo_depth,
+            phaser_rate_min=phaser_rate_min,
+            phaser_rate_max=phaser_rate_max,
+            phaser_depth=phaser_depth,
+            phaser_centre=phaser_centre,
+            phaser_feedback=phaser_feedback,
+            phaser_mix=phaser_mix,
+            chorus_rate_min=chorus_rate_min,
+            chorus_rate_max=chorus_rate_max,
+            chorus_depth=chorus_depth,
+            chorus_delay=chorus_delay,
+            chorus_mix=chorus_mix,
+            flanger_rate_min=flanger_rate_min,
+            flanger_rate_max=flanger_rate_max,
+            flanger_depth=flanger_depth,
+            flanger_delay=flanger_delay,
+            flanger_feedback=flanger_feedback,
+            flanger_mix=flanger_mix,
+            gain_min=gain_min,
+            gain_max=gain_max,
             disable=disable,
         )
         beat_name = generate_beat_name()
@@ -1159,18 +1233,20 @@ def transition_sweep(
         )
         results.append(output_path)
         t = params_used
-        voice = t.get("voice", "noise")
-        if voice == "noise":
-            voice_desc = f"{t.get('noise_type', 'white')} noise"
-        else:
-            voice_desc = f"{voice} {t.get('osc_freq_low', 0):.0f}–{t.get('osc_freq_high', 0):.0f}Hz"
+        voice_desc = t.get("sweep_voice") or t.get("voice", "noise")
+        if t.get("voice") == "noise":
+            voice_desc = t.get("sweep_voice") or f"{t.get('noise_type', 'white')}noise"
+        elif t.get("osc_freq_low") is not None:
+            voice_desc = (
+                f"{voice_desc} {t.get('osc_freq_low', 0):.0f}–{t.get('osc_freq_high', 0):.0f}Hz"
+            )
         mod_str = ", ".join(m for m in ["phaser", "chorus", "flanger"] if t.get(m))
         fx_str = f", fx=[{mod_str}]" if mod_str else ""
         if iterations == 1:
             print(with_prompt(f"generated: {output_path}"))
             print(
                 with_prompt(
-                    f"  used: {voice_desc}, cutoff {t['cutoff_low']}–{t['cutoff_high']}Hz, tremolo depth={t['tremolo_depth']:.2f} rate={t['tremolo_rate_min']:.1f}–{t['tremolo_rate_max']:.1f}Hz{fx_str}"
+                    f"  used: {voice_desc}, cutoff {t['cutoff_low']}–{t['cutoff_high']}Hz, gain {t.get('gain_min', 0):.2f}–{t.get('gain_max', 1):.2f}, tremolo depth={t['tremolo_depth']:.2f} rate={t['tremolo_rate_min']:.1f}–{t['tremolo_rate_max']:.1f}Hz{fx_str}"
                 )
             )
         else:
@@ -1616,7 +1692,7 @@ def transition_riser(
     iterations = max(1, iterations)
 
     longcrash_cfg = parse_closh_config(reverb=reverb, delay=delay)
-    sweep_cfg = parse_sweep_config(
+    sweep_cfg = parse_sweep_config_from_legacy_strings(
         sound=sound,
         curve=curve,
         filter_str=filter_str,
@@ -1791,7 +1867,7 @@ def transition_drop(
     iterations = max(1, iterations)
 
     longcrash_cfg = parse_closh_config(reverb=reverb, delay=delay)
-    sweep_cfg = parse_sweep_config(
+    sweep_cfg = parse_sweep_config_from_legacy_strings(
         sound=sound,
         curve=curve,
         filter_str=filter_str,

@@ -317,6 +317,278 @@
       border-color: var(--primary);
     }
 
+    /* Transition sub-panels span the full generate form width */
+    .generatr-tx-panel {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.45rem 0.65rem;
+      align-items: start;
+    }
+
+    .generatr-tx-panel > .form-row-full {
+      grid-column: 1 / -1;
+    }
+
+    .generatr-tx-timing-row {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: flex-start;
+      gap: 0.45rem 0.65rem;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .generatr-tx-timing-row > .form-row {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+
+    .generatr-sweep-effects {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .generatr-sweep-effect-row {
+      display: flex;
+      flex-wrap: nowrap;
+      align-items: stretch;
+      gap: 0.45rem 0.45rem;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .generatr-sweep-effect-row > .generatr-sweep-effect {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+
+    .generatr-sweep-effect {
+      border: 1px solid color-mix(in srgb, var(--theme-a) 55%, transparent);
+      border-radius: 5px;
+      padding: 0.4rem 0.5rem 0.45rem;
+      background: color-mix(in srgb, var(--theme-a) 18%, transparent);
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+    }
+
+    .generatr-sweep-effect-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.35rem;
+      margin: 0 0 0.3rem 0;
+      flex-shrink: 0;
+    }
+
+    .generatr-sweep-effect-title {
+      font-size: 0.74rem;
+      color: var(--primary);
+      font-weight: 600;
+      margin: 0;
+      letter-spacing: 0.01em;
+      line-height: 1.2;
+    }
+
+    .generatr-sweep-effect-enable {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      margin: 0;
+      flex-shrink: 0;
+    }
+
+    .generatr-sweep-effect-enable label {
+      font-size: 0.64rem;
+      color: var(--theme-a);
+      font-weight: 500;
+      margin: 0;
+      cursor: pointer;
+      letter-spacing: 0.01em;
+      line-height: 1.2;
+    }
+
+    .generatr-sweep-effect-body {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .generatr-sweep-effect-body.generatr-sweep-effect-disabled {
+      opacity: 0.42;
+      pointer-events: none;
+    }
+
+    .generatr-sweep-effect-knobs {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-start;
+      align-items: flex-start;
+      align-content: flex-start;
+      gap: 0.1rem 0.2rem;
+    }
+
+    .daw-knob-select {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.08rem;
+      width: 3.25rem;
+      flex: 0 0 3.25rem;
+      min-width: 0;
+    }
+
+    .daw-knob-select select {
+      font-family: inherit;
+      font-size: 0.58rem;
+      line-height: 1.2;
+      height: 1.75rem;
+      padding: 0 0.18rem;
+      background: var(--theme-a);
+      border: 1px solid color-mix(in srgb, var(--theme-a) 70%, var(--primary));
+      border-radius: 4px;
+      color: var(--primary);
+      width: 100%;
+      box-sizing: border-box;
+      min-width: 0;
+      cursor: pointer;
+    }
+
+    .daw-knob-select select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .daw-knob-select-spacer {
+      min-height: 0.62rem;
+    }
+
+    .daw-knob-row {
+      display: contents;
+    }
+
+    /* Reusable DAW-style rotary knob (sweep menu first; propagate app-wide later) */
+    .daw-knob {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.08rem;
+      min-width: 0;
+      width: 3rem;
+      flex: 0 0 3rem;
+      user-select: none;
+      touch-action: none;
+    }
+
+    .daw-knob-label {
+      font-size: 0.56rem;
+      color: var(--theme-a);
+      text-align: center;
+      line-height: 1.1;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .daw-knob-dial {
+      --knob-ratio: 0;
+      width: 1.75rem;
+      height: 1.75rem;
+      border: none;
+      border-radius: 50%;
+      padding: 0;
+      margin: 0;
+      position: relative;
+      cursor: ns-resize;
+      background: radial-gradient(
+        circle at 32% 28%,
+        color-mix(in srgb, var(--primary) 22%, var(--theme-a)),
+        color-mix(in srgb, var(--theme-a) 88%, #000)
+      );
+      box-shadow:
+        inset 0 1px 2px rgba(255, 255, 255, 0.12),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.35),
+        0 1px 2px rgba(0, 0, 0, 0.25);
+      flex-shrink: 0;
+    }
+
+    .daw-knob-dial:focus {
+      outline: none;
+      box-shadow:
+        inset 0 1px 2px rgba(255, 255, 255, 0.12),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.35),
+        0 0 0 2px color-mix(in srgb, var(--primary) 45%, transparent);
+    }
+
+    .daw-knob-dial:focus-visible {
+      outline: none;
+      box-shadow:
+        inset 0 1px 2px rgba(255, 255, 255, 0.12),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.35),
+        0 0 0 2px var(--primary);
+    }
+
+    .daw-knob-ring {
+      position: absolute;
+      inset: 1px;
+      border-radius: 50%;
+      pointer-events: none;
+      background: conic-gradient(
+        from -135deg,
+        var(--primary) calc(var(--knob-ratio) * 270deg),
+        color-mix(in srgb, var(--theme-a) 70%, transparent) 0
+      );
+      mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+      -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+      opacity: 0.9;
+    }
+
+    .daw-knob-readout {
+      font-size: 0.56rem;
+      color: var(--primary);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      text-align: center;
+      line-height: 1.05;
+      min-height: 0.62rem;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .daw-knob-input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+      margin: -1px;
+      padding: 0;
+      border: 0;
+      clip: rect(0 0 0 0);
+      overflow: hidden;
+    }
+
+    .generatr-sweep-panel .form-row > label:first-of-type,
+    .generatr-tx-timing-row .form-row > label:first-of-type {
+      font-size: 0.68rem;
+    }
+
+    .generatr-sweep-panel .form-row select,
+    .generatr-sweep-panel .form-row input[type="number"] {
+      font-size: 0.8rem;
+      padding: 0.32rem 0.45rem;
+    }
+
     .generatr-form .form-row input[type="checkbox"] {
       width: 16px;
       height: 16px;
@@ -1748,21 +2020,23 @@
                   <textarea id="generatr-donk-sound" rows="2" placeholder="wave:sine;base_freq:52;pitch_start_semitones:18;…"></textarea>
                 </div>
               </div>
-              <div id="generatr-panel-tx-timing" class="hidden">
-                <div class="form-row">
-                  <label for="generatr-tx-tempo">Tempo (BPM)</label>
-                  <input type="number" id="generatr-tx-tempo" min="1" value="120">
-                </div>
-                <div class="form-row">
-                  <label for="generatr-tx-bars">Bars</label>
-                  <input type="number" id="generatr-tx-bars" min="1" value="8">
-                </div>
-                <div class="form-row">
-                  <label for="generatr-tx-iterations">Iterations</label>
-                  <input type="number" id="generatr-tx-iterations" min="1" value="1">
+              <div id="generatr-panel-tx-timing" class="generatr-tx-panel hidden">
+                <div class="generatr-tx-timing-row">
+                  <div class="form-row">
+                    <label for="generatr-tx-tempo">Tempo</label>
+                    <input type="number" id="generatr-tx-tempo" min="1" value="120">
+                  </div>
+                  <div class="form-row">
+                    <label for="generatr-tx-bars">Bars</label>
+                    <input type="number" id="generatr-tx-bars" min="1" value="8">
+                  </div>
+                  <div class="form-row">
+                    <label for="generatr-tx-iterations">Iterations</label>
+                    <input type="number" id="generatr-tx-iterations" min="1" value="1">
+                  </div>
                 </div>
               </div>
-              <div id="generatr-panel-tx-wash" class="hidden">
+              <div id="generatr-panel-tx-wash" class="generatr-tx-panel hidden">
                 <div class="form-row form-row-full">
                   <label for="generatr-tx-reverb">Reverb (--reverb)</label>
                   <textarea id="generatr-tx-reverb" rows="2" placeholder="wet_level, length_sec, decay_sec, … (key:value;… or omit for random)"></textarea>
@@ -1772,7 +2046,7 @@
                   <textarea id="generatr-tx-delay" rows="2" placeholder="division:1/8;feedback:0.4;mix:0.3 — or leave empty / off"></textarea>
                 </div>
               </div>
-              <div id="generatr-panel-tx-stretch" class="hidden">
+              <div id="generatr-panel-tx-stretch" class="generatr-tx-panel hidden">
                 <div class="form-row">
                   <label for="generatr-tx-stretch">Stretch (--stretch)</label>
                   <input type="number" id="generatr-tx-stretch" step="any" min="0.1" value="3">
@@ -1782,7 +2056,331 @@
                   <input type="number" id="generatr-tx-window-size" step="any" min="0.05" value="0.25">
                 </div>
               </div>
-              <div id="generatr-panel-tx-sweep-strings" class="hidden">
+              <div id="generatr-panel-tx-sweep" class="generatr-tx-panel generatr-sweep-panel hidden">
+                <div class="form-row">
+                  <label for="generatr-tx-voice">Voice</label>
+                  <select id="generatr-tx-voice">
+                    <option value="" selected>Random</option>
+                    <option value="whitenoise">White noise</option>
+                    <option value="pinknoise">Pink noise</option>
+                    <option value="brownnoise">Brown noise</option>
+                    <option value="bluenoise">Blue noise</option>
+                    <option value="sine">Sine</option>
+                    <option value="saw">Saw</option>
+                    <option value="tri">Tri</option>
+                    <option value="square">Square</option>
+                  </select>
+                </div>
+                <div class="form-row">
+                  <label for="generatr-tx-curve-shape">Shape</label>
+                  <select id="generatr-tx-curve-shape">
+                    <option value="" selected>Random</option>
+                    <option value="ease_in">Ease in</option>
+                    <option value="linear">Linear</option>
+                    <option value="ease_out">Ease out</option>
+                  </select>
+                </div>
+                <div class="form-row">
+                  <label for="generatr-tx-curve-peak">Peak</label>
+                  <input type="number" id="generatr-tx-curve-peak" step="0.01" min="0.15" max="0.85" value="0.5">
+                </div>
+                <div class="form-row">
+                  <label for="generatr-tx-curve-decay">Decay</label>
+                  <input type="number" id="generatr-tx-curve-decay" step="0.1" min="0.5" max="15" value="4">
+                </div>
+                <div class="generatr-sweep-effects">
+                  <div class="generatr-sweep-effect-row">
+                <div class="generatr-sweep-effect">
+                  <div class="generatr-sweep-effect-head">
+                    <span class="generatr-sweep-effect-title">Gain</span>
+                    <div class="generatr-sweep-effect-enable">
+                      <input type="checkbox" id="generatr-tx-gain-enabled" checked>
+                      <label for="generatr-tx-gain-enabled">Enable</label>
+                    </div>
+                  </div>
+                  <div class="generatr-sweep-effect-body" id="generatr-tx-gain-body">
+                    <div class="generatr-sweep-effect-knobs">
+                      <div class="daw-knob" data-knob-pair="gain" data-knob-role="min" data-knob-pair-gap="0.01" data-knob-unit="" data-knob-decimals="2">
+                        <span class="daw-knob-label">Min</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Gain minimum">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">0.00</span>
+                        <input type="number" class="daw-knob-input" id="generatr-tx-gain-min" step="0.01" min="0" max="1" value="0" tabindex="-1" aria-hidden="true">
+                      </div>
+                      <div class="daw-knob" data-knob-pair="gain" data-knob-role="max" data-knob-pair-gap="0.01" data-knob-unit="" data-knob-decimals="2">
+                        <span class="daw-knob-label">Max</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Gain maximum">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">1.00</span>
+                        <input type="number" class="daw-knob-input" id="generatr-tx-gain-max" step="0.01" min="0" max="1" value="1" tabindex="-1" aria-hidden="true">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="generatr-sweep-effect">
+                  <div class="generatr-sweep-effect-head">
+                    <span class="generatr-sweep-effect-title">Tremolo</span>
+                    <div class="generatr-sweep-effect-enable">
+                      <input type="checkbox" id="generatr-tx-tremolo-enabled" checked>
+                      <label for="generatr-tx-tremolo-enabled">Enable</label>
+                    </div>
+                  </div>
+                  <div class="generatr-sweep-effect-body" id="generatr-tx-tremolo-body">
+                    <div class="generatr-sweep-effect-knobs">
+                      <div class="daw-knob" data-knob-pair="tremolo-rate" data-knob-role="min" data-knob-pair-gap="0.1" data-knob-unit="Hz" data-knob-decimals="2">
+                        <span class="daw-knob-label">Min</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Tremolo rate minimum">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">0.30 Hz</span>
+                        <input type="number" class="daw-knob-input" id="generatr-tx-tremolo-rate-min" step="0.05" min="0.05" max="50" value="0.3" tabindex="-1" aria-hidden="true">
+                      </div>
+                      <div class="daw-knob" data-knob-pair="tremolo-rate" data-knob-role="max" data-knob-pair-gap="0.1" data-knob-unit="Hz" data-knob-decimals="1">
+                        <span class="daw-knob-label">Max</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Tremolo rate maximum">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">15.0 Hz</span>
+                        <input type="number" class="daw-knob-input" id="generatr-tx-tremolo-rate-max" step="0.1" min="0.05" max="50" value="15" tabindex="-1" aria-hidden="true">
+                      </div>
+                      <div class="daw-knob" data-knob-unit="" data-knob-decimals="2">
+                        <span class="daw-knob-label">Depth</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Tremolo depth">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">0.85</span>
+                        <input type="number" class="daw-knob-input" id="generatr-tx-tremolo-depth" step="0.01" min="0" max="1" value="0.85" tabindex="-1" aria-hidden="true">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="generatr-sweep-effect">
+                  <div class="generatr-sweep-effect-head">
+                    <span class="generatr-sweep-effect-title">Filter</span>
+                    <div class="generatr-sweep-effect-enable">
+                      <input type="checkbox" id="generatr-tx-filter-enabled" checked>
+                      <label for="generatr-tx-filter-enabled">Enable</label>
+                    </div>
+                  </div>
+                  <div class="generatr-sweep-effect-body" id="generatr-tx-filter-body">
+                    <div class="generatr-sweep-effect-knobs">
+                      <div class="daw-knob" data-knob-pair="filter-cutoff" data-knob-role="min" data-knob-pair-gap="50" data-knob-unit="Hz" data-knob-decimals="0">
+                        <span class="daw-knob-label">Min</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Filter cutoff minimum">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">400 Hz</span>
+                        <input type="number" class="daw-knob-input" id="generatr-tx-filter-cutoff-low" step="50" min="50" max="20000" value="400" tabindex="-1" aria-hidden="true">
+                      </div>
+                      <div class="daw-knob" data-knob-pair="filter-cutoff" data-knob-role="max" data-knob-pair-gap="50" data-knob-unit="Hz" data-knob-decimals="0">
+                        <span class="daw-knob-label">Max</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Filter cutoff maximum">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">12000 Hz</span>
+                        <input type="number" class="daw-knob-input" id="generatr-tx-filter-cutoff-high" step="50" min="50" max="20000" value="12000" tabindex="-1" aria-hidden="true">
+                      </div>
+                      <div class="daw-knob-select">
+                        <span class="daw-knob-label">Type</span>
+                        <select id="generatr-tx-filter-type" aria-label="Filter type">
+                          <option value="" selected>Random</option>
+                          <option value="lpf">LPF</option>
+                          <option value="hpf">HPF</option>
+                          <option value="bpf">BPF</option>
+                          <option value="bsf">BSF</option>
+                        </select>
+                        <span class="daw-knob-select-spacer" aria-hidden="true"></span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                  </div>
+                  <div class="generatr-sweep-effect-row">
+                <div class="generatr-sweep-effect">
+                  <div class="generatr-sweep-effect-head">
+                    <span class="generatr-sweep-effect-title">Phaser</span>
+                    <div class="generatr-sweep-effect-enable">
+                      <input type="checkbox" id="generatr-tx-phaser-enabled">
+                      <label for="generatr-tx-phaser-enabled">Enable</label>
+                    </div>
+                  </div>
+                  <div class="generatr-sweep-effect-body generatr-sweep-effect-disabled" id="generatr-tx-phaser-body">
+                    <div class="generatr-sweep-effect-knobs">
+                      <div class="daw-knob" data-knob-pair="phaser-rate" data-knob-role="min" data-knob-pair-gap="0.05" data-knob-unit="Hz" data-knob-decimals="2">
+                        <span class="daw-knob-label">Min</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Phaser rate minimum">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">0.20 Hz</span>
+                        <input type="number" class="daw-knob-input" id="generatr-tx-phaser-rate-min" step="0.05" min="0.1" max="10" value="0.2" tabindex="-1" aria-hidden="true">
+                      </div>
+                      <div class="daw-knob" data-knob-pair="phaser-rate" data-knob-role="max" data-knob-pair-gap="0.05" data-knob-unit="Hz" data-knob-decimals="1">
+                        <span class="daw-knob-label">Max</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Phaser rate maximum">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">2.0 Hz</span>
+                        <input type="number" class="daw-knob-input" id="generatr-tx-phaser-rate-max" step="0.05" min="0.1" max="10" value="2" tabindex="-1" aria-hidden="true">
+                      </div>
+                      <div class="daw-knob" data-knob-unit="" data-knob-decimals="2">
+                        <span class="daw-knob-label">Depth</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Phaser depth">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">0.65</span>
+                        <input type="number" class="daw-knob-input" id="generatr-tx-phaser-depth" step="0.01" min="0" max="1" value="0.65" tabindex="-1" aria-hidden="true">
+                      </div>
+                      <div class="daw-knob" data-knob-unit="Hz" data-knob-decimals="0">
+                        <span class="daw-knob-label">Centre</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Phaser centre">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">1500 Hz</span>
+                        <input type="number" class="daw-knob-input" id="generatr-tx-phaser-centre" step="10" min="100" max="10000" value="1500" tabindex="-1" aria-hidden="true">
+                      </div>
+                      <div class="daw-knob" data-knob-unit="" data-knob-decimals="2">
+                        <span class="daw-knob-label">Feedback</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Phaser feedback">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">0.40</span>
+                        <input type="number" class="daw-knob-input" id="generatr-tx-phaser-feedback" step="0.01" min="0" max="1" value="0.4" tabindex="-1" aria-hidden="true">
+                      </div>
+                      <div class="daw-knob" data-knob-unit="" data-knob-decimals="2">
+                        <span class="daw-knob-label">Mix</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Phaser mix">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">0.50</span>
+                        <input type="number" class="daw-knob-input" id="generatr-tx-phaser-mix" step="0.01" min="0" max="1" value="0.5" tabindex="-1" aria-hidden="true">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                  </div>
+                  <div class="generatr-sweep-effect-row">
+                <div class="generatr-sweep-effect">
+                  <div class="generatr-sweep-effect-head">
+                    <span class="generatr-sweep-effect-title">Chorus</span>
+                    <div class="generatr-sweep-effect-enable">
+                      <input type="checkbox" id="generatr-tx-chorus-enabled">
+                      <label for="generatr-tx-chorus-enabled">Enable</label>
+                    </div>
+                  </div>
+                  <div class="generatr-sweep-effect-body generatr-sweep-effect-disabled" id="generatr-tx-chorus-body">
+                    <div class="generatr-sweep-effect-knobs">
+                      <div class="daw-knob" data-knob-pair="chorus-rate" data-knob-role="min" data-knob-pair-gap="0.05" data-knob-unit="Hz" data-knob-decimals="2">
+                        <span class="daw-knob-label">Min</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Chorus rate minimum">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">0.30 Hz</span>
+                        <input type="number" class="daw-knob-input" id="generatr-tx-chorus-rate-min" step="0.05" min="0.1" max="10" value="0.3" tabindex="-1" aria-hidden="true">
+                      </div>
+                      <div class="daw-knob" data-knob-pair="chorus-rate" data-knob-role="max" data-knob-pair-gap="0.05" data-knob-unit="Hz" data-knob-decimals="1">
+                        <span class="daw-knob-label">Max</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Chorus rate maximum">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">1.5 Hz</span>
+                        <input type="number" class="daw-knob-input" id="generatr-tx-chorus-rate-max" step="0.05" min="0.1" max="10" value="1.5" tabindex="-1" aria-hidden="true">
+                      </div>
+                      <div class="daw-knob" data-knob-unit="" data-knob-decimals="2">
+                        <span class="daw-knob-label">Depth</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Chorus depth">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">0.28</span>
+                        <input type="number" class="daw-knob-input" id="generatr-tx-chorus-depth" step="0.01" min="0" max="1" value="0.28" tabindex="-1" aria-hidden="true">
+                      </div>
+                      <div class="daw-knob" data-knob-unit="ms" data-knob-decimals="1">
+                        <span class="daw-knob-label">Delay</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Chorus delay">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">7.5 ms</span>
+                        <input type="number" class="daw-knob-input" id="generatr-tx-chorus-delay" step="0.1" min="1" max="20" value="7.5" tabindex="-1" aria-hidden="true">
+                      </div>
+                      <div class="daw-knob" data-knob-unit="" data-knob-decimals="2">
+                        <span class="daw-knob-label">Mix</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Chorus mix">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">0.45</span>
+                        <input type="number" class="daw-knob-input" id="generatr-tx-chorus-mix" step="0.01" min="0" max="1" value="0.45" tabindex="-1" aria-hidden="true">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                  </div>
+                  <div class="generatr-sweep-effect-row">
+                <div class="generatr-sweep-effect">
+                  <div class="generatr-sweep-effect-head">
+                    <span class="generatr-sweep-effect-title">Flanger</span>
+                    <div class="generatr-sweep-effect-enable">
+                      <input type="checkbox" id="generatr-tx-flanger-enabled">
+                      <label for="generatr-tx-flanger-enabled">Enable</label>
+                    </div>
+                  </div>
+                  <div class="generatr-sweep-effect-body generatr-sweep-effect-disabled" id="generatr-tx-flanger-body">
+                    <div class="generatr-sweep-effect-knobs">
+                      <div class="daw-knob" data-knob-pair="flanger-rate" data-knob-role="min" data-knob-pair-gap="0.05" data-knob-unit="Hz" data-knob-decimals="2">
+                        <span class="daw-knob-label">Min</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Flanger rate minimum">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">0.20 Hz</span>
+                        <input type="number" class="daw-knob-input" id="generatr-tx-flanger-rate-min" step="0.05" min="0.1" max="5" value="0.2" tabindex="-1" aria-hidden="true">
+                      </div>
+                      <div class="daw-knob" data-knob-pair="flanger-rate" data-knob-role="max" data-knob-pair-gap="0.05" data-knob-unit="Hz" data-knob-decimals="1">
+                        <span class="daw-knob-label">Max</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Flanger rate maximum">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">0.8 Hz</span>
+                        <input type="number" class="daw-knob-input" id="generatr-tx-flanger-rate-max" step="0.05" min="0.1" max="5" value="0.8" tabindex="-1" aria-hidden="true">
+                      </div>
+                      <div class="daw-knob" data-knob-unit="" data-knob-decimals="2">
+                        <span class="daw-knob-label">Depth</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Flanger depth">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">0.40</span>
+                        <input type="number" class="daw-knob-input" id="generatr-tx-flanger-depth" step="0.01" min="0" max="1" value="0.4" tabindex="-1" aria-hidden="true">
+                      </div>
+                      <div class="daw-knob" data-knob-unit="ms" data-knob-decimals="1">
+                        <span class="daw-knob-label">Delay</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Flanger delay">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">2.0 ms</span>
+                        <input type="number" class="daw-knob-input" id="generatr-tx-flanger-delay" step="0.1" min="0.5" max="10" value="2" tabindex="-1" aria-hidden="true">
+                      </div>
+                      <div class="daw-knob" data-knob-unit="" data-knob-decimals="2">
+                        <span class="daw-knob-label">Feedback</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Flanger feedback">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">0.35</span>
+                        <input type="number" class="daw-knob-input" id="generatr-tx-flanger-feedback" step="0.01" min="0" max="0.8" value="0.35" tabindex="-1" aria-hidden="true">
+                      </div>
+                      <div class="daw-knob" data-knob-unit="" data-knob-decimals="2">
+                        <span class="daw-knob-label">Mix</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Flanger mix">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">0.50</span>
+                        <input type="number" class="daw-knob-input" id="generatr-tx-flanger-mix" step="0.01" min="0" max="1" value="0.5" tabindex="-1" aria-hidden="true">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                  </div>
+                </div>
+              </div>
+              <div id="generatr-panel-tx-sweep-strings" class="generatr-tx-panel hidden">
                 <div class="form-row form-row-full">
                   <label for="generatr-tx-sound">Sound (--sound)</label>
                   <textarea id="generatr-tx-sound" rows="2" placeholder='e.g. voice:noise;type:white'></textarea>
@@ -1811,12 +2409,8 @@
                   <label for="generatr-tx-flanger">Flanger (--flanger)</label>
                   <textarea id="generatr-tx-flanger" rows="2"></textarea>
                 </div>
-                <div class="form-row form-row-full">
-                  <label for="generatr-tx-sweep-disable">Disable (--disable)</label>
-                  <input type="text" id="generatr-tx-sweep-disable" placeholder="tremolo,phaser,chorus,flanger or fx">
-                </div>
               </div>
-              <div id="generatr-panel-tx-riser-mix" class="hidden">
+              <div id="generatr-panel-tx-riser-mix" class="generatr-tx-panel hidden">
                 <div class="form-row">
                   <label for="generatr-tx-peak-pos">Peak position (--peak-pos)</label>
                   <input type="number" id="generatr-tx-peak-pos" step="any" min="0" max="2" value="1">
@@ -1838,7 +2432,7 @@
                   <input type="number" id="generatr-tx-sweep-level" step="0.05" min="0" max="1" value="0.6">
                 </div>
               </div>
-              <div id="generatr-panel-tx-drop-mix" class="hidden">
+              <div id="generatr-panel-tx-drop-mix" class="generatr-tx-panel hidden">
                 <div class="form-row">
                   <label for="generatr-tx-riser-level">Riser level (--riser-level)</label>
                   <input type="number" id="generatr-tx-riser-level" step="0.05" min="0" max="1" value="0.4">
@@ -4481,7 +5075,7 @@
     }
 
     (function () {
-      /** Optional generators: ?flags=extended_generators (or legacy ?flags=all_cli_options). */
+      /** Bass generators (reese, donk): ?flags=extended_generators or ?flags=all_cli_options. Transition types are always listed. */
       function parseAuditionrFeatureFlags() {
         try {
           var params = new URLSearchParams(window.location.search);
@@ -4522,7 +5116,16 @@
       (function gateGeneratrKindsDropdown() {
         var flags = parseAuditionrFeatureFlags();
         if (!kindSelect || generatrShowsExtendedKinds(flags)) return;
-        var keep = { beat: true, drone: true };
+        var keep = {
+          beat: true,
+          drone: true,
+          sweep: true,
+          closh: true,
+          kickboom: true,
+          longcrash: true,
+          riser: true,
+          drop: true
+        };
         Array.from(kindSelect.options).slice().forEach(function (opt) {
           if (!keep[opt.value]) opt.remove();
         });
@@ -4562,6 +5165,7 @@
       var panelTxTiming = document.getElementById("generatr-panel-tx-timing");
       var panelTxWash = document.getElementById("generatr-panel-tx-wash");
       var panelTxStretch = document.getElementById("generatr-panel-tx-stretch");
+      var panelTxSweep = document.getElementById("generatr-panel-tx-sweep");
       var panelTxSweepStrings = document.getElementById("generatr-panel-tx-sweep-strings");
       var panelTxRiserMix = document.getElementById("generatr-panel-tx-riser-mix");
       var panelTxDropMix = document.getElementById("generatr-panel-tx-drop-mix");
@@ -4711,6 +5315,268 @@
           });
       }
 
+      function generatrSyncSweepEffectBody(checkboxEl, bodyEl) {
+        if (!checkboxEl || !bodyEl) return;
+        bodyEl.classList.toggle("generatr-sweep-effect-disabled", !checkboxEl.checked);
+      }
+
+      /** Reusable DAW-style knob controller. Pass a root element to bind all .daw-knob inside it. */
+      function initDawKnobs(root) {
+        if (!root) return;
+        var knobs = root.querySelectorAll(".daw-knob");
+        knobs.forEach(function (knob) {
+          if (knob.dataset.dawKnobBound === "1") return;
+          knob.dataset.dawKnobBound = "1";
+
+          var input = knob.querySelector(".daw-knob-input");
+          var dial = knob.querySelector(".daw-knob-dial");
+          var readout = knob.querySelector(".daw-knob-readout");
+          if (!input || !dial || !readout) return;
+
+          var min = parseFloat(input.min || knob.dataset.knobMin || "0");
+          var max = parseFloat(input.max || knob.dataset.knobMax || "1");
+          var step = parseFloat(input.step || knob.dataset.knobStep || "0.01");
+          if (!isFinite(step) || step <= 0) step = 0.01;
+          var unit = (knob.dataset.knobUnit || "").trim();
+          var decimals = parseInt(knob.dataset.knobDecimals || "2", 10);
+          if (!isFinite(decimals) || decimals < 0) decimals = 2;
+
+          var drag = { active: false, startY: 0, startVal: 0, pointerId: null };
+
+          function snapValue(raw) {
+            var v = Math.max(min, Math.min(max, raw));
+            var steps = Math.round((v - min) / step);
+            return Math.max(min, Math.min(max, min + steps * step));
+          }
+
+          function formatReadout(v) {
+            var text = Number(v).toFixed(decimals);
+            if (unit) return text + " " + unit;
+            return text;
+          }
+
+          function updateVisual(v) {
+            var ratio = (max - min) > 0 ? (v - min) / (max - min) : 0;
+            ratio = Math.max(0, Math.min(1, ratio));
+            dial.style.setProperty("--knob-ratio", String(ratio));
+            readout.textContent = formatReadout(v);
+            dial.setAttribute("aria-valuenow", String(v));
+            dial.setAttribute("aria-valuemin", String(min));
+            dial.setAttribute("aria-valuemax", String(max));
+          }
+
+          function setValue(raw, opts) {
+            var v = snapValue(raw);
+            input.value = String(v);
+            updateVisual(v);
+            if (!opts || !opts.silent) {
+              input.dispatchEvent(new Event("input", { bubbles: true }));
+              input.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+          }
+
+          knob._dawKnobApi = {
+            input: input,
+            setValue: setValue,
+            min: min,
+            max: max,
+            step: step
+          };
+
+          function nudge(deltaSteps) {
+            setValue(parseFloat(input.value || String(min)) + deltaSteps * step);
+          }
+
+          setValue(parseFloat(input.value || String(min)), { silent: true });
+
+          dial.addEventListener("pointerdown", function (e) {
+            if (e.button !== undefined && e.button !== 0) return;
+            drag.active = true;
+            drag.startY = e.clientY;
+            drag.startVal = parseFloat(input.value || String(min));
+            drag.pointerId = e.pointerId;
+            dial.setPointerCapture(e.pointerId);
+            e.preventDefault();
+          });
+
+          dial.addEventListener("pointermove", function (e) {
+            if (!drag.active || e.pointerId !== drag.pointerId) return;
+            var span = max - min;
+            var pxPerFull = Math.max(80, Math.min(220, span * 120));
+            var delta = (drag.startY - e.clientY) * (span / pxPerFull);
+            setValue(drag.startVal + delta);
+          });
+
+          function endDrag(e) {
+            if (drag.pointerId != null && dial.hasPointerCapture(drag.pointerId)) {
+              dial.releasePointerCapture(drag.pointerId);
+            }
+            drag.active = false;
+            drag.pointerId = null;
+          }
+
+          dial.addEventListener("pointerup", endDrag);
+          dial.addEventListener("pointercancel", endDrag);
+
+          dial.addEventListener("wheel", function (e) {
+            e.preventDefault();
+            var dir = e.deltaY < 0 ? 1 : -1;
+            var mult = e.shiftKey ? 10 : (e.altKey ? 0.1 : 1);
+            nudge(dir * mult);
+          }, { passive: false });
+
+          dial.addEventListener("keydown", function (e) {
+            if (e.key === "ArrowUp" || e.key === "ArrowRight") {
+              e.preventDefault();
+              nudge(e.shiftKey ? 10 : 1);
+            } else if (e.key === "ArrowDown" || e.key === "ArrowLeft") {
+              e.preventDefault();
+              nudge(e.shiftKey ? -10 : -1);
+            } else if (e.key === "Home") {
+              e.preventDefault();
+              setValue(min);
+            } else if (e.key === "End") {
+              e.preventDefault();
+              setValue(max);
+            }
+          });
+        });
+
+        linkDawKnobPairs(root);
+      }
+
+      function linkDawKnobPairs(root) {
+        if (!root) return;
+        var pairs = {};
+        root.querySelectorAll(".daw-knob[data-knob-pair][data-knob-role]").forEach(function (knob) {
+          var pairId = knob.dataset.knobPair;
+          if (!pairId) return;
+          if (!pairs[pairId]) pairs[pairId] = {};
+          pairs[pairId][knob.dataset.knobRole] = knob;
+        });
+
+        Object.keys(pairs).forEach(function (pairId) {
+          var minKnob = pairs[pairId].min;
+          var maxKnob = pairs[pairId].max;
+          if (!minKnob || !maxKnob) return;
+          if (minKnob.dataset.dawKnobPairLinked === "1") return;
+          minKnob.dataset.dawKnobPairLinked = "1";
+
+          var minApi = minKnob._dawKnobApi;
+          var maxApi = maxKnob._dawKnobApi;
+          if (!minApi || !maxApi) return;
+
+          var gap = parseFloat(minKnob.dataset.knobPairGap || maxKnob.dataset.knobPairGap || "0");
+          if (!isFinite(gap) || gap < 0) gap = 0;
+
+          var origMinSet = minApi.setValue;
+          var origMaxSet = maxApi.setValue;
+
+          minApi.setValue = function (raw, opts) {
+            var hi = parseFloat(maxApi.input.value);
+            if (!isNaN(hi)) raw = Math.min(raw, hi - gap);
+            origMinSet(raw, opts);
+          };
+
+          maxApi.setValue = function (raw, opts) {
+            var lo = parseFloat(minApi.input.value);
+            if (!isNaN(lo)) raw = Math.max(raw, lo + gap);
+            origMaxSet(raw, opts);
+          };
+
+          var lo = parseFloat(minApi.input.value);
+          var hi = parseFloat(maxApi.input.value);
+          if (!isNaN(lo) && !isNaN(hi) && lo > hi - gap) {
+            if (lo + gap <= maxApi.max) {
+              origMaxSet(lo + gap, { silent: true });
+            } else {
+              origMinSet(Math.max(minApi.min, hi - gap), { silent: true });
+            }
+          }
+        });
+      }
+
+      window.initDawKnobs = initDawKnobs;
+
+      function generatrInitSweepPanelControls() {
+        var effectPairs = [
+          ["generatr-tx-gain-enabled", "generatr-tx-gain-body"],
+          ["generatr-tx-filter-enabled", "generatr-tx-filter-body"],
+          ["generatr-tx-tremolo-enabled", "generatr-tx-tremolo-body"],
+          ["generatr-tx-phaser-enabled", "generatr-tx-phaser-body"],
+          ["generatr-tx-chorus-enabled", "generatr-tx-chorus-body"],
+          ["generatr-tx-flanger-enabled", "generatr-tx-flanger-body"]
+        ];
+        effectPairs.forEach(function (pair) {
+          var cb = document.getElementById(pair[0]);
+          var body = document.getElementById(pair[1]);
+          if (!cb || !body) return;
+          generatrSyncSweepEffectBody(cb, body);
+          cb.addEventListener("change", function () {
+            generatrSyncSweepEffectBody(cb, body);
+          });
+        });
+
+        initDawKnobs(document.getElementById("generatr-panel-tx-sweep"));
+      }
+      generatrInitSweepPanelControls();
+
+      function generatrCollectSweepPayload(body) {
+        body.voice = generatrTrimOrNull(document.getElementById("generatr-tx-voice").value);
+        body.curveShape = generatrTrimOrNull(document.getElementById("generatr-tx-curve-shape").value);
+        body.curvePeak = parseFloat(document.getElementById("generatr-tx-curve-peak").value || "0.5");
+        body.curveDecay = parseFloat(document.getElementById("generatr-tx-curve-decay").value || "4");
+
+        body.gainEnabled = !!document.getElementById("generatr-tx-gain-enabled").checked;
+        if (body.gainEnabled) {
+          body.gainMin = parseFloat(document.getElementById("generatr-tx-gain-min").value || "0");
+          body.gainMax = parseFloat(document.getElementById("generatr-tx-gain-max").value || "1");
+        }
+
+        body.filterEnabled = !!document.getElementById("generatr-tx-filter-enabled").checked;
+        if (body.filterEnabled) {
+          body.filterType = generatrTrimOrNull(document.getElementById("generatr-tx-filter-type").value);
+          body.filterCutoffLow = parseInt(document.getElementById("generatr-tx-filter-cutoff-low").value || "400", 10);
+          body.filterCutoffHigh = parseInt(document.getElementById("generatr-tx-filter-cutoff-high").value || "12000", 10);
+        }
+
+        body.tremoloEnabled = !!document.getElementById("generatr-tx-tremolo-enabled").checked;
+        if (body.tremoloEnabled) {
+          body.tremoloRateMin = parseFloat(document.getElementById("generatr-tx-tremolo-rate-min").value || "0.3");
+          body.tremoloRateMax = parseFloat(document.getElementById("generatr-tx-tremolo-rate-max").value || "15");
+          body.tremoloDepth = parseFloat(document.getElementById("generatr-tx-tremolo-depth").value || "0.85");
+        }
+
+        body.phaserEnabled = !!document.getElementById("generatr-tx-phaser-enabled").checked;
+        if (body.phaserEnabled) {
+          body.phaserRateMin = parseFloat(document.getElementById("generatr-tx-phaser-rate-min").value || "0.2");
+          body.phaserRateMax = parseFloat(document.getElementById("generatr-tx-phaser-rate-max").value || "2");
+          body.phaserDepth = parseFloat(document.getElementById("generatr-tx-phaser-depth").value || "0.65");
+          body.phaserCentre = parseFloat(document.getElementById("generatr-tx-phaser-centre").value || "1500");
+          body.phaserFeedback = parseFloat(document.getElementById("generatr-tx-phaser-feedback").value || "0.4");
+          body.phaserMix = parseFloat(document.getElementById("generatr-tx-phaser-mix").value || "0.5");
+        }
+
+        body.chorusEnabled = !!document.getElementById("generatr-tx-chorus-enabled").checked;
+        if (body.chorusEnabled) {
+          body.chorusRateMin = parseFloat(document.getElementById("generatr-tx-chorus-rate-min").value || "0.3");
+          body.chorusRateMax = parseFloat(document.getElementById("generatr-tx-chorus-rate-max").value || "1.5");
+          body.chorusDepth = parseFloat(document.getElementById("generatr-tx-chorus-depth").value || "0.28");
+          body.chorusDelay = parseFloat(document.getElementById("generatr-tx-chorus-delay").value || "7.5");
+          body.chorusMix = parseFloat(document.getElementById("generatr-tx-chorus-mix").value || "0.45");
+        }
+
+        body.flangerEnabled = !!document.getElementById("generatr-tx-flanger-enabled").checked;
+        if (body.flangerEnabled) {
+          body.flangerRateMin = parseFloat(document.getElementById("generatr-tx-flanger-rate-min").value || "0.2");
+          body.flangerRateMax = parseFloat(document.getElementById("generatr-tx-flanger-rate-max").value || "0.8");
+          body.flangerDepth = parseFloat(document.getElementById("generatr-tx-flanger-depth").value || "0.4");
+          body.flangerDelay = parseFloat(document.getElementById("generatr-tx-flanger-delay").value || "2");
+          body.flangerFeedback = parseFloat(document.getElementById("generatr-tx-flanger-feedback").value || "0.35");
+          body.flangerMix = parseFloat(document.getElementById("generatr-tx-flanger-mix").value || "0.5");
+        }
+      }
+
       function syncTransitionTimingDefaults(kind) {
         var barsEl = document.getElementById("generatr-tx-bars");
         if (!barsEl) return;
@@ -4761,11 +5627,12 @@
 
         var washKinds = { closh: 1, kickboom: 1, longcrash: 1, riser: 1, drop: 1 };
         var stretchKinds = { longcrash: 1, riser: 1, drop: 1 };
-        var sweepStrKinds = { sweep: 1, riser: 1, drop: 1 };
+        var legacySweepStrKinds = { riser: 1, drop: 1 };
 
         if (panelTxWash) panelTxWash.classList.toggle("hidden", !washKinds[kind]);
         if (panelTxStretch) panelTxStretch.classList.toggle("hidden", !stretchKinds[kind]);
-        if (panelTxSweepStrings) panelTxSweepStrings.classList.toggle("hidden", !sweepStrKinds[kind]);
+        if (panelTxSweep) panelTxSweep.classList.toggle("hidden", kind !== "sweep");
+        if (panelTxSweepStrings) panelTxSweepStrings.classList.toggle("hidden", !legacySweepStrKinds[kind]);
         if (panelTxRiserMix) panelTxRiserMix.classList.toggle("hidden", kind !== "riser");
         if (panelTxDropMix) panelTxDropMix.classList.toggle("hidden", kind !== "drop");
 
@@ -5125,14 +5992,17 @@
           body.delay = generatrTrimOrNull(document.getElementById("generatr-tx-delay").value);
           body.stretch = parseFloat(document.getElementById("generatr-tx-stretch").value || "3");
           body.windowSize = parseFloat(document.getElementById("generatr-tx-window-size").value || "0.25");
-          body.sound = generatrTrimOrNull(document.getElementById("generatr-tx-sound").value);
-          body.curve = generatrTrimOrNull(document.getElementById("generatr-tx-curve").value);
-          body.filterStr = generatrTrimOrNull(document.getElementById("generatr-tx-filter-str").value);
-          body.tremolo = generatrTrimOrNull(document.getElementById("generatr-tx-tremolo").value);
-          body.phaser = generatrTrimOrNull(document.getElementById("generatr-tx-phaser").value);
-          body.chorus = generatrTrimOrNull(document.getElementById("generatr-tx-chorus").value);
-          body.flanger = generatrTrimOrNull(document.getElementById("generatr-tx-flanger").value);
-          body.disable = generatrTrimOrNull(document.getElementById("generatr-tx-sweep-disable").value);
+          if (kind === "sweep") {
+            generatrCollectSweepPayload(body);
+          } else if (kind === "riser" || kind === "drop") {
+            body.sound = generatrTrimOrNull(document.getElementById("generatr-tx-sound").value);
+            body.curve = generatrTrimOrNull(document.getElementById("generatr-tx-curve").value);
+            body.filterStr = generatrTrimOrNull(document.getElementById("generatr-tx-filter-str").value);
+            body.tremolo = generatrTrimOrNull(document.getElementById("generatr-tx-tremolo").value);
+            body.phaser = generatrTrimOrNull(document.getElementById("generatr-tx-phaser").value);
+            body.chorus = generatrTrimOrNull(document.getElementById("generatr-tx-chorus").value);
+            body.flanger = generatrTrimOrNull(document.getElementById("generatr-tx-flanger").value);
+          }
           body.peakPos = parseFloat(document.getElementById("generatr-tx-peak-pos").value || "1");
           body.buildShape = (document.getElementById("generatr-tx-build-shape").value || "ease_in").trim();
           body.longcrashLevel = parseFloat(document.getElementById("generatr-tx-longcrash-level").value || "0.4");
