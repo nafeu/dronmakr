@@ -1242,7 +1242,7 @@ def generate_sweep_sample(
     return output, params_used
 
 
-# --- Closh: washed clap with long reverb (and optional tempo-synced delay) ---
+# --- Wash transitions: shared reverb/delay config + percussion wash generator ---
 
 # Convolution reverb: higher quality than algorithmic. Param ranges for randomization.
 CLOSH_REVERB_WET_RANGE = (0.4, 0.6)  # 40–60% wet (dry/wet 0.0–1.0)
@@ -1261,17 +1261,54 @@ CLOSH_DELAY_MIX_RANGE = (0.15, 0.5)
 CLOSH_TAIL_SEC = 12.0
 
 
-def _get_random_kick_path() -> Path:
-    """Pick a random .wav from DRUM_KICK_PATHS. Supports comma-separated roots."""
-    paths_str = get_setting("DRUM_KICK_PATHS", "")
+# --- Wash: washed percussion with long reverb, optional delay, and Paulstretch ---
+
+WASH_PERCUSSION_TYPES: tuple[str, ...] = (
+    "kick",
+    "snare",
+    "hihat",
+    "clap",
+    "perc",
+    "tom",
+    "shaker",
+    "cymbal",
+)
+
+WASH_PERCUSSION_SETTING_KEYS: dict[str, str] = {
+    "kick": "DRUM_KICK_PATHS",
+    "snare": "DRUM_SNARE_PATHS",
+    "hihat": "DRUM_HIHAT_PATHS",
+    "clap": "DRUM_CLAP_PATHS",
+    "perc": "DRUM_PERC_PATHS",
+    "tom": "DRUM_TOM_PATHS",
+    "shaker": "DRUM_SHAKER_PATHS",
+    "cymbal": "DRUM_CYMBAL_PATHS",
+}
+
+
+def normalize_wash_percussion(value: str | None) -> str:
+    """Resolve percussion type for wash generation. None or random => random choice."""
+    if value is None or _is_random(value):
+        return random.choice(WASH_PERCUSSION_TYPES)
+    lowered = value.strip().lower()
+    if lowered in WASH_PERCUSSION_TYPES:
+        return lowered
+    choices = ", ".join(WASH_PERCUSSION_TYPES)
+    raise ValueError(f"Unknown percussion '{value}'. Choose one of: {choices}")
+
+
+def _get_random_percussion_path(percussion: str) -> Path:
+    """Pick a random .wav for a percussion type from the active drum path preset."""
+    key = WASH_PERCUSSION_SETTING_KEYS[normalize_wash_percussion(percussion)]
+    paths_str = get_setting(key, "")
     roots = parse_escaped_csv(paths_str)
     if not roots:
         raise ValueError(
-            "DRUM_KICK_PATHS is not configured. Add paths to kick samples in settings."
+            f"{key} is not configured. Add paths to {percussion} samples in settings."
         )
     root = Path(random.choice(roots)).expanduser().resolve()
     if not root.exists() or not root.is_dir():
-        raise ValueError(f"DRUM_KICK_PATHS root does not exist or is not a dir: {root}")
+        raise ValueError(f"{key} root does not exist or is not a dir: {root}")
     candidates = [
         f for f in root.iterdir() if f.is_file() and f.suffix.lower() == ".wav"
     ]
@@ -1280,44 +1317,344 @@ def _get_random_kick_path() -> Path:
     return random.choice(candidates)
 
 
-def _get_random_clap_path() -> Path:
-    """Pick a random .wav from DRUM_CLAP_PATHS. Supports comma-separated roots."""
-    paths_str = get_setting("DRUM_CLAP_PATHS", "")
-    roots = parse_escaped_csv(paths_str)
-    if not roots:
-        raise ValueError(
-            "DRUM_CLAP_PATHS is not configured. Add paths to clap samples in settings."
-        )
-    root = Path(random.choice(roots)).expanduser().resolve()
-    if not root.exists() or not root.is_dir():
-        raise ValueError(f"DRUM_CLAP_PATHS root does not exist or is not a dir: {root}")
-    candidates = [
-        f for f in root.iterdir() if f.is_file() and f.suffix.lower() == ".wav"
-    ]
-    if not candidates:
-        raise ValueError(f"No .wav files found in {root}")
-    return random.choice(candidates)
+def _load_wash_source_audio(sample_path: Path) -> np.ndarray:
+    """Load a mono/stereo percussion hit, resample to SAMPLE_RATE, return (channels, samples)."""
+    audio, sr = sf.read(str(sample_path), dtype="float32")
+    if audio.ndim == 1:
+        audio = audio[np.newaxis, :]
+    else:
+        audio = np.ascontiguousarray(audio.T)
+
+    if sr != SAMPLE_RATE:
+        import librosa
+
+        audio_lr = audio.T
+        resampled = librosa.resample(audio_lr, orig_sr=sr, target_sr=SAMPLE_RATE)
+        if resampled.ndim == 1:
+            audio = resampled[np.newaxis, :]
+        else:
+            audio = np.ascontiguousarray(resampled.T)
+
+    input_peak = np.max(np.abs(audio))
+    if input_peak < 1e-6:
+        raise ValueError(f"Sample is effectively silent: {sample_path}")
+    return audio
 
 
-def _get_random_cymbal_path() -> Path:
-    """Pick a random .wav from DRUM_CYMBAL_PATHS. Supports comma-separated roots."""
-    paths_str = get_setting("DRUM_CYMBAL_PATHS", "")
-    roots = parse_escaped_csv(paths_str)
-    if not roots:
-        raise ValueError(
-            "DRUM_CYMBAL_PATHS is not configured. Add paths to cymbal samples in settings."
+def _apply_wash_reverb(padded: np.ndarray, config: dict[str, Any]) -> np.ndarray:
+    """Convolution reverb on padded source."""
+    ir = dsp.make_reverb_ir(
+        SAMPLE_RATE,
+        length_sec=config["reverb_length_sec"],
+        decay_sec=config["reverb_decay_sec"],
+        early_reflections=config["reverb_early_reflections"],
+        highpass_cutoff_hz=config["reverb_highpass_hz"],
+        seed=random.randint(0, 2**31 - 1),
+        tail_diffusion=config["reverb_tail_diffusion"],
+        early_diffuse=True,
+    )
+    wet_level = config["reverb_wet_level"]
+    n_channels = padded.shape[0]
+    wet = np.zeros((n_channels, padded.shape[1] + len(ir) - 1), dtype=np.float32)
+    for ch in range(n_channels):
+        wet[ch] = fftconvolve(padded[ch], ir, mode="full")
+    dry_extended = np.zeros_like(wet, dtype=np.float32)
+    dry_extended[:, : padded.shape[1]] = padded
+    wet_peak = np.max(np.abs(wet)) + 1e-12
+    dry_peak = np.max(np.abs(padded)) + 1e-12
+    wet = wet * (dry_peak / wet_peak)
+    return wet_level * wet + (1.0 - wet_level) * dry_extended
+
+
+def _apply_wash_delay(
+    processed: np.ndarray,
+    config: dict[str, Any],
+    tempo: int,
+) -> np.ndarray:
+    """Tempo-synced delay on wash signal."""
+    delay_sec = dsp.delay_division_to_seconds(config["delay_division"], float(tempo))
+    delay_plugin = Delay(
+        delay_seconds=delay_sec,
+        feedback=config["delay_feedback"],
+        mix=config["delay_mix"],
+    )
+    board = Pedalboard([delay_plugin])
+    chunk_samples = 44100
+    proc_len = processed.shape[1]
+    n_chunks = (proc_len + chunk_samples - 1) // chunk_samples
+    delay_chunks = []
+    for i in range(n_chunks):
+        start = i * chunk_samples
+        end = min(start + chunk_samples, proc_len)
+        chunk = processed[:, start:end]
+        out_chunk = board(chunk, SAMPLE_RATE, buffer_size=4096, reset=(i == 0))
+        delay_chunks.append(out_chunk)
+    return np.concatenate(delay_chunks, axis=1)
+
+
+def _process_wash_effects(
+    padded: np.ndarray,
+    config: dict[str, Any],
+    tempo: int,
+) -> np.ndarray:
+    """Apply enabled wash effects (reverb, delay) in order."""
+    if config.get("reverb_enabled", True):
+        processed = _apply_wash_reverb(padded, config)
+    else:
+        processed = padded.astype(np.float32, copy=False)
+
+    if config.get("delay_enabled"):
+        processed = _apply_wash_delay(processed, config, tempo)
+    return processed
+
+
+def _apply_wash_reverb_and_delay(
+    padded: np.ndarray,
+    config: dict[str, Any],
+    tempo: int,
+) -> np.ndarray:
+    """Backward-compatible wrapper."""
+    return _process_wash_effects(padded, config, tempo)
+
+
+def _parse_wash_disable_set(disable: str | None) -> set[str]:
+    disabled: set[str] = set()
+    if not disable:
+        return disabled
+    for d in re.split(r"[\s,]+", disable.strip().lower()):
+        d = d.strip()
+        if d == "fx":
+            disabled.update(("reverb", "delay", "paulstretch"))
+        elif d in ("reverb", "delay", "paulstretch"):
+            disabled.add(d)
+    return disabled
+
+
+def parse_wash_config(
+    reverb: str | None = None,
+    delay: str | None = None,
+    library: str | None = None,
+    percussion: str | None = None,
+    reverb_enabled: bool | None = None,
+    reverb_wet_level: float | None = None,
+    reverb_length_sec: float | None = None,
+    reverb_decay_sec: float | None = None,
+    reverb_early_reflections: int | None = None,
+    reverb_highpass_hz: float | None = None,
+    reverb_tail_diffusion: float | None = None,
+    delay_enabled: bool | None = None,
+    delay_division: str | None = None,
+    delay_feedback: float | None = None,
+    delay_mix: float | None = None,
+    paulstretch_enabled: bool | None = None,
+    stretch: float | None = None,
+    window_size: float | None = None,
+    disable: str | None = None,
+) -> dict[str, Any]:
+    """
+    Parse wash config from CLI strings and/or explicit API fields.
+    library: drum path preset name (None => active preset at generation time).
+    percussion: kick, snare, hihat, clap, perc, tom, shaker, cymbal (omit for random).
+    disable: comma-separated reverb, delay, paulstretch (or fx for all wash effects).
+    """
+    disabled = _parse_wash_disable_set(disable)
+    base = parse_closh_config(reverb=reverb, delay=delay)
+    cfg: dict[str, Any] = dict(base)
+
+    if reverb_wet_level is not None:
+        cfg["reverb_wet_level"] = _resolve_optional_float(
+            reverb_wet_level, CLOSH_REVERB_WET_RANGE, 0.0, 1.0
         )
-    root = Path(random.choice(roots)).expanduser().resolve()
-    if not root.exists() or not root.is_dir():
-        raise ValueError(
-            f"DRUM_CYMBAL_PATHS root does not exist or is not a dir: {root}"
+    if reverb_length_sec is not None:
+        cfg["reverb_length_sec"] = _resolve_optional_float(
+            reverb_length_sec, CLOSH_REVERB_LENGTH_SEC_RANGE, 2.0, 10.0
         )
-    candidates = [
-        f for f in root.iterdir() if f.is_file() and f.suffix.lower() == ".wav"
-    ]
-    if not candidates:
-        raise ValueError(f"No .wav files found in {root}")
-    return random.choice(candidates)
+    if reverb_decay_sec is not None:
+        cfg["reverb_decay_sec"] = _resolve_optional_float(
+            reverb_decay_sec, CLOSH_REVERB_DECAY_SEC_RANGE, 1.5, 8.0
+        )
+    if reverb_early_reflections is not None:
+        cfg["reverb_early_reflections"] = _resolve_optional_int(
+            reverb_early_reflections, CLOSH_REVERB_EARLY_REFLECTIONS_RANGE, 10, 60
+        )
+    if reverb_highpass_hz is not None:
+        cfg["reverb_highpass_hz"] = _resolve_optional_float(
+            reverb_highpass_hz, CLOSH_REVERB_HIGHPASS_RANGE, 40, 180
+        )
+    if reverb_tail_diffusion is not None:
+        cfg["reverb_tail_diffusion"] = _resolve_optional_float(
+            reverb_tail_diffusion, CLOSH_REVERB_TAIL_DIFFUSION_RANGE, 0.3, 0.95
+        )
+
+    cfg["reverb_enabled"] = _resolve_effect_enabled(
+        reverb_enabled, disabled, "reverb", default_when_unset=True
+    )
+
+    if delay_enabled is not None:
+        cfg["delay_enabled"] = _resolve_effect_enabled(
+            delay_enabled, disabled, "delay", default_when_unset=False
+        )
+    else:
+        cfg["delay_enabled"] = _resolve_effect_enabled(
+            None, disabled, "delay", default_when_unset=bool(base["delay_enabled"])
+        )
+
+    if delay_division is not None:
+        cfg["delay_division"] = _resolve_optional_choice(
+            delay_division, CLOSH_DELAY_DIVISIONS
+        )
+    if delay_feedback is not None:
+        cfg["delay_feedback"] = _resolve_optional_float(
+            delay_feedback, CLOSH_DELAY_FEEDBACK_RANGE, 0, 0.8
+        )
+    if delay_mix is not None:
+        cfg["delay_mix"] = _resolve_optional_float(
+            delay_mix, CLOSH_DELAY_MIX_RANGE, 0, 0.8
+        )
+
+    cfg["paulstretch_enabled"] = _resolve_effect_enabled(
+        paulstretch_enabled, disabled, "paulstretch", default_when_unset=False
+    )
+    cfg["stretch"] = (
+        max(0.1, float(stretch))
+        if stretch is not None
+        else 3.0
+    )
+    cfg["window_size"] = (
+        max(0.05, float(window_size))
+        if window_size is not None
+        else 0.25
+    )
+
+    lib = (library or "").strip()
+    cfg["library"] = lib or None
+    perc = (percussion or "").strip()
+    cfg["percussion"] = (
+        normalize_wash_percussion(perc) if perc and not _is_random(perc) else None
+    )
+    return cfg
+
+
+def generate_wash_sample(
+    tempo: int = 120,
+    bars: int = 8,
+    output: str = "wash.wav",
+    config: dict[str, Any] | None = None,
+    stretch: float = 3.0,
+    window_size: float = 0.25,
+) -> tuple[str, dict[str, Any]]:
+    """
+    Generate a washed percussion transition:
+    - random hit from the chosen percussion folder (active drum path preset)
+    - long convolution reverb
+    - optional tempo-synced delay
+    - Paulstretch applied after reverb for an elongated, evolving tail
+    """
+    from paulstretch import paulstretch as paulstretch_fn
+
+    if config is None:
+        config = parse_wash_config()
+
+    percussion = config.get("percussion")
+    if percussion is None:
+        percussion = normalize_wash_percussion(None)
+    else:
+        percussion = normalize_wash_percussion(percussion)
+
+    sample_path = _get_random_percussion_path(percussion)
+    audio = _load_wash_source_audio(sample_path)
+
+    n_samples = audio.shape[1]
+    tail_samples = int(CLOSH_TAIL_SEC * SAMPLE_RATE)
+    total_len = n_samples + tail_samples
+    padded = np.zeros((audio.shape[0], total_len), dtype=np.float32)
+    padded[:, :n_samples] = audio
+
+    processed = _process_wash_effects(padded, config, tempo)
+
+    duration_sec = bars * 4 * (60.0 / tempo)
+    max_samples = int(duration_sec * SAMPLE_RATE)
+    pre_stretch = processed[:, :max_samples]
+    if pre_stretch.shape[0] == 2:
+        pre_mono = np.mean(pre_stretch, axis=0)
+    else:
+        pre_mono = pre_stretch[0]
+
+    paulstretch_enabled = bool(config.get("paulstretch_enabled", False))
+    stretch = max(0.1, float(config.get("stretch", stretch)))
+    window_size = max(0.05, float(config.get("window_size", window_size)))
+
+    if not paulstretch_enabled or stretch <= 1.0001:
+        final_audio = pre_mono
+        if final_audio.shape[0] >= max_samples:
+            final_audio = final_audio[:max_samples]
+        else:
+            final_audio = np.pad(final_audio, (0, max_samples - final_audio.shape[0]))
+    else:
+        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+            pre_path = f.name
+        try:
+            sf.write(pre_path, _normalize_audio(pre_mono), SAMPLE_RATE, subtype="PCM_16")
+
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
+                stretched_path = f.name
+            try:
+                paulstretch_fn(
+                    pre_path,
+                    stretched_path,
+                    stretch=stretch,
+                    window_size=window_size,
+                    show_logs=False,
+                )
+                stretched_audio, sr_out = sf.read(stretched_path, dtype="float32")
+            finally:
+                Path(stretched_path).unlink(missing_ok=True)
+        finally:
+            Path(pre_path).unlink(missing_ok=True)
+
+        if sr_out != SAMPLE_RATE:
+            import librosa
+
+            stretched_audio = librosa.resample(
+                stretched_audio.T, orig_sr=sr_out, target_sr=SAMPLE_RATE
+            ).T
+            sr_out = SAMPLE_RATE
+
+        if stretched_audio.ndim > 1:
+            stretched_mono = np.mean(stretched_audio, axis=1)
+        else:
+            stretched_mono = stretched_audio
+
+        target_samples = int(duration_sec * SAMPLE_RATE)
+        if stretched_mono.shape[0] >= target_samples:
+            final_audio = stretched_mono[:target_samples]
+        else:
+            final_audio = np.pad(
+                stretched_mono, (0, target_samples - stretched_mono.shape[0])
+            )
+
+    sf.write(output, _normalize_audio(final_audio), SAMPLE_RATE, subtype="PCM_16")
+
+    params_used = {
+        "sample_path": str(sample_path),
+        "percussion": percussion,
+        "library": config.get("library"),
+        "reverb_enabled": config.get("reverb_enabled", True),
+        "reverb_wet_level": config["reverb_wet_level"],
+        "reverb_length_sec": config["reverb_length_sec"],
+        "reverb_decay_sec": config["reverb_decay_sec"],
+        "reverb_early_reflections": config["reverb_early_reflections"],
+        "reverb_highpass_hz": config["reverb_highpass_hz"],
+        "reverb_tail_diffusion": config["reverb_tail_diffusion"],
+        "delay_enabled": config["delay_enabled"],
+        "delay_division": config["delay_division"],
+        "delay_feedback": config["delay_feedback"],
+        "delay_mix": config["delay_mix"],
+        "paulstretch_enabled": paulstretch_enabled,
+        "stretch": stretch,
+        "window_size": window_size,
+    }
+    return output, params_used
 
 
 def parse_closh_config(
@@ -1363,390 +1700,3 @@ def parse_closh_config(
         ),
         "delay_mix": _resolve_float(d, "mix", CLOSH_DELAY_MIX_RANGE, 0, 0.8),
     }
-
-
-def generate_closh_sample(
-    tempo: int = 120,
-    bars: int = 2,
-    output: str = "closh.wav",
-    config: dict[str, Any] | None = None,
-) -> tuple[str, dict[str, Any]]:
-    """
-    Generate a washed clap transition: random clap from DRUM_CLAP_PATHS with
-    long reverb and optional tempo-synced delay.
-    """
-    if config is None:
-        config = parse_closh_config()
-
-    clap_path = _get_random_clap_path()
-    audio, sr = sf.read(str(clap_path), dtype="float32")
-
-    # Pedalboard expects (channels, samples); soundfile returns (samples, channels)
-    if audio.ndim == 1:
-        audio = audio[np.newaxis, :]
-    else:
-        audio = np.ascontiguousarray(audio.T)
-
-    # Resample if needed; librosa expects (samples, channels)
-    if sr != SAMPLE_RATE:
-        import librosa
-
-        audio_lr = audio.T
-        resampled = librosa.resample(audio_lr, orig_sr=sr, target_sr=SAMPLE_RATE)
-        if resampled.ndim == 1:
-            audio = resampled[np.newaxis, :]
-        else:
-            audio = np.ascontiguousarray(resampled.T)
-
-    n_samples = audio.shape[1]
-    tail_samples = int(CLOSH_TAIL_SEC * SAMPLE_RATE)
-    total_len = n_samples + tail_samples
-    padded = np.zeros((audio.shape[0], total_len), dtype=np.float32)
-    padded[:, :n_samples] = audio
-
-    # Validate input has signal
-    input_peak = np.max(np.abs(audio))
-    if input_peak < 1e-6:
-        raise ValueError(f"Clap sample is effectively silent: {clap_path}")
-
-    # High-quality convolution reverb (stadium-style: diffuse early field, smooth tail)
-    ir = dsp.make_reverb_ir(
-        SAMPLE_RATE,
-        length_sec=config["reverb_length_sec"],
-        decay_sec=config["reverb_decay_sec"],
-        early_reflections=config["reverb_early_reflections"],
-        highpass_cutoff_hz=config["reverb_highpass_hz"],
-        seed=random.randint(0, 2**31 - 1),
-        tail_diffusion=config["reverb_tail_diffusion"],
-        early_diffuse=True,
-    )
-    wet_level = config["reverb_wet_level"]
-    n_channels = padded.shape[0]
-    wet = np.zeros((n_channels, padded.shape[1] + len(ir) - 1), dtype=np.float32)
-    for ch in range(n_channels):
-        wet[ch] = fftconvolve(padded[ch], ir, mode="full")
-    dry_extended = np.zeros_like(wet, dtype=np.float32)
-    dry_extended[:, : padded.shape[1]] = padded
-    wet_peak = np.max(np.abs(wet)) + 1e-12
-    dry_peak = np.max(np.abs(padded)) + 1e-12
-    wet = wet * (dry_peak / wet_peak)
-    processed = wet_level * wet + (1.0 - wet_level) * dry_extended
-
-    # Optionally apply tempo-synced delay
-    if config["delay_enabled"]:
-        delay_sec = dsp.delay_division_to_seconds(config["delay_division"], float(tempo))
-        delay_plugin = Delay(
-            delay_seconds=delay_sec,
-            feedback=config["delay_feedback"],
-            mix=config["delay_mix"],
-        )
-        board = Pedalboard([delay_plugin])
-        chunk_samples = 44100
-        proc_len = processed.shape[1]
-        n_chunks = (proc_len + chunk_samples - 1) // chunk_samples
-        delay_chunks = []
-        for i in range(n_chunks):
-            start = i * chunk_samples
-            end = min(start + chunk_samples, proc_len)
-            chunk = processed[:, start:end]
-            out_chunk = board(chunk, SAMPLE_RATE, buffer_size=4096, reset=(i == 0))
-            delay_chunks.append(out_chunk)
-        processed = np.concatenate(delay_chunks, axis=1)
-
-    # Trim to desired length (bars)
-    duration_sec = bars * 4 * (60.0 / tempo)
-    max_samples = int(duration_sec * SAMPLE_RATE)
-    out = processed[:, :max_samples]
-    if out.shape[0] == 2:
-        out_mono = np.mean(out, axis=0)
-    else:
-        out_mono = out[0]
-    sf.write(output, _normalize_audio(out_mono), SAMPLE_RATE, subtype="PCM_16")
-
-    params_used = {
-        "clap_path": str(clap_path),
-        "reverb_wet_level": config["reverb_wet_level"],
-        "reverb_length_sec": config["reverb_length_sec"],
-        "reverb_decay_sec": config["reverb_decay_sec"],
-        "reverb_early_reflections": config["reverb_early_reflections"],
-        "reverb_highpass_hz": config["reverb_highpass_hz"],
-        "reverb_tail_diffusion": config["reverb_tail_diffusion"],
-        "delay_enabled": config["delay_enabled"],
-        "delay_division": config["delay_division"],
-        "delay_feedback": config["delay_feedback"],
-        "delay_mix": config["delay_mix"],
-    }
-    return output, params_used
-
-
-def generate_kickboom_sample(
-    tempo: int = 120,
-    bars: int = 2,
-    output: str = "kickboom.wav",
-    config: dict[str, Any] | None = None,
-) -> tuple[str, dict[str, Any]]:
-    """
-    Generate a washed kick transition: random kick from DRUM_KICK_PATHS with
-    long reverb and optional tempo-synced delay. Same config interface as closh.
-    """
-    if config is None:
-        config = parse_closh_config()
-
-    kick_path = _get_random_kick_path()
-    audio, sr = sf.read(str(kick_path), dtype="float32")
-
-    # Pedalboard expects (channels, samples); soundfile returns (samples, channels)
-    if audio.ndim == 1:
-        audio = audio[np.newaxis, :]
-    else:
-        audio = np.ascontiguousarray(audio.T)
-
-    # Resample if needed
-    if sr != SAMPLE_RATE:
-        import librosa
-
-        audio_lr = audio.T
-        resampled = librosa.resample(audio_lr, orig_sr=sr, target_sr=SAMPLE_RATE)
-        if resampled.ndim == 1:
-            audio = resampled[np.newaxis, :]
-        else:
-            audio = np.ascontiguousarray(resampled.T)
-
-    n_samples = audio.shape[1]
-    tail_samples = int(CLOSH_TAIL_SEC * SAMPLE_RATE)
-    total_len = n_samples + tail_samples
-    padded = np.zeros((audio.shape[0], total_len), dtype=np.float32)
-    padded[:, :n_samples] = audio
-
-    input_peak = np.max(np.abs(audio))
-    if input_peak < 1e-6:
-        raise ValueError(f"Kick sample is effectively silent: {kick_path}")
-
-    ir = dsp.make_reverb_ir(
-        SAMPLE_RATE,
-        length_sec=config["reverb_length_sec"],
-        decay_sec=config["reverb_decay_sec"],
-        early_reflections=config["reverb_early_reflections"],
-        highpass_cutoff_hz=config["reverb_highpass_hz"],
-        seed=random.randint(0, 2**31 - 1),
-        tail_diffusion=config["reverb_tail_diffusion"],
-        early_diffuse=True,
-    )
-    wet_level = config["reverb_wet_level"]
-    n_channels = padded.shape[0]
-    wet = np.zeros((n_channels, padded.shape[1] + len(ir) - 1), dtype=np.float32)
-    for ch in range(n_channels):
-        wet[ch] = fftconvolve(padded[ch], ir, mode="full")
-    dry_extended = np.zeros_like(wet, dtype=np.float32)
-    dry_extended[:, : padded.shape[1]] = padded
-    wet_peak = np.max(np.abs(wet)) + 1e-12
-    dry_peak = np.max(np.abs(padded)) + 1e-12
-    wet = wet * (dry_peak / wet_peak)
-    processed = wet_level * wet + (1.0 - wet_level) * dry_extended
-
-    if config["delay_enabled"]:
-        delay_sec = dsp.delay_division_to_seconds(config["delay_division"], float(tempo))
-        delay_plugin = Delay(
-            delay_seconds=delay_sec,
-            feedback=config["delay_feedback"],
-            mix=config["delay_mix"],
-        )
-        board = Pedalboard([delay_plugin])
-        chunk_samples = 44100
-        proc_len = processed.shape[1]
-        n_chunks = (proc_len + chunk_samples - 1) // chunk_samples
-        delay_chunks = []
-        for i in range(n_chunks):
-            start = i * chunk_samples
-            end = min(start + chunk_samples, proc_len)
-            chunk = processed[:, start:end]
-            out_chunk = board(chunk, SAMPLE_RATE, buffer_size=4096, reset=(i == 0))
-            delay_chunks.append(out_chunk)
-        processed = np.concatenate(delay_chunks, axis=1)
-
-    duration_sec = bars * 4 * (60.0 / tempo)
-    max_samples = int(duration_sec * SAMPLE_RATE)
-    out = processed[:, :max_samples]
-    if out.shape[0] == 2:
-        out_mono = np.mean(out, axis=0)
-    else:
-        out_mono = out[0]
-    sf.write(output, _normalize_audio(out_mono), SAMPLE_RATE, subtype="PCM_16")
-
-    params_used = {
-        "kick_path": str(kick_path),
-        "reverb_wet_level": config["reverb_wet_level"],
-        "reverb_length_sec": config["reverb_length_sec"],
-        "reverb_decay_sec": config["reverb_decay_sec"],
-        "reverb_early_reflections": config["reverb_early_reflections"],
-        "reverb_highpass_hz": config["reverb_highpass_hz"],
-        "reverb_tail_diffusion": config["reverb_tail_diffusion"],
-        "delay_enabled": config["delay_enabled"],
-        "delay_division": config["delay_division"],
-        "delay_feedback": config["delay_feedback"],
-        "delay_mix": config["delay_mix"],
-    }
-    return output, params_used
-
-
-def generate_longcrash_sample(
-    tempo: int = 120,
-    bars: int = 8,
-    output: str = "longcrash.wav",
-    config: dict[str, Any] | None = None,
-    stretch: float = 3.0,
-    window_size: float = 0.25,
-) -> tuple[str, dict[str, Any]]:
-    """
-    Generate a long crash transition:
-    - random cymbal from DRUM_CYMBAL_PATHS
-    - long convolution reverb (same engine as closh/kickboom)
-    - optional tempo-synced delay
-    - Paulstretch applied after reverb for an elongated, evolving tail.
-    """
-    from paulstretch import paulstretch as paulstretch_fn
-
-    if config is None:
-        config = parse_closh_config()
-
-    cym_path = _get_random_cymbal_path()
-    audio, sr = sf.read(str(cym_path), dtype="float32")
-
-    if audio.ndim == 1:
-        audio = audio[np.newaxis, :]
-    else:
-        audio = np.ascontiguousarray(audio.T)
-
-    # Resample cymbal to internal SAMPLE_RATE if needed
-    if sr != SAMPLE_RATE:
-        import librosa
-
-        audio_lr = audio.T
-        resampled = librosa.resample(audio_lr, orig_sr=sr, target_sr=SAMPLE_RATE)
-        if resampled.ndim == 1:
-            audio = resampled[np.newaxis, :]
-        else:
-            audio = np.ascontiguousarray(resampled.T)
-
-    n_samples = audio.shape[1]
-    tail_samples = int(CLOSH_TAIL_SEC * SAMPLE_RATE)
-    total_len = n_samples + tail_samples
-    padded = np.zeros((audio.shape[0], total_len), dtype=np.float32)
-    padded[:, :n_samples] = audio
-
-    input_peak = np.max(np.abs(audio))
-    if input_peak < 1e-6:
-        raise ValueError(f"Cymbal sample is effectively silent: {cym_path}")
-
-    ir = dsp.make_reverb_ir(
-        SAMPLE_RATE,
-        length_sec=config["reverb_length_sec"],
-        decay_sec=config["reverb_decay_sec"],
-        early_reflections=config["reverb_early_reflections"],
-        highpass_cutoff_hz=config["reverb_highpass_hz"],
-        seed=random.randint(0, 2**31 - 1),
-        tail_diffusion=config["reverb_tail_diffusion"],
-        early_diffuse=True,
-    )
-    wet_level = config["reverb_wet_level"]
-    n_channels = padded.shape[0]
-    wet = np.zeros((n_channels, padded.shape[1] + len(ir) - 1), dtype=np.float32)
-    for ch in range(n_channels):
-        wet[ch] = fftconvolve(padded[ch], ir, mode="full")
-    dry_extended = np.zeros_like(wet, dtype=np.float32)
-    dry_extended[:, : padded.shape[1]] = padded
-    wet_peak = np.max(np.abs(wet)) + 1e-12
-    dry_peak = np.max(np.abs(padded)) + 1e-12
-    wet = wet * (dry_peak / wet_peak)
-    processed = wet_level * wet + (1.0 - wet_level) * dry_extended
-
-    # Optional tempo-synced delay (same as closh/kickboom)
-    if config["delay_enabled"]:
-        delay_sec = dsp.delay_division_to_seconds(config["delay_division"], float(tempo))
-        delay_plugin = Delay(
-            delay_seconds=delay_sec,
-            feedback=config["delay_feedback"],
-            mix=config["delay_mix"],
-        )
-        board = Pedalboard([delay_plugin])
-        chunk_samples = 44100
-        proc_len = processed.shape[1]
-        n_chunks = (proc_len + chunk_samples - 1) // chunk_samples
-        delay_chunks = []
-        for i in range(n_chunks):
-            start = i * chunk_samples
-            end = min(start + chunk_samples, proc_len)
-            chunk = processed[:, start:end]
-            out_chunk = board(chunk, SAMPLE_RATE, buffer_size=4096, reset=(i == 0))
-            delay_chunks.append(out_chunk)
-        processed = np.concatenate(delay_chunks, axis=1)
-
-    # Use temp files for intermediate processing (only final output is kept)
-    duration_sec = bars * 4 * (60.0 / tempo)
-    max_samples = int(duration_sec * SAMPLE_RATE)
-    pre_stretch = processed[:, :max_samples]
-    if pre_stretch.shape[0] == 2:
-        pre_mono = np.mean(pre_stretch, axis=0)
-    else:
-        pre_mono = pre_stretch[0]
-
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
-        pre_path = f.name
-    try:
-        sf.write(pre_path, _normalize_audio(pre_mono), SAMPLE_RATE, subtype="PCM_16")
-
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
-            stretched_path = f.name
-        try:
-            paulstretch_fn(
-                pre_path,
-                stretched_path,
-                stretch=stretch,
-                window_size=window_size,
-                show_logs=False,
-            )
-
-            stretched_audio, sr_out = sf.read(stretched_path, dtype="float32")
-        finally:
-            Path(stretched_path).unlink(missing_ok=True)
-    finally:
-        Path(pre_path).unlink(missing_ok=True)
-
-    if sr_out != SAMPLE_RATE:
-        import librosa
-
-        stretched_audio = librosa.resample(
-            stretched_audio.T, orig_sr=sr_out, target_sr=SAMPLE_RATE
-        ).T
-        sr_out = SAMPLE_RATE
-
-    if stretched_audio.ndim > 1:
-        stretched_mono = np.mean(stretched_audio, axis=1)
-    else:
-        stretched_mono = stretched_audio
-
-    target_samples = int(duration_sec * SAMPLE_RATE)
-    if stretched_mono.shape[0] >= target_samples:
-        final_audio = stretched_mono[:target_samples]
-    else:
-        pad = target_samples - stretched_mono.shape[0]
-        final_audio = np.pad(stretched_mono, (0, pad))
-
-    sf.write(output, _normalize_audio(final_audio), SAMPLE_RATE, subtype="PCM_16")
-
-    params_used = {
-        "cymbal_path": str(cym_path),
-        "reverb_wet_level": config["reverb_wet_level"],
-        "reverb_length_sec": config["reverb_length_sec"],
-        "reverb_decay_sec": config["reverb_decay_sec"],
-        "reverb_early_reflections": config["reverb_early_reflections"],
-        "reverb_highpass_hz": config["reverb_highpass_hz"],
-        "reverb_tail_diffusion": config["reverb_tail_diffusion"],
-        "delay_enabled": config["delay_enabled"],
-        "delay_division": config["delay_division"],
-        "delay_feedback": config["delay_feedback"],
-        "delay_mix": config["delay_mix"],
-        "stretch": stretch,
-        "window_size": window_size,
-    }
-    return output, params_used

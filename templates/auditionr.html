@@ -563,7 +563,17 @@
       gap: 0.15rem;
     }
 
-    .generatr-sweep-shape-select-wrap .generatr-sweep-preview-select {
+    .generatr-wash-source-row > .generatr-wash-source-card {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+
+    .generatr-wash-source-card .generatr-sweep-preview-select {
+      width: 100%;
+    }
+
+    .generatr-wash-effect-full {
+      flex: 1 1 100%;
       width: 100%;
     }
 
@@ -2099,9 +2109,7 @@
                   <option value="reese">reese</option>
                   <option value="donk">donk</option>
                   <option value="sweep">sweep</option>
-                  <option value="closh">closh</option>
-                  <option value="kickboom">kickboom</option>
-                  <option value="longcrash">longcrash</option>
+                  <option value="wash">wash</option>
                 </select>
               </div>
               <div id="generatr-panel-reese" class="hidden">
@@ -2172,24 +2180,169 @@
                   </div>
                 </div>
               </div>
-              <div id="generatr-panel-tx-wash" class="generatr-tx-panel hidden">
-                <div class="form-row form-row-full">
-                  <label for="generatr-tx-reverb">Reverb (--reverb)</label>
-                  <textarea id="generatr-tx-reverb" rows="2" placeholder="wet_level, length_sec, decay_sec, … (key:value;… or omit for random)"></textarea>
-                </div>
-                <div class="form-row form-row-full">
-                  <label for="generatr-tx-delay">Delay (--delay)</label>
-                  <textarea id="generatr-tx-delay" rows="2" placeholder="division:1/8;feedback:0.4;mix:0.3 — or leave empty / off"></textarea>
-                </div>
-              </div>
-              <div id="generatr-panel-tx-stretch" class="generatr-tx-panel hidden">
-                <div class="form-row">
-                  <label for="generatr-tx-stretch">Stretch (--stretch)</label>
-                  <input type="number" id="generatr-tx-stretch" step="any" min="0.1" value="3">
-                </div>
-                <div class="form-row">
-                  <label for="generatr-tx-window-size">Window size (--window-size, sec)</label>
-                  <input type="number" id="generatr-tx-window-size" step="any" min="0.05" value="0.25">
+              <div id="generatr-panel-tx-wash" class="generatr-tx-panel generatr-sweep-panel hidden">
+                <div class="generatr-sweep-effects">
+                  <div class="generatr-sweep-effect-row generatr-wash-source-row">
+                    <div class="generatr-sweep-effect generatr-wash-source-card">
+                      <div class="generatr-sweep-effect-head">
+                        <span class="generatr-sweep-effect-title">Library</span>
+                      </div>
+                      <div class="generatr-sweep-effect-body">
+                        <select id="generatr-tx-library" class="generatr-sweep-preview-select" aria-label="Sample library">
+                        </select>
+                      </div>
+                    </div>
+                    <div class="generatr-sweep-effect generatr-wash-source-card">
+                      <div class="generatr-sweep-effect-head">
+                        <span class="generatr-sweep-effect-title">Percussion</span>
+                      </div>
+                      <div class="generatr-sweep-effect-body">
+                        <select id="generatr-tx-percussion" class="generatr-sweep-preview-select" aria-label="Percussion type">
+                          <option value="" selected>Random</option>
+                          <option value="kick">Kick</option>
+                          <option value="snare">Snare</option>
+                          <option value="hihat">Hi-hat</option>
+                          <option value="clap">Clap</option>
+                          <option value="perc">Perc</option>
+                          <option value="tom">Tom</option>
+                          <option value="shaker">Shaker</option>
+                          <option value="cymbal">Cymbal</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="generatr-sweep-effect-row">
+                    <div class="generatr-sweep-effect generatr-wash-effect-full">
+                      <div class="generatr-sweep-effect-head">
+                        <span class="generatr-sweep-effect-title">Reverb</span>
+                        <div class="generatr-sweep-effect-enable">
+                          <input type="checkbox" id="generatr-tx-reverb-enabled" checked aria-label="Enable reverb">
+                        </div>
+                      </div>
+                      <div class="generatr-sweep-effect-body" id="generatr-tx-reverb-body">
+                        <div class="generatr-sweep-effect-knobs">
+                          <div class="daw-knob" data-knob-unit="" data-knob-decimals="2">
+                            <span class="daw-knob-label">Wet</span>
+                            <button type="button" class="daw-knob-dial" aria-label="Reverb wet level">
+                              <span class="daw-knob-ring" aria-hidden="true"></span>
+                            </button>
+                            <span class="daw-knob-readout" aria-hidden="true">0.50</span>
+                            <input type="number" class="daw-knob-input" id="generatr-tx-reverb-wet" step="0.01" min="0" max="1" value="0.5" tabindex="-1" aria-hidden="true">
+                          </div>
+                          <div class="daw-knob" data-knob-unit="s" data-knob-decimals="1">
+                            <span class="daw-knob-label">Length</span>
+                            <button type="button" class="daw-knob-dial" aria-label="Reverb length">
+                              <span class="daw-knob-ring" aria-hidden="true"></span>
+                            </button>
+                            <span class="daw-knob-readout" aria-hidden="true">5.0 s</span>
+                            <input type="number" class="daw-knob-input" id="generatr-tx-reverb-length" step="0.1" min="2" max="10" value="5" tabindex="-1" aria-hidden="true">
+                          </div>
+                          <div class="daw-knob" data-knob-unit="s" data-knob-decimals="1">
+                            <span class="daw-knob-label">Decay</span>
+                            <button type="button" class="daw-knob-dial" aria-label="Reverb decay">
+                              <span class="daw-knob-ring" aria-hidden="true"></span>
+                            </button>
+                            <span class="daw-knob-readout" aria-hidden="true">3.8 s</span>
+                            <input type="number" class="daw-knob-input" id="generatr-tx-reverb-decay" step="0.1" min="1.5" max="8" value="3.75" tabindex="-1" aria-hidden="true">
+                          </div>
+                          <div class="daw-knob" data-knob-unit="" data-knob-decimals="0">
+                            <span class="daw-knob-label">Early</span>
+                            <button type="button" class="daw-knob-dial" aria-label="Reverb early reflections">
+                              <span class="daw-knob-ring" aria-hidden="true"></span>
+                            </button>
+                            <span class="daw-knob-readout" aria-hidden="true">30</span>
+                            <input type="number" class="daw-knob-input" id="generatr-tx-reverb-early" step="1" min="10" max="60" value="30" tabindex="-1" aria-hidden="true">
+                          </div>
+                          <div class="daw-knob" data-knob-unit="Hz" data-knob-decimals="0">
+                            <span class="daw-knob-label">Highpass</span>
+                            <button type="button" class="daw-knob-dial" aria-label="Reverb highpass">
+                              <span class="daw-knob-ring" aria-hidden="true"></span>
+                            </button>
+                            <span class="daw-knob-readout" aria-hidden="true">95 Hz</span>
+                            <input type="number" class="daw-knob-input" id="generatr-tx-reverb-highpass" step="1" min="40" max="180" value="95" tabindex="-1" aria-hidden="true">
+                          </div>
+                          <div class="daw-knob" data-knob-unit="" data-knob-decimals="2">
+                            <span class="daw-knob-label">Diffusion</span>
+                            <button type="button" class="daw-knob-dial" aria-label="Reverb tail diffusion">
+                              <span class="daw-knob-ring" aria-hidden="true"></span>
+                            </button>
+                            <span class="daw-knob-readout" aria-hidden="true">0.78</span>
+                            <input type="number" class="daw-knob-input" id="generatr-tx-reverb-diffusion" step="0.01" min="0.3" max="0.95" value="0.78" tabindex="-1" aria-hidden="true">
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="generatr-sweep-effect-row generatr-wash-source-row">
+                    <div class="generatr-sweep-effect generatr-wash-source-card">
+                      <div class="generatr-sweep-effect-head">
+                        <span class="generatr-sweep-effect-title">Delay</span>
+                        <div class="generatr-sweep-effect-enable">
+                          <input type="checkbox" id="generatr-tx-delay-enabled" aria-label="Enable delay">
+                        </div>
+                      </div>
+                      <div class="generatr-sweep-effect-body generatr-sweep-effect-disabled" id="generatr-tx-delay-body">
+                        <div class="generatr-sweep-effect-knobs">
+                          <div class="daw-knob-select">
+                            <span class="daw-knob-label">Division</span>
+                            <select id="generatr-tx-delay-division" aria-label="Delay division">
+                              <option value="1/4">1/4</option>
+                              <option value="1/8" selected>1/8</option>
+                              <option value="1/8d">1/8d</option>
+                              <option value="1/16">1/16</option>
+                              <option value="1/16d">1/16d</option>
+                              <option value="1/32">1/32</option>
+                            </select>
+                            <span class="daw-knob-select-spacer" aria-hidden="true"></span>
+                          </div>
+                          <div class="daw-knob" data-knob-unit="" data-knob-decimals="2">
+                            <span class="daw-knob-label">Feedback</span>
+                            <button type="button" class="daw-knob-dial" aria-label="Delay feedback">
+                              <span class="daw-knob-ring" aria-hidden="true"></span>
+                            </button>
+                            <span class="daw-knob-readout" aria-hidden="true">0.40</span>
+                            <input type="number" class="daw-knob-input" id="generatr-tx-delay-feedback" step="0.01" min="0" max="0.8" value="0.4" tabindex="-1" aria-hidden="true">
+                          </div>
+                          <div class="daw-knob" data-knob-unit="" data-knob-decimals="2">
+                            <span class="daw-knob-label">Mix</span>
+                            <button type="button" class="daw-knob-dial" aria-label="Delay mix">
+                              <span class="daw-knob-ring" aria-hidden="true"></span>
+                            </button>
+                            <span class="daw-knob-readout" aria-hidden="true">0.30</span>
+                            <input type="number" class="daw-knob-input" id="generatr-tx-delay-mix" step="0.01" min="0" max="0.8" value="0.3" tabindex="-1" aria-hidden="true">
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="generatr-sweep-effect generatr-wash-source-card">
+                      <div class="generatr-sweep-effect-head">
+                        <span class="generatr-sweep-effect-title">Paulstretch</span>
+                        <div class="generatr-sweep-effect-enable">
+                          <input type="checkbox" id="generatr-tx-paulstretch-enabled" aria-label="Enable Paulstretch">
+                        </div>
+                      </div>
+                      <div class="generatr-sweep-effect-body generatr-sweep-effect-disabled" id="generatr-tx-paulstretch-body">
+                        <div class="generatr-sweep-effect-knobs">
+                          <div class="daw-knob" data-knob-unit="x" data-knob-decimals="1">
+                            <span class="daw-knob-label">Stretch</span>
+                            <button type="button" class="daw-knob-dial" aria-label="Paulstretch factor">
+                              <span class="daw-knob-ring" aria-hidden="true"></span>
+                            </button>
+                            <span class="daw-knob-readout" aria-hidden="true">3.0 x</span>
+                            <input type="number" class="daw-knob-input" id="generatr-tx-paulstretch-stretch" step="0.1" min="0.1" max="20" value="3" tabindex="-1" aria-hidden="true">
+                          </div>
+                          <div class="daw-knob" data-knob-unit="s" data-knob-decimals="2">
+                            <span class="daw-knob-label">Window</span>
+                            <button type="button" class="daw-knob-dial" aria-label="Paulstretch window">
+                              <span class="daw-knob-ring" aria-hidden="true"></span>
+                            </button>
+                            <span class="daw-knob-readout" aria-hidden="true">0.25 s</span>
+                            <input type="number" class="daw-knob-input" id="generatr-tx-paulstretch-window" step="0.01" min="0.05" max="2" value="0.25" tabindex="-1" aria-hidden="true">
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div id="generatr-panel-tx-sweep" class="generatr-tx-panel generatr-sweep-panel hidden">
@@ -5237,7 +5390,7 @@
         if (kind === "reese" || kind === "donk") {
           return { type: "bass", subcommand: kind };
         }
-        if (["sweep", "closh", "kickboom", "longcrash"].indexOf(kind) >= 0) {
+        if (["sweep", "wash"].indexOf(kind) >= 0) {
           return { type: "transition", subcommand: kind };
         }
         return { type: "beat", subcommand: "" };
@@ -5256,9 +5409,7 @@
           beat: true,
           drone: true,
           sweep: true,
-          closh: true,
-          kickboom: true,
-          longcrash: true
+          wash: true
         };
         Array.from(kindSelect.options).slice().forEach(function (opt) {
           if (!keep[opt.value]) opt.remove();
@@ -5298,7 +5449,8 @@
       var panelDonk = document.getElementById("generatr-panel-donk");
       var panelTxTiming = document.getElementById("generatr-panel-tx-timing");
       var panelTxWash = document.getElementById("generatr-panel-tx-wash");
-      var panelTxStretch = document.getElementById("generatr-panel-tx-stretch");
+      var washLibrarySelect = document.getElementById("generatr-tx-library");
+      var washPercussionSelect = document.getElementById("generatr-tx-percussion");
       var panelTxSweep = document.getElementById("generatr-panel-tx-sweep");
       var beatTempoInput = document.getElementById("generatr-beat-tempo");
       var beatLoopsInput = document.getElementById("generatr-beat-loops");
@@ -5419,6 +5571,16 @@
             var presetData = parts[1] || {};
             var presetNames = Object.keys((presetData && presetData.presets) || {});
             setSelectOptions(beatRandomizationConfigSelect, presetNames, false);
+            if (washLibrarySelect) {
+              setSelectOptions(washLibrarySelect, presetNames, false);
+              var washActiveOpt = document.createElement("option");
+              washActiveOpt.value = "";
+              washActiveOpt.textContent = "Active preset";
+              washLibrarySelect.insertBefore(washActiveOpt, washLibrarySelect.firstChild);
+              if (presetData.activePreset) {
+                washLibrarySelect.value = presetData.activePreset;
+              }
+            }
             var activeOpt = document.createElement("option");
             activeOpt.value = "";
             activeOpt.textContent = "(active preset)";
@@ -6059,6 +6221,54 @@
         return isNaN(value) ? null : value;
       }
 
+      function generatrInitWashPanelControls() {
+        var effectPairs = [
+          ["generatr-tx-reverb-enabled", "generatr-tx-reverb-body"],
+          ["generatr-tx-delay-enabled", "generatr-tx-delay-body"],
+          ["generatr-tx-paulstretch-enabled", "generatr-tx-paulstretch-body"]
+        ];
+        effectPairs.forEach(function (pair) {
+          var cb = document.getElementById(pair[0]);
+          var body = document.getElementById(pair[1]);
+          if (!cb || !body) return;
+          generatrSyncSweepEffectBody(cb, body);
+          cb.addEventListener("change", function () {
+            generatrSyncSweepEffectBody(cb, body);
+          });
+        });
+
+        initDawKnobs(document.getElementById("generatr-panel-tx-wash"));
+      }
+      generatrInitWashPanelControls();
+
+      function generatrCollectWashPayload(body) {
+        body.library = washLibrarySelect ? (washLibrarySelect.value || "") : "";
+        body.percussion = washPercussionSelect ? generatrTrimOrNull(washPercussionSelect.value) : null;
+
+        body.reverbEnabled = !!document.getElementById("generatr-tx-reverb-enabled").checked;
+        if (body.reverbEnabled) {
+          body.reverbWetLevel = generatrSweepKnobFloat("generatr-tx-reverb-wet");
+          body.reverbLengthSec = generatrSweepKnobFloat("generatr-tx-reverb-length");
+          body.reverbDecaySec = generatrSweepKnobFloat("generatr-tx-reverb-decay");
+          body.reverbEarlyReflections = generatrSweepKnobInt("generatr-tx-reverb-early");
+          body.reverbHighpassHz = generatrSweepKnobFloat("generatr-tx-reverb-highpass");
+          body.reverbTailDiffusion = generatrSweepKnobFloat("generatr-tx-reverb-diffusion");
+        }
+
+        body.delayEnabled = !!document.getElementById("generatr-tx-delay-enabled").checked;
+        if (body.delayEnabled) {
+          body.delayDivision = generatrTrimOrNull(document.getElementById("generatr-tx-delay-division").value);
+          body.delayFeedback = generatrSweepKnobFloat("generatr-tx-delay-feedback");
+          body.delayMix = generatrSweepKnobFloat("generatr-tx-delay-mix");
+        }
+
+        body.paulstretchEnabled = !!document.getElementById("generatr-tx-paulstretch-enabled").checked;
+        if (body.paulstretchEnabled) {
+          body.stretch = generatrSweepKnobFloat("generatr-tx-paulstretch-stretch");
+          body.windowSize = generatrSweepKnobFloat("generatr-tx-paulstretch-window");
+        }
+      }
+
       function generatrCollectSweepPayload(body) {
         body.voice = generatrTrimOrNull(document.getElementById("generatr-tx-voice").value);
         if (!body.voice || generatrSweepVoiceIsTonal(body.voice)) {
@@ -6123,9 +6333,7 @@
         if (!barsEl) return;
         var defaults = {
           sweep: "8",
-          closh: "4",
-          kickboom: "4",
-          longcrash: "8"
+          wash: "8"
         };
         if (defaults[kind]) {
           barsEl.value = defaults[kind];
@@ -6134,7 +6342,7 @@
 
       function updateGeneratrConfigEmptyState() {
         var kind = kindSelect ? kindSelect.value : "beat";
-        var showBeatEmpty = kind === "beat" && !generatrDrumPathsConfigured;
+        var showBeatEmpty = (kind === "beat" || kind === "wash") && !generatrDrumPathsConfigured;
         var showDroneEmpty = kind === "drone" && !generatrPluginPathsConfigured;
         if (generatrConfigEmptyBeat) {
           generatrConfigEmptyBeat.classList.toggle("hidden", !showBeatEmpty);
@@ -6164,11 +6372,7 @@
         var isTransition = api.type === "transition";
         if (panelTxTiming) panelTxTiming.classList.toggle("hidden", !isTransition);
 
-        var washKinds = { closh: 1, kickboom: 1, longcrash: 1 };
-        var stretchKinds = { longcrash: 1 };
-
-        if (panelTxWash) panelTxWash.classList.toggle("hidden", !washKinds[kind]);
-        if (panelTxStretch) panelTxStretch.classList.toggle("hidden", !stretchKinds[kind]);
+        if (panelTxWash) panelTxWash.classList.toggle("hidden", kind !== "wash");
         if (panelTxSweep) panelTxSweep.classList.toggle("hidden", kind !== "sweep");
 
         if (api.type === "transition") {
@@ -6523,11 +6727,9 @@
           body.tempo = parseInt(document.getElementById("generatr-tx-tempo").value || "120", 10);
           body.bars = parseInt(document.getElementById("generatr-tx-bars").value || "8", 10);
           body.iterations = Math.max(1, parseInt(document.getElementById("generatr-tx-iterations").value || "1", 10));
-          body.reverb = generatrTrimOrNull(document.getElementById("generatr-tx-reverb").value);
-          body.delay = generatrTrimOrNull(document.getElementById("generatr-tx-delay").value);
-          body.stretch = parseFloat(document.getElementById("generatr-tx-stretch").value || "3");
-          body.windowSize = parseFloat(document.getElementById("generatr-tx-window-size").value || "0.25");
-          if (kind === "sweep") {
+          if (kind === "wash") {
+            generatrCollectWashPayload(body);
+          } else if (kind === "sweep") {
             generatrCollectSweepPayload(body);
           }
           body.postProcessing = postCmds();

@@ -34,12 +34,10 @@ from generate_midi import (
 )
 from generate_sample import generate_drone_sample, generate_beat_sample
 from generate_transition import (
-    generate_closh_sample,
-    generate_kickboom_sample,
     generate_sweep_sample,
-    generate_longcrash_sample,
-    parse_closh_config,
+    generate_wash_sample,
     parse_sweep_config,
+    parse_wash_config,
 )
 from generate_bass import (
     generate_donk_sample,
@@ -1277,206 +1275,8 @@ def transition_sweep(
     return results
 
 
-@transition_app.command("closh")
-def transition_closh(
-    tempo: int = typer.Option(
-        120, "--tempo", "-t", help="Tempo in BPM (default: 120)."
-    ),
-    bars: int = typer.Option(4, "--bars", "-b", help="Length in bars (default: 4)."),
-    reverb: str | None = typer.Option(
-        None,
-        "--reverb",
-        "-r",
-        help="Reverb: wet_level, length_sec, decay_sec, early_reflections, highpass_hz, tail_diffusion (0.65-0.9). Use _ for random.",
-    ),
-    delay: str | None = typer.Option(
-        None,
-        "--delay",
-        "-d",
-        help="Tempo-synced delay: division (1/4|1/8|1/8d|1/16|1/16d|1/32), feedback, mix. Omit or 'off' to disable.",
-    ),
-    iterations: int = typer.Option(
-        1, "--iterations", "-n", help="Number of samples to generate."
-    ),
-    play: bool = typer.Option(
-        False, "--play", "-p", help="Open output with default WAV player."
-    ),
-    post_processing: str | None = typer.Option(
-        None,
-        "--post-processing",
-        "-x",
-        help=(
-            "Post-processing pipeline: separate steps with commas or semicolons. "
-            "Legacy tokens (e.g. fade:in 2s) or bracket syntax "
-            "(e.g. fade:[style=in][duration_ms=2000];filter:[kind=lpf][cutoff_hz=800])."
-        ),
-    ),
-):
-    """Generate washed clap transition: random clap from DRUM_CLAP_PATHS with long reverb.
-
-    Params use key:value;key2:value2. Use _ for random. E.g. --reverb "room_size:0.95;wet_level:0.9"
-    """
-    start_time = time.time()
-    iterations = max(1, iterations)
-
-    config = parse_closh_config(reverb=reverb, delay=delay)
-
-    print(get_version())
-    print(generate_transition_header())
-    print(with_prompt(f"closh"))
-    print(with_prompt(f"  tempo               {tempo}"))
-    print(with_prompt(f"  bars                {bars}"))
-    print(with_prompt(f"  iterations          {iterations}"))
-    print(with_prompt(f"  post-processing     {post_processing if post_processing else GENERATED_LABEL}"))
-    print(
-        with_prompt(
-            f"  delay               {'on' if config['delay_enabled'] else 'off'}"
-        )
-    )
-    print(f"{RED}│{RESET}")
-
-    results = []
-    for i in range(iterations):
-        beat_name = generate_beat_name()
-        name_parts = [
-            "transition_closh",
-            beat_name,
-            f"{tempo}bpm",
-            f"{bars}bars",
-            generate_id(),
-        ]
-        sample_name = format_name("___".join(name_parts))
-        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
-        output_path, params_used = generate_closh_sample(
-            tempo=tempo, bars=bars, output=output_path, config=config
-        )
-        results.append(output_path)
-        p = params_used
-        if iterations == 1:
-            rev_str = f"wet={p['reverb_wet_level']:.2f} len={p['reverb_length_sec']:.1f}s decay={p['reverb_decay_sec']:.1f}s"
-            dl_str = (
-                f" delay={p['delay_division']} fb={p['delay_feedback']:.2f} mix={p['delay_mix']:.2f}"
-                if p["delay_enabled"]
-                else ""
-            )
-            print(with_prompt(f"generated: {output_path}"))
-            print(with_prompt(f"  used: {rev_str}{dl_str}"))
-        else:
-            print(with_prompt(f"  [{i + 1}/{iterations}] {output_path}"))
-
-    end_time = time.time()
-    time_elapsed = round(end_time - start_time)
-    print(f"{RED}■ completed in {time_elapsed}s{RESET}")
-    if iterations > 1:
-        for r in results:
-            print(with_prompt(f"generated: {r}"))
-    apply_post_processing_to_wavs(results, post_processing)
-    if play and results:
-        open_files_with_default_player(results)
-    return results
-
-
-@transition_app.command("kickboom")
-def transition_kickboom(
-    tempo: int = typer.Option(
-        120, "--tempo", "-t", help="Tempo in BPM (default: 120)."
-    ),
-    bars: int = typer.Option(4, "--bars", "-b", help="Length in bars (default: 4)."),
-    reverb: str | None = typer.Option(
-        None,
-        "--reverb",
-        "-r",
-        help="Reverb: wet_level, length_sec, decay_sec, early_reflections, highpass_hz, tail_diffusion (0.65-0.9). Use _ for random.",
-    ),
-    delay: str | None = typer.Option(
-        None,
-        "--delay",
-        "-d",
-        help="Tempo-synced delay: division (1/4|1/8|1/8d|1/16|1/16d|1/32), feedback, mix. Omit or 'off' to disable.",
-    ),
-    iterations: int = typer.Option(
-        1, "--iterations", "-n", help="Number of samples to generate."
-    ),
-    play: bool = typer.Option(
-        False, "--play", "-p", help="Open output with default WAV player."
-    ),
-    post_processing: str | None = typer.Option(
-        None,
-        "--post-processing",
-        "-x",
-        help=(
-            "Post-processing pipeline: separate steps with commas or semicolons. "
-            "Legacy tokens (e.g. fade:in 2s) or bracket syntax "
-            "(e.g. fade:[style=in][duration_ms=2000];filter:[kind=lpf][cutoff_hz=800])."
-        ),
-    ),
-):
-    """Generate washed kick transition: random kick from DRUM_KICK_PATHS with long reverb.
-
-    Same interface as closh. Params use key:value;key2:value2. Use _ for random.
-    """
-    start_time = time.time()
-    iterations = max(1, iterations)
-
-    config = parse_closh_config(reverb=reverb, delay=delay)
-
-    print(get_version())
-    print(generate_transition_header())
-    print(with_prompt(f"kickboom"))
-    print(with_prompt(f"  tempo               {tempo}"))
-    print(with_prompt(f"  bars                {bars}"))
-    print(with_prompt(f"  iterations          {iterations}"))
-    print(with_prompt(f"  post-processing     {post_processing if post_processing else GENERATED_LABEL}"))
-    print(
-        with_prompt(
-            f"  delay               {'on' if config['delay_enabled'] else 'off'}"
-        )
-    )
-    print(f"{RED}│{RESET}")
-
-    results = []
-    for i in range(iterations):
-        beat_name = generate_beat_name()
-        name_parts = [
-            "transition_kickboom",
-            beat_name,
-            f"{tempo}bpm",
-            f"{bars}bars",
-            generate_id(),
-        ]
-        sample_name = format_name("___".join(name_parts))
-        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
-        output_path, params_used = generate_kickboom_sample(
-            tempo=tempo, bars=bars, output=output_path, config=config
-        )
-        results.append(output_path)
-        p = params_used
-        if iterations == 1:
-            rev_str = f"wet={p['reverb_wet_level']:.2f} len={p['reverb_length_sec']:.1f}s decay={p['reverb_decay_sec']:.1f}s"
-            dl_str = (
-                f" delay={p['delay_division']} fb={p['delay_feedback']:.2f} mix={p['delay_mix']:.2f}"
-                if p["delay_enabled"]
-                else ""
-            )
-            print(with_prompt(f"generated: {output_path}"))
-            print(with_prompt(f"  used: {rev_str}{dl_str}"))
-        else:
-            print(with_prompt(f"  [{i + 1}/{iterations}] {output_path}"))
-
-    end_time = time.time()
-    time_elapsed = round(end_time - start_time)
-    print(f"{RED}■ completed in {time_elapsed}s{RESET}")
-    if iterations > 1:
-        for r in results:
-            print(with_prompt(f"generated: {r}"))
-    apply_post_processing_to_wavs(results, post_processing)
-    if play and results:
-        open_files_with_default_player(results)
-    return results
-
-
-@transition_app.command("longcrash")
-def transition_longcrash(
+@transition_app.command("wash")
+def transition_wash(
     tempo: int = typer.Option(
         120, "--tempo", "-t", help="Tempo in BPM (default: 120)."
     ),
@@ -1502,11 +1302,27 @@ def transition_longcrash(
         "-w",
         help="Paulstretch window size in seconds (default: 0.25).",
     ),
+    library: str | None = typer.Option(
+        None,
+        "--library",
+        "-l",
+        help="Drum path preset name from settings. Omit to use the active preset.",
+    ),
+    percussion: str | None = typer.Option(
+        None,
+        "--percussion",
+        help="Percussion folder: kick, snare, hihat, clap, perc, tom, shaker, cymbal. Omit or _ for random.",
+    ),
+    disable: str | None = typer.Option(
+        None,
+        "--disable",
+        help="Disable wash effects: reverb, delay, paulstretch, or fx (all).",
+    ),
     iterations: int = typer.Option(
         1, "--iterations", "-n", help="Number of samples to generate."
     ),
     play: bool = typer.Option(
-        False, "--play", "-p", help="Open output with default WAV player."
+        False, "--play", help="Open output with default WAV player."
     ),
     post_processing: str | None = typer.Option(
         None,
@@ -1519,65 +1335,94 @@ def transition_longcrash(
         ),
     ),
 ):
-    """Generate long crash transition: random cymbal with long reverb + Paulstretch tail.
-
-    Same reverb/delay interface as closh/kickboom. Params use key:value;key2:value2. Use _ for random.
-    """
+    """Generate a washed percussion transition with long reverb, optional delay, and Paulstretch."""
     start_time = time.time()
     iterations = max(1, iterations)
 
-    config = parse_closh_config(reverb=reverb, delay=delay)
+    config = parse_wash_config(
+        reverb=reverb,
+        delay=delay,
+        library=library,
+        percussion=percussion,
+        stretch=stretch,
+        window_size=window_size,
+        disable=disable,
+    )
+
+    original_preset_name = None
+    if library and library.strip():
+        original_preset_name = get_active_drum_path_preset_name()
+        ok, result = set_active_drum_path_preset(library.strip())
+        if not ok:
+            raise typer.BadParameter(result)
 
     print(get_version())
     print(generate_transition_header())
-    print(with_prompt(f"longcrash"))
+    print(with_prompt(f"wash"))
     print(with_prompt(f"  tempo               {tempo}"))
     print(with_prompt(f"  bars                {bars}"))
     print(with_prompt(f"  iterations          {iterations}"))
     print(with_prompt(f"  post-processing     {post_processing if post_processing else GENERATED_LABEL}"))
     print(
         with_prompt(
+            f"  reverb              {'on' if config.get('reverb_enabled', True) else 'off'}"
+        )
+    )
+    print(
+        with_prompt(
             f"  delay               {'on' if config['delay_enabled'] else 'off'}"
         )
     )
-    print(with_prompt(f"  stretch             {stretch}"))
-    print(with_prompt(f"  window_size         {window_size}"))
+    print(
+        with_prompt(
+            f"  paulstretch         {'on' if config.get('paulstretch_enabled', True) else 'off'}"
+        )
+    )
+    print(with_prompt(f"  stretch             {config.get('stretch', stretch)}"))
+    print(with_prompt(f"  window_size         {config.get('window_size', window_size)}"))
+    print(with_prompt(f"  library             {config.get('library') or '(active preset)'}"))
+    print(with_prompt(f"  percussion          {config.get('percussion') or 'random'}"))
     print(f"{RED}│{RESET}")
 
     results = []
-    for i in range(iterations):
-        beat_name = generate_beat_name()
-        name_parts = [
-            "transition_longcrash",
-            beat_name,
-            f"{tempo}bpm",
-            f"{bars}bars",
-            generate_id(),
-        ]
-        sample_name = format_name("___".join(name_parts))
-        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
-        output_path, params_used = generate_longcrash_sample(
-            tempo=tempo,
-            bars=bars,
-            output=output_path,
-            config=config,
-            stretch=stretch,
-            window_size=window_size,
-        )
-        results.append(output_path)
-        p = params_used
-        if iterations == 1:
-            rev_str = f"wet={p['reverb_wet_level']:.2f} len={p['reverb_length_sec']:.1f}s decay={p['reverb_decay_sec']:.1f}s"
-            dl_str = (
-                f" delay={p['delay_division']} fb={p['delay_feedback']:.2f} mix={p['delay_mix']:.2f}"
-                if p["delay_enabled"]
-                else ""
+    try:
+        for i in range(iterations):
+            beat_name = generate_beat_name()
+            perc_label = config.get("percussion") or "random"
+            name_parts = [
+                "transition_wash",
+                str(perc_label),
+                beat_name,
+                f"{tempo}bpm",
+                f"{bars}bars",
+                generate_id(),
+            ]
+            sample_name = format_name("___".join(name_parts))
+            output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+            output_path, params_used = generate_wash_sample(
+                tempo=tempo,
+                bars=bars,
+                output=output_path,
+                config=config,
             )
-            ps_str = f" stretch={p['stretch']:.2f} win={p['window_size']:.3f}s"
-            print(with_prompt(f"generated: {output_path}"))
-            print(with_prompt(f"  used: {rev_str}{dl_str}{ps_str}"))
-        else:
-            print(with_prompt(f"  [{i + 1}/{iterations}] {output_path}"))
+            results.append(output_path)
+            p = params_used
+            if iterations == 1:
+                rev_str = f"wet={p['reverb_wet_level']:.2f} len={p['reverb_length_sec']:.1f}s decay={p['reverb_decay_sec']:.1f}s"
+                dl_str = (
+                    f" delay={p['delay_division']} fb={p['delay_feedback']:.2f} mix={p['delay_mix']:.2f}"
+                    if p["delay_enabled"]
+                    else ""
+                )
+                ps_str = f" stretch={p['stretch']:.2f} win={p['window_size']:.3f}s"
+                perc_str = f" perc={p['percussion']}"
+                print(with_prompt(f"generated: {output_path}"))
+                print(with_prompt(f"  used: {perc_str}{rev_str}{dl_str}{ps_str}"))
+            else:
+                print(with_prompt(f"  [{i + 1}/{iterations}] {output_path}"))
+    finally:
+        if original_preset_name is not None:
+            set_active_drum_path_preset(original_preset_name)
 
     end_time = time.time()
     time_elapsed = round(end_time - start_time)

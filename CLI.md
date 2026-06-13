@@ -258,7 +258,7 @@ python dronmakr.py generate-bass reese --help
 python dronmakr.py generate-bass donk --help
 ```
 
-### `generate-transition` (`sweep`, `closh`, `kickboom`, `longcrash`)
+### `generate-transition` (`sweep`, `wash`)
 
 ```sh
 python dronmakr.py generate-transition sweep \
@@ -274,11 +274,20 @@ python dronmakr.py generate-transition sweep \
 ```
 
 ```sh
+python dronmakr.py generate-transition wash \
+  --tempo 120 \
+  --bars 8 \
+  --percussion cymbal \
+  --library my-kit \
+  --stretch 3 \
+  --window-size 0.25 \
+  --iterations 2
+```
+
+```sh
 python dronmakr.py generate-transition --help
 python dronmakr.py generate-transition sweep --help
-python dronmakr.py generate-transition closh --help
-python dronmakr.py generate-transition kickboom --help
-python dronmakr.py generate-transition longcrash --help
+python dronmakr.py generate-transition wash --help
 ```
 
 ### Utility commands (`list`, `pack`, `reset`, `webui`)

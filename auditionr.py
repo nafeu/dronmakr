@@ -66,12 +66,10 @@ from processing_actions import (
 from generate_sample import apply_effect, generate_drone_sample, generate_beat_sample
 from paths import get_managed_file, normalize_path_basename
 from generate_transition import (
-    generate_closh_sample,
-    generate_kickboom_sample,
     generate_sweep_sample,
-    generate_longcrash_sample,
-    parse_closh_config,
+    generate_wash_sample,
     parse_sweep_config,
+    parse_wash_config,
 )
 from generate_bass import (
     generate_donk_sample,
@@ -887,16 +885,36 @@ def _run_generate_transition(subcommand: str, payload: dict) -> list[str]:
 
     defaults_bars = {
         "sweep": 8,
-        "closh": 4,
-        "kickboom": 4,
-        "longcrash": 8,
+        "wash": 8,
     }
     bars = max(1, _positive_int_field(payload, "bars", defaults_bars.get(subcommand, 4)))
 
-    def _wash_config():
-        return parse_closh_config(
-            reverb=_optional_trimmed(payload, "reverb"),
-            delay=_optional_trimmed(payload, "delay"),
+    def _wash_config_from_payload():
+        percussion = _optional_trimmed(payload, "percussion")
+        if percussion is None:
+            percussion = _optional_trimmed(payload, "percussionType")
+        library = (
+            _optional_trimmed(payload, "library")
+            or _optional_trimmed(payload, "sampleLibrary")
+            or ""
+        ).strip() or None
+        return parse_wash_config(
+            library=library,
+            percussion=percussion,
+            reverb_enabled=_optional_bool_field(payload, "reverbEnabled"),
+            reverb_wet_level=_optional_float_field(payload, "reverbWetLevel"),
+            reverb_length_sec=_optional_float_field(payload, "reverbLengthSec"),
+            reverb_decay_sec=_optional_float_field(payload, "reverbDecaySec"),
+            reverb_early_reflections=_optional_int_field(payload, "reverbEarlyReflections"),
+            reverb_highpass_hz=_optional_float_field(payload, "reverbHighpassHz"),
+            reverb_tail_diffusion=_optional_float_field(payload, "reverbTailDiffusion"),
+            delay_enabled=_optional_bool_field(payload, "delayEnabled"),
+            delay_division=_optional_trimmed(payload, "delayDivision"),
+            delay_feedback=_optional_float_field(payload, "delayFeedback"),
+            delay_mix=_optional_float_field(payload, "delayMix"),
+            paulstretch_enabled=_optional_bool_field(payload, "paulstretchEnabled"),
+            stretch=_optional_float_field(payload, "stretch"),
+            window_size=_optional_float_field(payload, "windowSize"),
         )
 
     def _sweep_config_from_payload():
@@ -961,67 +979,41 @@ def _run_generate_transition(subcommand: str, payload: dict) -> list[str]:
             )
             paths.append(output_path)
             print(with_prompt(f"generated: {output_path}"))
-    elif subcommand == "closh":
-        config = _wash_config()
-        for _ in range(iterations):
-            beat_name = generate_beat_name()
-            name_parts = [
-                "transition_closh",
-                beat_name,
-                f"{tempo}bpm",
-                f"{bars}bars",
-                generate_id(),
-            ]
-            sample_name = format_name("___".join(name_parts))
-            output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
-            output_path, _ = generate_closh_sample(
-                tempo=tempo, bars=bars, output=output_path, config=config
-            )
-            paths.append(output_path)
-            print(with_prompt(f"generated: {output_path}"))
-    elif subcommand == "kickboom":
-        config = _wash_config()
-        for _ in range(iterations):
-            beat_name = generate_beat_name()
-            name_parts = [
-                "transition_kickboom",
-                beat_name,
-                f"{tempo}bpm",
-                f"{bars}bars",
-                generate_id(),
-            ]
-            sample_name = format_name("___".join(name_parts))
-            output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
-            output_path, _ = generate_kickboom_sample(
-                tempo=tempo, bars=bars, output=output_path, config=config
-            )
-            paths.append(output_path)
-            print(with_prompt(f"generated: {output_path}"))
-    elif subcommand == "longcrash":
-        config = _wash_config()
-        stretch = float(_float_field(payload, "stretch", 3.0))
-        window_size = float(_float_field(payload, "windowSize", 0.25))
-        for _ in range(iterations):
-            beat_name = generate_beat_name()
-            name_parts = [
-                "transition_longcrash",
-                beat_name,
-                f"{tempo}bpm",
-                f"{bars}bars",
-                generate_id(),
-            ]
-            sample_name = format_name("___".join(name_parts))
-            output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
-            output_path, _ = generate_longcrash_sample(
-                tempo=tempo,
-                bars=bars,
-                output=output_path,
-                config=config,
-                stretch=stretch,
-                window_size=window_size,
-            )
-            paths.append(output_path)
-            print(with_prompt(f"generated: {output_path}"))
+    elif subcommand == "wash":
+        config = _wash_config_from_payload()
+        library = config.get("library")
+        original_preset_name = None
+        if library:
+            original_preset_name = get_active_drum_path_preset_name()
+            ok, result = set_active_drum_path_preset(library)
+            if not ok:
+                raise ValueError(result)
+            print(with_prompt(f"Using drum path preset: {result}"))
+        try:
+            for _ in range(iterations):
+                beat_name = generate_beat_name()
+                perc_label = config.get("percussion") or "random"
+                name_parts = [
+                    "transition_wash",
+                    str(perc_label),
+                    beat_name,
+                    f"{tempo}bpm",
+                    f"{bars}bars",
+                    generate_id(),
+                ]
+                sample_name = format_name("___".join(name_parts))
+                output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+                output_path, _ = generate_wash_sample(
+                    tempo=tempo,
+                    bars=bars,
+                    output=output_path,
+                    config=config,
+                )
+                paths.append(output_path)
+                print(with_prompt(f"generated: {output_path}"))
+        finally:
+            if original_preset_name is not None:
+                set_active_drum_path_preset(original_preset_name)
     else:
         raise ValueError(f"Unknown transition subcommand: {subcommand}")
 
@@ -1252,9 +1244,9 @@ def _handle_api_generate():
         return jsonify({"paths": [], "error": f"Unknown type: {gen_type}"}), 400
     if gen_type == "bass" and subcommand not in ("reese", "donk"):
         return jsonify({"paths": [], "error": "Bass requires subcommand: reese or donk"}), 400
-    if gen_type == "transition" and subcommand not in ("sweep", "closh", "kickboom", "longcrash"):
+    if gen_type == "transition" and subcommand not in ("sweep", "wash"):
         return jsonify(
-            {"paths": [], "error": "Transition requires subcommand: sweep, closh, kickboom, or longcrash"}
+            {"paths": [], "error": "Transition requires subcommand: sweep or wash"}
         ), 400
 
     try:
