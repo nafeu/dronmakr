@@ -38,11 +38,8 @@ from generate_transition import (
     generate_kickboom_sample,
     generate_sweep_sample,
     generate_longcrash_sample,
-    generate_riser_sample,
-    generate_drop_sample,
     parse_closh_config,
     parse_sweep_config,
-    parse_sweep_config_from_legacy_strings,
 )
 from generate_bass import (
     generate_donk_sample,
@@ -1044,7 +1041,7 @@ def generate_beat(
 # generate-transition (group with sub-commands)
 # ---------------------------------------------------------------------------
 
-transition_app = typer.Typer(help="Generate transition sounds (sweeps, risers, etc.).")
+transition_app = typer.Typer(help="Generate transition sounds (sweeps, washes, crashes).")
 
 
 @transition_app.command("sweep")
@@ -1059,16 +1056,31 @@ def transition_sweep(
         "-v",
         help="Source voice: whitenoise, pinknoise, brownnoise, bluenoise, sine, saw, tri, square. Omit for random.",
     ),
+    pitch_min: float | None = typer.Option(
+        None,
+        "--pitch-min",
+        help="Oscillator sweep low pitch in Hz (20–20000). Ignored for noise voices. Omit for random.",
+    ),
+    pitch_max: float | None = typer.Option(
+        None,
+        "--pitch-max",
+        help="Oscillator sweep high pitch in Hz (40–20000). Ignored for noise voices. Omit for random.",
+    ),
     curve_shape: str | None = typer.Option(
         None,
         "--curve-shape",
-        help="Build curve shape: ease_in, linear, ease_out. Omit for random.",
+        help=(
+            "Build easing curve (e.g. easeInCubic, easeOutSine). "
+            "Decay replays the same curve reversed in time after the peak. Omit for random."
+        ),
     ),
-    curve_peak: float | None = typer.Option(
-        None, "--curve-peak", help="Curve peak position 0.15–0.85. Omit for random."
-    ),
-    curve_decay: float | None = typer.Option(
-        None, "--curve-decay", help="Curve decay rate 0.5–15. Omit for random."
+    curve_peak_position: float | None = typer.Option(
+        None,
+        "--curve-peak-position",
+        help=(
+            "Where the sweep peaks along the export, as a fraction of total length "
+            "(0.05–1.0; e.g. 0.5 = middle, 0.75 = peak at 75%%). Omit for random."
+        ),
     ),
     filter_type: str | None = typer.Option(
         None,
@@ -1188,9 +1200,10 @@ def transition_sweep(
     for i in range(iterations):
         config = parse_sweep_config(
             voice=voice,
+            pitch_min=pitch_min,
+            pitch_max=pitch_max,
             curve_shape=curve_shape,
-            curve_peak=curve_peak,
-            curve_decay=curve_decay,
+            curve_peak_position=curve_peak_position,
             filter_type=filter_type,
             filter_cutoff_low=filter_cutoff_low,
             filter_cutoff_high=filter_cutoff_high,
@@ -1563,359 +1576,6 @@ def transition_longcrash(
             ps_str = f" stretch={p['stretch']:.2f} win={p['window_size']:.3f}s"
             print(with_prompt(f"generated: {output_path}"))
             print(with_prompt(f"  used: {rev_str}{dl_str}{ps_str}"))
-        else:
-            print(with_prompt(f"  [{i + 1}/{iterations}] {output_path}"))
-
-    end_time = time.time()
-    time_elapsed = round(end_time - start_time)
-    print(f"{RED}■ completed in {time_elapsed}s{RESET}")
-    if iterations > 1:
-        for r in results:
-            print(with_prompt(f"generated: {r}"))
-    apply_post_processing_to_wavs(results, post_processing)
-    if play and results:
-        open_files_with_default_player(results)
-    return results
-
-
-@transition_app.command("riser")
-def transition_riser(
-    tempo: int = typer.Option(
-        120, "--tempo", "-t", help="Tempo in BPM (default: 120)."
-    ),
-    bars: int = typer.Option(4, "--bars", "-b", help="Length in bars (default: 4)."),
-    reverb: str | None = typer.Option(
-        None,
-        "--reverb",
-        "-r",
-        help="Reverb for underlying longcrash: wet_level, length_sec, decay_sec, early_reflections, highpass_hz, tail_diffusion. Use _ for random.",
-    ),
-    delay: str | None = typer.Option(
-        None,
-        "--delay",
-        "-d",
-        help="Tempo-synced delay on longcrash: division (1/4|1/8|1/8d|1/16|1/16d|1/32), feedback, mix. Omit or 'off' to disable.",
-    ),
-    sound: str | None = typer.Option(
-        None,
-        "--sound",
-        "-s",
-        help="Sweep sound: same syntax as generate-transition sweep --sound.",
-    ),
-    curve: str | None = typer.Option(
-        None,
-        "--curve",
-        "-c",
-        help="Sweep curve: same syntax as generate-transition sweep --curve.",
-    ),
-    filter_str: str | None = typer.Option(
-        None,
-        "--filter",
-        "-f",
-        help="Sweep filter: same syntax as generate-transition sweep --filter.",
-    ),
-    tremolo: str | None = typer.Option(
-        None,
-        "--tremolo",
-        "-T",
-        help="Sweep tremolo: same syntax as generate-transition sweep --tremolo.",
-    ),
-    phaser: str | None = typer.Option(
-        None,
-        "--phaser",
-        help="Sweep phaser: same syntax as generate-transition sweep --phaser.",
-    ),
-    chorus: str | None = typer.Option(
-        None,
-        "--chorus",
-        help="Sweep chorus: same syntax as generate-transition sweep --chorus.",
-    ),
-    flanger: str | None = typer.Option(
-        None,
-        "--flanger",
-        help="Sweep flanger: same syntax as generate-transition sweep --flanger.",
-    ),
-    disable: str | None = typer.Option(
-        None,
-        "--disable",
-        "-dX",
-        help="Disable sweep FX: tremolo,phaser,chorus,flanger or fx (all).",
-    ),
-    stretch: float = typer.Option(
-        3.0, "--stretch", "-S", help="Paulstretch factor on longcrash (default: 3.0)."
-    ),
-    window_size: float = typer.Option(
-        0.25,
-        "--window-size",
-        "-W",
-        help="Paulstretch window size in seconds (default: 0.25).",
-    ),
-    longcrash_level: float = typer.Option(
-        0.4,
-        "--longcrash-level",
-        help="Mix level of reversed longcrash base (default: 0.4).",
-    ),
-    sweep_level: float = typer.Option(
-        0.6,
-        "--sweep-level",
-        help="Mix level of sweep layer (default: 0.6).",
-    ),
-    peak_pos: float = typer.Option(
-        1.0,
-        "--peak-pos",
-        help="Where sweep peaks: 1.0 = end (default for riser), 0.5 = middle.",
-    ),
-    build_shape: str = typer.Option(
-        "ease_in",
-        "--build-shape",
-        help="Buildup curve: ease_in (slow start, nice buildup), linear, ease_out.",
-    ),
-    iterations: int = typer.Option(
-        1, "--iterations", "-n", help="Number of samples to generate."
-    ),
-    play: bool = typer.Option(
-        False, "--play", "-p", help="Open output with default WAV player."
-    ),
-    post_processing: str | None = typer.Option(
-        None,
-        "--post-processing",
-        "-x",
-        help=(
-            "Post-processing pipeline: separate steps with commas or semicolons. "
-            "Legacy tokens (e.g. fade:in 2s) or bracket syntax "
-            "(e.g. fade:[style=in][duration_ms=2000];filter:[kind=lpf][cutoff_hz=800])."
-        ),
-    ),
-):
-    """Generate riser transition: reversed longcrash + upward sweep that peaks at the end."""
-    start_time = time.time()
-    iterations = max(1, iterations)
-
-    longcrash_cfg = parse_closh_config(reverb=reverb, delay=delay)
-    sweep_cfg = parse_sweep_config_from_legacy_strings(
-        sound=sound,
-        curve=curve,
-        filter_str=filter_str,
-        tremolo=tremolo,
-        phaser=phaser,
-        chorus=chorus,
-        flanger=flanger,
-        disable=disable,
-    )
-
-    print(get_version())
-    print(generate_transition_header())
-    print(with_prompt(f"riser"))
-    print(with_prompt(f"  tempo               {tempo}"))
-    print(with_prompt(f"  bars                {bars}"))
-    print(with_prompt(f"  iterations          {iterations}"))
-    print(with_prompt(f"  post-processing     {post_processing if post_processing else GENERATED_LABEL}"))
-    print(with_prompt(f"  longcrash stretch   {stretch} (win {window_size})"))
-    print(with_prompt(f"  mix                 longcrash={longcrash_level} sweep={sweep_level}"))
-    print(f"{RED}│{RESET}")
-
-    results = []
-    for i in range(iterations):
-        beat_name = generate_beat_name()
-        name_parts = [
-            "transition_riser",
-            beat_name,
-            f"{tempo}bpm",
-            f"{bars}bars",
-            generate_id(),
-        ]
-        sample_name = format_name("___".join(name_parts))
-        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
-        output_path, params_used = generate_riser_sample(
-            tempo=tempo,
-            bars=bars,
-            output=output_path,
-            longcrash_config=longcrash_cfg,
-            sweep_config=sweep_cfg,
-            stretch=stretch,
-            window_size=window_size,
-            longcrash_level=longcrash_level,
-            sweep_level=sweep_level,
-            peak_pos=peak_pos,
-            build_shape=build_shape,
-        )
-        results.append(output_path)
-        if iterations == 1:
-            print(with_prompt(f"generated: {output_path}"))
-        else:
-            print(with_prompt(f"  [{i + 1}/{iterations}] {output_path}"))
-
-    end_time = time.time()
-    time_elapsed = round(end_time - start_time)
-    print(f"{RED}■ completed in {time_elapsed}s{RESET}")
-    if iterations > 1:
-        for r in results:
-            print(with_prompt(f"generated: {r}"))
-    apply_post_processing_to_wavs(results, post_processing)
-    if play and results:
-        open_files_with_default_player(results)
-    return results
-
-
-@transition_app.command("drop")
-def transition_drop(
-    tempo: int = typer.Option(
-        120, "--tempo", "-t", help="Tempo in BPM (default: 120)."
-    ),
-    bars: int = typer.Option(4, "--bars", "-b", help="Length in bars (default: 4)."),
-    reverb: str | None = typer.Option(
-        None,
-        "--reverb",
-        "-r",
-        help="Reverb for underlying longcrash: same as riser/longcrash.",
-    ),
-    delay: str | None = typer.Option(
-        None,
-        "--delay",
-        "-d",
-        help="Tempo-synced delay on longcrash: same as riser/longcrash.",
-    ),
-    sound: str | None = typer.Option(
-        None,
-        "--sound",
-        "-s",
-        help="Sweep sound: same syntax as generate-transition sweep --sound.",
-    ),
-    curve: str | None = typer.Option(
-        None,
-        "--curve",
-        "-c",
-        help="Sweep curve: same syntax as generate-transition sweep --curve.",
-    ),
-    filter_str: str | None = typer.Option(
-        None,
-        "--filter",
-        "-f",
-        help="Sweep filter: same syntax as generate-transition sweep --filter.",
-    ),
-    tremolo: str | None = typer.Option(
-        None,
-        "--tremolo",
-        "-T",
-        help="Sweep tremolo: same syntax as generate-transition sweep --tremolo.",
-    ),
-    phaser: str | None = typer.Option(
-        None,
-        "--phaser",
-        help="Sweep phaser: same syntax as generate-transition sweep --phaser.",
-    ),
-    chorus: str | None = typer.Option(
-        None,
-        "--chorus",
-        help="Sweep chorus: same syntax as generate-transition sweep --chorus.",
-    ),
-    flanger: str | None = typer.Option(
-        None,
-        "--flanger",
-        help="Sweep flanger: same syntax as generate-transition sweep --flanger.",
-    ),
-    disable: str | None = typer.Option(
-        None,
-        "--disable",
-        "-dX",
-        help="Disable sweep FX: tremolo,phaser,chorus,flanger or fx (all).",
-    ),
-    synth: str | None = typer.Option(
-        None,
-        "--synth",
-        "-y",
-        help="Synth drop params: voice (sine|saw|square|tri), freq_high, freq_low, level. Use _ for random.",
-    ),
-    stretch: float = typer.Option(
-        3.0, "--stretch", "-S", help="Paulstretch factor on longcrash (default: 3.0)."
-    ),
-    window_size: float = typer.Option(
-        0.25,
-        "--window-size",
-        "-W",
-        help="Paulstretch window size in seconds (default: 0.25).",
-    ),
-    riser_level: float = typer.Option(
-        0.4,
-        "--riser-level",
-        help="Mix level of reversed riser base (default: 0.4).",
-    ),
-    synth_level: float = typer.Option(
-        0.6,
-        "--synth-level",
-        help="Mix level of synth drop layer (default: 0.6).",
-    ),
-    iterations: int = typer.Option(
-        1, "--iterations", "-n", help="Number of samples to generate."
-    ),
-    play: bool = typer.Option(
-        False, "--play", "-p", help="Open output with default WAV player."
-    ),
-    post_processing: str | None = typer.Option(
-        None,
-        "--post-processing",
-        "-x",
-        help=(
-            "Post-processing pipeline: separate steps with commas or semicolons. "
-            "Legacy tokens (e.g. fade:in 2s) or bracket syntax "
-            "(e.g. fade:[style=in][duration_ms=2000];filter:[kind=lpf][cutoff_hz=800])."
-        ),
-    ),
-):
-    """Generate drop transition: reversed riser + synth drop (high→low pitch)."""
-    start_time = time.time()
-    iterations = max(1, iterations)
-
-    longcrash_cfg = parse_closh_config(reverb=reverb, delay=delay)
-    sweep_cfg = parse_sweep_config_from_legacy_strings(
-        sound=sound,
-        curve=curve,
-        filter_str=filter_str,
-        tremolo=tremolo,
-        phaser=phaser,
-        chorus=chorus,
-        flanger=flanger,
-        disable=disable,
-    )
-
-    print(get_version())
-    print(generate_transition_header())
-    print(with_prompt(f"drop"))
-    print(with_prompt(f"  tempo               {tempo}"))
-    print(with_prompt(f"  bars                {bars}"))
-    print(with_prompt(f"  iterations          {iterations}"))
-    print(with_prompt(f"  post-processing     {post_processing if post_processing else GENERATED_LABEL}"))
-    print(with_prompt(f"  longcrash stretch   {stretch} (win {window_size})"))
-    print(with_prompt(f"  mix                 riser={riser_level} synth={synth_level}"))
-    print(f"{RED}│{RESET}")
-
-    results = []
-    for i in range(iterations):
-        beat_name = generate_beat_name()
-        name_parts = [
-            "transition_drop",
-            beat_name,
-            f"{tempo}bpm",
-            f"{bars}bars",
-            generate_id(),
-        ]
-        sample_name = format_name("___".join(name_parts))
-        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
-        output_path, params_used = generate_drop_sample(
-            tempo=tempo,
-            bars=bars,
-            output=output_path,
-            longcrash_config=longcrash_cfg,
-            sweep_config=sweep_cfg,
-            synth=synth,
-            stretch=stretch,
-            window_size=window_size,
-            riser_level=riser_level,
-            synth_level=synth_level,
-        )
-        results.append(output_path)
-        if iterations == 1:
-            print(with_prompt(f"generated: {output_path}"))
         else:
             print(with_prompt(f"  [{i + 1}/{iterations}] {output_path}"))
 

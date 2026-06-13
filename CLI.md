@@ -39,7 +39,7 @@ Commands:
   webui                Run the unified web UI (auditionr + beatbuildr on...
   reset                Delete all files within the exports, trash and...
   generate-bass        Generate bass loops.
-  generate-transition  Generate transition sounds (sweeps, risers, etc.).
+  generate-transition  Generate transition sounds (sweeps, washes, crashes).
 ```
 
 ## Patchcraftr (instrument & FX chains)
@@ -258,35 +258,19 @@ python dronmakr.py generate-bass reese --help
 python dronmakr.py generate-bass donk --help
 ```
 
-### `generate-transition` (`sweep`, `closh`, `kickboom`, `longcrash`, `riser`, `drop`)
+### `generate-transition` (`sweep`, `closh`, `kickboom`, `longcrash`)
 
 ```sh
 python dronmakr.py generate-transition sweep \
   --tempo 128 \
   --bars 8 \
-  --sound "voice:noise;type:white" \
-  --curve "shape:ease_in;peak_pos:0.9" \
-  --filter "type:hpf;cutoff_low:250;cutoff_high:11000" \
+  --voice whitenoise \
+  --curve-shape easeInCubic \
+  --curve-peak-position 0.9 \
+  --filter-type hpf \
+  --filter-cutoff-low 250 \
+  --filter-cutoff-high 11000 \
   --iterations 2
-```
-
-```sh
-python dronmakr.py generate-transition riser \
-  --tempo 140 \
-  --bars 4 \
-  --peak-pos 1.0 \
-  --build-shape ease_in \
-  --longcrash-level 0.45 \
-  --sweep-level 0.65
-```
-
-```sh
-python dronmakr.py generate-transition drop \
-  --tempo 140 \
-  --bars 4 \
-  --synth "voice:saw;freq_high:2600;freq_low:90;level:0.7" \
-  --riser-level 0.4 \
-  --synth-level 0.6
 ```
 
 ```sh
@@ -295,8 +279,6 @@ python dronmakr.py generate-transition sweep --help
 python dronmakr.py generate-transition closh --help
 python dronmakr.py generate-transition kickboom --help
 python dronmakr.py generate-transition longcrash --help
-python dronmakr.py generate-transition riser --help
-python dronmakr.py generate-transition drop --help
 ```
 
 ### Utility commands (`list`, `pack`, `reset`, `webui`)

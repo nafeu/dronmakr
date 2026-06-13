@@ -70,11 +70,8 @@ from generate_transition import (
     generate_kickboom_sample,
     generate_sweep_sample,
     generate_longcrash_sample,
-    generate_riser_sample,
-    generate_drop_sample,
     parse_closh_config,
     parse_sweep_config,
-    parse_sweep_config_from_legacy_strings,
 )
 from generate_bass import (
     generate_donk_sample,
@@ -893,8 +890,6 @@ def _run_generate_transition(subcommand: str, payload: dict) -> list[str]:
         "closh": 4,
         "kickboom": 4,
         "longcrash": 8,
-        "riser": 4,
-        "drop": 4,
     }
     bars = max(1, _positive_int_field(payload, "bars", defaults_bars.get(subcommand, 4)))
 
@@ -905,53 +900,45 @@ def _run_generate_transition(subcommand: str, payload: dict) -> list[str]:
         )
 
     def _sweep_config_from_payload():
-        if subcommand == "sweep":
-            return parse_sweep_config(
-                voice=_optional_trimmed(payload, "voice"),
-                curve_shape=_optional_trimmed(payload, "curveShape"),
-                curve_peak=_optional_float_field(payload, "curvePeak"),
-                curve_decay=_optional_float_field(payload, "curveDecay"),
-                filter_enabled=_optional_bool_field(payload, "filterEnabled"),
-                filter_type=_optional_trimmed(payload, "filterType"),
-                filter_cutoff_low=_optional_int_field(payload, "filterCutoffLow"),
-                filter_cutoff_high=_optional_int_field(payload, "filterCutoffHigh"),
-                tremolo_enabled=_optional_bool_field(payload, "tremoloEnabled"),
-                tremolo_rate_min=_optional_float_field(payload, "tremoloRateMin"),
-                tremolo_rate_max=_optional_float_field(payload, "tremoloRateMax"),
-                tremolo_depth=_optional_float_field(payload, "tremoloDepth"),
-                phaser_enabled=_optional_bool_field(payload, "phaserEnabled"),
-                phaser_rate_min=_optional_float_field(payload, "phaserRateMin"),
-                phaser_rate_max=_optional_float_field(payload, "phaserRateMax"),
-                phaser_depth=_optional_float_field(payload, "phaserDepth"),
-                phaser_centre=_optional_float_field(payload, "phaserCentre"),
-                phaser_feedback=_optional_float_field(payload, "phaserFeedback"),
-                phaser_mix=_optional_float_field(payload, "phaserMix"),
-                chorus_enabled=_optional_bool_field(payload, "chorusEnabled"),
-                chorus_rate_min=_optional_float_field(payload, "chorusRateMin"),
-                chorus_rate_max=_optional_float_field(payload, "chorusRateMax"),
-                chorus_depth=_optional_float_field(payload, "chorusDepth"),
-                chorus_delay=_optional_float_field(payload, "chorusDelay"),
-                chorus_mix=_optional_float_field(payload, "chorusMix"),
-                flanger_enabled=_optional_bool_field(payload, "flangerEnabled"),
-                flanger_rate_min=_optional_float_field(payload, "flangerRateMin"),
-                flanger_rate_max=_optional_float_field(payload, "flangerRateMax"),
-                flanger_depth=_optional_float_field(payload, "flangerDepth"),
-                flanger_delay=_optional_float_field(payload, "flangerDelay"),
-                flanger_feedback=_optional_float_field(payload, "flangerFeedback"),
-                flanger_mix=_optional_float_field(payload, "flangerMix"),
-                gain_enabled=_optional_bool_field(payload, "gainEnabled"),
-                gain_min=_optional_float_field(payload, "gainMin"),
-                gain_max=_optional_float_field(payload, "gainMax"),
-            )
-        return parse_sweep_config_from_legacy_strings(
-            sound=_optional_trimmed(payload, "sound"),
-            curve=_optional_trimmed(payload, "curve"),
-            filter_str=_optional_trimmed(payload, "filterStr"),
-            tremolo=_optional_trimmed(payload, "tremolo"),
-            phaser=_optional_trimmed(payload, "phaser"),
-            chorus=_optional_trimmed(payload, "chorus"),
-            flanger=_optional_trimmed(payload, "flanger"),
-            disable=_optional_trimmed(payload, "disable"),
+        return parse_sweep_config(
+            voice=_optional_trimmed(payload, "voice"),
+            pitch_min=_optional_float_field(payload, "pitchMin"),
+            pitch_max=_optional_float_field(payload, "pitchMax"),
+            curve_shape=_optional_trimmed(payload, "curveShape"),
+            curve_peak_position=_optional_float_field(payload, "curvePeakPosition")
+            if payload.get("curvePeakPosition") is not None
+            else _optional_float_field(payload, "curvePeak"),
+            filter_enabled=_optional_bool_field(payload, "filterEnabled"),
+            filter_type=_optional_trimmed(payload, "filterType"),
+            filter_cutoff_low=_optional_int_field(payload, "filterCutoffLow"),
+            filter_cutoff_high=_optional_int_field(payload, "filterCutoffHigh"),
+            tremolo_enabled=_optional_bool_field(payload, "tremoloEnabled"),
+            tremolo_rate_min=_optional_float_field(payload, "tremoloRateMin"),
+            tremolo_rate_max=_optional_float_field(payload, "tremoloRateMax"),
+            tremolo_depth=_optional_float_field(payload, "tremoloDepth"),
+            phaser_enabled=_optional_bool_field(payload, "phaserEnabled"),
+            phaser_rate_min=_optional_float_field(payload, "phaserRateMin"),
+            phaser_rate_max=_optional_float_field(payload, "phaserRateMax"),
+            phaser_depth=_optional_float_field(payload, "phaserDepth"),
+            phaser_centre=_optional_float_field(payload, "phaserCentre"),
+            phaser_feedback=_optional_float_field(payload, "phaserFeedback"),
+            phaser_mix=_optional_float_field(payload, "phaserMix"),
+            chorus_enabled=_optional_bool_field(payload, "chorusEnabled"),
+            chorus_rate_min=_optional_float_field(payload, "chorusRateMin"),
+            chorus_rate_max=_optional_float_field(payload, "chorusRateMax"),
+            chorus_depth=_optional_float_field(payload, "chorusDepth"),
+            chorus_delay=_optional_float_field(payload, "chorusDelay"),
+            chorus_mix=_optional_float_field(payload, "chorusMix"),
+            flanger_enabled=_optional_bool_field(payload, "flangerEnabled"),
+            flanger_rate_min=_optional_float_field(payload, "flangerRateMin"),
+            flanger_rate_max=_optional_float_field(payload, "flangerRateMax"),
+            flanger_depth=_optional_float_field(payload, "flangerDepth"),
+            flanger_delay=_optional_float_field(payload, "flangerDelay"),
+            flanger_feedback=_optional_float_field(payload, "flangerFeedback"),
+            flanger_mix=_optional_float_field(payload, "flangerMix"),
+            gain_enabled=_optional_bool_field(payload, "gainEnabled"),
+            gain_min=_optional_float_field(payload, "gainMin"),
+            gain_max=_optional_float_field(payload, "gainMax"),
         )
 
     paths: list[str] = []
@@ -1032,78 +1019,6 @@ def _run_generate_transition(subcommand: str, payload: dict) -> list[str]:
                 config=config,
                 stretch=stretch,
                 window_size=window_size,
-            )
-            paths.append(output_path)
-            print(with_prompt(f"generated: {output_path}"))
-    elif subcommand == "riser":
-        longcrash_cfg = _wash_config()
-        sweep_cfg = _sweep_config_from_payload()
-        stretch = float(_float_field(payload, "stretch", 3.0))
-        window_size = float(_float_field(payload, "windowSize", 0.25))
-        peak_pos = float(_float_field(payload, "peakPos", 1.0))
-        longcrash_level = float(_float_field(payload, "longcrashLevel", 0.4))
-        sweep_level = float(_float_field(payload, "sweepLevel", 0.6))
-        build_shape_raw = (
-            (_optional_trimmed(payload, "buildShape") or "ease_in").lower().replace("-", "_")
-        )
-        if build_shape_raw not in ("ease_in", "linear", "ease_out"):
-            build_shape_raw = "ease_in"
-        for _ in range(iterations):
-            beat_name = generate_beat_name()
-            name_parts = [
-                "transition_riser",
-                beat_name,
-                f"{tempo}bpm",
-                f"{bars}bars",
-                generate_id(),
-            ]
-            sample_name = format_name("___".join(name_parts))
-            output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
-            output_path, _ = generate_riser_sample(
-                tempo=tempo,
-                bars=bars,
-                output=output_path,
-                longcrash_config=longcrash_cfg,
-                sweep_config=sweep_cfg,
-                stretch=stretch,
-                window_size=window_size,
-                longcrash_level=longcrash_level,
-                sweep_level=sweep_level,
-                peak_pos=peak_pos,
-                build_shape=build_shape_raw,  # type: ignore[arg-type]
-            )
-            paths.append(output_path)
-            print(with_prompt(f"generated: {output_path}"))
-    elif subcommand == "drop":
-        longcrash_cfg = _wash_config()
-        sweep_cfg = _sweep_config_from_payload()
-        stretch = float(_float_field(payload, "stretch", 3.0))
-        window_size = float(_float_field(payload, "windowSize", 0.25))
-        riser_level = float(_float_field(payload, "riserLevel", 0.4))
-        synth_level = float(_float_field(payload, "synthLevel", 0.6))
-        synth_opt = _optional_trimmed(payload, "synth")
-        for _ in range(iterations):
-            beat_name = generate_beat_name()
-            name_parts = [
-                "transition_drop",
-                beat_name,
-                f"{tempo}bpm",
-                f"{bars}bars",
-                generate_id(),
-            ]
-            sample_name = format_name("___".join(name_parts))
-            output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
-            output_path, _ = generate_drop_sample(
-                tempo=tempo,
-                bars=bars,
-                output=output_path,
-                longcrash_config=longcrash_cfg,
-                sweep_config=sweep_cfg,
-                synth=synth_opt,
-                stretch=stretch,
-                window_size=window_size,
-                riser_level=riser_level,
-                synth_level=synth_level,
             )
             paths.append(output_path)
             print(with_prompt(f"generated: {output_path}"))
@@ -1337,9 +1252,9 @@ def _handle_api_generate():
         return jsonify({"paths": [], "error": f"Unknown type: {gen_type}"}), 400
     if gen_type == "bass" and subcommand not in ("reese", "donk"):
         return jsonify({"paths": [], "error": "Bass requires subcommand: reese or donk"}), 400
-    if gen_type == "transition" and subcommand not in ("sweep", "closh", "kickboom", "longcrash", "riser", "drop"):
+    if gen_type == "transition" and subcommand not in ("sweep", "closh", "kickboom", "longcrash"):
         return jsonify(
-            {"paths": [], "error": "Transition requires subcommand: sweep, closh, kickboom, longcrash, riser, or drop"}
+            {"paths": [], "error": "Transition requires subcommand: sweep, closh, kickboom, or longcrash"}
         ), 400
 
     try:

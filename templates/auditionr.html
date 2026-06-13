@@ -400,19 +400,16 @@
     .generatr-sweep-effect-enable {
       display: inline-flex;
       align-items: center;
-      gap: 0.3rem;
       margin: 0;
       flex-shrink: 0;
     }
 
-    .generatr-sweep-effect-enable label {
-      font-size: 0.64rem;
-      color: var(--theme-a);
-      font-weight: 500;
+    .generatr-sweep-effect-enable input[type="checkbox"] {
+      width: 0.9rem;
+      height: 0.9rem;
       margin: 0;
       cursor: pointer;
-      letter-spacing: 0.01em;
-      line-height: 1.2;
+      accent-color: var(--primary);
     }
 
     .generatr-sweep-effect-body {
@@ -422,6 +419,11 @@
     }
 
     .generatr-sweep-effect-body.generatr-sweep-effect-disabled {
+      opacity: 0.42;
+      pointer-events: none;
+    }
+
+    .generatr-sweep-voice-pitch-knobs.generatr-sweep-effect-disabled {
       opacity: 0.42;
       pointer-events: none;
     }
@@ -468,6 +470,111 @@
 
     .daw-knob-select-spacer {
       min-height: 0.62rem;
+    }
+
+    .generatr-sweep-source-card .generatr-sweep-effect-head {
+      justify-content: flex-start;
+    }
+
+    .generatr-sweep-preview-card {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .generatr-sweep-preview-select {
+      font-family: inherit;
+      font-size: 0.72rem;
+      padding: 0.28rem 0.4rem;
+      background: var(--theme-a);
+      border: 1px solid color-mix(in srgb, var(--theme-a) 70%, var(--primary));
+      border-radius: 4px;
+      color: var(--primary);
+      width: 100%;
+      box-sizing: border-box;
+      min-width: 0;
+      cursor: pointer;
+    }
+
+    .generatr-sweep-preview-select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .generatr-sweep-preview-svg-wrap {
+      width: 100%;
+      min-height: 2.1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.1rem 0.05rem 0;
+    }
+
+    .generatr-sweep-preview-svg {
+      width: 100%;
+      height: 2.1rem;
+      display: block;
+      overflow: visible;
+    }
+
+    .generatr-sweep-preview-svg .generatr-sweep-preview-stroke {
+      fill: none;
+      stroke: var(--primary);
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      vector-effect: non-scaling-stroke;
+      opacity: 0.92;
+    }
+
+    .generatr-sweep-preview-svg .generatr-sweep-preview-stroke-muted {
+      fill: none;
+      stroke: color-mix(in srgb, var(--primary) 45%, transparent);
+      stroke-width: 1.25;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 3 3;
+      vector-effect: non-scaling-stroke;
+    }
+
+    .generatr-sweep-source-row > .generatr-sweep-voice-card {
+      flex: 1 1 0;
+    }
+
+    .generatr-sweep-source-row > .generatr-sweep-shape-card {
+      flex: 2 2 0;
+    }
+
+    .generatr-sweep-shape-controls {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.35rem 0.5rem;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .generatr-sweep-shape-controls .generatr-sweep-preview-select {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .generatr-sweep-shape-controls .generatr-sweep-effect-knobs {
+      flex: 0 0 auto;
+      justify-content: flex-end;
+    }
+
+    .generatr-sweep-curve-canvas-wrap {
+      width: 100%;
+      min-height: 3.5rem;
+      min-width: 0;
+    }
+
+    .generatr-sweep-curve-canvas {
+      width: 100%;
+      height: 3.5rem;
+      display: block;
     }
 
     .daw-knob-row {
@@ -563,6 +670,21 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    .daw-knob.daw-knob-random .daw-knob-dial {
+      opacity: 0.42;
+      cursor: default;
+    }
+
+    .daw-knob.daw-knob-random .daw-knob-ring {
+      opacity: 0.55;
+    }
+
+    .daw-knob.daw-knob-random .daw-knob-readout {
+      font-style: italic;
+      opacity: 0.72;
+      letter-spacing: 0.02em;
     }
 
     .daw-knob-input {
@@ -1964,8 +2086,6 @@
                   <option value="closh">closh</option>
                   <option value="kickboom">kickboom</option>
                   <option value="longcrash">longcrash</option>
-                  <option value="riser">riser</option>
-                  <option value="drop">drop</option>
                 </select>
               </div>
               <div id="generatr-panel-reese" class="hidden">
@@ -2057,45 +2177,113 @@
                 </div>
               </div>
               <div id="generatr-panel-tx-sweep" class="generatr-tx-panel generatr-sweep-panel hidden">
-                <div class="form-row">
-                  <label for="generatr-tx-voice">Voice</label>
-                  <select id="generatr-tx-voice">
-                    <option value="" selected>Random</option>
-                    <option value="whitenoise">White noise</option>
-                    <option value="pinknoise">Pink noise</option>
-                    <option value="brownnoise">Brown noise</option>
-                    <option value="bluenoise">Blue noise</option>
-                    <option value="sine">Sine</option>
-                    <option value="saw">Saw</option>
-                    <option value="tri">Tri</option>
-                    <option value="square">Square</option>
-                  </select>
-                </div>
-                <div class="form-row">
-                  <label for="generatr-tx-curve-shape">Shape</label>
-                  <select id="generatr-tx-curve-shape">
-                    <option value="" selected>Random</option>
-                    <option value="ease_in">Ease in</option>
-                    <option value="linear">Linear</option>
-                    <option value="ease_out">Ease out</option>
-                  </select>
-                </div>
-                <div class="form-row">
-                  <label for="generatr-tx-curve-peak">Peak</label>
-                  <input type="number" id="generatr-tx-curve-peak" step="0.01" min="0.15" max="0.85" value="0.5">
-                </div>
-                <div class="form-row">
-                  <label for="generatr-tx-curve-decay">Decay</label>
-                  <input type="number" id="generatr-tx-curve-decay" step="0.1" min="0.5" max="15" value="4">
-                </div>
                 <div class="generatr-sweep-effects">
+                  <div class="generatr-sweep-effect-row generatr-sweep-source-row">
+                    <div class="generatr-sweep-effect generatr-sweep-source-card generatr-sweep-voice-card">
+                      <div class="generatr-sweep-effect-head">
+                        <span class="generatr-sweep-effect-title">Voice</span>
+                      </div>
+                      <div class="generatr-sweep-effect-body">
+                        <div class="generatr-sweep-preview-card">
+                          <select id="generatr-tx-voice" class="generatr-sweep-preview-select" aria-label="Sweep voice">
+                            <option value="" selected>Random</option>
+                            <option value="whitenoise">White noise</option>
+                            <option value="pinknoise">Pink noise</option>
+                            <option value="brownnoise">Brown noise</option>
+                            <option value="bluenoise">Blue noise</option>
+                            <option value="sine">Sine</option>
+                            <option value="saw">Saw</option>
+                            <option value="tri">Tri</option>
+                            <option value="square">Square</option>
+                          </select>
+                          <div class="generatr-sweep-preview-svg-wrap">
+                            <svg id="generatr-tx-voice-preview" class="generatr-sweep-preview-svg" viewBox="0 0 96 32" preserveAspectRatio="none" aria-hidden="true"></svg>
+                          </div>
+                        </div>
+                        <div class="generatr-sweep-effect-knobs generatr-sweep-voice-pitch-knobs" id="generatr-tx-voice-pitch-knobs">
+                          <div class="daw-knob" data-knob-pair="pitch" data-knob-role="min" data-knob-pair-gap="50" data-knob-unit="Hz" data-knob-decimals="0">
+                            <span class="daw-knob-label">Min</span>
+                            <button type="button" class="daw-knob-dial" aria-label="Pitch minimum">
+                              <span class="daw-knob-ring" aria-hidden="true"></span>
+                            </button>
+                            <span class="daw-knob-readout" aria-hidden="true">110</span>
+                            <input type="number" class="daw-knob-input" id="generatr-tx-pitch-min" step="1" min="20" max="20000" value="110" tabindex="-1" aria-hidden="true">
+                          </div>
+                          <div class="daw-knob" data-knob-pair="pitch" data-knob-role="max" data-knob-pair-gap="50" data-knob-unit="Hz" data-knob-decimals="0">
+                            <span class="daw-knob-label">Max</span>
+                            <button type="button" class="daw-knob-dial" aria-label="Pitch maximum">
+                              <span class="daw-knob-ring" aria-hidden="true"></span>
+                            </button>
+                            <span class="daw-knob-readout" aria-hidden="true">523</span>
+                            <input type="number" class="daw-knob-input" id="generatr-tx-pitch-max" step="1" min="20" max="20000" value="523" tabindex="-1" aria-hidden="true">
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="generatr-sweep-effect generatr-sweep-source-card generatr-sweep-shape-card">
+                      <div class="generatr-sweep-effect-head">
+                        <span class="generatr-sweep-effect-title">Shape</span>
+                      </div>
+                      <div class="generatr-sweep-effect-body">
+                        <div class="generatr-sweep-shape-controls">
+                          <select id="generatr-tx-curve-shape" class="generatr-sweep-preview-select" aria-label="Sweep curve shape">
+                            <option value="" selected>Random</option>
+                            <optgroup label="Sine">
+                              <option value="easeInSine">Ease in sine</option>
+                              <option value="easeOutSine">Ease out sine</option>
+                            </optgroup>
+                            <optgroup label="Quad">
+                              <option value="easeInQuad">Ease in quad</option>
+                              <option value="easeOutQuad">Ease out quad</option>
+                            </optgroup>
+                            <optgroup label="Cubic">
+                              <option value="easeInCubic">Ease in cubic</option>
+                              <option value="easeOutCubic">Ease out cubic</option>
+                            </optgroup>
+                            <optgroup label="Quart">
+                              <option value="easeInQuart">Ease in quart</option>
+                              <option value="easeOutQuart">Ease out quart</option>
+                            </optgroup>
+                            <optgroup label="Quint">
+                              <option value="easeInQuint">Ease in quint</option>
+                              <option value="easeOutQuint">Ease out quint</option>
+                            </optgroup>
+                            <optgroup label="Expo">
+                              <option value="easeInExpo">Ease in expo</option>
+                              <option value="easeOutExpo">Ease out expo</option>
+                            </optgroup>
+                            <optgroup label="Circ">
+                              <option value="easeInCirc">Ease in circ</option>
+                              <option value="easeOutCirc">Ease out circ</option>
+                            </optgroup>
+                            <optgroup label="Back">
+                              <option value="easeInBack">Ease in back</option>
+                              <option value="easeOutBack">Ease out back</option>
+                            </optgroup>
+                          </select>
+                          <div class="generatr-sweep-effect-knobs">
+                            <div class="daw-knob" data-knob-unit="" data-knob-decimals="2">
+                              <span class="daw-knob-label">Position</span>
+                              <button type="button" class="daw-knob-dial" aria-label="Curve peak position">
+                                <span class="daw-knob-ring" aria-hidden="true"></span>
+                              </button>
+                              <span class="daw-knob-readout" aria-hidden="true">0.50</span>
+                              <input type="number" class="daw-knob-input" id="generatr-tx-curve-peak-position" step="0.01" min="0.05" max="1" value="0.5" tabindex="-1" aria-hidden="true">
+                            </div>
+                          </div>
+                        </div>
+                        <div class="generatr-sweep-curve-canvas-wrap">
+                          <canvas id="generatr-tx-curve-shape-preview" class="generatr-sweep-curve-canvas" aria-hidden="true"></canvas>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                   <div class="generatr-sweep-effect-row">
                 <div class="generatr-sweep-effect">
                   <div class="generatr-sweep-effect-head">
                     <span class="generatr-sweep-effect-title">Gain</span>
                     <div class="generatr-sweep-effect-enable">
-                      <input type="checkbox" id="generatr-tx-gain-enabled" checked>
-                      <label for="generatr-tx-gain-enabled">Enable</label>
+                      <input type="checkbox" id="generatr-tx-gain-enabled" checked aria-label="Enable gain">
                     </div>
                   </div>
                   <div class="generatr-sweep-effect-body" id="generatr-tx-gain-body">
@@ -2123,8 +2311,7 @@
                   <div class="generatr-sweep-effect-head">
                     <span class="generatr-sweep-effect-title">Tremolo</span>
                     <div class="generatr-sweep-effect-enable">
-                      <input type="checkbox" id="generatr-tx-tremolo-enabled" checked>
-                      <label for="generatr-tx-tremolo-enabled">Enable</label>
+                      <input type="checkbox" id="generatr-tx-tremolo-enabled" checked aria-label="Enable tremolo">
                     </div>
                   </div>
                   <div class="generatr-sweep-effect-body" id="generatr-tx-tremolo-body">
@@ -2160,8 +2347,7 @@
                   <div class="generatr-sweep-effect-head">
                     <span class="generatr-sweep-effect-title">Filter</span>
                     <div class="generatr-sweep-effect-enable">
-                      <input type="checkbox" id="generatr-tx-filter-enabled" checked>
-                      <label for="generatr-tx-filter-enabled">Enable</label>
+                      <input type="checkbox" id="generatr-tx-filter-enabled" checked aria-label="Enable filter">
                     </div>
                   </div>
                   <div class="generatr-sweep-effect-body" id="generatr-tx-filter-body">
@@ -2202,8 +2388,7 @@
                   <div class="generatr-sweep-effect-head">
                     <span class="generatr-sweep-effect-title">Phaser</span>
                     <div class="generatr-sweep-effect-enable">
-                      <input type="checkbox" id="generatr-tx-phaser-enabled">
-                      <label for="generatr-tx-phaser-enabled">Enable</label>
+                      <input type="checkbox" id="generatr-tx-phaser-enabled" aria-label="Enable phaser">
                     </div>
                   </div>
                   <div class="generatr-sweep-effect-body generatr-sweep-effect-disabled" id="generatr-tx-phaser-body">
@@ -2265,8 +2450,7 @@
                   <div class="generatr-sweep-effect-head">
                     <span class="generatr-sweep-effect-title">Chorus</span>
                     <div class="generatr-sweep-effect-enable">
-                      <input type="checkbox" id="generatr-tx-chorus-enabled">
-                      <label for="generatr-tx-chorus-enabled">Enable</label>
+                      <input type="checkbox" id="generatr-tx-chorus-enabled" aria-label="Enable chorus">
                     </div>
                   </div>
                   <div class="generatr-sweep-effect-body generatr-sweep-effect-disabled" id="generatr-tx-chorus-body">
@@ -2320,8 +2504,7 @@
                   <div class="generatr-sweep-effect-head">
                     <span class="generatr-sweep-effect-title">Flanger</span>
                     <div class="generatr-sweep-effect-enable">
-                      <input type="checkbox" id="generatr-tx-flanger-enabled">
-                      <label for="generatr-tx-flanger-enabled">Enable</label>
+                      <input type="checkbox" id="generatr-tx-flanger-enabled" aria-label="Enable flanger">
                     </div>
                   </div>
                   <div class="generatr-sweep-effect-body generatr-sweep-effect-disabled" id="generatr-tx-flanger-body">
@@ -2378,72 +2561,6 @@
                   </div>
                 </div>
                   </div>
-                </div>
-              </div>
-              <div id="generatr-panel-tx-sweep-strings" class="generatr-tx-panel hidden">
-                <div class="form-row form-row-full">
-                  <label for="generatr-tx-sound">Sound (--sound)</label>
-                  <textarea id="generatr-tx-sound" rows="2" placeholder='e.g. voice:noise;type:white'></textarea>
-                </div>
-                <div class="form-row form-row-full">
-                  <label for="generatr-tx-curve">Curve (--curve)</label>
-                  <textarea id="generatr-tx-curve" rows="2" placeholder="shape:ease_in;peak_pos:0.9;decay_rate:4"></textarea>
-                </div>
-                <div class="form-row form-row-full">
-                  <label for="generatr-tx-filter-str">Filter (--filter)</label>
-                  <textarea id="generatr-tx-filter-str" rows="2" placeholder="type:hpf;cutoff_low:250;cutoff_high:11000"></textarea>
-                </div>
-                <div class="form-row form-row-full">
-                  <label for="generatr-tx-tremolo">Tremolo (--tremolo)</label>
-                  <textarea id="generatr-tx-tremolo" rows="2" placeholder="rate_min_hz:2;rate_max_hz:20;depth:0.8"></textarea>
-                </div>
-                <div class="form-row form-row-full">
-                  <label for="generatr-tx-phaser">Phaser (--phaser)</label>
-                  <textarea id="generatr-tx-phaser" rows="2"></textarea>
-                </div>
-                <div class="form-row form-row-full">
-                  <label for="generatr-tx-chorus">Chorus (--chorus)</label>
-                  <textarea id="generatr-tx-chorus" rows="2"></textarea>
-                </div>
-                <div class="form-row form-row-full">
-                  <label for="generatr-tx-flanger">Flanger (--flanger)</label>
-                  <textarea id="generatr-tx-flanger" rows="2"></textarea>
-                </div>
-              </div>
-              <div id="generatr-panel-tx-riser-mix" class="generatr-tx-panel hidden">
-                <div class="form-row">
-                  <label for="generatr-tx-peak-pos">Peak position (--peak-pos)</label>
-                  <input type="number" id="generatr-tx-peak-pos" step="any" min="0" max="2" value="1">
-                </div>
-                <div class="form-row">
-                  <label for="generatr-tx-build-shape">Build shape (--build-shape)</label>
-                  <select id="generatr-tx-build-shape">
-                    <option value="ease_in" selected>ease_in</option>
-                    <option value="linear">linear</option>
-                    <option value="ease_out">ease_out</option>
-                  </select>
-                </div>
-                <div class="form-row">
-                  <label for="generatr-tx-longcrash-level">Longcrash level (--longcrash-level)</label>
-                  <input type="number" id="generatr-tx-longcrash-level" step="0.05" min="0" max="1" value="0.4">
-                </div>
-                <div class="form-row">
-                  <label for="generatr-tx-sweep-level">Sweep level (--sweep-level)</label>
-                  <input type="number" id="generatr-tx-sweep-level" step="0.05" min="0" max="1" value="0.6">
-                </div>
-              </div>
-              <div id="generatr-panel-tx-drop-mix" class="generatr-tx-panel hidden">
-                <div class="form-row">
-                  <label for="generatr-tx-riser-level">Riser level (--riser-level)</label>
-                  <input type="number" id="generatr-tx-riser-level" step="0.05" min="0" max="1" value="0.4">
-                </div>
-                <div class="form-row">
-                  <label for="generatr-tx-synth-level">Synth level (--synth-level)</label>
-                  <input type="number" id="generatr-tx-synth-level" step="0.05" min="0" max="1" value="0.6">
-                </div>
-                <div class="form-row form-row-full">
-                  <label for="generatr-tx-synth">Synth (--synth)</label>
-                  <textarea id="generatr-tx-synth" rows="2" placeholder="voice:saw;freq_high:2600;freq_low:90;level:0.7"></textarea>
                 </div>
               </div>
               <div class="form-row hidden" id="generatr-drone-name-row">
@@ -5101,7 +5218,7 @@
         if (kind === "reese" || kind === "donk") {
           return { type: "bass", subcommand: kind };
         }
-        if (["sweep", "closh", "kickboom", "longcrash", "riser", "drop"].indexOf(kind) >= 0) {
+        if (["sweep", "closh", "kickboom", "longcrash"].indexOf(kind) >= 0) {
           return { type: "transition", subcommand: kind };
         }
         return { type: "beat", subcommand: "" };
@@ -5122,9 +5239,7 @@
           sweep: true,
           closh: true,
           kickboom: true,
-          longcrash: true,
-          riser: true,
-          drop: true
+          longcrash: true
         };
         Array.from(kindSelect.options).slice().forEach(function (opt) {
           if (!keep[opt.value]) opt.remove();
@@ -5166,9 +5281,6 @@
       var panelTxWash = document.getElementById("generatr-panel-tx-wash");
       var panelTxStretch = document.getElementById("generatr-panel-tx-stretch");
       var panelTxSweep = document.getElementById("generatr-panel-tx-sweep");
-      var panelTxSweepStrings = document.getElementById("generatr-panel-tx-sweep-strings");
-      var panelTxRiserMix = document.getElementById("generatr-panel-tx-riser-mix");
-      var panelTxDropMix = document.getElementById("generatr-panel-tx-drop-mix");
       var beatTempoInput = document.getElementById("generatr-beat-tempo");
       var beatLoopsInput = document.getElementById("generatr-beat-loops");
       var beatPatternInput = document.getElementById("generatr-beat-pattern");
@@ -5342,6 +5454,8 @@
           if (!isFinite(decimals) || decimals < 0) decimals = 2;
 
           var drag = { active: false, startY: 0, startVal: 0, pointerId: null };
+          var randomMode = input.dataset.dawKnobRandom === "1";
+          var savedValue = null;
 
           function snapValue(raw) {
             var v = Math.max(min, Math.min(max, raw));
@@ -5366,6 +5480,7 @@
           }
 
           function setValue(raw, opts) {
+            if (randomMode && (!opts || !opts.force)) return;
             var v = snapValue(raw);
             input.value = String(v);
             updateVisual(v);
@@ -5375,21 +5490,77 @@
             }
           }
 
+          function isRandom() {
+            return randomMode;
+          }
+
+          function setRandomMode(on, opts) {
+            var next = !!on;
+            if (next === randomMode) return;
+            randomMode = next;
+            if (randomMode) {
+              savedValue = parseFloat(input.value);
+              if (isNaN(savedValue)) savedValue = min;
+              input.dataset.dawKnobRandom = "1";
+              knob.classList.add("daw-knob-random");
+              readout.textContent = "random";
+              dial.setAttribute("aria-disabled", "true");
+            } else {
+              delete input.dataset.dawKnobRandom;
+              knob.classList.remove("daw-knob-random");
+              dial.removeAttribute("aria-disabled");
+              if (savedValue != null && isFinite(savedValue)) {
+                setValue(savedValue, { silent: !(opts && opts.silent), force: true });
+              } else {
+                setValue(parseFloat(input.value || String(min)), { silent: !(opts && opts.silent), force: true });
+              }
+            }
+            if (!opts || !opts.silent) {
+              input.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+          }
+
+          function toggleRandomMode() {
+            if (drag.active) endDrag({ pointerId: drag.pointerId });
+            setRandomMode(!randomMode);
+          }
+
           knob._dawKnobApi = {
             input: input,
             setValue: setValue,
+            isRandom: isRandom,
+            setRandomMode: setRandomMode,
+            toggleRandomMode: toggleRandomMode,
             min: min,
             max: max,
             step: step
           };
 
+          if (randomMode) {
+            knob.classList.add("daw-knob-random");
+            readout.textContent = "random";
+            dial.setAttribute("aria-disabled", "true");
+          }
+
           function nudge(deltaSteps) {
+            if (randomMode) return;
             setValue(parseFloat(input.value || String(min)) + deltaSteps * step);
           }
 
-          setValue(parseFloat(input.value || String(min)), { silent: true });
+          if (!randomMode) {
+            setValue(parseFloat(input.value || String(min)), { silent: true });
+          } else {
+            updateVisual(parseFloat(input.value || String(min)));
+          }
+
+          dial.addEventListener("dblclick", function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleRandomMode();
+          });
 
           dial.addEventListener("pointerdown", function (e) {
+            if (randomMode) return;
             if (e.button !== undefined && e.button !== 0) return;
             drag.active = true;
             drag.startY = e.clientY;
@@ -5400,7 +5571,7 @@
           });
 
           dial.addEventListener("pointermove", function (e) {
-            if (!drag.active || e.pointerId !== drag.pointerId) return;
+            if (randomMode || !drag.active || e.pointerId !== drag.pointerId) return;
             var span = max - min;
             var pxPerFull = Math.max(80, Math.min(220, span * 120));
             var delta = (drag.startY - e.clientY) * (span / pxPerFull);
@@ -5419,6 +5590,7 @@
           dial.addEventListener("pointercancel", endDrag);
 
           dial.addEventListener("wheel", function (e) {
+            if (randomMode) return;
             e.preventDefault();
             var dir = e.deltaY < 0 ? 1 : -1;
             var mult = e.shiftKey ? 10 : (e.altKey ? 0.1 : 1);
@@ -5426,6 +5598,7 @@
           }, { passive: false });
 
           dial.addEventListener("keydown", function (e) {
+            if (randomMode) return;
             if (e.key === "ArrowUp" || e.key === "ArrowRight") {
               e.preventDefault();
               nudge(e.shiftKey ? 10 : 1);
@@ -5473,30 +5646,328 @@
           var origMaxSet = maxApi.setValue;
 
           minApi.setValue = function (raw, opts) {
-            var hi = parseFloat(maxApi.input.value);
-            if (!isNaN(hi)) raw = Math.min(raw, hi - gap);
+            if (!maxApi.isRandom()) {
+              var hi = parseFloat(maxApi.input.value);
+              if (!isNaN(hi)) raw = Math.min(raw, hi - gap);
+            }
             origMinSet(raw, opts);
           };
 
           maxApi.setValue = function (raw, opts) {
-            var lo = parseFloat(minApi.input.value);
-            if (!isNaN(lo)) raw = Math.max(raw, lo + gap);
+            if (!minApi.isRandom()) {
+              var lo = parseFloat(minApi.input.value);
+              if (!isNaN(lo)) raw = Math.max(raw, lo + gap);
+            }
             origMaxSet(raw, opts);
           };
 
-          var lo = parseFloat(minApi.input.value);
-          var hi = parseFloat(maxApi.input.value);
-          if (!isNaN(lo) && !isNaN(hi) && lo > hi - gap) {
-            if (lo + gap <= maxApi.max) {
-              origMaxSet(lo + gap, { silent: true });
-            } else {
-              origMinSet(Math.max(minApi.min, hi - gap), { silent: true });
+          if (!minApi.isRandom() && !maxApi.isRandom()) {
+            var lo = parseFloat(minApi.input.value);
+            var hi = parseFloat(maxApi.input.value);
+            if (!isNaN(lo) && !isNaN(hi) && lo > hi - gap) {
+              if (lo + gap <= maxApi.max) {
+                origMaxSet(lo + gap, { silent: true });
+              } else {
+                origMinSet(Math.max(minApi.min, hi - gap), { silent: true });
+              }
             }
           }
         });
       }
 
       window.initDawKnobs = initDawKnobs;
+
+      function generatrSweepPointsToPath(points) {
+        if (!points.length) return "";
+        var d = "M" + points[0][0].toFixed(2) + " " + points[0][1].toFixed(2);
+        for (var i = 1; i < points.length; i++) {
+          d += " L" + points[i][0].toFixed(2) + " " + points[i][1].toFixed(2);
+        }
+        return d;
+      }
+
+      function generatrSweepNoiseSample(t, voice) {
+        var x = t * 140;
+        if (voice === "pinknoise") {
+          return (
+            Math.sin(x * 2.4) * 0.42 +
+            Math.sin(x * 7.8) * 0.26 +
+            Math.sin(x * 19.5) * 0.16 +
+            Math.sin(x * 53.2) * 0.08
+          );
+        }
+        if (voice === "brownnoise") {
+          return Math.sin(x * 0.9) * 0.5 + Math.sin(x * 2.1) * 0.28 + Math.sin(x * 4.6) * 0.12;
+        }
+        if (voice === "bluenoise") {
+          return (
+            Math.sin(x * 24.5) * 0.3 +
+            Math.sin(x * 51.7) * 0.27 +
+            Math.sin(x * 97.3) * 0.22 +
+            Math.sin(x * 183.9) * 0.16
+          );
+        }
+        return (
+          Math.sin(x * 11.7) * 0.34 +
+          Math.sin(x * 29.3) * 0.26 +
+          Math.sin(x * 61.9) * 0.2 +
+          Math.sin(x * 137.1) * 0.14
+        );
+      }
+
+      function generatrSweepVoiceWaveY(t, voice) {
+        var amp = 0.44;
+        if (!voice) return 0.5 + generatrSweepNoiseSample(t, "whitenoise") * amp * 0.55;
+        if (voice.indexOf("noise") >= 0) {
+          return 0.5 + generatrSweepNoiseSample(t, voice) * amp;
+        }
+        if (voice === "sine") return 0.5 - Math.sin(t * Math.PI * 4) * amp;
+        if (voice === "saw") {
+          var phase = (t * 4) % 1;
+          return 0.5 - (phase * 2 - 1) * amp;
+        }
+        if (voice === "tri") {
+          var tri = (t * 4) % 1;
+          tri = tri < 0.5 ? tri * 2 : 2 - tri * 2;
+          return 0.5 - (tri * 2 - 1) * amp;
+        }
+        if (voice === "square") {
+          return 0.5 - ((t * 4) % 1 < 0.5 ? 1 : -1) * amp;
+        }
+        return 0.5;
+      }
+
+      function generatrSweepApplyBuildShape(tNorm, shape) {
+        var t = Math.max(0, Math.min(1, tNorm));
+        var backC1 = 1.70158;
+        if (shape && shape.indexOf("easeInOut") === 0) {
+          shape = "easeIn" + shape.slice(9);
+        }
+        if (shape === "linear" || shape === "ease_in") return shape === "ease_in" ? t * t * t : t;
+        if (shape === "ease_out") return 1 - Math.pow(1 - t, 3);
+        if (shape === "easeInSine") return 1 - Math.cos((t * Math.PI) / 2);
+        if (shape === "easeOutSine") return Math.sin((t * Math.PI) / 2);
+        if (shape === "easeInQuad") return t * t;
+        if (shape === "easeOutQuad") return 1 - Math.pow(1 - t, 2);
+        if (shape === "easeInCubic") return t * t * t;
+        if (shape === "easeOutCubic") return 1 - Math.pow(1 - t, 3);
+        if (shape === "easeInQuart") return Math.pow(t, 4);
+        if (shape === "easeOutQuart") return 1 - Math.pow(1 - t, 4);
+        if (shape === "easeInQuint") return Math.pow(t, 5);
+        if (shape === "easeOutQuint") return 1 - Math.pow(1 - t, 5);
+        if (shape === "easeInExpo") return t === 0 ? 0 : Math.pow(2, 10 * t - 10);
+        if (shape === "easeOutExpo") return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+        if (shape === "easeInCirc") return 1 - Math.sqrt(1 - t * t);
+        if (shape === "easeOutCirc") return Math.sqrt(1 - Math.pow(t - 1, 2));
+        if (shape === "easeInBack") return (backC1 + 1) * Math.pow(t, 3) - backC1 * Math.pow(t, 2);
+        if (shape === "easeOutBack") {
+          return 1 + (backC1 + 1) * Math.pow(t - 1, 3) + backC1 * Math.pow(t - 1, 2);
+        }
+        return t;
+      }
+
+      function generatrSweepEnvelopeValue(x, shape, peakPos) {
+        var peak = Math.max(0.05, Math.min(1, peakPos));
+        var pos = Math.max(0, Math.min(1, x));
+        var tNorm = pos <= peak
+          ? (peak > 0 ? pos / peak : 1)
+          : (peak < 1 ? (1 - pos) / (1 - peak) : 0);
+        return generatrSweepApplyBuildShape(tNorm, shape);
+      }
+
+      function generatrSweepCanvasColor(varName, fallback) {
+        var value = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+        return value || fallback;
+      }
+
+      function generatrSweepDrawCurveCanvas(canvas, shape, peakPos) {
+        if (!canvas) return;
+        var wrap = canvas.parentElement;
+        var cssW = wrap && wrap.clientWidth > 0 ? wrap.clientWidth : 240;
+        var cssH = 56;
+        var dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.max(1, Math.floor(cssW * dpr));
+        canvas.height = Math.max(1, Math.floor(cssH * dpr));
+        canvas.style.width = cssW + "px";
+        canvas.style.height = cssH + "px";
+
+        var ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, cssW, cssH);
+
+        var primary = generatrSweepCanvasColor("--primary", "#e8e8e8");
+        var themeA = generatrSweepCanvasColor("--theme-a", "#666666");
+        var padL = 4;
+        var padR = 4;
+        var padT = 6;
+        var padB = 14;
+        var plotW = cssW - padL - padR;
+        var plotH = cssH - padT - padB;
+        var baseY = padT + plotH;
+
+        ctx.strokeStyle = themeA;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(padL, baseY);
+        ctx.lineTo(padL + plotW, baseY);
+        ctx.stroke();
+
+        ctx.fillStyle = themeA;
+        ctx.font = "9px sans-serif";
+        ctx.fillText("0%", padL, cssH - 2);
+        ctx.fillText("100%", Math.max(padL, padL + plotW - 24), cssH - 2);
+
+        if (!shape) {
+          ctx.strokeStyle = primary;
+          ctx.globalAlpha = 0.45;
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          ctx.moveTo(padL, padT + plotH * 0.5);
+          ctx.lineTo(padL + plotW, padT + plotH * 0.5);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.globalAlpha = 1;
+          return;
+        }
+
+        if (peakPos == null) {
+          ctx.strokeStyle = primary;
+          ctx.globalAlpha = 0.45;
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          ctx.moveTo(padL, padT + plotH * 0.5);
+          ctx.lineTo(padL + plotW, padT + plotH * 0.5);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.globalAlpha = 1;
+          return;
+        }
+
+        var peak = Math.max(0.05, Math.min(1, parseFloat(peakPos) || 0.5));
+        var peakX = padL + peak * plotW;
+        ctx.strokeStyle = themeA;
+        ctx.globalAlpha = 0.55;
+        ctx.setLineDash([2, 3]);
+        ctx.beginPath();
+        ctx.moveTo(peakX, padT);
+        ctx.lineTo(peakX, baseY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+
+        var steps = Math.max(80, Math.floor(plotW * 1.5));
+        ctx.strokeStyle = primary;
+        ctx.lineWidth = 1.5;
+        ctx.lineJoin = "round";
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        for (var i = 0; i <= steps; i++) {
+          var t = i / steps;
+          var env = generatrSweepEnvelopeValue(t, shape, peak);
+          var x = padL + t * plotW;
+          var y = baseY - env * plotH;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+
+      function generatrSweepSetSvgPaths(svg, paths, muted) {
+        if (!svg) return;
+        var cls = muted ? "generatr-sweep-preview-stroke-muted" : "generatr-sweep-preview-stroke";
+        svg.innerHTML = paths.map(function (pathD) {
+          return '<path class="' + cls + '" d="' + pathD + '"></path>';
+        }).join("");
+      }
+
+      function generatrSweepWavePath(width, height, pad, yFn) {
+        var count = 48;
+        var points = [];
+        for (var i = 0; i <= count; i++) {
+          var t = i / count;
+          var x = pad + t * (width - pad * 2);
+          var y = pad + yFn(t) * (height - pad * 2);
+          points.push([x, y]);
+        }
+        return generatrSweepPointsToPath(points);
+      }
+
+      function generatrSweepRandomPreviewPath(width, height, pad) {
+        var y = height / 2;
+        return "M" + pad + " " + y + " L" + (width - pad) + " " + y;
+      }
+
+      var GENERATR_SWEEP_OSC_VOICES = { sine: true, saw: true, tri: true, square: true };
+
+      function generatrSweepVoiceIsTonal(voice) {
+        return !!voice && !!GENERATR_SWEEP_OSC_VOICES[voice];
+      }
+
+      function generatrSyncSweepVoicePitchKnobs() {
+        var voiceSelect = document.getElementById("generatr-tx-voice");
+        var pitchKnobs = document.getElementById("generatr-tx-voice-pitch-knobs");
+        if (!voiceSelect || !pitchKnobs) return;
+        var voice = voiceSelect.value;
+        var tonal = !voice || generatrSweepVoiceIsTonal(voice);
+        pitchKnobs.classList.toggle("generatr-sweep-effect-disabled", !tonal);
+      }
+
+      function generatrUpdateSweepVoicePreview() {
+        var select = document.getElementById("generatr-tx-voice");
+        var svg = document.getElementById("generatr-tx-voice-preview");
+        if (!select || !svg) return;
+        var voice = select.value;
+        if (!voice) {
+          generatrSweepSetSvgPaths(svg, [generatrSweepRandomPreviewPath(96, 32, 3)], true);
+          return;
+        }
+        generatrSweepSetSvgPaths(svg, [
+          generatrSweepWavePath(96, 32, 3, function (t) { return generatrSweepVoiceWaveY(t, voice); })
+        ], false);
+      }
+
+      function generatrUpdateSweepShapePreview() {
+        var select = document.getElementById("generatr-tx-curve-shape");
+        var canvas = document.getElementById("generatr-tx-curve-shape-preview");
+        var peakInput = document.getElementById("generatr-tx-curve-peak-position");
+        if (!canvas) return;
+        var shape = select ? select.value : "";
+        var peakPos = null;
+        if (!peakInput || peakInput.dataset.dawKnobRandom !== "1") {
+          peakPos = peakInput ? parseFloat(peakInput.value || "0.5") : 0.5;
+        }
+        generatrSweepDrawCurveCanvas(canvas, shape, peakPos);
+      }
+
+      function generatrInitSweepPreviewCards() {
+        var voiceSelect = document.getElementById("generatr-tx-voice");
+        var shapeSelect = document.getElementById("generatr-tx-curve-shape");
+        var peakInput = document.getElementById("generatr-tx-curve-peak-position");
+        var curveCanvas = document.getElementById("generatr-tx-curve-shape-preview");
+        if (voiceSelect) {
+          voiceSelect.addEventListener("change", function () {
+            generatrUpdateSweepVoicePreview();
+            generatrSyncSweepVoicePitchKnobs();
+          });
+          generatrUpdateSweepVoicePreview();
+          generatrSyncSweepVoicePitchKnobs();
+        }
+        if (shapeSelect) {
+          shapeSelect.addEventListener("change", generatrUpdateSweepShapePreview);
+        }
+        if (peakInput) {
+          peakInput.addEventListener("input", generatrUpdateSweepShapePreview);
+          peakInput.addEventListener("change", generatrUpdateSweepShapePreview);
+        }
+        generatrUpdateSweepShapePreview();
+        if (curveCanvas && curveCanvas.parentElement && typeof ResizeObserver !== "undefined") {
+          var curveResizeObserver = new ResizeObserver(function () {
+            generatrUpdateSweepShapePreview();
+          });
+          curveResizeObserver.observe(curveCanvas.parentElement);
+        }
+      }
 
       function generatrInitSweepPanelControls() {
         var effectPairs = [
@@ -5518,62 +5989,87 @@
         });
 
         initDawKnobs(document.getElementById("generatr-panel-tx-sweep"));
+        generatrInitSweepPreviewCards();
       }
       generatrInitSweepPanelControls();
 
+      function generatrSweepKnobIsRandom(inputId) {
+        var input = document.getElementById(inputId);
+        return !!(input && input.dataset.dawKnobRandom === "1");
+      }
+
+      function generatrSweepKnobFloat(inputId) {
+        if (generatrSweepKnobIsRandom(inputId)) return null;
+        var input = document.getElementById(inputId);
+        if (!input) return null;
+        var value = parseFloat(input.value);
+        return isNaN(value) ? null : value;
+      }
+
+      function generatrSweepKnobInt(inputId) {
+        if (generatrSweepKnobIsRandom(inputId)) return null;
+        var input = document.getElementById(inputId);
+        if (!input) return null;
+        var value = parseInt(input.value, 10);
+        return isNaN(value) ? null : value;
+      }
+
       function generatrCollectSweepPayload(body) {
         body.voice = generatrTrimOrNull(document.getElementById("generatr-tx-voice").value);
+        if (!body.voice || generatrSweepVoiceIsTonal(body.voice)) {
+          body.pitchMin = generatrSweepKnobFloat("generatr-tx-pitch-min");
+          body.pitchMax = generatrSweepKnobFloat("generatr-tx-pitch-max");
+        }
         body.curveShape = generatrTrimOrNull(document.getElementById("generatr-tx-curve-shape").value);
-        body.curvePeak = parseFloat(document.getElementById("generatr-tx-curve-peak").value || "0.5");
-        body.curveDecay = parseFloat(document.getElementById("generatr-tx-curve-decay").value || "4");
+        body.curvePeakPosition = generatrSweepKnobFloat("generatr-tx-curve-peak-position");
 
         body.gainEnabled = !!document.getElementById("generatr-tx-gain-enabled").checked;
         if (body.gainEnabled) {
-          body.gainMin = parseFloat(document.getElementById("generatr-tx-gain-min").value || "0");
-          body.gainMax = parseFloat(document.getElementById("generatr-tx-gain-max").value || "1");
+          body.gainMin = generatrSweepKnobFloat("generatr-tx-gain-min");
+          body.gainMax = generatrSweepKnobFloat("generatr-tx-gain-max");
         }
 
         body.filterEnabled = !!document.getElementById("generatr-tx-filter-enabled").checked;
         if (body.filterEnabled) {
           body.filterType = generatrTrimOrNull(document.getElementById("generatr-tx-filter-type").value);
-          body.filterCutoffLow = parseInt(document.getElementById("generatr-tx-filter-cutoff-low").value || "400", 10);
-          body.filterCutoffHigh = parseInt(document.getElementById("generatr-tx-filter-cutoff-high").value || "12000", 10);
+          body.filterCutoffLow = generatrSweepKnobInt("generatr-tx-filter-cutoff-low");
+          body.filterCutoffHigh = generatrSweepKnobInt("generatr-tx-filter-cutoff-high");
         }
 
         body.tremoloEnabled = !!document.getElementById("generatr-tx-tremolo-enabled").checked;
         if (body.tremoloEnabled) {
-          body.tremoloRateMin = parseFloat(document.getElementById("generatr-tx-tremolo-rate-min").value || "0.3");
-          body.tremoloRateMax = parseFloat(document.getElementById("generatr-tx-tremolo-rate-max").value || "15");
-          body.tremoloDepth = parseFloat(document.getElementById("generatr-tx-tremolo-depth").value || "0.85");
+          body.tremoloRateMin = generatrSweepKnobFloat("generatr-tx-tremolo-rate-min");
+          body.tremoloRateMax = generatrSweepKnobFloat("generatr-tx-tremolo-rate-max");
+          body.tremoloDepth = generatrSweepKnobFloat("generatr-tx-tremolo-depth");
         }
 
         body.phaserEnabled = !!document.getElementById("generatr-tx-phaser-enabled").checked;
         if (body.phaserEnabled) {
-          body.phaserRateMin = parseFloat(document.getElementById("generatr-tx-phaser-rate-min").value || "0.2");
-          body.phaserRateMax = parseFloat(document.getElementById("generatr-tx-phaser-rate-max").value || "2");
-          body.phaserDepth = parseFloat(document.getElementById("generatr-tx-phaser-depth").value || "0.65");
-          body.phaserCentre = parseFloat(document.getElementById("generatr-tx-phaser-centre").value || "1500");
-          body.phaserFeedback = parseFloat(document.getElementById("generatr-tx-phaser-feedback").value || "0.4");
-          body.phaserMix = parseFloat(document.getElementById("generatr-tx-phaser-mix").value || "0.5");
+          body.phaserRateMin = generatrSweepKnobFloat("generatr-tx-phaser-rate-min");
+          body.phaserRateMax = generatrSweepKnobFloat("generatr-tx-phaser-rate-max");
+          body.phaserDepth = generatrSweepKnobFloat("generatr-tx-phaser-depth");
+          body.phaserCentre = generatrSweepKnobFloat("generatr-tx-phaser-centre");
+          body.phaserFeedback = generatrSweepKnobFloat("generatr-tx-phaser-feedback");
+          body.phaserMix = generatrSweepKnobFloat("generatr-tx-phaser-mix");
         }
 
         body.chorusEnabled = !!document.getElementById("generatr-tx-chorus-enabled").checked;
         if (body.chorusEnabled) {
-          body.chorusRateMin = parseFloat(document.getElementById("generatr-tx-chorus-rate-min").value || "0.3");
-          body.chorusRateMax = parseFloat(document.getElementById("generatr-tx-chorus-rate-max").value || "1.5");
-          body.chorusDepth = parseFloat(document.getElementById("generatr-tx-chorus-depth").value || "0.28");
-          body.chorusDelay = parseFloat(document.getElementById("generatr-tx-chorus-delay").value || "7.5");
-          body.chorusMix = parseFloat(document.getElementById("generatr-tx-chorus-mix").value || "0.45");
+          body.chorusRateMin = generatrSweepKnobFloat("generatr-tx-chorus-rate-min");
+          body.chorusRateMax = generatrSweepKnobFloat("generatr-tx-chorus-rate-max");
+          body.chorusDepth = generatrSweepKnobFloat("generatr-tx-chorus-depth");
+          body.chorusDelay = generatrSweepKnobFloat("generatr-tx-chorus-delay");
+          body.chorusMix = generatrSweepKnobFloat("generatr-tx-chorus-mix");
         }
 
         body.flangerEnabled = !!document.getElementById("generatr-tx-flanger-enabled").checked;
         if (body.flangerEnabled) {
-          body.flangerRateMin = parseFloat(document.getElementById("generatr-tx-flanger-rate-min").value || "0.2");
-          body.flangerRateMax = parseFloat(document.getElementById("generatr-tx-flanger-rate-max").value || "0.8");
-          body.flangerDepth = parseFloat(document.getElementById("generatr-tx-flanger-depth").value || "0.4");
-          body.flangerDelay = parseFloat(document.getElementById("generatr-tx-flanger-delay").value || "2");
-          body.flangerFeedback = parseFloat(document.getElementById("generatr-tx-flanger-feedback").value || "0.35");
-          body.flangerMix = parseFloat(document.getElementById("generatr-tx-flanger-mix").value || "0.5");
+          body.flangerRateMin = generatrSweepKnobFloat("generatr-tx-flanger-rate-min");
+          body.flangerRateMax = generatrSweepKnobFloat("generatr-tx-flanger-rate-max");
+          body.flangerDepth = generatrSweepKnobFloat("generatr-tx-flanger-depth");
+          body.flangerDelay = generatrSweepKnobFloat("generatr-tx-flanger-delay");
+          body.flangerFeedback = generatrSweepKnobFloat("generatr-tx-flanger-feedback");
+          body.flangerMix = generatrSweepKnobFloat("generatr-tx-flanger-mix");
         }
       }
 
@@ -5584,9 +6080,7 @@
           sweep: "8",
           closh: "4",
           kickboom: "4",
-          longcrash: "8",
-          riser: "4",
-          drop: "4"
+          longcrash: "8"
         };
         if (defaults[kind]) {
           barsEl.value = defaults[kind];
@@ -5625,16 +6119,12 @@
         var isTransition = api.type === "transition";
         if (panelTxTiming) panelTxTiming.classList.toggle("hidden", !isTransition);
 
-        var washKinds = { closh: 1, kickboom: 1, longcrash: 1, riser: 1, drop: 1 };
-        var stretchKinds = { longcrash: 1, riser: 1, drop: 1 };
-        var legacySweepStrKinds = { riser: 1, drop: 1 };
+        var washKinds = { closh: 1, kickboom: 1, longcrash: 1 };
+        var stretchKinds = { longcrash: 1 };
 
         if (panelTxWash) panelTxWash.classList.toggle("hidden", !washKinds[kind]);
         if (panelTxStretch) panelTxStretch.classList.toggle("hidden", !stretchKinds[kind]);
         if (panelTxSweep) panelTxSweep.classList.toggle("hidden", kind !== "sweep");
-        if (panelTxSweepStrings) panelTxSweepStrings.classList.toggle("hidden", !legacySweepStrKinds[kind]);
-        if (panelTxRiserMix) panelTxRiserMix.classList.toggle("hidden", kind !== "riser");
-        if (panelTxDropMix) panelTxDropMix.classList.toggle("hidden", kind !== "drop");
 
         if (api.type === "transition") {
           syncTransitionTimingDefaults(kind);
@@ -5994,22 +6484,7 @@
           body.windowSize = parseFloat(document.getElementById("generatr-tx-window-size").value || "0.25");
           if (kind === "sweep") {
             generatrCollectSweepPayload(body);
-          } else if (kind === "riser" || kind === "drop") {
-            body.sound = generatrTrimOrNull(document.getElementById("generatr-tx-sound").value);
-            body.curve = generatrTrimOrNull(document.getElementById("generatr-tx-curve").value);
-            body.filterStr = generatrTrimOrNull(document.getElementById("generatr-tx-filter-str").value);
-            body.tremolo = generatrTrimOrNull(document.getElementById("generatr-tx-tremolo").value);
-            body.phaser = generatrTrimOrNull(document.getElementById("generatr-tx-phaser").value);
-            body.chorus = generatrTrimOrNull(document.getElementById("generatr-tx-chorus").value);
-            body.flanger = generatrTrimOrNull(document.getElementById("generatr-tx-flanger").value);
           }
-          body.peakPos = parseFloat(document.getElementById("generatr-tx-peak-pos").value || "1");
-          body.buildShape = (document.getElementById("generatr-tx-build-shape").value || "ease_in").trim();
-          body.longcrashLevel = parseFloat(document.getElementById("generatr-tx-longcrash-level").value || "0.4");
-          body.sweepLevel = parseFloat(document.getElementById("generatr-tx-sweep-level").value || "0.6");
-          body.riserLevel = parseFloat(document.getElementById("generatr-tx-riser-level").value || "0.4");
-          body.synthLevel = parseFloat(document.getElementById("generatr-tx-synth-level").value || "0.6");
-          body.synth = generatrTrimOrNull(document.getElementById("generatr-tx-synth").value);
           body.postProcessing = postCmds();
         }
 

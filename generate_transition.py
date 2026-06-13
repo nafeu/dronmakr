@@ -1,4 +1,4 @@
-"""Transition sound generation (sweeps, risers, etc.) using offline DSP."""
+"""Transition sound generation (sweeps, washes, crashes) using offline DSP."""
 
 import random
 import re
@@ -33,19 +33,82 @@ def _normalize_audio(
 # Default ranges for randomization (when params not passed)
 CUTOFF_LOW_RANGE = (300, 700)
 CUTOFF_HIGH_RANGE = (10000, 18000)
-DECAY_RATE_RANGE = (2.0, 6.0)
-PEAK_POS_RANGE = (0.4, 0.6)
+PEAK_POS_RANGE = (0.25, 0.75)
 NOISE_LEVEL_RANGE = (0.45, 0.8)
 FILTER_ORDERS = (2, 4, 6)
 FILTER_SWEEP_TYPES: tuple[str, ...] = ("lpf", "hpf", "bpf", "bsf", "none")
 FILTER_LFO_WIDTH_RANGE = (0.0, 0.25)
 FILTER_LFO_RATE_MIN_RANGE = (0.1, 1.5)
 FILTER_LFO_RATE_PEAK_RANGE = (5.0, 25.0)
-BUILD_SHAPES: tuple[Literal["ease_in", "linear", "ease_out"], ...] = (
-    "ease_in",
-    "linear",
-    "ease_out",
+BUILD_SHAPES: tuple[str, ...] = (
+    "easeInSine",
+    "easeOutSine",
+    "easeInQuad",
+    "easeOutQuad",
+    "easeInCubic",
+    "easeOutCubic",
+    "easeInQuart",
+    "easeOutQuart",
+    "easeInQuint",
+    "easeOutQuint",
+    "easeInExpo",
+    "easeOutExpo",
+    "easeInCirc",
+    "easeOutCirc",
+    "easeInBack",
+    "easeOutBack",
 )
+
+_BUILD_SHAPE_ALIASES: dict[str, str] = {
+    "ease_in": "easeInCubic",
+    "easein": "easeInCubic",
+    "ease_out": "easeOutCubic",
+    "easeout": "easeOutCubic",
+    "ease_in_out": "easeInCubic",
+    "easeinout": "easeInCubic",
+    "linear": "linear",
+}
+
+_EASE_BACK_C1 = 1.70158
+
+
+def normalize_build_shape(value: str | None) -> str | None:
+    """Map CLI / legacy curve names to canonical build shapes. None => random."""
+    if value is None or _is_random(value):
+        return None
+    raw = value.strip()
+    if not raw:
+        return None
+    lowered_key = raw.lower().replace("-", "").replace("_", "")
+    alias_key = raw.lower().replace("-", "_")
+    if alias_key in _BUILD_SHAPE_ALIASES:
+        return _BUILD_SHAPE_ALIASES[alias_key]
+    for alias, target in _BUILD_SHAPE_ALIASES.items():
+        if alias.replace("_", "") == lowered_key:
+            return target
+    if raw.startswith("easeInOut") and len(raw) > 9:
+        in_candidate = "easeIn" + raw[9:]
+        canonical = {shape.lower(): shape for shape in BUILD_SHAPES}
+        mapped = canonical.get(in_candidate.lower())
+        if mapped:
+            return mapped
+    canonical = {shape.lower(): shape for shape in BUILD_SHAPES}
+    direct = canonical.get(raw.lower())
+    if direct:
+        return direct
+    camelish = canonical.get(lowered_key)
+    if camelish:
+        return camelish
+    return None
+
+
+def _resolve_build_shape(value: str | None) -> str:
+    normalized = normalize_build_shape(value)
+    if normalized == "linear":
+        return "linear"
+    if normalized in BUILD_SHAPES:
+        return normalized
+    return random.choice(BUILD_SHAPES)
 NOISE_TYPES: tuple[Literal["white", "pink", "brown", "blue"], ...] = (
     "white",
     "pink",
@@ -276,7 +339,11 @@ def _resolve_osc_voice_params(voice: Literal["sine", "saw", "tri", "square"]) ->
     }
 
 
-def _resolve_sweep_voice_params(voice: str | None) -> dict[str, Any]:
+def _resolve_sweep_voice_params(
+    voice: str | None,
+    pitch_min: float | None = None,
+    pitch_max: float | None = None,
+) -> dict[str, Any]:
     """Resolve --voice (whitenoise, pinknoise, …, sine, saw, tri, square)."""
     picked = _resolve_optional_choice(voice, SWEEP_VOICE_CHOICES)
     if picked in _NOISE_VOICE_MAP:
@@ -287,7 +354,16 @@ def _resolve_sweep_voice_params(voice: str | None) -> dict[str, Any]:
             "noise_level": random.uniform(*NOISE_LEVEL_RANGE),
         }
     osc_voice = picked  # type: ignore[assignment]
-    return {"sweep_voice": picked, **_resolve_osc_voice_params(osc_voice)}
+    osc = _resolve_osc_voice_params(osc_voice)
+    osc["sweep_voice"] = picked
+    if pitch_min is not None:
+        osc["osc_freq_low"] = max(20.0, min(20000.0, float(pitch_min)))
+    if pitch_max is not None:
+        osc["osc_freq_high"] = max(40.0, min(20000.0, float(pitch_max)))
+    osc["osc_freq_high"] = max(float(osc["osc_freq_high"]), float(osc["osc_freq_low"]) + 50.0)
+    if pitch_min is not None and float(osc["osc_freq_low"]) > float(osc["osc_freq_high"]) - 50.0:
+        osc["osc_freq_low"] = max(20.0, float(osc["osc_freq_high"]) - 50.0)
+    return osc
 
 
 def _resolve_phaser_params_from_explicit(
@@ -392,42 +468,13 @@ def _resolve_flanger_params(parsed: dict[str, str]) -> dict[str, float]:
     )
 
 
-def _resolve_sound_params(parsed: dict[str, str]) -> dict[str, Any]:
-    """Resolve legacy --sound string params (riser/drop compatibility)."""
-    voice = _resolve_choice(parsed, "voice", VOICE_TYPES)
-    if voice == "noise":
-        noise_type = _resolve_choice(parsed, "type", NOISE_TYPES)
-        noise_key = {
-            "white": "whitenoise",
-            "pink": "pinknoise",
-            "brown": "brownnoise",
-            "blue": "bluenoise",
-        }[noise_type]
-        return {
-            "voice": "noise",
-            "sweep_voice": noise_key,
-            "noise_type": noise_type,
-            "noise_level": _resolve_float(parsed, "noise_level", NOISE_LEVEL_RANGE, 0.2, 1.0),
-        }
-    osc = _resolve_osc_voice_params(voice)  # type: ignore[arg-type]
-    osc["sweep_voice"] = voice
-    if parsed.get("freq_high") and not _is_random(parsed.get("freq_high")):
-        osc["osc_freq_high"] = _resolve_float(
-            parsed, "freq_high", OSC_FREQ_HIGH_RANGE, 40, 523.25
-        )
-    if parsed.get("freq_low") and not _is_random(parsed.get("freq_low")):
-        osc["osc_freq_low"] = _resolve_float(parsed, "freq_low", OSC_FREQ_LOW_RANGE, 20, 2000)
-    if parsed.get("level") and not _is_random(parsed.get("level")):
-        osc["osc_level"] = _resolve_float(parsed, "level", OSC_LEVEL_RANGE, 0.1, 1.0)
-    return osc
-
-
 def parse_sweep_config(
     *,
     voice: str | None = None,
+    pitch_min: float | None = None,
+    pitch_max: float | None = None,
     curve_shape: str | None = None,
-    curve_peak: float | None = None,
-    curve_decay: float | None = None,
+    curve_peak_position: float | None = None,
     filter_enabled: bool | None = None,
     filter_type: str | None = None,
     filter_cutoff_low: int | None = None,
@@ -463,7 +510,24 @@ def parse_sweep_config(
 ) -> dict[str, Any]:
     """Resolve sweep config from explicit CLI / API options (omit for random)."""
     disabled = _parse_disable_set(disable)
-    voice_params = _resolve_sweep_voice_params(voice)
+    resolved_pitch_min = (
+        _resolve_optional_float(pitch_min, OSC_FREQ_LOW_RANGE, 20, 20000)
+        if pitch_min is not None
+        else None
+    )
+    resolved_pitch_max = (
+        _resolve_optional_float(pitch_max, OSC_FREQ_HIGH_RANGE, 40, 20000)
+        if pitch_max is not None
+        else None
+    )
+    if resolved_pitch_min is not None and resolved_pitch_max is not None:
+        if resolved_pitch_min > resolved_pitch_max - 50.0:
+            resolved_pitch_min = max(20.0, resolved_pitch_max - 50.0)
+    voice_params = _resolve_sweep_voice_params(
+        voice,
+        pitch_min=resolved_pitch_min,
+        pitch_max=resolved_pitch_max,
+    )
 
     resolved_tremolo_rate_min = _resolve_optional_float(
         tremolo_rate_min, TREMOLO_RATE_MIN_RANGE, 0.05, 20
@@ -535,9 +599,10 @@ def parse_sweep_config(
 
     return {
         **voice_params,
-        "build_shape": _resolve_optional_choice(curve_shape, BUILD_SHAPES),  # type: ignore[arg-type]
-        "decay_rate": _resolve_optional_float(curve_decay, DECAY_RATE_RANGE, 0.5, 15.0),
-        "peak_pos": _resolve_optional_float(curve_peak, PEAK_POS_RANGE, 0.15, 0.85),
+        "build_shape": _resolve_build_shape(curve_shape),
+        "peak_pos": _resolve_optional_float(
+            curve_peak_position, PEAK_POS_RANGE, 0.05, 1.0
+        ),
         "filter_enabled": use_filter,
         "cutoff_low": cutoff_low,
         "cutoff_high": cutoff_high,
@@ -602,117 +667,9 @@ def parse_sweep_config(
         "gain_enabled": use_gain,
         "gain_min": _resolve_optional_float(gain_min, GAIN_MIN_RANGE, 0, 1),
         "gain_max": _resolve_optional_float(gain_max, GAIN_MAX_RANGE, 0, 1),
+        "pitch_min_hz": resolved_pitch_min,
+        "pitch_max_hz": resolved_pitch_max,
     }
-
-
-def parse_sweep_config_from_legacy_strings(
-    sound: str | None = None,
-    curve: str | None = None,
-    filter_str: str | None = None,
-    tremolo: str | None = None,
-    phaser: str | None = None,
-    chorus: str | None = None,
-    flanger: str | None = None,
-    disable: str | None = None,
-) -> dict[str, Any]:
-    """Bridge legacy key:value strings (riser/drop) to parse_sweep_config."""
-    disabled = _parse_disable_set(disable)
-    s = _parse_param_string(sound)
-    c = _parse_param_string(curve)
-    f = _parse_param_string(filter_str)
-    t = _parse_param_string(tremolo)
-    ph = _parse_param_string(phaser)
-    ch = _parse_param_string(chorus)
-    fl = _parse_param_string(flanger)
-
-    voice_raw = s.get("voice")
-    voice: str | None = None
-    if voice_raw and not _is_random(voice_raw):
-        if voice_raw.lower() == "noise":
-            noise_type = s.get("type", "white").lower()
-            voice = {
-                "white": "whitenoise",
-                "pink": "pinknoise",
-                "brown": "brownnoise",
-                "blue": "bluenoise",
-            }.get(noise_type, "whitenoise")
-        elif voice_raw.lower() in {"sine", "saw", "tri", "square"}:
-            voice = voice_raw.lower()
-
-    filter_type = f.get("type") if f and "type" in f else None
-    if filter_type and filter_type.lower() == "none":
-        filter_enabled = False
-        filter_type = None
-    else:
-        filter_enabled = "filter" not in disabled
-
-    tremolo_enabled = "tremolo" not in disabled
-    phaser_enabled = "phaser" not in disabled and (
-        phaser is not None or random.random() < 0.5
-    )
-    chorus_enabled = "chorus" not in disabled and (
-        chorus is not None or random.random() < 0.5
-    )
-    flanger_enabled = "flanger" not in disabled and (
-        flanger is not None or random.random() < 0.5
-    )
-
-    def _legacy_float(parsed: dict[str, str], key: str) -> float | None:
-        val = parsed.get(key)
-        if val is None or _is_random(val):
-            return None
-        try:
-            return float(val)
-        except (TypeError, ValueError):
-            return None
-
-    def _legacy_int(parsed: dict[str, str], key: str) -> int | None:
-        val = parsed.get(key)
-        if val is None or _is_random(val):
-            return None
-        try:
-            return int(float(val))
-        except (TypeError, ValueError):
-            return None
-
-    cfg = parse_sweep_config(
-        voice=voice,
-        curve_shape=c.get("shape"),
-        curve_peak=_legacy_float(c, "peak_pos"),
-        curve_decay=_legacy_float(c, "decay_rate"),
-        filter_enabled=filter_enabled,
-        filter_type=filter_type,
-        filter_cutoff_low=_legacy_int(f, "cutoff_low"),
-        filter_cutoff_high=_legacy_int(f, "cutoff_high"),
-        tremolo_enabled=tremolo_enabled,
-        tremolo_rate_min=_legacy_float(t, "rate_min_hz"),
-        tremolo_rate_max=_legacy_float(t, "rate_max_hz"),
-        tremolo_depth=_legacy_float(t, "depth"),
-        phaser_enabled=phaser_enabled,
-        phaser_rate_min=_legacy_float(ph, "rate_hz"),
-        phaser_rate_max=_legacy_float(ph, "rate_hz"),
-        phaser_depth=_legacy_float(ph, "depth"),
-        phaser_centre=_legacy_float(ph, "centre_frequency_hz"),
-        phaser_feedback=_legacy_float(ph, "feedback"),
-        phaser_mix=_legacy_float(ph, "mix"),
-        chorus_enabled=chorus_enabled,
-        chorus_rate_min=_legacy_float(ch, "rate_hz"),
-        chorus_rate_max=_legacy_float(ch, "rate_hz"),
-        chorus_depth=_legacy_float(ch, "depth"),
-        chorus_delay=_legacy_float(ch, "centre_delay_ms"),
-        chorus_mix=_legacy_float(ch, "mix"),
-        flanger_enabled=flanger_enabled,
-        flanger_rate_min=_legacy_float(fl, "rate_hz"),
-        flanger_rate_max=_legacy_float(fl, "rate_hz"),
-        flanger_depth=_legacy_float(fl, "depth"),
-        flanger_delay=_legacy_float(fl, "centre_delay_ms"),
-        flanger_feedback=_legacy_float(fl, "feedback"),
-        flanger_mix=_legacy_float(fl, "mix"),
-    )
-
-    if sound:
-        cfg.update(_resolve_sound_params(s))
-    return cfg
 
 
 def _generate_noise(
@@ -816,61 +773,77 @@ def _generate_oscillator_sweep(
     return (main * level).astype(np.float64)
 
 
-def _apply_build_shape(
-    t_norm: np.ndarray, shape: Literal["ease_in", "linear", "ease_out"]
-) -> np.ndarray:
-    """Map normalized 0..1 to build curve. ease_in: slow start; linear: constant; ease_out: slow end."""
-    t = np.clip(t_norm, 0, 1)
-    if shape == "linear":
+def _apply_build_shape(t_norm: np.ndarray, shape: str) -> np.ndarray:
+    """Map normalized 0..1 through an easing curve (f(0)=0, f(1)=1)."""
+    t = np.clip(t_norm.astype(np.float64, copy=False), 0.0, 1.0)
+    canonical = normalize_build_shape(shape) or shape
+
+    if canonical == "linear":
         return t
-    if shape == "ease_in":
-        # Use a steeper exponential-style ease so modulation (filter & tremolo)
-        # stays slow at the beginning and accelerates into the peak.
-        return t**3
-    if shape == "ease_out":
-        return 1 - (1 - t) ** 3
+    if canonical == "easeInSine":
+        return 1.0 - np.cos((t * np.pi) / 2.0)
+    if canonical == "easeOutSine":
+        return np.sin((t * np.pi) / 2.0)
+    if canonical == "easeInQuad":
+        return t * t
+    if canonical == "easeOutQuad":
+        return 1.0 - np.power(1.0 - t, 2.0)
+    if canonical == "easeInCubic":
+        return t * t * t
+    if canonical == "easeOutCubic":
+        return 1.0 - np.power(1.0 - t, 3.0)
+    if canonical == "easeInQuart":
+        return np.power(t, 4.0)
+    if canonical == "easeOutQuart":
+        return 1.0 - np.power(1.0 - t, 4.0)
+    if canonical == "easeInQuint":
+        return np.power(t, 5.0)
+    if canonical == "easeOutQuint":
+        return 1.0 - np.power(1.0 - t, 5.0)
+    if canonical == "easeInExpo":
+        return np.where(t == 0.0, 0.0, np.power(2.0, 10.0 * t - 10.0))
+    if canonical == "easeOutExpo":
+        return np.where(t == 1.0, 1.0, 1.0 - np.power(2.0, -10.0 * t))
+    if canonical == "easeInCirc":
+        return 1.0 - np.sqrt(1.0 - np.power(t, 2.0))
+    if canonical == "easeOutCirc":
+        return np.sqrt(1.0 - np.power(t - 1.0, 2.0))
+    if canonical == "easeInBack":
+        return (_EASE_BACK_C1 + 1.0) * np.power(t, 3.0) - _EASE_BACK_C1 * np.power(t, 2.0)
+    if canonical == "easeOutBack":
+        return (
+            1.0
+            + (_EASE_BACK_C1 + 1.0) * np.power(t - 1.0, 3.0)
+            + _EASE_BACK_C1 * np.power(t - 1.0, 2.0)
+        )
     return t
 
 
 def _riser_build_curve(
     normalized_t: np.ndarray,
     peak_pos: float,
-    decay_rate: float,
-    build_shape: Literal["ease_in", "linear", "ease_out"],
+    build_shape: str,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
-    Sweep curves: build from 0 to 1 by peak_pos, then sweep back down to 0 over the
-    remaining time. Cutoff, envelope, and LFO rate all follow this up-then-down shape
-    so the sweep returns to its initial state by the end.
+    Sweep envelope: one easing curve from 0 to 1 on the rise, then the same curve
+    reversed in time after the peak (not a different ease-out). At peak_pos=0.5 the
+    waveform is perfectly time-symmetric.
     """
     x = np.clip(normalized_t, 0, 1)
     build = x <= peak_pos
     release = ~build
 
-    t_build = x[build] / peak_pos if peak_pos > 0 else np.ones(np.sum(build))
-    build_val = _apply_build_shape(t_build, build_shape)
-
-    # Release: use remaining time (1 - peak_pos) to sweep back down to 0
-    t_release = (
-        (x[release] - peak_pos) / (1 - peak_pos)
+    t_norm = np.empty_like(x)
+    t_norm[build] = x[build] / peak_pos if peak_pos > 0 else np.ones(np.sum(build))
+    t_norm[release] = (
+        (1.0 - x[release]) / (1.0 - peak_pos)
         if peak_pos < 1
         else np.zeros(np.sum(release))
     )
-    # Mirror the build shape for symmetric sweep-down
-    release_val = 1.0 - _apply_build_shape(t_release, build_shape)
+    envelope = _apply_build_shape(t_norm, build_shape)
 
-    cutoff_frac = np.empty_like(x)
-    cutoff_frac[build] = build_val
-    cutoff_frac[release] = release_val
-
-    envelope = np.empty_like(x)
-    envelope[build] = build_val
-    envelope[release] = release_val
-
-    # LFO rate for tremolo: same up-then-down shape
-    lfo_rate_frac = np.empty_like(x)
-    lfo_rate_frac[build] = build_val
-    lfo_rate_frac[release] = release_val
+    cutoff_frac = envelope
+    lfo_rate_frac = envelope
 
     return cutoff_frac, envelope, lfo_rate_frac
 
@@ -1019,9 +992,8 @@ def generate_sweep_sample(
     cutoff_low = cfg.get("cutoff_low") or random.randint(*CUTOFF_LOW_RANGE)
     cutoff_high = cfg.get("cutoff_high") or random.randint(*CUTOFF_HIGH_RANGE)
     cutoff_high = max(cutoff_high, cutoff_low + 500)
-    decay_rate = cfg.get("decay_rate") or random.uniform(*DECAY_RATE_RANGE)
     peak_pos = cfg.get("peak_pos") or random.uniform(*PEAK_POS_RANGE)
-    peak_pos = max(0.15, min(1.0, peak_pos))
+    peak_pos = max(0.05, min(1.0, peak_pos))
     noise_level = cfg.get("noise_level") or random.uniform(*NOISE_LEVEL_RANGE)
     noise_level = max(0.2, min(1.0, noise_level))
     noise_type = cfg.get("noise_type") or random.choice(NOISE_TYPES)
@@ -1031,6 +1003,13 @@ def generate_sweep_sample(
         octaves = random.uniform(*OSC_OCTAVE_SPAN_RANGE)
         osc_freq_high = osc_freq_low * (2.0**octaves)
         osc_freq_high = min(osc_freq_high, SAMPLE_RATE / 2 - 100)
+    if voice != "noise":
+        pitch_min_hz = cfg.get("pitch_min_hz")
+        pitch_max_hz = cfg.get("pitch_max_hz")
+        if pitch_min_hz is not None:
+            osc_freq_low = max(20.0, min(20000.0, float(pitch_min_hz)))
+        if pitch_max_hz is not None:
+            osc_freq_high = max(40.0, min(20000.0, float(pitch_max_hz)))
     osc_freq_high = max(osc_freq_high, osc_freq_low + 50)
     osc_level = cfg.get("osc_level") or random.uniform(*OSC_LEVEL_RANGE)
     pulse_width = cfg.get("pulse_width") or random.uniform(*PULSE_WIDTH_RANGE)
@@ -1040,7 +1019,7 @@ def generate_sweep_sample(
     resonance = cfg.get("resonance", 0.0)
     filter_order = cfg.get("filter_order") or random.choice(FILTER_ORDERS)
     filter_order = 2 if filter_order == 2 else (4 if filter_order == 4 else 6)
-    build_shape = cfg.get("build_shape") or random.choice(BUILD_SHAPES)
+    build_shape = _resolve_build_shape(cfg.get("build_shape"))
     tremolo_depth = cfg.get("tremolo_depth")
     if tremolo_depth is None:
         tremolo_depth = random.uniform(*TREMOLO_DEPTH_RANGE)
@@ -1066,7 +1045,7 @@ def generate_sweep_sample(
 
     t = np.arange(num_samples, dtype=np.float64) / num_samples
     cutoff_frac, envelope, lfo_rate_frac = _riser_build_curve(
-        t, peak_pos, decay_rate, build_shape
+        t, peak_pos, build_shape
     )
     gain_enabled = cfg.get("gain_enabled", True)
     gain_min = float(cfg.get("gain_min", 0.0))
@@ -1199,7 +1178,6 @@ def generate_sweep_sample(
         "voice": voice,
         "cutoff_low": cutoff_low,
         "cutoff_high": cutoff_high,
-        "decay_rate": decay_rate,
         "peak_pos": peak_pos,
         "noise_level": noise_level,
         "noise_type": noise_type,
@@ -1738,191 +1716,5 @@ def generate_longcrash_sample(
         "delay_mix": config["delay_mix"],
         "stretch": stretch,
         "window_size": window_size,
-    }
-    return output, params_used
-
-
-def generate_riser_sample(
-    tempo: int = 120,
-    bars: int = 4,
-    output: str = "riser.wav",
-    longcrash_config: dict[str, Any] | None = None,
-    sweep_config: dict[str, Any] | None = None,
-    stretch: float = 3.0,
-    window_size: float = 0.25,
-    longcrash_level: float = 0.4,
-    sweep_level: float = 0.6,
-    peak_pos: float = 1.0,
-    build_shape: Literal["ease_in", "linear", "ease_out"] = "ease_in",
-) -> tuple[str, dict[str, Any]]:
-    """
-    Generate a riser transition:
-    - base: longcrash (cymbal + reverb + delay + Paulstretch), then reversed
-    - overlay: a riser sweep that builds from start to finish with peak at the END
-      (unlike the regular sweep which peaks in the middle). Uses a slow buildup curve.
-    - mix: longcrash_level : sweep_level (defaults 40% : 60%).
-    """
-    if longcrash_config is None:
-        longcrash_config = parse_closh_config()
-    if sweep_config is None:
-        sweep_config = parse_sweep_config()
-
-    # Force riser-specific sweep params: peak at END, nice slow buildup (ease_in)
-    riser_sweep_config = {**sweep_config, "peak_pos": peak_pos, "build_shape": build_shape}
-
-    # 1) Generate longcrash (forward) to temp file, then reverse
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
-        long_path = f.name
-    try:
-        long_path, long_params = generate_longcrash_sample(
-            tempo=tempo,
-            bars=bars,
-            output=long_path,
-            config=longcrash_config,
-            stretch=stretch,
-            window_size=window_size,
-        )
-        long_audio, sr_long = sf.read(long_path, dtype="float32")
-        if sr_long != SAMPLE_RATE:
-            import librosa
-
-            long_audio = librosa.resample(
-                long_audio.T, orig_sr=sr_long, target_sr=SAMPLE_RATE
-            ).T
-        if long_audio.ndim > 1:
-            long_mono = np.mean(long_audio, axis=1)
-        else:
-            long_mono = long_audio
-        long_rev = long_mono[::-1]
-
-        # 2) Generate riser sweep to temp file
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
-            sweep_path = f.name
-        try:
-            sweep_path, sweep_params = generate_sweep_sample(
-                tempo=tempo,
-                bars=bars,
-                output=sweep_path,
-                config=riser_sweep_config,
-            )
-            sweep_audio, sr_sweep = sf.read(sweep_path, dtype="float32")
-        finally:
-            Path(sweep_path).unlink(missing_ok=True)
-    finally:
-        Path(long_path).unlink(missing_ok=True)
-
-    if sr_sweep != SAMPLE_RATE:
-        import librosa
-
-        sweep_audio = librosa.resample(
-            sweep_audio.T, orig_sr=sr_sweep, target_sr=SAMPLE_RATE
-        ).T
-    if sweep_audio.ndim > 1:
-        sweep_mono = np.mean(sweep_audio, axis=1)
-    else:
-        sweep_mono = sweep_audio
-
-    target_len = min(len(long_rev), len(sweep_mono))
-    mix_long = long_rev[:target_len]
-    mix_sweep = sweep_mono[:target_len]
-
-    combined = longcrash_level * mix_long + sweep_level * mix_sweep
-    sf.write(output, _normalize_audio(combined), SAMPLE_RATE, subtype="PCM_16")
-
-    params_used = {
-        "longcrash": long_params,
-        "sweep": sweep_params,
-        "longcrash_level": float(longcrash_level),
-        "sweep_level": float(sweep_level),
-        "peak_pos": peak_pos,
-        "build_shape": build_shape,
-    }
-    return output, params_used
-
-
-def generate_drop_sample(
-    tempo: int = 120,
-    bars: int = 4,
-    output: str = "drop.wav",
-    longcrash_config: dict[str, Any] | None = None,
-    sweep_config: dict[str, Any] | None = None,
-    synth: str | None = None,
-    stretch: float = 3.0,
-    window_size: float = 0.25,
-    riser_level: float = 0.4,
-    synth_level: float = 0.6,
-) -> tuple[str, dict[str, Any]]:
-    """
-    Generate a drop transition:
-    - base: riser (as above), then reversed so impact is at the start
-    - overlay: synth drop (high→low pitch) layered on top.
-    """
-    if longcrash_config is None:
-        longcrash_config = parse_closh_config()
-    if sweep_config is None:
-        sweep_config = parse_sweep_config()
-
-    # 1) Generate riser to temp file and reverse it
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
-        riser_path = f.name
-    try:
-        riser_path, riser_params = generate_riser_sample(
-            tempo=tempo,
-            bars=bars,
-            output=riser_path,
-            longcrash_config=longcrash_config,
-            sweep_config=sweep_config,
-            stretch=stretch,
-            window_size=window_size,
-        )
-        riser_audio, sr_riser = sf.read(riser_path, dtype="float32")
-    finally:
-        Path(riser_path).unlink(missing_ok=True)
-
-    if sr_riser != SAMPLE_RATE:
-        import librosa
-
-        riser_audio = librosa.resample(
-            riser_audio.T, orig_sr=sr_riser, target_sr=SAMPLE_RATE
-        ).T
-    if riser_audio.ndim > 1:
-        riser_mono = np.mean(riser_audio, axis=1)
-    else:
-        riser_mono = riser_audio
-    riser_rev = riser_mono[::-1]
-
-    # 2) Synth drop (high → low pitch)
-    s = _parse_param_string(synth)
-    voice = _resolve_choice(s, "voice", ("sine", "saw", "square", "tri"))
-    freq_high = _resolve_float(s, "freq_high", (400.0, 2000.0), 200.0, 4000.0)
-    freq_low = _resolve_float(s, "freq_low", (40.0, 120.0), 20.0, 400.0)
-    level = _resolve_float(s, "level", (0.4, 0.9), 0.1, 1.0)
-
-    duration_sec = bars * 4 * (60.0 / tempo)
-    num_samples = int(duration_sec * SAMPLE_RATE)
-    t_norm = np.linspace(0.0, 1.0, num_samples, endpoint=False)
-    freq_sweep = freq_high + (freq_low - freq_high) * t_norm
-    phase_inc = 2 * np.pi * freq_sweep / SAMPLE_RATE
-    phase = np.cumsum(phase_inc)
-    env = (1.0 - t_norm) ** 1.5
-    synth_wave = _oscillator_sample(phase, voice, pulse_width=0.5) * env * level
-
-    target_len = min(len(riser_rev), len(synth_wave))
-    mix_riser = riser_rev[:target_len]
-    mix_synth = synth_wave[:target_len]
-
-    combined = riser_level * mix_riser + synth_level * mix_synth
-    sf.write(output, _normalize_audio(combined), SAMPLE_RATE, subtype="PCM_16")
-
-    params_used = {
-        "riser": riser_params,
-        "synth": {
-            "voice": voice,
-            "freq_high": freq_high,
-            "freq_low": freq_low,
-            "level": level,
-        },
-        "riser_level": float(riser_level),
-        "synth_level": float(synth_level),
     }
     return output, params_used
