@@ -322,7 +322,7 @@
       grid-column: 1 / -1;
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0.45rem 0.65rem;
+      gap: 0.65rem 0.65rem;
       align-items: start;
     }
 
@@ -335,7 +335,7 @@
       display: flex;
       flex-wrap: nowrap;
       align-items: flex-start;
-      gap: 0.45rem 0.65rem;
+      gap: 0.65rem 0.65rem;
       width: 100%;
       min-width: 0;
     }
@@ -349,7 +349,7 @@
       grid-column: 1 / -1;
       display: flex;
       flex-direction: column;
-      gap: 0.45rem;
+      gap: 0.65rem;
       width: 100%;
       min-width: 0;
     }
@@ -358,7 +358,7 @@
       display: flex;
       flex-wrap: nowrap;
       align-items: stretch;
-      gap: 0.45rem 0.45rem;
+      gap: 0.65rem 0.65rem;
       width: 100%;
       min-width: 0;
     }
@@ -371,7 +371,7 @@
     .generatr-sweep-effect {
       border: 1px solid color-mix(in srgb, var(--theme-a) 55%, transparent);
       border-radius: 5px;
-      padding: 0.4rem 0.5rem 0.45rem;
+      padding: 0.4rem 0.5rem 0.65rem;
       background: color-mix(in srgb, var(--theme-a) 18%, transparent);
       min-width: 0;
       display: flex;
@@ -540,7 +540,7 @@
     }
 
     .generatr-sweep-source-row > .generatr-sweep-voice-card {
-      flex: 1 1 0;
+      flex: 0.5 1 0;
     }
 
     .generatr-sweep-source-row > .generatr-sweep-shape-card {
@@ -555,9 +555,25 @@
       min-width: 0;
     }
 
-    .generatr-sweep-shape-controls .generatr-sweep-preview-select {
+    .generatr-sweep-shape-select-wrap {
+      display: flex;
+      flex-direction: column;
       flex: 1 1 auto;
       min-width: 0;
+      gap: 0.15rem;
+    }
+
+    .generatr-sweep-shape-select-wrap .generatr-sweep-preview-select {
+      width: 100%;
+    }
+
+    .generatr-sweep-curve-mode-label {
+      font-size: 0.65rem;
+      letter-spacing: 0.04em;
+      color: var(--theme-a, #666666);
+      text-transform: uppercase;
+      line-height: 1.1;
+      padding-left: 0.1rem;
     }
 
     .generatr-sweep-shape-controls .generatr-sweep-effect-knobs {
@@ -708,7 +724,7 @@
     .generatr-sweep-panel .form-row select,
     .generatr-sweep-panel .form-row input[type="number"] {
       font-size: 0.8rem;
-      padding: 0.32rem 0.45rem;
+      padding: 0.32rem 0.65rem;
     }
 
     .generatr-form .form-row input[type="checkbox"] {
@@ -756,7 +772,7 @@
     .generatr-pp-filter {
       font-family: inherit;
       font-size: 0.8rem;
-      padding: 0.35rem 0.45rem;
+      padding: 0.35rem 0.65rem;
       border-radius: 4px;
       border: 1px solid var(--theme-a);
       background: var(--theme-a);
@@ -778,7 +794,7 @@
       font-family: inherit;
       font-size: 0.72rem;
       text-align: left;
-      padding: 0.35rem 0.45rem;
+      padding: 0.35rem 0.65rem;
       border-radius: 4px;
       border: 1px solid var(--theme-a);
       background: transparent;
@@ -908,7 +924,7 @@
     .btn-generate {
       font-family: inherit;
       font-size: 0.85rem;
-      padding: 0.45rem 0.85rem;
+      padding: 0.65rem 0.85rem;
       background: var(--primary);
       color: var(--secondary);
       border: 1px solid var(--primary);
@@ -1150,7 +1166,7 @@
       box-sizing: border-box;
       font-family: inherit;
       font-size: 0.85rem;
-      padding: 0.45rem 0.55rem;
+      padding: 0.65rem 0.55rem;
       border-radius: 4px;
       border: 1px solid rgba(255, 255, 255, 0.3);
       background: var(--theme-a);
@@ -1251,7 +1267,7 @@
       font-family: inherit;
       cursor: pointer;
       font-size: 0.8rem;
-      padding: 0.45rem 0.72rem;
+      padding: 0.65rem 0.72rem;
       border-radius: 4px;
     }
 
@@ -1397,7 +1413,7 @@
 
     .edit-sample-section h3 {
       font-size: 0.82rem;
-      margin: 0 0 0.45rem 0;
+      margin: 0 0 0.65rem 0;
       color: var(--primary);
     }
 
@@ -1456,7 +1472,7 @@
       min-width: 0;
       font-family: inherit;
       font-size: 0.78rem;
-      padding: 0.35rem 0.45rem;
+      padding: 0.35rem 0.65rem;
       border-radius: 4px;
       border: 1px solid var(--theme-a);
       background: var(--theme-a);
@@ -1527,7 +1543,7 @@
 
     .edit-preset-btn {
       font-size: 0.65rem;
-      padding: 0.25rem 0.45rem;
+      padding: 0.25rem 0.65rem;
       border-radius: 4px;
       border: 1px solid var(--theme-a);
       background: transparent;
@@ -1688,7 +1704,7 @@
     .edit-param-number-input {
       font-family: inherit;
       font-size: 0.78rem;
-      padding: 0.35rem 0.45rem;
+      padding: 0.35rem 0.65rem;
       width: 100%;
       max-width: 100%;
       box-sizing: border-box;
@@ -2226,41 +2242,44 @@
                       </div>
                       <div class="generatr-sweep-effect-body">
                         <div class="generatr-sweep-shape-controls">
-                          <select id="generatr-tx-curve-shape" class="generatr-sweep-preview-select" aria-label="Sweep curve shape">
-                            <option value="" selected>Random</option>
-                            <optgroup label="Sine">
-                              <option value="easeInSine">Ease in sine</option>
-                              <option value="easeOutSine">Ease out sine</option>
-                            </optgroup>
-                            <optgroup label="Quad">
-                              <option value="easeInQuad">Ease in quad</option>
-                              <option value="easeOutQuad">Ease out quad</option>
-                            </optgroup>
-                            <optgroup label="Cubic">
-                              <option value="easeInCubic">Ease in cubic</option>
-                              <option value="easeOutCubic">Ease out cubic</option>
-                            </optgroup>
-                            <optgroup label="Quart">
-                              <option value="easeInQuart">Ease in quart</option>
-                              <option value="easeOutQuart">Ease out quart</option>
-                            </optgroup>
-                            <optgroup label="Quint">
-                              <option value="easeInQuint">Ease in quint</option>
-                              <option value="easeOutQuint">Ease out quint</option>
-                            </optgroup>
-                            <optgroup label="Expo">
-                              <option value="easeInExpo">Ease in expo</option>
-                              <option value="easeOutExpo">Ease out expo</option>
-                            </optgroup>
-                            <optgroup label="Circ">
-                              <option value="easeInCirc">Ease in circ</option>
-                              <option value="easeOutCirc">Ease out circ</option>
-                            </optgroup>
-                            <optgroup label="Back">
-                              <option value="easeInBack">Ease in back</option>
-                              <option value="easeOutBack">Ease out back</option>
-                            </optgroup>
-                          </select>
+                          <div class="generatr-sweep-shape-select-wrap">
+                            <select id="generatr-tx-curve-shape" class="generatr-sweep-preview-select" aria-label="Sweep curve shape">
+                              <option value="" selected>Random</option>
+                              <optgroup label="Sine">
+                                <option value="easeInSine">Ease in sine</option>
+                                <option value="easeOutSine">Ease out sine</option>
+                              </optgroup>
+                              <optgroup label="Quad">
+                                <option value="easeInQuad">Ease in quad</option>
+                                <option value="easeOutQuad">Ease out quad</option>
+                              </optgroup>
+                              <optgroup label="Cubic">
+                                <option value="easeInCubic">Ease in cubic</option>
+                                <option value="easeOutCubic">Ease out cubic</option>
+                              </optgroup>
+                              <optgroup label="Quart">
+                                <option value="easeInQuart">Ease in quart</option>
+                                <option value="easeOutQuart">Ease out quart</option>
+                              </optgroup>
+                              <optgroup label="Quint">
+                                <option value="easeInQuint">Ease in quint</option>
+                                <option value="easeOutQuint">Ease out quint</option>
+                              </optgroup>
+                              <optgroup label="Expo">
+                                <option value="easeInExpo">Ease in expo</option>
+                                <option value="easeOutExpo">Ease out expo</option>
+                              </optgroup>
+                              <optgroup label="Circ">
+                                <option value="easeInCirc">Ease in circ</option>
+                                <option value="easeOutCirc">Ease out circ</option>
+                              </optgroup>
+                              <optgroup label="Back">
+                                <option value="easeInBack">Ease in back</option>
+                                <option value="easeOutBack">Ease out back</option>
+                              </optgroup>
+                            </select>
+                            <span id="generatr-tx-curve-mode-label" class="generatr-sweep-curve-mode-label" aria-live="polite">Mode: SWEEP</span>
+                          </div>
                           <div class="generatr-sweep-effect-knobs">
                             <div class="daw-knob" data-knob-unit="" data-knob-decimals="2">
                               <span class="daw-knob-label">Position</span>
@@ -2268,7 +2287,7 @@
                                 <span class="daw-knob-ring" aria-hidden="true"></span>
                               </button>
                               <span class="daw-knob-readout" aria-hidden="true">0.50</span>
-                              <input type="number" class="daw-knob-input" id="generatr-tx-curve-peak-position" step="0.01" min="0.05" max="1" value="0.5" tabindex="-1" aria-hidden="true">
+                              <input type="number" class="daw-knob-input" id="generatr-tx-curve-peak-position" step="0.01" min="0" max="1" value="0.5" tabindex="-1" aria-hidden="true">
                             </div>
                           </div>
                         </div>
@@ -2311,7 +2330,7 @@
                   <div class="generatr-sweep-effect-head">
                     <span class="generatr-sweep-effect-title">Tremolo</span>
                     <div class="generatr-sweep-effect-enable">
-                      <input type="checkbox" id="generatr-tx-tremolo-enabled" checked aria-label="Enable tremolo">
+                      <input type="checkbox" id="generatr-tx-tremolo-enabled" aria-label="Enable tremolo">
                     </div>
                   </div>
                   <div class="generatr-sweep-effect-body" id="generatr-tx-tremolo-body">
@@ -2347,7 +2366,7 @@
                   <div class="generatr-sweep-effect-head">
                     <span class="generatr-sweep-effect-title">Filter</span>
                     <div class="generatr-sweep-effect-enable">
-                      <input type="checkbox" id="generatr-tx-filter-enabled" checked aria-label="Enable filter">
+                      <input type="checkbox" id="generatr-tx-filter-enabled" aria-label="Enable filter">
                     </div>
                   </div>
                   <div class="generatr-sweep-effect-body" id="generatr-tx-filter-body">
@@ -5766,8 +5785,36 @@
         return t;
       }
 
+      function generatrParseFiniteFloat(raw, fallback) {
+        if (raw == null || raw === "") {
+          return fallback != null ? fallback : null;
+        }
+        var value = parseFloat(raw);
+        return isNaN(value) ? (fallback != null ? fallback : null) : value;
+      }
+
+      function generatrSweepPeakPositionFromInput(input) {
+        if (!input || input.dataset.dawKnobRandom === "1") return null;
+        return generatrParseFiniteFloat(input.value, 0.5);
+      }
+
+      function generatrSweepPeakMode(peakPos) {
+        if (peakPos == null || isNaN(peakPos)) return "…";
+        var pos = Math.round(parseFloat(peakPos) * 100) / 100;
+        pos = Math.max(0, Math.min(1, pos));
+        if (pos <= 0) return "DROP";
+        if (pos >= 1) return "RISER";
+        return "SWEEP";
+      }
+
+      function generatrUpdateSweepCurveModeLabel(peakPos) {
+        var label = document.getElementById("generatr-tx-curve-mode-label");
+        if (!label) return;
+        label.textContent = "Mode: " + generatrSweepPeakMode(peakPos);
+      }
+
       function generatrSweepEnvelopeValue(x, shape, peakPos) {
-        var peak = Math.max(0.05, Math.min(1, peakPos));
+        var peak = Math.max(0, Math.min(1, peakPos));
         var pos = Math.max(0, Math.min(1, x));
         var tNorm = pos <= peak
           ? (peak > 0 ? pos / peak : 1)
@@ -5844,7 +5891,7 @@
           return;
         }
 
-        var peak = Math.max(0.05, Math.min(1, parseFloat(peakPos) || 0.5));
+        var peak = Math.max(0, Math.min(1, generatrParseFiniteFloat(peakPos, 0.5)));
         var peakX = padL + peak * plotW;
         ctx.strokeStyle = themeA;
         ctx.globalAlpha = 0.55;
@@ -5933,10 +5980,8 @@
         var peakInput = document.getElementById("generatr-tx-curve-peak-position");
         if (!canvas) return;
         var shape = select ? select.value : "";
-        var peakPos = null;
-        if (!peakInput || peakInput.dataset.dawKnobRandom !== "1") {
-          peakPos = peakInput ? parseFloat(peakInput.value || "0.5") : 0.5;
-        }
+        var peakPos = generatrSweepPeakPositionFromInput(peakInput);
+        generatrUpdateSweepCurveModeLabel(peakPos);
         generatrSweepDrawCurveCanvas(canvas, shape, peakPos);
       }
 

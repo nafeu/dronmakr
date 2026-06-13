@@ -1079,13 +1079,13 @@ def transition_sweep(
         "--curve-peak-position",
         help=(
             "Where the sweep peaks along the export, as a fraction of total length "
-            "(0.05–1.0; e.g. 0.5 = middle, 0.75 = peak at 75%%). Omit for random."
+            "(0.0–1.0; 0 = DROP, 0.5 = SWEEP, 1 = RISER). Omit for random."
         ),
     ),
     filter_type: str | None = typer.Option(
         None,
         "--filter-type",
-        help="Filter type: lpf, hpf, bpf, bsf. Omit for random (filter on by default).",
+        help="Filter type: lpf, hpf, bpf, bsf. Omit for random (filter off by default).",
     ),
     filter_cutoff_low: int | None = typer.Option(
         None, "--filter-cutoff-low", help="Filter cutoff low Hz (50–5000). Omit for random."

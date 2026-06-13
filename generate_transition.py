@@ -539,11 +539,18 @@ def parse_sweep_config(
         resolved_tremolo_rate_max, resolved_tremolo_rate_min + 1.0
     )
 
+    filter_explicit = any(
+        v is not None for v in (filter_type, filter_cutoff_low, filter_cutoff_high)
+    )
+    tremolo_explicit = any(
+        v is not None for v in (tremolo_rate_min, tremolo_rate_max, tremolo_depth)
+    )
+
     use_filter = _resolve_effect_enabled(
-        filter_enabled, disabled, "filter", default_when_unset=True
+        filter_enabled, disabled, "filter", default_when_unset=filter_explicit
     )
     use_tremolo = _resolve_effect_enabled(
-        tremolo_enabled, disabled, "tremolo", default_when_unset=True
+        tremolo_enabled, disabled, "tremolo", default_when_unset=tremolo_explicit
     )
     phaser_explicit = any(
         v is not None
@@ -601,7 +608,7 @@ def parse_sweep_config(
         **voice_params,
         "build_shape": _resolve_build_shape(curve_shape),
         "peak_pos": _resolve_optional_float(
-            curve_peak_position, PEAK_POS_RANGE, 0.05, 1.0
+            curve_peak_position, PEAK_POS_RANGE, 0.0, 1.0
         ),
         "filter_enabled": use_filter,
         "cutoff_low": cutoff_low,
@@ -827,7 +834,8 @@ def _riser_build_curve(
     """
     Sweep envelope: one easing curve from 0 to 1 on the rise, then the same curve
     reversed in time after the peak (not a different ease-out). At peak_pos=0.5 the
-    waveform is perfectly time-symmetric.
+    waveform is perfectly time-symmetric. peak_pos=0 is decay-only (DROP); peak_pos=1
+    is rise-only (RISER).
     """
     x = np.clip(normalized_t, 0, 1)
     build = x <= peak_pos
@@ -992,8 +1000,10 @@ def generate_sweep_sample(
     cutoff_low = cfg.get("cutoff_low") or random.randint(*CUTOFF_LOW_RANGE)
     cutoff_high = cfg.get("cutoff_high") or random.randint(*CUTOFF_HIGH_RANGE)
     cutoff_high = max(cutoff_high, cutoff_low + 500)
-    peak_pos = cfg.get("peak_pos") or random.uniform(*PEAK_POS_RANGE)
-    peak_pos = max(0.05, min(1.0, peak_pos))
+    peak_pos = cfg.get("peak_pos")
+    if peak_pos is None:
+        peak_pos = random.uniform(*PEAK_POS_RANGE)
+    peak_pos = max(0.0, min(1.0, float(peak_pos)))
     noise_level = cfg.get("noise_level") or random.uniform(*NOISE_LEVEL_RANGE)
     noise_level = max(0.2, min(1.0, noise_level))
     noise_type = cfg.get("noise_type") or random.choice(NOISE_TYPES)
@@ -1020,17 +1030,25 @@ def generate_sweep_sample(
     filter_order = cfg.get("filter_order") or random.choice(FILTER_ORDERS)
     filter_order = 2 if filter_order == 2 else (4 if filter_order == 4 else 6)
     build_shape = _resolve_build_shape(cfg.get("build_shape"))
-    tremolo_depth = cfg.get("tremolo_depth")
-    if tremolo_depth is None:
-        tremolo_depth = random.uniform(*TREMOLO_DEPTH_RANGE)
-    tremolo_depth = max(0.0, min(1.0, tremolo_depth))
-    tremolo_rate_min = cfg.get("tremolo_rate_min") or random.uniform(
-        *TREMOLO_RATE_MIN_RANGE
-    )
-    tremolo_rate_max = cfg.get("tremolo_rate_max") or random.uniform(
-        *TREMOLO_RATE_MAX_RANGE
-    )
-    tremolo_rate_max = max(tremolo_rate_max, tremolo_rate_min + 1.0)
+    filter_enabled = bool(cfg.get("filter_enabled", False))
+    tremolo_enabled = bool(cfg.get("tremolo_enabled", False))
+    gain_enabled = bool(cfg.get("gain_enabled", True))
+    if tremolo_enabled:
+        tremolo_depth = cfg.get("tremolo_depth")
+        if tremolo_depth is None:
+            tremolo_depth = random.uniform(*TREMOLO_DEPTH_RANGE)
+        tremolo_depth = max(0.0, min(1.0, tremolo_depth))
+        tremolo_rate_min = cfg.get("tremolo_rate_min") or random.uniform(
+            *TREMOLO_RATE_MIN_RANGE
+        )
+        tremolo_rate_max = cfg.get("tremolo_rate_max") or random.uniform(
+            *TREMOLO_RATE_MAX_RANGE
+        )
+        tremolo_rate_max = max(tremolo_rate_max, tremolo_rate_min + 1.0)
+    else:
+        tremolo_depth = 0.0
+        tremolo_rate_min = float(cfg.get("tremolo_rate_min") or TREMOLO_RATE_MIN_RANGE[0])
+        tremolo_rate_max = float(cfg.get("tremolo_rate_max") or TREMOLO_RATE_MAX_RANGE[0])
     phaser_enabled = cfg.get("phaser_enabled", random.random() < 0.5)
     chorus_enabled = cfg.get("chorus_enabled", random.random() < 0.5)
     flanger_enabled = cfg.get("flanger_enabled", random.random() < 0.5)
@@ -1047,7 +1065,6 @@ def generate_sweep_sample(
     cutoff_frac, envelope, lfo_rate_frac = _riser_build_curve(
         t, peak_pos, build_shape
     )
-    gain_enabled = cfg.get("gain_enabled", True)
     gain_min = float(cfg.get("gain_min", 0.0))
     gain_max = float(cfg.get("gain_max", 1.0))
     if gain_max < gain_min:
@@ -1057,26 +1074,32 @@ def generate_sweep_sample(
     else:
         envelope = np.ones_like(envelope, dtype=np.float64)
 
-    base_cutoffs_hz = cutoff_low + cutoff_frac * (cutoff_high - cutoff_low)
-
-    filter_sweep_type = (cfg.get("filter_sweep_type") or "lpf").lower()
-    filter_lfo_width = cfg.get("filter_lfo_width", 0.0)
-    filter_lfo_rate_min = cfg.get("filter_lfo_rate_min") or 0.2
-    filter_lfo_rate_peak = cfg.get("filter_lfo_rate_peak") or 12.0
-    filter_lfo_rate_peak = max(filter_lfo_rate_peak, filter_lfo_rate_min + 0.5)
-    sweep_range = cutoff_high - cutoff_low
-    # Strong ease-in for filter LFO rate so modulation is very slow at the
-    # start and accelerates into the peak.
-    lfo_shape = np.clip(lfo_rate_frac, 0.0, 1.0) ** 3
-    lfo_rate_hz = filter_lfo_rate_min + lfo_shape * (
-        filter_lfo_rate_peak - filter_lfo_rate_min
-    )
-    lfo_phase_inc = 2 * np.pi * lfo_rate_hz / SAMPLE_RATE
-    lfo_phase = np.cumsum(lfo_phase_inc)
-    lfo_mod = np.sin(lfo_phase) * filter_lfo_width * 0.5 * sweep_range
-    cutoffs_hz = np.clip(base_cutoffs_hz + lfo_mod, 20, SAMPLE_RATE / 2 - 10).astype(
-        np.float64
-    )
+    if filter_enabled:
+        filter_sweep_type = (cfg.get("filter_sweep_type") or "lpf").lower()
+        base_cutoffs_hz = cutoff_low + cutoff_frac * (cutoff_high - cutoff_low)
+        filter_lfo_width = cfg.get("filter_lfo_width", 0.0)
+        filter_lfo_rate_min = cfg.get("filter_lfo_rate_min") or 0.2
+        filter_lfo_rate_peak = cfg.get("filter_lfo_rate_peak") or 12.0
+        filter_lfo_rate_peak = max(filter_lfo_rate_peak, filter_lfo_rate_min + 0.5)
+        sweep_range = cutoff_high - cutoff_low
+        # Strong ease-in for filter LFO rate so modulation is very slow at the
+        # start and accelerates into the peak.
+        lfo_shape = np.clip(lfo_rate_frac, 0.0, 1.0) ** 3
+        lfo_rate_hz = filter_lfo_rate_min + lfo_shape * (
+            filter_lfo_rate_peak - filter_lfo_rate_min
+        )
+        lfo_phase_inc = 2 * np.pi * lfo_rate_hz / SAMPLE_RATE
+        lfo_phase = np.cumsum(lfo_phase_inc)
+        lfo_mod = np.sin(lfo_phase) * filter_lfo_width * 0.5 * sweep_range
+        cutoffs_hz = np.clip(
+            base_cutoffs_hz + lfo_mod, 20, SAMPLE_RATE / 2 - 10
+        ).astype(np.float64)
+    else:
+        filter_sweep_type = "none"
+        filter_lfo_width = 0.0
+        filter_lfo_rate_min = float(cfg.get("filter_lfo_rate_min") or 0.2)
+        filter_lfo_rate_peak = float(cfg.get("filter_lfo_rate_peak") or 12.0)
+        cutoffs_hz = np.full(num_samples, float(cutoff_low), dtype=np.float64)
 
     rng = np.random.default_rng()
     if voice == "noise":
@@ -1089,14 +1112,21 @@ def generate_sweep_sample(
             voice,
             level=osc_level,
             pulse_width=pulse_width,
-            pwm_sweep=pwm_sweep,
-            detune_cents=detune_cents,
-            detune_mix=detune_mix,
-            cutoff_frac=cutoff_frac,
+            pwm_sweep=pwm_sweep if filter_enabled else 0.0,
+            detune_cents=detune_cents if filter_enabled else 0.0,
+            detune_mix=detune_mix if filter_enabled else 0.0,
+            cutoff_frac=cutoff_frac if filter_enabled else None,
         )
-    tremolo_gain = _compute_tremolo_gain(
-        num_samples, lfo_rate_frac, tremolo_rate_min, tremolo_rate_max, tremolo_depth
-    )
+    if tremolo_enabled:
+        tremolo_gain = _compute_tremolo_gain(
+            num_samples,
+            lfo_rate_frac,
+            tremolo_rate_min,
+            tremolo_rate_max,
+            tremolo_depth,
+        )
+    else:
+        tremolo_gain = np.ones(num_samples, dtype=np.float64)
 
     out = np.zeros(num_samples, dtype=np.float32)
     nyq = 0.5 * SAMPLE_RATE
@@ -1203,6 +1233,8 @@ def generate_sweep_sample(
         "filter_lfo_rate_min": filter_lfo_rate_min,
         "filter_lfo_rate_peak": filter_lfo_rate_peak,
         "sweep_voice": cfg.get("sweep_voice"),
+        "filter_enabled": filter_enabled,
+        "tremolo_enabled": tremolo_enabled,
         "gain_enabled": gain_enabled,
         "gain_min": gain_min,
         "gain_max": gain_max,
