@@ -128,7 +128,6 @@ a = Analysis(
         "audio_worker",
         "preset_authoring",
         "patchcraftr_gui",
-        "patchcraftr_live_monitor",
         "pedalboard_isolated_runner",
         "generate_sample",
         "generate_midi",

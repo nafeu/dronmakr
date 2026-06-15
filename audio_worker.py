@@ -13,6 +13,7 @@ import json
 import os
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 _WORKER_FLAG = "--audio-worker"
@@ -24,7 +25,11 @@ _WORKER_TIMEOUT_S = int(os.environ.get("DRONMAKR_AUDIO_WORKER_TIMEOUT", "3600"))
 def _should_delegate_to_worker() -> bool:
     if os.environ.get(_WORKER_CHILD_ENV):
         return False
-    return os.environ.get(_ASYNC_THREADING_ENV, "").lower() == "threading"
+    if os.environ.get(_ASYNC_THREADING_ENV, "").lower() != "threading":
+        return False
+    # Desktop/web UI serves Flask from a worker thread; VST/AU load must run on main thread.
+    # Standalone CLI invocations (even with threading env set) already run on main thread.
+    return threading.current_thread() is not threading.main_thread()
 
 
 def _package_root() -> Path:
@@ -82,6 +87,13 @@ def invoke_audio_worker(task: str, params: dict) -> dict:
         except json.JSONDecodeError:
             last_json = None
     if proc.returncode != 0:
+        if isinstance(last_json, dict) and last_json.get("ok"):
+            _ORIGINAL_BUILTIN_PRINT(
+                f"[audio_worker] child exited {proc.returncode} after success; "
+                "treating JSON result as OK (DawDreamer teardown abort)",
+                file=sys.stderr,
+            )
+            return last_json
         if isinstance(last_json, dict) and last_json.get("error"):
             raise RuntimeError(last_json["error"])
         msg = err_txt or out_txt or f"exit {proc.returncode}"
@@ -169,8 +181,9 @@ def run_stdio_worker() -> None:
             (json.dumps(result, ensure_ascii=False) + "\n").encode("utf-8")
         )
         sys.stdout.buffer.flush()
-        if not result.get("ok"):
-            sys.exit(1)
+        # DawDreamer/JUCE plug-ins often SIGABRT during normal interpreter teardown on macOS.
+        # Exit immediately after reporting JSON so the parent process can treat the run as success.
+        os._exit(0 if result.get("ok") else 1)
     except Exception as e:  # noqa: BLE001
         err_payload = {"ok": False, "error": f"{type(e).__name__}: {e}"}
         try:
@@ -180,7 +193,7 @@ def run_stdio_worker() -> None:
             sys.stdout.buffer.flush()
         except OSError:
             pass
-        sys.exit(1)
+        os._exit(1)
 
 
 # Backward-compatible aliases

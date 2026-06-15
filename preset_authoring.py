@@ -5,15 +5,10 @@ from __future__ import annotations
 import glob
 import json
 import os
-import subprocess
 import sys
-from pathlib import Path
-
-from mido import Message
 
 import audio_host
 from audio_host import (
-    DawDreamerGraphSession,
     apply_plugin_state,
     apply_vstpreset_bytes_to_plugin,
     create_engine,
@@ -25,8 +20,6 @@ from audio_host import (
     save_plugin_state,
     serialize_plugin_preset_bytes,
     write_plugin_state_to_vstpreset,
-    daw_audio_to_samples_channels,
-    SAMPLE_RATE as PREVIEW_SAMPLE_RATE,
 )
 from generate_midi import SUPPORTED_PATTERNS_INFO
 from paths import get_managed_file
@@ -40,20 +33,6 @@ from utils import (
     TEMP_DIR,
     with_patchcraftr_prompt as with_prompt,
 )
-
-PREVIEW_NUM_BARS = 1
-PREVIEW_TEMPO_BPM = 120
-PREVIEW_TIME_SIGNATURE = "4/4"
-
-_REPO_ROOT = Path(__file__).resolve().parent
-
-
-def preview_sample_wav_path() -> str:
-    p = _REPO_ROOT / "resources" / "CDEFGABC.wav"
-    return str(p)
-
-
-PREVIEW_TEMP_PATH = os.path.join(TEMP_DIR, "preset_preview.wav")
 
 MAX_CHAIN_SLOTS = 5
 
@@ -113,18 +92,6 @@ def build_plugin_label_map() -> dict[str, str]:
     }
 
 
-def calculate_beat_info(tempo_bpm: str | float, time_signature: str) -> tuple[int, float]:
-    beats_per_bar, _beat_type = map(int, time_signature.split("/"))
-    beat_duration_s = 60 / float(tempo_bpm)
-    return beats_per_bar, beat_duration_s
-
-
-def calculate_audio_length(tempo_bpm: str | float, time_signature: str, num_bars: int) -> float:
-    beats_per_bar, beat_duration_s = calculate_beat_info(tempo_bpm, time_signature)
-    total_beats = beats_per_bar * num_bars
-    return total_beats * beat_duration_s
-
-
 def list_installed_plugins(plugin_dirs: list[str], custom_plugins: list[str]) -> list[str]:
     paths = list(custom_plugins)
     for plugin_dir in plugin_dirs:
@@ -157,43 +124,6 @@ def format_plugin_name(plugin_path: str) -> str:
     )
 
 
-def generate_preview_midi():
-    audio_length_s = calculate_audio_length(
-        PREVIEW_TEMPO_BPM, PREVIEW_TIME_SIGNATURE, PREVIEW_NUM_BARS
-    )
-    scale_notes = [60, 62, 64, 65, 67, 69, 71, 72]
-    midi_messages = []
-    for index, note in enumerate(scale_notes):
-        note_length_s = audio_length_s / len(scale_notes)
-        midi_messages.append(
-            Message("note_on", note=note, time=(index * note_length_s))
-        )
-        midi_messages.append(
-            Message("note_off", note=note, time=((index + 1) * note_length_s))
-        )
-    empty_bar_length = calculate_audio_length(
-        PREVIEW_TEMPO_BPM, PREVIEW_TIME_SIGNATURE, 1
-    )
-    audio_length_s += empty_bar_length
-    return midi_messages, audio_length_s
-
-
-def preview_midi_to_note_tuples(midi_messages, audio_length_s: float):
-    """Convert mido preview messages to DawDreamer ``add_midi_note`` tuples."""
-    del audio_length_s
-    active: dict[int, float] = {}
-    notes: list[tuple[int, int, float, float]] = []
-    for msg in midi_messages:
-        t = float(getattr(msg, "time", 0.0))
-        if msg.type == "note_on" and msg.velocity > 0:
-            active[msg.note] = t
-        elif msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0):
-            start = active.pop(msg.note, None)
-            if start is not None:
-                notes.append((msg.note, 96, start, max(0.01, t - start)))
-    return notes
-
-
 def load_plugin(plugin_path: str, plugin_name: str | None = None):
     """Return ``(processor, effective_plugin_name, engine)``."""
     del plugin_name  # metadata only until DawDreamer supports factory variants
@@ -211,58 +141,6 @@ def reload_plugin_preserving_state(
         old_engine, plugin_path, old_plugin, name=old_plugin.get_name()
     )
     return new_proc, "", old_engine
-
-
-def preview_plugin(plugin, effect_chain_tuples: list, *, engine=None):
-    """``effect_chain_tuples`` shape: ``(path, name, plugin_instance, meta_tuple)``."""
-    import soundfile as sf  # noqa: PLC0415
-
-    sample = preview_sample_wav_path()
-    if not os.path.isfile(sample):
-        raise FileNotFoundError(f"Missing preview WAV: {sample}")
-
-    fx_procs = [fx[2] for fx in effect_chain_tuples]
-    eng = engine or create_engine()
-
-    if plugin_is_instrument(plugin):
-        midi_messages, audio_length_s = generate_preview_midi()
-        notes = preview_midi_to_note_tuples(midi_messages, audio_length_s)
-        plugin.clear_midi()
-        for note, vel, start, dur in notes:
-            plugin.add_midi_note(note, vel, start, dur)
-        wired = [(plugin, [])]
-        tail = plugin.get_name()
-        for fx in fx_procs:
-            wired.append((fx, [tail]))
-            tail = fx.get_name()
-        eng.load_graph(wired)
-        eng.render(float(audio_length_s))
-        pre_fx_signal = daw_audio_to_samples_channels(eng.get_audio())
-    elif plugin_is_effect(plugin):
-        data, sr = sf.read(sample, dtype="float32", always_2d=True)
-        if sr != PREVIEW_SAMPLE_RATE:
-            raise ValueError(f"Preview WAV must be {PREVIEW_SAMPLE_RATE} Hz")
-        daw_in = data.T
-        duration = daw_in.shape[1] / float(sr)
-        playback = eng.make_playback_processor("preview_in", daw_in)
-        wired = [(playback, [])]
-        tail = playback.get_name()
-        for fx in fx_procs + [plugin]:
-            wired.append((fx, [tail]))
-            tail = fx.get_name()
-        eng.load_graph(wired)
-        eng.render(duration)
-        pre_fx_signal = daw_audio_to_samples_channels(eng.get_audio())
-    else:
-        return
-
-    sf.write(PREVIEW_TEMP_PATH, pre_fx_signal, PREVIEW_SAMPLE_RATE, subtype="PCM_16")
-    if sys.platform == "darwin":
-        subprocess.run(["afplay", PREVIEW_TEMP_PATH], check=False)
-    try:
-        os.remove(PREVIEW_TEMP_PATH)
-    except OSError:
-        pass
 
 
 def _presets_index_path() -> str:

@@ -1,13 +1,17 @@
 """
-DawDreamer VST/AU hosting — offline render, preset state, and Patchcraftr preview sessions.
+DawDreamer VST/AU hosting — offline render and preset state.
 
 Import this module before numba-backed ``dsp`` helpers (LLVM init order).
 """
 
 from __future__ import annotations
 
+import contextlib
+import logging
 import os
+import sys
 import tempfile
+import threading
 import uuid
 from dataclasses import dataclass, field
 from typing import Any, Sequence
@@ -19,6 +23,65 @@ import soundfile as sf
 SAMPLE_RATE = 44100
 BUFFER_SIZE = 512
 HEADROOM_GAIN = 0.5  # -6 dB
+
+_LOG = logging.getLogger("dronmakr.audio_host")
+
+# Harmless JUCE stderr noise when DawDreamer loads macOS VST3 bundles (see DBraun/DawDreamer#218).
+_KNOWN_DAWDREAMER_STDERR_NOISE = (
+    "attempt to map invalid URI",
+)
+
+
+@contextlib.contextmanager
+def _filter_dawdreamer_stderr():
+    """Drop known-harmless JUCE messages while loading plug-ins on macOS."""
+    if sys.platform != "darwin":
+        yield
+        return
+
+    read_fd, write_fd = os.pipe()
+    saved_stderr = os.dup(2)
+    reader_done = threading.Event()
+
+    def _reader() -> None:
+        buf = b""
+        try:
+            while True:
+                chunk = os.read(read_fd, 8192)
+                if not chunk:
+                    break
+                buf += chunk
+                while b"\n" in buf:
+                    line, buf = buf.split(b"\n", 1)
+                    text = line.decode("utf-8", errors="replace")
+                    if any(noise in text for noise in _KNOWN_DAWDREAMER_STDERR_NOISE):
+                        _LOG.debug("DawDreamer stderr (suppressed): %s", text)
+                    else:
+                        os.write(saved_stderr, line + b"\n")
+            if buf:
+                text = buf.decode("utf-8", errors="replace")
+                if any(noise in text for noise in _KNOWN_DAWDREAMER_STDERR_NOISE):
+                    _LOG.debug("DawDreamer stderr (suppressed): %s", text)
+                else:
+                    os.write(saved_stderr, buf)
+        except OSError:
+            pass
+        finally:
+            reader_done.set()
+
+    try:
+        os.dup2(write_fd, 2)
+        os.close(write_fd)
+        threading.Thread(target=_reader, daemon=True).start()
+        yield
+    finally:
+        os.dup2(saved_stderr, 2)
+        os.close(saved_stderr)
+        try:
+            os.close(read_fd)
+        except OSError:
+            pass
+        reader_done.wait(timeout=2.0)
 
 
 def create_engine(sample_rate: int = SAMPLE_RATE, buffer_size: int = BUFFER_SIZE) -> Any:
@@ -32,7 +95,8 @@ def _unique_processor_name(prefix: str = "proc") -> str:
 def load_plugin(engine: Any, plugin_path: str, *, name: str | None = None) -> Any:
     """Load a VST3/AU plug-in processor on ``engine``."""
     proc_name = name or _unique_processor_name("plugin")
-    return engine.make_plugin_processor(proc_name, os.path.abspath(plugin_path))
+    with _filter_dawdreamer_stderr():
+        return engine.make_plugin_processor(proc_name, os.path.abspath(plugin_path))
 
 
 def plugin_is_instrument(processor: Any) -> bool:
@@ -339,77 +403,3 @@ class DawDreamerGraphSession:
         graph = _build_plugin_graph(self.instrument, self.fx_processors, playback=playback)
         if graph:
             self.engine.load_graph(graph)
-
-    def render_duration(
-        self,
-        duration_sec: float,
-        *,
-        midi_path: str | None = None,
-        midi_notes: Sequence[tuple[int, int, float, float]] | None = None,
-    ) -> np.ndarray:
-        """Render ``duration_sec`` seconds. Returns (samples, channels)."""
-        if self.instrument is not None:
-            self.instrument.clear_midi()
-            if midi_path:
-                self.instrument.load_midi(
-                    os.path.abspath(midi_path),
-                    clear_previous=True,
-                    beats=False,
-                    all_events=True,
-                )
-            elif midi_notes:
-                for note, vel, start, dur in midi_notes:
-                    self.instrument.add_midi_note(int(note), int(vel), float(start), float(dur))
-        self.rebuild_graph(playback=None)
-        self.engine.render(float(duration_sec))
-        return daw_audio_to_samples_channels(self.engine.get_audio())
-
-
-class DawDreamerPreviewSession:
-    """Short offline renders for Patchcraftr live/offline preview while an editor is open."""
-
-    def __init__(
-        self,
-        graph_session: DawDreamerGraphSession,
-        *,
-        upstream_instrument: Any | None = None,
-        dry_playback: Any | None = None,
-    ) -> None:
-        self.graph_session = graph_session
-        self.upstream_instrument = upstream_instrument
-        self.dry_playback = dry_playback
-        self._block_index = 0
-
-    def render_block(
-        self,
-        duration_sec: float,
-        *,
-        midi_notes: Sequence[tuple[int, int, float, float]] | None = None,
-        dry_audio: np.ndarray | None = None,
-    ) -> np.ndarray:
-        gs = self.graph_session
-        inst = self.upstream_instrument or gs.instrument
-
-        playback = None
-        if dry_audio is not None and inst is None:
-            daw_dry = samples_channels_to_daw_audio(dry_audio)
-            playback = gs.engine.make_playback_processor(
-                _unique_processor_name("dry"),
-                daw_dry,
-            )
-            self.dry_playback = playback
-
-        if inst is not None:
-            inst.clear_midi()
-            if midi_notes:
-                for note, vel, start, dur in midi_notes:
-                    inst.add_midi_note(int(note), int(vel), float(start), float(dur))
-
-        gs.rebuild_graph(playback=playback)
-        gs.engine.render(float(duration_sec))
-        return daw_audio_to_samples_channels(gs.engine.get_audio())
-
-    def clear_midi(self) -> None:
-        inst = self.upstream_instrument or self.graph_session.instrument
-        if inst is not None:
-            inst.clear_midi()

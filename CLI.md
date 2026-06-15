@@ -56,7 +56,7 @@ brew install python-tk@3.10
 
 The official **python.org** macOS installers include Tk by default.
 
-While a plug‑in editor is open, Patchcraftr streams a **simple live preview**: the same plug‑in instance is rendered in a background loop (`sounddevice`), so **parameter changes in the editor are heard on the next blocks**. Instruments use **built‑in MIDI** (a repeating middle‑C-style preview) instead of an external keyboard or MIDI port. FX slots hear a faint noise bed.
+On macOS, DawDreamer may log a harmless JUCE message (`attempt to map invalid URI …`) while loading VST3 bundles; dronmakr suppresses this during plug-in load. The plug-in still loads normally ([DawDreamer #218](https://github.com/DBraun/DawDreamer/issues/218)).
 
 **Desktop build (PyInstaller):** The distributed app bundles Tcl/Tk via `collect_all('tkinter')` and does **not** require `brew install python-tk` on the machine where you **run** the app. Install `python-tk` only on the **build** host if its Python lacks `_tkinter` (so PyInstaller can copy the libraries into the bundle).
 

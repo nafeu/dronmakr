@@ -9,7 +9,6 @@ import os
 import queue
 import subprocess
 import sys
-import tempfile
 import threading
 import time
 from contextlib import contextmanager
@@ -42,17 +41,6 @@ from audio_host import (
     open_plugin_editor,
     plugin_is_effect,
     plugin_is_instrument,
-)
-from patchcraftr_live_monitor import (
-    CHANNELS,
-    DEFAULT_FX_PREVIEW_SOURCE,
-    DEFAULT_MIDI_PREVIEW_STYLE,
-    FX_PREVIEW_SOURCES,
-    MIDI_PREVIEW_STYLES,
-    PatchcraftrLiveMonitor,
-    SAMPLE_RATE,
-    default_sounddevice_output_index,
-    render_preview_clip,
 )
 from preset_authoring import (
     MAX_CHAIN_SLOTS,
@@ -102,7 +90,7 @@ class FxSlotState:
     effect_display_name: str
     effect_uid: str | None = None
     preset_path: str | None = None
-    # After closing show_editor once, some VST3/AUs stop processing preview audio until reloaded.
+    # After closing show_editor once, some VST3/AUs need a reload before the editor can reopen cleanly.
     editor_opened_before: bool = False
 
 
@@ -126,10 +114,6 @@ class PatchcraftrApp(tk.Tk):
         self._inst_plugin: Any = None
 
         self._inst_editor_was_shown_before = False
-        self._editor_midi_style_ref = [DEFAULT_MIDI_PREVIEW_STYLE]
-        self._midi_preview_style = tk.StringVar(value=DEFAULT_MIDI_PREVIEW_STYLE)
-        self._editor_fx_source_ref = [DEFAULT_FX_PREVIEW_SOURCE]
-        self._fx_preview_source = tk.StringVar(value=DEFAULT_FX_PREVIEW_SOURCE)
 
         self._fx_slots: list[FxSlotState | None] = [None] * MAX_CHAIN_SLOTS
         self._graph = DawDreamerGraphSession()
@@ -483,51 +467,6 @@ class PatchcraftrApp(tk.Tk):
                 side=tk.LEFT, padx=0
             )
 
-        prev_fr = ttk.LabelFrame(main, text="Preview Settings", padding=10)
-        prev_fr.pack(fill=tk.X, pady=(0, 8))
-        ttk.Label(prev_fr, text="Instrument MIDI preview", font=self._mono(11)).pack(
-            anchor="w"
-        )
-        pc = ttk.Frame(prev_fr)
-        pc.pack(fill=tk.X)
-        for ix, (sid, label) in enumerate(MIDI_PREVIEW_STYLES):
-            ttk.Radiobutton(
-                pc,
-                text=label,
-                value=sid,
-                variable=self._midi_preview_style,
-                command=self._sync_editor_midi_style_ref,
-            ).grid(row=ix // 2, column=ix % 2, sticky="w", padx=(0, 12), pady=2)
-
-        ttk.Label(
-            prev_fr,
-            text="FX-only dry signal (used when no instrument is loaded)",
-            font=self._mono(11),
-        ).pack(anchor="w", pady=(10, 0))
-        fx_pc = ttk.Frame(prev_fr)
-        fx_pc.pack(fill=tk.X)
-        for jx, (sid, label) in enumerate(FX_PREVIEW_SOURCES):
-            ttk.Radiobutton(
-                fx_pc,
-                text=label,
-                value=sid,
-                variable=self._fx_preview_source,
-                command=self._sync_editor_fx_dry_source_ref,
-            ).grid(row=jx // 2, column=jx % 2, sticky="w", padx=(0, 12), pady=2)
-
-        ttk.Button(
-            prev_fr,
-            text="Rendered preview (offline WAV playback)",
-            command=self._rendered_preview_fallback,
-        ).pack(anchor="w", pady=(10, 4))
-        ttk.Label(
-            prev_fr,
-            text="Uses the MIDI / FX dry choices above. Handy when live monitor audio glitches.",
-            style="Hint.TLabel",
-            wraplength=1000,
-            justify="left",
-        ).pack(anchor="w")
-
         nm_fr = ttk.LabelFrame(main, text="Patch Name", padding=10)
         nm_fr.pack(fill=tk.X, pady=(0, 8))
 
@@ -588,123 +527,6 @@ class PatchcraftrApp(tk.Tk):
         except queue.Empty:
             pass
         self.after(150, self._pump_messages)
-
-    def _sync_editor_midi_style_ref(self) -> None:
-        self._editor_midi_style_ref[0] = self._midi_preview_style.get()
-
-    def _sync_editor_fx_dry_source_ref(self) -> None:
-        self._editor_fx_source_ref[0] = self._fx_preview_source.get()
-
-    def _rendered_preview_fallback(self) -> None:
-        thr = getattr(self, "_offline_preview_thread", None)
-        if thr is not None and thr.is_alive():
-            _LOG.info("Rendered preview: already running, ignored click")
-            messagebox.showinfo(
-                "patchcraftr",
-                "A preview is already rendering.",
-                parent=self,
-            )
-            return
-        _LOG.info("UI: rendered preview (offline WAV) requested")
-        self._sync_editor_midi_style_ref()
-        self._sync_editor_fx_dry_source_ref()
-        has_inst = self._inst_plugin is not None and bool(self._inst_plugin_path)
-        has_fx = any(s is not None for s in self._fx_slots)
-        if not has_inst and not has_fx:
-            messagebox.showwarning(
-                "patchcraftr",
-                "Choose an instrument plug-in and/or fill at least one FX slot.",
-                parent=self,
-            )
-            return
-        if has_inst:
-            if self._inst_plugin is None:
-                messagebox.showwarning(
-                    "patchcraftr",
-                    "Instrument plug-in instance is missing. Choose the instrument again.",
-                    parent=self,
-                )
-                return
-            if not str(self._inst_plugin_path).strip():
-                messagebox.showwarning(
-                    "patchcraftr",
-                    "Instrument plug-in path is missing; pick again.",
-                    parent=self,
-                )
-                return
-
-        self._offline_preview_thread = threading.Thread(
-            target=self._rendered_preview_worker,
-            args=(has_inst,),
-            daemon=True,
-        )
-        _LOG.info("Rendered preview: background thread started (has_inst=%s)", has_inst)
-        self._offline_preview_thread.start()
-
-    def _rendered_preview_worker(self, has_inst: bool) -> None:
-        path = ""
-        try:
-            import soundfile as sf  # noqa: WPS433
-
-            chain = self._ordered_fx_chain_plugins()
-            if has_inst:
-                preview_mode = "instrument_fx"
-            else:
-                preview_mode = "fx_chain"
-            self._refresh_graph_session()
-
-            arr = render_preview_clip(
-                self._graph,
-                duration_sec=5.0,
-                preview_mode=preview_mode,
-                midi_style_ref=self._editor_midi_style_ref,
-                fx_preview_source_ref=self._editor_fx_source_ref,
-            )
-            fd, path = tempfile.mkstemp(suffix=".wav")
-            os.close(fd)
-            sf.write(path, arr, SAMPLE_RATE, subtype="PCM_16")
-            self._play_wav_path(path)
-            _LOG.info("Rendered preview: WAV written and playback requested")
-        except Exception as e:
-            _LOG.exception("Rendered preview worker failed: %s", e)
-            self.after(
-                0,
-                lambda err=str(e): self._enqueue_msg(
-                    "error", f"Rendered preview failed:\n{err}"
-                ),
-            )
-        finally:
-            if path:
-                try:
-                    os.unlink(path)
-                except OSError:
-                    pass
-
-    def _play_wav_path(self, path: str) -> None:
-        if sys.platform == "darwin":
-            subprocess.run(["afplay", path], check=False)
-        elif sys.platform.startswith("win"):
-            env = os.environ.copy()
-            env["PATCHCRAFTR_WAV"] = path
-            subprocess.run(
-                [
-                    "powershell",
-                    "-NoProfile",
-                    "-Command",
-                    (
-                        '$p = $env:PATCHCRAFTR_WAV; '
-                        "$s = New-Object System.Media.SoundPlayer($p); "
-                        "$s.PlaySync()"
-                    ),
-                ],
-                env=env,
-                check=False,
-                capture_output=True,
-            )
-        else:
-            r = subprocess.run(["aplay", path], check=False, capture_output=True)
-            if r.returncode != 0:
-                subprocess.run(["xdg-open", path], check=False)
 
     def _refresh_graph_session(self) -> None:
         """Rebuild shared RenderEngine graph from instrument + FX slot metadata."""
@@ -799,10 +621,6 @@ class PatchcraftrApp(tk.Tk):
         self._inst_name.set("")
         self._chain_name.set("")
         self._fx_slots = [None] * MAX_CHAIN_SLOTS
-        self._midi_preview_style.set(DEFAULT_MIDI_PREVIEW_STYLE)
-        self._sync_editor_midi_style_ref()
-        self._fx_preview_source.set(DEFAULT_FX_PREVIEW_SOURCE)
-        self._sync_editor_fx_dry_source_ref()
         self._refresh_slot_labels()
 
     def _resolve_variant(self, path: str, variants: list[str]) -> str | None:
@@ -833,39 +651,116 @@ class PatchcraftrApp(tk.Tk):
         dlg.wait_window()
         return chosen[0]
 
-    def _load_plugin_with_variants(
-        self, path: str, hint_name: str | None = None
-    ) -> tuple[Any, str] | None:
-        cur_hint = hint_name
-        short = format_plugin_name(path)
-        while True:
-            try:
-                with self._modal_busy(f"Loading plug-in…\n{short}"):
-                    plug, pname, _eng = load_plugin(path, cur_hint or None)
-                pname_s = pname or ""
-                _LOG.info(
-                    "DawDreamer load_plugin OK path=%r hint=%s plugin_name=%r is_inst=%s is_effect=%s",
-                    path,
-                    cur_hint if cur_hint is not None else "(default)",
-                    pname_s[:120] if pname_s else "",
-                    plugin_is_instrument(plug),
-                    plugin_is_effect(plug),
-                )
-                return plug, pname
-            except PluginVariantRequired as e:
-                _LOG.info(
-                    "Plug-in asks for variant (path=%r): choose among %s",
-                    format_plugin_name(e.plugin_path),
-                    ", ".join(e.variants[:8]) + ("…" if len(e.variants) > 8 else ""),
-                )
-                pick = self._resolve_variant(e.plugin_path, e.variants)
-                if pick is None:
-                    _LOG.info("User cancelled variant picker for %r", short)
+    def _fx_processor_for_slot_idx(self, idx: int) -> Any | None:
+        fx_i = 0
+        for i, st in enumerate(self._fx_slots):
+            if st is None:
+                continue
+            if i == idx:
+                if fx_i >= len(self._graph.fx_processors):
                     return None
-                cur_hint = pick
+                return self._graph.fx_processors[fx_i]
+            fx_i += 1
+        return None
+
+    def _assign_instrument_from_path(self, path: str, pname: str = "") -> bool:
+        """Load ``path`` on the shared graph session; return False if validation fails."""
+        prev_path = self._inst_plugin_path
+        prev_name = self._inst_plugin_name
+        prev_editor = self._inst_editor_was_shown_before
+        short = format_plugin_name(path)
+        self._inst_plugin_path = path
+        self._inst_plugin_name = pname or ""
+        self._inst_editor_was_shown_before = False
+        try:
+            with self._modal_busy(f"Loading plug-in…\n{short}"):
+                self._refresh_graph_session()
+            plug = self._inst_plugin
+            if plug is None:
+                err = f"{short} failed to load."
+            else:
+                err = self._validate_loaded_plugin_as_instrument(plug)
+            if err:
+                self._inst_plugin_path = prev_path
+                self._inst_plugin_name = prev_name
+                self._inst_editor_was_shown_before = prev_editor
+                self._refresh_graph_session()
+                messagebox.showwarning("patchcraftr", err, parent=self)
+                return False
+            self._inst_plugin_lbl.configure(
+                text=f"{short} · {self._inst_plugin_name or 'default'}"
+            )
+            _LOG.info(
+                "Instrument loaded path=%r is_inst=%s",
+                path,
+                plugin_is_instrument(plug),
+            )
+            return True
+        except Exception:
+            self._inst_plugin_path = prev_path
+            self._inst_plugin_name = prev_name
+            self._inst_editor_was_shown_before = prev_editor
+            try:
+                self._refresh_graph_session()
             except Exception:
-                _LOG.exception("load_plugin failed (%r)", path)
-                raise
+                pass
+            raise
+
+    def _assign_fx_slot_from_path(
+        self,
+        idx: int,
+        path: str,
+        *,
+        pname: str = "",
+        effect_display_name: str | None = None,
+        effect_uid: str | None = None,
+        preset_path: str | None = None,
+    ) -> bool:
+        """Load an FX slot on the shared graph session; return False if validation fails."""
+        prev = self._fx_slots[idx]
+        short = format_plugin_name(path)
+        disp = effect_display_name or (f"{short} · {pname}" if pname else short)
+        self._fx_slots[idx] = FxSlotState(
+            plugin_path=path,
+            plugin_name=pname or "",
+            plugin=None,
+            effect_display_name=disp[:96],
+            effect_uid=effect_uid,
+            preset_path=preset_path,
+        )
+        try:
+            with self._modal_busy(f"Loading plug-in…\n{short}"):
+                self._refresh_graph_session()
+            proc = self._fx_processor_for_slot_idx(idx)
+            if proc is None:
+                err = f"{short} failed to load."
+            else:
+                err = self._validate_loaded_plugin_as_fx_chain(proc, pname)
+            if err:
+                self._fx_slots[idx] = prev
+                self._refresh_graph_session()
+                self._refresh_slot_labels()
+                messagebox.showwarning("patchcraftr", err, parent=self)
+                return False
+            slot = self._fx_slots[idx]
+            if slot is not None:
+                slot.plugin = proc
+            self._refresh_slot_labels()
+            _LOG.info(
+                "FX slot %s loaded path=%r is_effect=%s",
+                idx + 1,
+                path,
+                plugin_is_effect(proc),
+            )
+            return True
+        except Exception:
+            self._fx_slots[idx] = prev
+            try:
+                self._refresh_graph_session()
+            except Exception:
+                pass
+            self._refresh_slot_labels()
+            raise
 
     def _pick_plugin_path(
         self,
@@ -1150,28 +1045,15 @@ class PatchcraftrApp(tk.Tk):
             format_plugin_name(str(row.get("plugin_path", "") or "")),
         )
         try:
-            loaded = self._load_plugin_with_variants(
-                row["plugin_path"], row.get("plugin_name") or None
-            )
-            if loaded is None:
-                return
-            plug, pname = loaded
-            err = self._validate_loaded_plugin_as_fx_chain(plug, pname)
-            if err:
-                messagebox.showwarning("patchcraftr", err, parent=self)
-                return
-            with open(row["preset_path"], "rb") as f:
-                apply_vstpreset_bytes_to_plugin(plug, f.read())
-            self._fx_slots[idx] = FxSlotState(
-                plugin_path=row["plugin_path"],
-                plugin_name=(row.get("plugin_name") or "") or (pname or ""),
-                plugin=plug,
+            if not self._assign_fx_slot_from_path(
+                idx,
+                row["plugin_path"],
+                pname=row.get("plugin_name") or "",
                 effect_display_name=row.get("name", format_plugin_name(row["plugin_path"])),
                 effect_uid=row.get("id"),
                 preset_path=row.get("preset_path"),
-            )
-            self._refresh_graph_session()
-            self._refresh_slot_labels()
+            ):
+                return
             if open_editor:
                 self.after(120, lambda i=idx: self._fx_edit_slot(i))
         except Exception as e:
@@ -1186,27 +1068,8 @@ class PatchcraftrApp(tk.Tk):
             return
         _LOG.info("FX slot %s: load browsed plug-in %r", idx + 1, format_plugin_name(path))
         try:
-            loaded = self._load_plugin_with_variants(path)
-            if loaded is None:
+            if not self._assign_fx_slot_from_path(idx, path):
                 return
-            plug, pname = loaded
-            err = self._validate_loaded_plugin_as_fx_chain(plug, pname)
-            if err:
-                messagebox.showwarning("patchcraftr", err, parent=self)
-                return
-            disp = format_plugin_name(path)
-            if pname:
-                disp = f"{disp} · {pname}"
-            self._fx_slots[idx] = FxSlotState(
-                plugin_path=path,
-                plugin_name=pname or "",
-                plugin=plug,
-                effect_display_name=disp[:96],
-                effect_uid=None,
-                preset_path=None,
-            )
-            self._refresh_graph_session()
-            self._refresh_slot_labels()
             if open_editor:
                 self.after(120, lambda i=idx: self._fx_edit_slot(i))
         except Exception as e:
@@ -1265,21 +1128,8 @@ class PatchcraftrApp(tk.Tk):
                 path,
                 format_plugin_name(path),
             )
-            loaded = self._load_plugin_with_variants(path)
-            if loaded is None:
+            if not self._assign_instrument_from_path(path):
                 return
-            plug, pname = loaded
-            err = self._validate_loaded_plugin_as_instrument(plug)
-            if err:
-                messagebox.showwarning("patchcraftr", err, parent=self)
-                return
-            self._inst_plugin_path = path
-            self._inst_plugin_name = pname or ""
-            self._inst_editor_was_shown_before = False
-            self._refresh_graph_session()
-            self._inst_plugin_lbl.configure(
-                text=f"{format_plugin_name(path)} · {self._inst_plugin_name or 'default'}"
-            )
             self.after(80, self._inst_edit_plugin)
         except Exception as e:
             self._enqueue_msg("error", str(e))
@@ -1299,40 +1149,35 @@ class PatchcraftrApp(tk.Tk):
             )
             return
 
-        if instrument_editor:
-            preview_mode = "instrument_fx"
-        elif self._inst_plugin is not None:
-            preview_mode = "instrument_fx"
-        else:
-            preview_mode = "fx_chain"
-
         self._refresh_graph_session()
+        if instrument_editor:
+            plugin = self._inst_plugin
+        elif fx_slot_index is not None:
+            plugin = self._fx_processor_for_slot_idx(fx_slot_index)
+            st = self._fx_slots[fx_slot_index]
+            if st is not None and plugin is not None:
+                st.plugin = plugin
+        else:
+            plugin = editor_plugin
+
+        if plugin is None:
+            self._enqueue_msg(
+                "error",
+                "Plug-in instance is missing after refresh. Choose the plug-in again.",
+            )
+            return
+
         self._editor_active = True
         _LOG.info(
             "Opening DawDreamer editor instrument=%s fx_slot=%s",
             instrument_editor,
             fx_slot_index,
         )
-        self._sync_editor_midi_style_ref()
-        self._sync_editor_fx_dry_source_ref()
-        monitor = PatchcraftrLiveMonitor(
-            self._graph,
-            preview_mode=preview_mode,
-            midi_style_ref=self._editor_midi_style_ref,
-            fx_preview_source_ref=self._editor_fx_source_ref,
-        )
-        monitor.start()
-        _LOG.info(
-            "Live preview monitor running (instrument_editor=%s fx_slot=%s)",
-            instrument_editor,
-            fx_slot_index,
-        )
         try:
-            open_plugin_editor(editor_plugin)
+            open_plugin_editor(plugin)
         except BaseException as e:
             self._enqueue_msg("error", f"Editor error:\n{e}")
         finally:
-            monitor.stop()
             self._editor_active = False
             self._refresh_graph_session()
             _LOG.info("Closed DawDreamer editor (instrument=%s slot=%s)", instrument_editor, fx_slot_index)
@@ -1397,7 +1242,7 @@ class PatchcraftrApp(tk.Tk):
         self._run_plugin_editor(self._inst_plugin, instrument_editor=True)
 
     def _reload_fx_slot_preserving_editor_reopen(self, idx: int) -> bool:
-        """Re-instantiate the slot plug-in if its editor has been opened before (VST preview fix)."""
+        """Re-instantiate the slot plug-in if its editor has been opened before."""
         st = self._fx_slots[idx]
         if st is None or not st.editor_opened_before:
             return True
@@ -1876,51 +1721,10 @@ def _raise_patchcraftr_window(root: tk.Tk) -> None:
         pass
 
 
-def _probe_patchcraftr_audio_output() -> None:
-    """Quick sounddevice smoke test so errors.log shows why live preview may be silent."""
-    try:
-        import numpy as np
-        import sounddevice as sd  # noqa: WPS433
-    except Exception:
-        _LOG.exception("Patchcraftr: sounddevice unavailable — live preview will not work")
-        return
-
-    out_kwargs: dict = {
-        "samplerate": SAMPLE_RATE,
-        "channels": CHANNELS,
-        "dtype": "float32",
-        "blocksize": 0,
-        "latency": "low",
-    }
-    try:
-        out_idx = default_sounddevice_output_index(sd)
-        if out_idx is not None:
-            out_kwargs["device"] = out_idx
-    except Exception:
-        pass
-
-    try:
-        with sd.OutputStream(**out_kwargs) as stream:
-            stream.start()
-            stream.write(np.zeros((512, CHANNELS), dtype=np.float32))
-            stream.stop()
-        _LOG.info(
-            "Patchcraftr audio probe OK (OutputStream write succeeded, device=%s)",
-            out_kwargs.get("device", "default"),
-        )
-    except Exception:
-        _LOG.exception(
-            "Patchcraftr audio probe failed — editor live preview may be silent. "
-            "Try “Rendered preview (offline WAV playback)” or rebuild the desktop app after "
-            "sounddevice bundling updates."
-        )
-
-
 def main() -> None:
     ensure_settings()
     ensure_authoring_dirs()
     path = ensure_server_error_file_logging(announce=sys.stderr.isatty())
-    _probe_patchcraftr_audio_output()
     app = PatchcraftrApp()
     _LOG.info("Patchcraftr mainloop starting (errors.log=%s)", path)
     app.after(50, lambda: _raise_patchcraftr_window(app))
