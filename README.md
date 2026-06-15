@@ -115,7 +115,9 @@ CI builds are not Apple-notarized. After download, use **System Settings → Pri
 
 **Plug-in compatibility**
 
-Audio runs through [Pedalboard](https://spotify.github.io/pedalboard/) (JUCE). On **macOS**, use **VST3** (`.vst3`) and **AU** (`.component`) — not legacy VST2 (`.vst`). Some plug-ins have [known Pedalboard issues](https://spotify.github.io/pedalboard/reference/pedalboard.html#pedalboard.VST3Plugin).
+Audio runs through [DawDreamer](https://github.com/DBraun/DawDreamer) (JUCE-based offline VST/AU hosting). **Python 3.11+** is required. On **macOS**, use **VST3** (`.vst3`) and **AU** (`.component`). After upgrading from Pedalboard-based builds, **re-save presets in Patchcraftr** — existing `.vstpreset` sidecars are not compatible.
+
+**License note:** DawDreamer is **GPLv3**. Bundling it in desktop releases may affect how you distribute combined builds; see [DawDreamer licensing](https://github.com/DBraun/DawDreamer).
 
 **A synth shows up as an effect (e.g. Reaktor 6)**
 

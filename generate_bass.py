@@ -9,8 +9,6 @@ import numpy as np
 import soundfile as sf
 from scipy.signal import butter, lfilter, lfilter_zi
 
-from pedalboard import Chorus, Phaser, Pedalboard
-
 import dsp
 
 SAMPLE_RATE = dsp.SAMPLE_RATE
@@ -559,30 +557,26 @@ def generate_reese_sample(
         mids_2ch[1] = np.roll(mids_2ch[1], delay_samps)
         mids_2ch[1, :delay_samps] = 0.0
 
-    fx_chain = []
     if cfg["phaser_mix"] > 0:
-        fx_chain.append(
-            Phaser(
-                rate_hz=random.uniform(0.08, 0.35),
-                depth=0.6,
-                centre_frequency_hz=600.0,
-                feedback=0.5,
-                mix=cfg["phaser_mix"],
-            )
+        mids_2ch = dsp.apply_phaser(
+            mids_2ch,
+            SAMPLE_RATE,
+            rate_hz=random.uniform(0.08, 0.35),
+            depth=0.6,
+            centre_frequency_hz=600.0,
+            feedback=0.5,
+            mix=cfg["phaser_mix"],
         )
     if cfg["chorus_mix"] > 0:
-        fx_chain.append(
-            Chorus(
-                rate_hz=random.uniform(0.12, 0.4),
-                depth=0.25,
-                centre_delay_ms=7.0,
-                feedback=0.15,
-                mix=cfg["chorus_mix"],
-            )
+        mids_2ch = dsp.apply_modulated_delay_effect(
+            mids_2ch,
+            SAMPLE_RATE,
+            rate_hz=random.uniform(0.12, 0.4),
+            depth=0.25,
+            centre_delay_ms=7.0,
+            feedback=0.15,
+            mix=cfg["chorus_mix"],
         )
-    if fx_chain:
-        board = Pedalboard(fx_chain)
-        mids_2ch = board(mids_2ch, SAMPLE_RATE)
     if cfg["stereo_width"] > 0:
         mid = 0.5 * (mids_2ch[0] + mids_2ch[1])
         side = 0.5 * (mids_2ch[0] - mids_2ch[1]) * cfg["stereo_width"]

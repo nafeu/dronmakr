@@ -1,23 +1,27 @@
+import audio_host  # noqa: F401 — DawDreamer before numba-backed dsp
+
 import sys
 import os
 import json
 import random
 import subprocess
 import math
-import pedalboard
 from pathlib import Path
 from settings import get_setting, parse_escaped_csv
 from pydub import AudioSegment
-from pedalboard import (
-    Compressor,
-    Gain,
-    HighpassFilter,
-    LowpassFilter,
-    Limiter,
-    Pedalboard,
-)
-from pedalboard.io import AudioFile
+import soundfile as sf
+import numpy as np
 from mido import MidiFile, Message
+
+import dsp
+from audio_host import (
+    HEADROOM_GAIN,
+    SAMPLE_RATE,
+    daw_audio_to_samples_channels,
+    render_midi_chain_from_paths,
+    render_wav_through_fx_paths,
+    samples_channels_to_daw_audio,
+)
 
 from generate_midi import get_beat_patterns
 from processing_actions import apply_post_processing_actions
@@ -60,10 +64,10 @@ def midi_to_messages(midi_file_path):
                     )
                 )
 
-    return midi_messages, mid.length  # Return the list of messages and the duration
+    return midi_messages, mid.length
 
 
-SAMPLE_RATE = 44100
+SAMPLE_RATE = audio_host.SAMPLE_RATE
 
 
 def effect_slot_entries(effect_preset: dict) -> list[dict]:
@@ -94,7 +98,7 @@ def generate_drone_sample(
         )
 
     # Desktop tray mode: Flask runs on a worker thread; many plug-ins require the process main thread.
-    from pedalboard_isolated_runner import delegate_generate_drone_sample_if_needed
+    from audio_worker import delegate_generate_drone_sample_if_needed
 
     delegated = delegate_generate_drone_sample_if_needed(
         os.path.abspath(input_path),
@@ -108,13 +112,6 @@ def generate_drone_sample(
 
     print(generate_drone_sample_header())
 
-    loaded_effects = []
-
-    from pedalboard_isolated_runner import ensure_pedalboard_midi_utils
-
-    ensure_pedalboard_midi_utils()
-
-    # Load presets from JSON
     with open(presets_path, "r") as f:
         presets = json.load(f)
 
@@ -186,16 +183,11 @@ def generate_drone_sample(
             )
         )
 
-    # Load the instrument plugin with `plugin_name` if available
     if instrument_preset.get("plugin_name"):
         print(
             with_prompt(
                 f"loading instrument {GREEN}{extract_plugin(instrument_preset['plugin_path'])}{RESET} as {GREEN}{instrument_preset['plugin_name']}{RESET}"
             )
-        )
-        instrument_plugin = pedalboard.load_plugin(
-            instrument_preset["plugin_path"],
-            plugin_name=instrument_preset["plugin_name"],
         )
     else:
         print(
@@ -203,19 +195,10 @@ def generate_drone_sample(
                 f"loading instrument {GREEN}{extract_plugin(instrument_preset['plugin_path'])}{RESET}"
             )
         )
-        instrument_plugin = pedalboard.load_plugin(instrument_preset["plugin_path"])
 
-    with open(instrument_preset["preset_path"], "rb") as f:
-        ins_blob = f.read()
-        print(with_prompt(f"using instrument preset {GREEN}{instrument_preset['name']}{RESET}"))
-        if hasattr(instrument_plugin, "preset_data"):
-            instrument_plugin.preset_data = ins_blob
-        else:
-            instrument_plugin.raw_state = ins_blob
-
+    fx_specs = []
     if slots:
         print(with_prompt(f"loading effect {GREEN}{effect_preset['name']}{RESET}"))
-
         for eff in slots:
             if eff.get("plugin_name"):
                 print(
@@ -223,60 +206,32 @@ def generate_drone_sample(
                         f"inserting {GREEN}{extract_plugin(eff['plugin_path'])}{RESET} as {GREEN}{eff['plugin_name']}{RESET}"
                     )
                 )
-                effect_plugin = pedalboard.load_plugin(
-                    eff["plugin_path"], plugin_name=eff["plugin_name"]
-                )
             else:
                 print(
                     with_prompt(
                         f"inserting {GREEN}{extract_plugin(eff['plugin_path'])}{RESET}"
                     )
                 )
-                effect_plugin = pedalboard.load_plugin(eff["plugin_path"])
-
-            with open(eff["preset_path"], "rb") as f:
-                eblob = f.read()
-                print(with_prompt(f"using effect step {GREEN}{eff['name']}{RESET}"))
-                if hasattr(effect_plugin, "preset_data"):
-                    effect_plugin.preset_data = eblob
-                else:
-                    effect_plugin.raw_state = eblob
-
-            loaded_effects.append(effect_plugin)
+            print(with_prompt(f"using effect step {GREEN}{eff['name']}{RESET}"))
+            fx_specs.append((eff["plugin_path"], eff["preset_path"]))
     else:
         print(with_prompt("Skipping effect plug-ins — none listed in presets.json."))
 
-    # Load MIDI file and get messages
-    midi_messages, audio_length_s = midi_to_messages(input_path)
-
-    # Process MIDI through the instrument plugin
-    # reset=False: required when this runs on Flask worker threads (desktop tray mode);
-    # many VSTs error with "must be reloaded on the main thread" if reset defaults to True.
-    pre_fx_signal = instrument_plugin(
-        midi_messages,
-        duration=audio_length_s,
-        sample_rate=SAMPLE_RATE,
-        num_channels=2,  # Stereo
-        buffer_size=8192,
-        reset=False,
-    )
-
-    # Create a gain reduction effect (-6dB = 0.5 multiplier)
-    gain_reduction = Pedalboard([Gain(gain_db=-6)])  # -6dB reduction
-
-    pre_fx_signal = gain_reduction(pre_fx_signal, SAMPLE_RATE, reset=False)
-
+    _, audio_length_s = midi_to_messages(input_path)
     print(with_prompt(f"sending midi and rendering audio ({audio_length_s:.2f}s)"))
 
-    # Apply the selected effect plugin
-    fx_chain = Pedalboard(loaded_effects)
-    post_fx_signal = fx_chain(pre_fx_signal, SAMPLE_RATE, reset=False)
+    post_fx_signal = render_midi_chain_from_paths(
+        instrument_preset["plugin_path"],
+        instrument_preset["preset_path"],
+        fx_specs,
+        input_path,
+        duration_sec=audio_length_s,
+        headroom_gain=HEADROOM_GAIN,
+    )
 
     output_path = output_path.replace("#", "sharp")
 
-    # Export processed audio
-    with AudioFile(output_path, "w", SAMPLE_RATE, 2) as f:
-        f.write(post_fx_signal)
+    sf.write(output_path, post_fx_signal, SAMPLE_RATE, subtype="PCM_16")
 
     print(f"{GREEN}│{RESET}")
 
@@ -291,7 +246,7 @@ def apply_effect(input_path, effect_chain, presets_path=None):
         raise FileNotFoundError(
             "config/presets.json does not exist — open Patchcraftr from the desktop tray (Launch patchcraftr)."
         )
-    from pedalboard_isolated_runner import delegate_apply_effect_if_needed
+    from audio_worker import delegate_apply_effect_if_needed
 
     if delegate_apply_effect_if_needed(
         os.path.abspath(input_path),
@@ -329,51 +284,24 @@ def apply_effect(input_path, effect_chain, presets_path=None):
 
     print(f"Applying effect: {effect_preset['name']}")
 
-    loaded_effects = []
-
+    fx_specs = []
     for eff in slot_list:
         if eff.get("plugin_name"):
             print(
                 f"inserting {extract_plugin(eff['plugin_path'])} as {eff['plugin_name']}"
             )
-            effect_plugin = pedalboard.load_plugin(eff["plugin_path"], plugin_name=eff["plugin_name"])
         else:
             print(f"inserting {extract_plugin(eff['plugin_path'])}")
-            effect_plugin = pedalboard.load_plugin(eff["plugin_path"])
+        print(f"using preset {eff['name']}")
+        fx_specs.append((eff["plugin_path"], eff["preset_path"]))
 
-        with open(eff["preset_path"], "rb") as f:
-            eblob = f.read()
-            print(f"using preset {eff['name']}")
-            if hasattr(effect_plugin, "preset_data"):
-                effect_plugin.preset_data = eblob
-            else:
-                effect_plugin.raw_state = eblob
+    processed, sample_rate = render_wav_through_fx_paths(input_path, fx_specs)
+    normalized = dsp.apply_master_normalization_chain(
+        samples_channels_to_daw_audio(processed), sample_rate
+    )
+    out = daw_audio_to_samples_channels(normalized)
 
-        loaded_effects.append(effect_plugin)
-
-    # Load audio file
-    with AudioFile(input_path) as f:
-        audio = f.read(f.frames)
-        sample_rate = f.samplerate
-
-    # Apply effects
-    normalization_chain = [
-        HighpassFilter(cutoff_frequency_hz=40),  # Remove sub-bass rumble
-        LowpassFilter(cutoff_frequency_hz=18000),  # Remove harsh highs if needed
-        Compressor(
-            threshold_db=-24, ratio=1.5, attack_ms=30, release_ms=200
-        ),  # Gentle compression for control
-        Limiter(
-            threshold_db=-4, release_ms=250
-        ),  # Ensure headroom without crushing dynamics
-    ]
-    fx_chain = Pedalboard(loaded_effects + normalization_chain)
-    processed_audio = fx_chain(audio, sample_rate, reset=False)
-
-    with AudioFile(
-        output_path, "w", samplerate=sample_rate, num_channels=processed_audio.shape[0]
-    ) as f:
-        f.write(processed_audio)
+    sf.write(output_path, out, sample_rate, subtype="PCM_16")
 
     print(f"Effect '{effect_chain}' applied and saved: {input_path}")
 

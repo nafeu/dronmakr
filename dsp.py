@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import math
 
-import numba
 import numpy as np
 from scipy.signal import butter, cheby2, filtfilt, sosfiltfilt
 
@@ -353,7 +352,12 @@ def _butter1_df1_coeffs(
     return float(b[0]), float(b[1]), float(a[1])
 
 
-@numba.njit(cache=True, fastmath=True)
+def _numba():
+    import numba  # noqa: PLC0415 — lazy: DawDreamer must init LLVM before numba
+
+    return numba
+
+
 def _feedback_delay_mono_numba(
     dry: np.ndarray,
     out: np.ndarray,
@@ -424,7 +428,9 @@ def _feedback_delay_mono_numba(
             wi = 0
 
 
-@numba.njit(cache=True, fastmath=True)
+_feedback_delay_mono_numba = _numba().njit(cache=True, fastmath=True)(_feedback_delay_mono_numba)
+
+
 def _feedback_delay_stereo_numba(
     dry_l: np.ndarray,
     dry_r: np.ndarray,
@@ -560,6 +566,9 @@ def _feedback_delay_stereo_numba(
         wi += 1
         if wi >= cap:
             wi = 0
+
+
+_feedback_delay_stereo_numba = _numba().njit(cache=True, fastmath=True)(_feedback_delay_stereo_numba)
 
 
 def apply_feedback_delay(
@@ -715,3 +724,273 @@ def apply_feedback_delay(
             buf_tmp,
         )
     return out
+
+
+def _ensure_channels_first(audio: np.ndarray) -> np.ndarray:
+    x = np.asarray(audio, dtype=np.float32)
+    if x.ndim == 1:
+        return np.stack([x, x], axis=0)
+    if x.shape[0] > x.shape[1]:
+        x = x.T
+    if x.shape[0] == 1:
+        x = np.vstack([x, x])
+    return x
+
+
+def apply_gain_db(audio: np.ndarray, gain_db: float) -> np.ndarray:
+    x = _ensure_channels_first(audio)
+    return x * (10.0 ** (float(gain_db) / 20.0))
+
+
+def apply_distortion(
+    audio: np.ndarray, sample_rate: float, *, drive_db: float = 6.0
+) -> np.ndarray:
+    del sample_rate
+    x = _ensure_channels_first(audio)
+    drive = 10.0 ** (float(drive_db) / 20.0)
+    return np.tanh(x * drive).astype(np.float32, copy=False)
+
+
+def _envelope_follower(mono: np.ndarray, attack: float, release: float) -> np.ndarray:
+    env = np.zeros_like(mono)
+    state = 0.0
+    for i, sample in enumerate(np.abs(mono)):
+        coeff = attack if sample > state else release
+        state = coeff * state + (1.0 - coeff) * sample
+        env[i] = state
+    return env
+
+
+def apply_compressor(
+    audio: np.ndarray,
+    sample_rate: float,
+    *,
+    threshold_db: float = -20.0,
+    ratio: float = 4.0,
+    attack_ms: float = 10.0,
+    release_ms: float = 100.0,
+) -> np.ndarray:
+    x = _ensure_channels_first(audio)
+    sr = float(sample_rate)
+    attack = math.exp(-1.0 / (sr * max(attack_ms, 0.1) / 1000.0))
+    release = math.exp(-1.0 / (sr * max(release_ms, 0.1) / 1000.0))
+    thresh = 10.0 ** (float(threshold_db) / 20.0)
+    mono = np.mean(x, axis=0)
+    env = _envelope_follower(mono, attack, release)
+    gain = np.ones_like(env)
+    over = env > thresh
+    if np.any(over):
+        gain[over] = (
+            thresh
+            + (env[over] - thresh) / max(float(ratio), 1.0)
+        ) / (env[over] + 1e-12)
+    return (x * gain).astype(np.float32, copy=False)
+
+
+def apply_limiter(
+    audio: np.ndarray,
+    sample_rate: float,
+    *,
+    threshold_db: float = -4.0,
+    release_ms: float = 250.0,
+) -> np.ndarray:
+    return apply_compressor(
+        audio,
+        sample_rate,
+        threshold_db=threshold_db,
+        ratio=20.0,
+        attack_ms=1.0,
+        release_ms=release_ms,
+    )
+
+
+def apply_noise_gate(
+    audio: np.ndarray,
+    sample_rate: float,
+    *,
+    threshold_db: float = -30.0,
+    ratio: float = 8.0,
+    attack_ms: float = 2.0,
+    release_ms: float = 60.0,
+) -> np.ndarray:
+    x = _ensure_channels_first(audio)
+    sr = float(sample_rate)
+    attack = math.exp(-1.0 / (sr * max(attack_ms, 0.1) / 1000.0))
+    release = math.exp(-1.0 / (sr * max(release_ms, 0.1) / 1000.0))
+    thresh = 10.0 ** (float(threshold_db) / 20.0)
+    mono = np.mean(x, axis=0)
+    env = _envelope_follower(mono, attack, release)
+    gate = np.ones_like(env)
+    below = env < thresh
+    gate[below] = 1.0 / max(float(ratio), 1.0)
+    return (x * gate).astype(np.float32, copy=False)
+
+
+def low_shelf_biquad_coeffs(
+    freq_hz: float, gain_db: float, q: float, sample_rate: float = SAMPLE_RATE
+) -> tuple[np.ndarray, np.ndarray]:
+    w0 = 2 * np.pi * freq_hz / sample_rate
+    cos_w0 = np.cos(w0)
+    alpha = np.sin(w0) / (2 * max(q, 0.1))
+    A = 10.0 ** (gain_db / 40.0)
+    b0 = A * ((A + 1) - (A - 1) * cos_w0 + 2 * np.sqrt(A) * alpha)
+    b1 = 2 * A * ((A - 1) - (A + 1) * cos_w0)
+    b2 = A * ((A + 1) - (A - 1) * cos_w0 - 2 * np.sqrt(A) * alpha)
+    a0 = (A + 1) + (A - 1) * cos_w0 + 2 * np.sqrt(A) * alpha
+    a1 = -2 * ((A - 1) + (A + 1) * cos_w0)
+    a2 = (A + 1) + (A - 1) * cos_w0 - 2 * np.sqrt(A) * alpha
+    b = np.array([b0 / a0, b1 / a0, b2 / a0])
+    a = np.array([1.0, a1 / a0, a2 / a0])
+    return b, a
+
+
+def high_shelf_biquad_coeffs(
+    freq_hz: float, gain_db: float, q: float, sample_rate: float = SAMPLE_RATE
+) -> tuple[np.ndarray, np.ndarray]:
+    w0 = 2 * np.pi * freq_hz / sample_rate
+    cos_w0 = np.cos(w0)
+    alpha = np.sin(w0) / (2 * max(q, 0.1))
+    A = 10.0 ** (gain_db / 40.0)
+    b0 = A * ((A + 1) + (A - 1) * cos_w0 + 2 * np.sqrt(A) * alpha)
+    b1 = -2 * A * ((A - 1) + (A + 1) * cos_w0)
+    b2 = A * ((A + 1) + (A - 1) * cos_w0 - 2 * np.sqrt(A) * alpha)
+    a0 = (A + 1) - (A - 1) * cos_w0 + 2 * np.sqrt(A) * alpha
+    a1 = 2 * ((A - 1) - (A + 1) * cos_w0)
+    a2 = (A + 1) - (A - 1) * cos_w0 - 2 * np.sqrt(A) * alpha
+    b = np.array([b0 / a0, b1 / a0, b2 / a0])
+    a = np.array([1.0, a1 / a0, a2 / a0])
+    return b, a
+
+
+def apply_low_shelf(
+    audio: np.ndarray, sample_rate: float, freq_hz: float, gain_db: float, q: float = 0.7
+) -> np.ndarray:
+    x = _ensure_channels_first(audio)
+    b, a = low_shelf_biquad_coeffs(freq_hz, gain_db, q, sample_rate)
+    return apply_iir_per_channel(x, sample_rate, b, a)
+
+
+def apply_high_shelf(
+    audio: np.ndarray, sample_rate: float, freq_hz: float, gain_db: float, q: float = 0.7
+) -> np.ndarray:
+    x = _ensure_channels_first(audio)
+    b, a = high_shelf_biquad_coeffs(freq_hz, gain_db, q, sample_rate)
+    return apply_iir_per_channel(x, sample_rate, b, a)
+
+
+def apply_modulated_delay_effect(
+    audio: np.ndarray,
+    sample_rate: float,
+    *,
+    rate_hz: float = 1.0,
+    depth: float = 0.25,
+    centre_delay_ms: float = 7.0,
+    feedback: float = 0.0,
+    mix: float = 0.5,
+) -> np.ndarray:
+    """Chorus / flanger-style modulated delay per channel."""
+    x = _ensure_channels_first(audio)
+    n_ch, n_samp = x.shape
+    sr = float(sample_rate)
+    centre = max(1.0, float(centre_delay_ms) * sr / 1000.0)
+    max_d = int(centre + depth * sr * 0.02 + 4)
+    out = np.zeros_like(x)
+    t = np.arange(n_samp, dtype=np.float64) / sr
+    lfo = np.sin(2.0 * np.pi * float(rate_hz) * t)
+    for ch in range(n_ch):
+        buf = np.zeros(max_d + n_samp + 8, dtype=np.float32)
+        y = 0.0
+        for i in range(n_samp):
+            delay = centre + depth * sr * 0.01 * (0.5 + 0.5 * lfo[i])
+            idx = i - int(delay)
+            tap = buf[idx] if idx >= 0 else 0.0
+            xi = x[ch, i]
+            buf[i] = xi + float(feedback) * tap
+            y = (1.0 - mix) * xi + mix * tap
+            out[ch, i] = y
+    return out.astype(np.float32, copy=False)
+
+
+def apply_phaser(
+    audio: np.ndarray,
+    sample_rate: float,
+    *,
+    rate_hz: float = 1.0,
+    depth: float = 0.7,
+    centre_frequency_hz: float = 1000.0,
+    feedback: float = 0.5,
+    mix: float = 0.5,
+) -> np.ndarray:
+    x = _ensure_channels_first(audio)
+    n_ch, n_samp = x.shape
+    sr = float(sample_rate)
+    out = np.zeros_like(x)
+    t = np.arange(n_samp, dtype=np.float64) / sr
+    lfo = 0.5 + 0.5 * np.sin(2.0 * np.pi * float(rate_hz) * t)
+    for ch in range(n_ch):
+        z1 = 0.0
+        prev = 0.0
+        for i in range(n_samp):
+            fc = float(centre_frequency_hz) * (0.5 + lfo[i] * float(depth))
+            w0 = 2.0 * np.pi * fc / sr
+            alpha = np.sin(w0) / 2.0
+            b0, b1, a1 = 1.0 - alpha, -2.0 * np.cos(w0), -(1.0 - alpha)
+            xi = x[ch, i]
+            y = b0 * xi + b1 * prev + a1 * z1
+            z1 = y
+            prev = xi
+            wet = xi + float(feedback) * y
+            out[ch, i] = (1.0 - mix) * xi + mix * wet
+    return out.astype(np.float32, copy=False)
+
+
+def apply_pitch_shift_preserve_length(
+    audio: np.ndarray, sample_rate: float, semitones: float
+) -> np.ndarray:
+    import librosa  # noqa: PLC0415
+
+    x = _ensure_channels_first(audio)
+    out_ch = []
+    for ch in range(x.shape[0]):
+        shifted = librosa.effects.pitch_shift(
+            x[ch], sr=int(sample_rate), n_steps=float(semitones)
+        )
+        if shifted.shape[0] < x.shape[1]:
+            shifted = np.pad(shifted, (0, x.shape[1] - shifted.shape[0]))
+        else:
+            shifted = shifted[: x.shape[1]]
+        out_ch.append(shifted)
+    return np.stack(out_ch, axis=0).astype(np.float32, copy=False)
+
+
+def apply_resample_transpose(
+    audio: np.ndarray, sample_rate: float, semitones: float
+) -> tuple[np.ndarray, int]:
+    import librosa  # noqa: PLC0415
+
+    x = _ensure_channels_first(audio)
+    pitch_factor = 2 ** (float(semitones) / 12.0)
+    new_sr = int(round(float(sample_rate) * pitch_factor))
+    out_ch = []
+    for ch in range(x.shape[0]):
+        out_ch.append(
+            librosa.resample(x[ch], orig_sr=int(sample_rate), target_sr=new_sr)
+        )
+    min_len = min(len(c) for c in out_ch)
+    stacked = np.stack([c[:min_len] for c in out_ch], axis=0)
+    return stacked.astype(np.float32, copy=False), new_sr
+
+
+def apply_master_normalization_chain(
+    audio: np.ndarray, sample_rate: float
+) -> np.ndarray:
+    """HPF + LPF + gentle compression + limiter (replaces Pedalboard tail on apply_effect)."""
+    x = _ensure_channels_first(audio)
+    x = apply_steep_highpass(x, sample_rate, 40.0, steepness=0.0)
+    x = apply_steep_lowpass(x, sample_rate, 18000.0, steepness=0.0)
+    x = apply_compressor(
+        x, sample_rate, threshold_db=-24.0, ratio=1.5, attack_ms=30.0, release_ms=200.0
+    )
+    x = apply_limiter(x, sample_rate, threshold_db=-4.0, release_ms=250.0)
+    return x
+

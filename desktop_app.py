@@ -26,10 +26,9 @@ if __name__ == "__main__":
 
         _patchcraftr_main()
         raise SystemExit(0)
-    if "--pedalboard-worker" in sys.argv:
-        # Child process: real OS main thread for AU/VST (Flask runs off-thread in tray mode).
-        sys.argv = [a for a in sys.argv if a != "--pedalboard-worker"]
-        from pedalboard_isolated_runner import run_stdio_worker
+    if "--audio-worker" in sys.argv or "--pedalboard-worker" in sys.argv:
+        sys.argv = [a for a in sys.argv if a not in ("--audio-worker", "--pedalboard-worker")]
+        from audio_worker import run_stdio_worker
 
         run_stdio_worker()
         raise SystemExit(0)

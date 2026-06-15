@@ -98,13 +98,13 @@ hiddenimports_base = (
 )
 tk_datas, tk_bins, tk_hidden = collect_all("tkinter")
 _sd_collect_datas, _sd_collect_bins, _sd_collect_hidden = collect_all("sounddevice")
-_pb_collect_datas, _pb_collect_bins, _pb_collect_hidden = collect_all("pedalboard")
-_pedalboard_submodules = collect_submodules("pedalboard")
+_dd_collect_datas, _dd_collect_bins, _dd_collect_hidden = collect_all("dawdreamer")
+_dawdreamer_submodules = collect_submodules("dawdreamer")
 
 a = Analysis(
     ["desktop_app.py"],
     pathex=[],
-    binaries=tk_bins + _soundfile_bins + _sd_collect_bins + _pb_collect_bins,
+    binaries=tk_bins + _soundfile_bins + _sd_collect_bins + _dd_collect_bins,
     datas=[
         ("templates", "templates"),
         ("static", "static"),
@@ -113,7 +113,7 @@ a = Analysis(
     ]
     + tk_datas
     + _sd_collect_datas
-    + _pb_collect_datas,
+    + _dd_collect_datas,
     hiddenimports=hiddenimports_base
     + [
         "_cffi_backend",
@@ -123,8 +123,9 @@ a = Analysis(
         "_soundfile_data",
         "sounddevice",
         "soundfile",
-        "pedalboard",
-        "pedalboard.midi_utils",
+        "dawdreamer",
+        "audio_host",
+        "audio_worker",
         "preset_authoring",
         "patchcraftr_gui",
         "patchcraftr_live_monitor",
@@ -143,8 +144,8 @@ a = Analysis(
     + _sounddevice_data_hiddenimports
     + tk_hidden
     + list(_sd_collect_hidden)
-    + list(_pb_collect_hidden)
-    + _pedalboard_submodules,
+    + list(_dd_collect_hidden)
+    + _dawdreamer_submodules,
     hookspath=["hooks"],
     hooksconfig={},
     runtime_hooks=["patchcraftr_rth_tk.py"],

@@ -44,7 +44,7 @@ Commands:
 
 ## Patchcraftr (instrument & FX chains)
 
-Author presets from the **desktop app tray**: **Launch patchcraftr** opens the Patchcraftr window (Pedalboard). Outputs go to your managed files (`config/presets.json` plus `.vstpreset` files under `presets/`).
+Author presets from the **desktop app tray**: **Launch patchcraftr** opens the Patchcraftr window (DawDreamer). Outputs go to your managed files (`config/presets.json` plus DawDreamer state files under `presets/` — `.vstpreset` extension retained for paths).
 
 Use **`python dronmakr.py list`** to print instrument and FX chain names for **`generate-drone`** (`--instrument` / `--effect`).
 
@@ -92,7 +92,7 @@ Optional verbose server logging:
 python dronmakr.py desktop --debug
 ```
 
-**Application error log (`errors.log`):** Unhandled backend exceptions, Patchcraftr desktop logs, Pedalboard load traces, and similar diagnostics are written to a rotating file (see [README — Desktop (GitHub Releases)](https://github.com/nafeu/dronmakr/blob/main/README.md) for OS paths). The desktop tray includes **Report issue (errors.log)…** to open it. When you run `webui` or `desktop` from source, the startup banner prints the path (typically `dronmakr/logs/errors.log` in the repo).
+**Application error log (`errors.log`):** Unhandled backend exceptions, Patchcraftr desktop logs, DawDreamer load traces, and similar diagnostics are written to a rotating file (see [README — Desktop (GitHub Releases)](https://github.com/nafeu/dronmakr/blob/main/README.md) for OS paths). The desktop tray includes **Report issue (errors.log)…** to open it. When you run `webui` or `desktop` from source, the startup banner prints the path (typically `dronmakr/logs/errors.log` in the repo).
 
 On first run you choose a `dronmakr-files` location. The app creates and manages `presets/`, `midi/`, `exports/`, `archive/`, `saved/`, `recordings/`, `splits/`, `trash/`, `packages/`, `history/`, `temp/`, `vst-preset-files/`, `config/`. Change it later under **Settings** (`FILES_ROOT`).
 
@@ -164,7 +164,7 @@ When running **`python webui.py` / tray from source**, Folysplitr still falls ba
 
 ### `generate-drone`
 
-Options **`--length`** / **`--bars`** set how many **musical** bars the MIDI pattern spans (allowed: **4**, **8**, **16** default, **32**, **64**). **`--padded-silence`** appends extra **silent** bars at the end of the MIDI file (**0** default, or **4** / **8** / **16** / **32** / **64**), which lengthens Pedalboard/offline renders without changing the played pattern.
+Options **`--length`** / **`--bars`** set how many **musical** bars the MIDI pattern spans (allowed: **4**, **8**, **16** default, **32**, **64**). **`--padded-silence`** appends extra **silent** bars at the end of the MIDI file (**0** default, or **4** / **8** / **16** / **32** / **64**), which lengthens DawDreamer offline renders without changing the played pattern.
 
 Post-processing uses legacy tokens and/or bracket-parameter steps. Separate steps with commas or semicolons. The same `--post-processing` / `-x` pipeline is available on **`generate-drone`**, **`generate-beat`**, **`generate-bass`**, and **`generate-transition`** (and related subcommands).
 

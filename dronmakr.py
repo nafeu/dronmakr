@@ -1,3 +1,5 @@
+import audio_host  # noqa: F401 — DawDreamer before numba-backed dsp
+
 import fnmatch
 import time
 import os
@@ -506,7 +508,7 @@ def generate_drone(
         "--padded-silence",
         help=(
             "Silence appended after the pattern (bars): 0 (default), "
-            "or 4 / 8 / 16 / 32 / 64. Extends MIDI duration for Pedalboard renders."
+            "or 4 / 8 / 16 / 32 / 64. Extends MIDI duration for DawDreamer offline renders."
         ),
     ),
     iterations: int = typer.Option(

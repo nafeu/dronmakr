@@ -1,6 +1,8 @@
-"""Desktop Patchcraftr — Tk GUI for authoring drone presets (Pedalboard)."""
+"""Desktop Patchcraftr — Tk GUI for authoring drone presets (DawDreamer)."""
 
 from __future__ import annotations
+
+import audio_host  # noqa: F401 — DawDreamer before numba-backed dsp
 
 import logging
 import os
@@ -35,7 +37,12 @@ import tkinter.font as tkfont
 from tkinter import messagebox, ttk
 from typing import Any, Callable
 
-from pedalboard import Pedalboard
+from audio_host import (
+    DawDreamerGraphSession,
+    open_plugin_editor,
+    plugin_is_effect,
+    plugin_is_instrument,
+)
 from patchcraftr_live_monitor import (
     CHANNELS,
     DEFAULT_FX_PREVIEW_SOURCE,
@@ -58,11 +65,11 @@ from preset_authoring import (
     ensure_authoring_dirs,
     format_plugin_name,
     list_installed_plugins,
-    load_pedalboard_plugin,
+    load_plugin,
     load_presets_json,
     name_exists,
     plugin_settings_tuple,
-    reload_pedalboard_plugin_preserving_state,
+    reload_plugin_preserving_state,
     serialize_plugin_preset_bytes,
     slot_allowed_as_chain_effect,
     upsert_preset_entry,
@@ -125,6 +132,7 @@ class PatchcraftrApp(tk.Tk):
         self._fx_preview_source = tk.StringVar(value=DEFAULT_FX_PREVIEW_SOURCE)
 
         self._fx_slots: list[FxSlotState | None] = [None] * MAX_CHAIN_SLOTS
+        self._graph = DawDreamerGraphSession()
 
         self._slot_labels: list[ttk.Label] = []
 
@@ -640,18 +648,16 @@ class PatchcraftrApp(tk.Tk):
 
             chain = self._ordered_fx_chain_plugins()
             if has_inst:
-                # Same routing as live preview: synth → every FX slot (including empty chain).
-                plugin = Pedalboard(chain)
-                upstream = self._inst_plugin
+                preview_mode = "instrument_fx"
             else:
-                plugin = Pedalboard(chain)
-                upstream = None
+                preview_mode = "fx_chain"
+            self._refresh_graph_session()
 
             arr = render_preview_clip(
-                plugin,
+                self._graph,
                 duration_sec=5.0,
+                preview_mode=preview_mode,
                 midi_style_ref=self._editor_midi_style_ref,
-                upstream_instrument=upstream,
                 fx_preview_source_ref=self._editor_fx_source_ref,
             )
             fd, path = tempfile.mkstemp(suffix=".wav")
@@ -700,11 +706,51 @@ class PatchcraftrApp(tk.Tk):
             if r.returncode != 0:
                 subprocess.run(["xdg-open", path], check=False)
 
+    def _refresh_graph_session(self) -> None:
+        """Rebuild shared RenderEngine graph from instrument + FX slot metadata."""
+        inst_blob = (
+            serialize_plugin_preset_bytes(self._inst_plugin)
+            if self._inst_plugin is not None
+            else None
+        )
+        fx_blobs: list[bytes | None] = []
+        for st in self._fx_slots:
+            if st is None or st.plugin is None:
+                fx_blobs.append(None)
+            else:
+                fx_blobs.append(serialize_plugin_preset_bytes(st.plugin))
+
+        self._graph = DawDreamerGraphSession()
+        if self._inst_plugin_path:
+            self._graph.set_instrument(self._inst_plugin_path, None)
+            self._inst_plugin = self._graph.instrument
+            if inst_blob and self._inst_plugin is not None:
+                apply_vstpreset_bytes_to_plugin(self._inst_plugin, inst_blob)
+
+        specs = [
+            (st.plugin_path, st.preset_path)
+            for st in self._fx_slots
+            if st is not None
+        ]
+        if specs:
+            self._graph.set_fx_chain(specs)
+            fx_i = 0
+            for i, st in enumerate(self._fx_slots):
+                if st is None:
+                    continue
+                if fx_i < len(self._graph.fx_processors):
+                    proc = self._graph.fx_processors[fx_i]
+                    blob = fx_blobs[i]
+                    if blob:
+                        apply_vstpreset_bytes_to_plugin(proc, blob)
+                    st.plugin = proc
+                    fx_i += 1
+
     def _validate_loaded_plugin_as_instrument(self, plug: Any) -> str | None:
         """Return a user-facing error string if ``plug`` cannot be used as an instrument slot."""
-        if getattr(plug, "is_instrument", False):
+        if plugin_is_instrument(plug):
             return None
-        if getattr(plug, "is_effect", False):
+        if plugin_is_effect(plug):
             return (
                 "This plug-in loads as an effect processor, not as an instrument. "
                 'Add it with “Select FX” instead of “Choose instrument”.'
@@ -723,12 +769,12 @@ class PatchcraftrApp(tk.Tk):
                 "That plug-in variant is listed under ASSERT_INSTRUMENT in Settings and is treated "
                 "as an instrument here. It cannot be placed in an FX slot."
             )
-        if getattr(plug, "is_instrument", False) and not getattr(plug, "is_effect", False):
+        if getattr(plug, "is_instrument", False) and not plugin_is_effect(plug):
             return (
                 "This plug-in reports as an instrument only. "
                 'Use “Choose instrument” instead of “Select FX”.'
             )
-        if not getattr(plug, "is_effect", False):
+        if not plugin_is_effect(plug):
             return (
                 "This plug-in does not report as an effect processor here. Choose a different FX, "
                 "or assign it via “Choose instrument” if it is a synth."
@@ -795,15 +841,15 @@ class PatchcraftrApp(tk.Tk):
         while True:
             try:
                 with self._modal_busy(f"Loading plug-in…\n{short}"):
-                    plug, pname = load_pedalboard_plugin(path, cur_hint or None)
-                pname_s = pname or getattr(plug, "name", "") or ""
+                    plug, pname, _eng = load_plugin(path, cur_hint or None)
+                pname_s = pname or ""
                 _LOG.info(
-                    "Pedalboard load_plugin OK path=%r hint=%s plugin_name=%r is_inst=%s is_effect=%s",
+                    "DawDreamer load_plugin OK path=%r hint=%s plugin_name=%r is_inst=%s is_effect=%s",
                     path,
                     cur_hint if cur_hint is not None else "(default)",
                     pname_s[:120] if pname_s else "",
-                    getattr(plug, "is_instrument", "?"),
-                    getattr(plug, "is_effect", "?"),
+                    plugin_is_instrument(plug),
+                    plugin_is_effect(plug),
                 )
                 return plug, pname
             except PluginVariantRequired as e:
@@ -818,7 +864,7 @@ class PatchcraftrApp(tk.Tk):
                     return None
                 cur_hint = pick
             except Exception:
-                _LOG.exception("load_pedalboard_plugin failed (%r)", path)
+                _LOG.exception("load_plugin failed (%r)", path)
                 raise
 
     def _pick_plugin_path(
@@ -1124,6 +1170,7 @@ class PatchcraftrApp(tk.Tk):
                 effect_uid=row.get("id"),
                 preset_path=row.get("preset_path"),
             )
+            self._refresh_graph_session()
             self._refresh_slot_labels()
             if open_editor:
                 self.after(120, lambda i=idx: self._fx_edit_slot(i))
@@ -1158,6 +1205,7 @@ class PatchcraftrApp(tk.Tk):
                 effect_uid=None,
                 preset_path=None,
             )
+            self._refresh_graph_session()
             self._refresh_slot_labels()
             if open_editor:
                 self.after(120, lambda i=idx: self._fx_edit_slot(i))
@@ -1227,8 +1275,8 @@ class PatchcraftrApp(tk.Tk):
                 return
             self._inst_plugin_path = path
             self._inst_plugin_name = pname or ""
-            self._inst_plugin = plug
             self._inst_editor_was_shown_before = False
+            self._refresh_graph_session()
             self._inst_plugin_lbl.configure(
                 text=f"{format_plugin_name(path)} · {self._inst_plugin_name or 'default'}"
             )
@@ -1241,7 +1289,6 @@ class PatchcraftrApp(tk.Tk):
         editor_plugin: Any,
         *,
         instrument_editor: bool = False,
-        audio_engine: Any | None = None,
         fx_slot_index: int | None = None,
     ) -> None:
         if self._editor_active:
@@ -1252,32 +1299,26 @@ class PatchcraftrApp(tk.Tk):
             )
             return
 
-        audio_engine_effective = audio_engine
         if instrument_editor:
-            # Preview always runs instrument MIDI through the full FX chain (empty chain = pass-through).
-            audio_engine_effective = Pedalboard(self._ordered_fx_chain_plugins())
-
-        if audio_engine_effective is None:
-            monitor_target = editor_plugin
+            preview_mode = "instrument_fx"
+        elif self._inst_plugin is not None:
+            preview_mode = "instrument_fx"
         else:
-            monitor_target = audio_engine_effective
-        upstream_inst = None
-        if audio_engine_effective is not None and self._inst_plugin is not None:
-            upstream_inst = self._inst_plugin
+            preview_mode = "fx_chain"
 
-        close_evt = threading.Event()
+        self._refresh_graph_session()
         self._editor_active = True
         _LOG.info(
-            "Opening Pedalboard show_editor instrument=%s fx_slot=%s",
+            "Opening DawDreamer editor instrument=%s fx_slot=%s",
             instrument_editor,
             fx_slot_index,
         )
         self._sync_editor_midi_style_ref()
         self._sync_editor_fx_dry_source_ref()
         monitor = PatchcraftrLiveMonitor(
-            monitor_target,
+            self._graph,
+            preview_mode=preview_mode,
             midi_style_ref=self._editor_midi_style_ref,
-            upstream_instrument=upstream_inst,
             fx_preview_source_ref=self._editor_fx_source_ref,
         )
         monitor.start()
@@ -1287,13 +1328,14 @@ class PatchcraftrApp(tk.Tk):
             fx_slot_index,
         )
         try:
-            editor_plugin.show_editor(close_evt)
+            open_plugin_editor(editor_plugin)
         except BaseException as e:
             self._enqueue_msg("error", f"Editor error:\n{e}")
         finally:
             monitor.stop()
             self._editor_active = False
-            _LOG.info("Closed Pedalboard editor (instrument=%s slot=%s)", instrument_editor, fx_slot_index)
+            self._refresh_graph_session()
+            _LOG.info("Closed DawDreamer editor (instrument=%s slot=%s)", instrument_editor, fx_slot_index)
             if instrument_editor:
                 self._inst_editor_was_shown_before = True
             if fx_slot_index is not None:
@@ -1319,10 +1361,11 @@ class PatchcraftrApp(tk.Tk):
                     with self._modal_busy(
                         "Refreshing instrument plug-in…\n" + format_plugin_name(self._inst_plugin_path),
                     ):
-                        wp, pname = reload_pedalboard_plugin_preserving_state(
+                        wp, pname, _ = reload_plugin_preserving_state(
                             self._inst_plugin_path,
                             self._inst_plugin_name or None,
                             old,
+                            self._graph.engine,
                         )
                 except PluginVariantRequired as e:
                     pick = self._resolve_variant(e.plugin_path, e.variants)
@@ -1331,7 +1374,7 @@ class PatchcraftrApp(tk.Tk):
                     with self._modal_busy(
                         "Loading instrument variant…\n" + format_plugin_name(self._inst_plugin_path),
                     ):
-                        wp, pname = load_pedalboard_plugin(self._inst_plugin_path, pick)
+                        wp, pname, _ = load_plugin(self._inst_plugin_path, pick)
                     apply_vstpreset_bytes_to_plugin(wp, blob)
             except Exception as e:
                 self._enqueue_msg(
@@ -1345,6 +1388,7 @@ class PatchcraftrApp(tk.Tk):
                 messagebox.showwarning("patchcraftr", ierr, parent=self)
                 return
             self._inst_plugin = wp
+            self._graph.instrument = wp
             self._inst_plugin_name = pname or ""
             self._inst_plugin_lbl.configure(
                 text=f"{format_plugin_name(self._inst_plugin_path)} · {self._inst_plugin_name or 'default'}"
@@ -1364,10 +1408,11 @@ class PatchcraftrApp(tk.Tk):
                 with self._modal_busy(
                     "Refreshing FX plug-in…\n" + format_plugin_name(st.plugin_path),
                 ):
-                    wp, pname = reload_pedalboard_plugin_preserving_state(
+                    wp, pname, _ = reload_plugin_preserving_state(
                         st.plugin_path,
                         st.plugin_name or None,
                         old,
+                        self._graph.engine,
                     )
             except PluginVariantRequired as e:
                 pick = self._resolve_variant(e.plugin_path, e.variants)
@@ -1376,7 +1421,7 @@ class PatchcraftrApp(tk.Tk):
                 with self._modal_busy(
                     "Loading FX variant…\n" + format_plugin_name(st.plugin_path),
                 ):
-                    wp, pname = load_pedalboard_plugin(st.plugin_path, pick)
+                    wp, pname, _ = load_plugin(st.plugin_path, pick)
                 apply_vstpreset_bytes_to_plugin(wp, blob)
         except Exception as e:
             self._enqueue_msg(
@@ -1415,19 +1460,16 @@ class PatchcraftrApp(tk.Tk):
             return
         st = self._fx_slots[idx]
         assert st is not None
-        chain = self._ordered_fx_chain_plugins()
-        audio_engine = Pedalboard(chain)
-
         self._run_plugin_editor(
             st.plugin,
             instrument_editor=False,
-            audio_engine=audio_engine,
             fx_slot_index=idx,
         )
 
     def _fx_clear_slot(self, idx: int) -> None:
         _LOG.info("UI: clear FX slot %s", idx + 1)
         self._fx_slots[idx] = None
+        self._refresh_graph_session()
         self._refresh_slot_labels()
 
     def _save_patch(self) -> None:

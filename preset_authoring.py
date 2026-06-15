@@ -1,4 +1,4 @@
-"""Pedalboard preset authoring shared by Patchcraftr GUI and CLI helpers."""
+"""DawDreamer preset authoring shared by Patchcraftr GUI and CLI helpers."""
 
 from __future__ import annotations
 
@@ -10,10 +10,24 @@ import sys
 from pathlib import Path
 
 from mido import Message
-import pedalboard
-from pedalboard import Pedalboard
-from pedalboard.io import AudioFile
 
+import audio_host
+from audio_host import (
+    DawDreamerGraphSession,
+    apply_plugin_state,
+    apply_vstpreset_bytes_to_plugin,
+    create_engine,
+    load_plugin as _load_plugin_on_engine,
+    open_plugin_editor,
+    plugin_is_effect,
+    plugin_is_instrument,
+    reload_plugin_preserving_state as _reload_plugin_on_engine,
+    save_plugin_state,
+    serialize_plugin_preset_bytes,
+    write_plugin_state_to_vstpreset,
+    daw_audio_to_samples_channels,
+    SAMPLE_RATE as PREVIEW_SAMPLE_RATE,
+)
 from generate_midi import SUPPORTED_PATTERNS_INFO
 from paths import get_managed_file
 from settings import get_setting
@@ -28,7 +42,6 @@ from utils import (
 )
 
 PREVIEW_NUM_BARS = 1
-PREVIEW_SAMPLE_RATE = 44100
 PREVIEW_TEMPO_BPM = 120
 PREVIEW_TIME_SIGNATURE = "4/4"
 
@@ -46,7 +59,7 @@ MAX_CHAIN_SLOTS = 5
 
 
 class PluginVariantRequired(Exception):
-    """Multi-factory VST3 bundle — caller must choose ``variant_name`` and reload."""
+    """Reserved — DawDreamer does not expose multi-factory VST3 variant selection yet."""
 
     def __init__(self, plugin_path: str, variants: list[str]):
         self.plugin_path = plugin_path
@@ -118,7 +131,6 @@ def list_installed_plugins(plugin_dirs: list[str], custom_plugins: list[str]) ->
         plugin_dir = plugin_dir.strip()
         if os.path.exists(plugin_dir):
             paths.extend(glob.glob(os.path.join(plugin_dir, "*.vst3")))
-            # macOS: Pedalboard loads VST3 and Audio Unit only — not legacy VST2 (.vst bundles).
             if sys.platform != "darwin":
                 paths.extend(glob.glob(os.path.join(plugin_dir, "*.vst")))
             paths.extend(glob.glob(os.path.join(plugin_dir, "*.dll")))
@@ -127,13 +139,12 @@ def list_installed_plugins(plugin_dirs: list[str], custom_plugins: list[str]) ->
     return paths
 
 
-def macos_pedalboard_rejects_vst2_path(plugin_path: str) -> bool:
-    """True if ``plugin_path`` is a legacy macOS VST2 bundle path (``.vst`` but not ``.vst3``)."""
+def macos_legacy_vst2_path(plugin_path: str) -> bool:
+    """True if ``plugin_path`` is a legacy macOS VST2 bundle (``.vst`` but not ``.vst3``)."""
     if sys.platform != "darwin":
         return False
     base = plugin_path.rstrip("/")
     low = base.lower()
-    # Guard against odd names ending in ".vstsomething"
     return low.endswith(".vst") and not low.endswith(".vst3")
 
 
@@ -167,118 +178,91 @@ def generate_preview_midi():
     return midi_messages, audio_length_s
 
 
-def _parse_variants_from_load_error(error_message: str) -> list[str]:
-    return [
-        line.strip().strip('"')
-        for line in error_message.split("\n")
-        if line.startswith('\t"')
-    ]
+def preview_midi_to_note_tuples(midi_messages, audio_length_s: float):
+    """Convert mido preview messages to DawDreamer ``add_midi_note`` tuples."""
+    del audio_length_s
+    active: dict[int, float] = {}
+    notes: list[tuple[int, int, float, float]] = []
+    for msg in midi_messages:
+        t = float(getattr(msg, "time", 0.0))
+        if msg.type == "note_on" and msg.velocity > 0:
+            active[msg.note] = t
+        elif msg.type == "note_off" or (msg.type == "note_on" and msg.velocity == 0):
+            start = active.pop(msg.note, None)
+            if start is not None:
+                notes.append((msg.note, 96, start, max(0.01, t - start)))
+    return notes
 
 
-def load_pedalboard_plugin(plugin_path: str, plugin_name: str | None = None):
-    """Return ``(plugin, effective_plugin_name)`` or raise ``PluginVariantRequired``."""
-    if macos_pedalboard_rejects_vst2_path(plugin_path):
-        raise ValueError(
-            "On macOS, dronmakr uses Spotify Pedalboard, which only loads VST3 (`.vst3`) and "
-            "Audio Unit (`.component`) plug-ins — not legacy VST2 bundles (`.vst`) such as:\n\n"
-            f"  {plugin_path}\n\n"
-            "Use Vital’s VST3 under Library/Audio/Plug-Ins/VST3/, or install the AU under "
-            "Library/Audio/Plug-Ins/Components/ and point PLUGIN_PATHS there. "
-            "You can remove `.../Plug-Ins/VST` from PLUGIN_PATHS in Settings to hide incompatible entries."
-        ) from None
-    try:
-        if plugin_name:
-            return pedalboard.load_plugin(plugin_path, plugin_name=plugin_name), plugin_name
-        return pedalboard.load_plugin(plugin_path), ""
-    except ValueError as e:
-        error_message = str(e)
-        if "contains" in error_message and "To open a specific plugin" in error_message:
-            variants = _parse_variants_from_load_error(error_message)
-            if not variants:
-                raise
-            raise PluginVariantRequired(plugin_path, variants) from e
-        raise
+def load_plugin(plugin_path: str, plugin_name: str | None = None):
+    """Return ``(processor, effective_plugin_name, engine)``."""
+    del plugin_name  # metadata only until DawDreamer supports factory variants
+    engine = create_engine()
+    proc = _load_plugin_on_engine(engine, plugin_path)
+    return proc, "", engine
 
 
-def serialize_plugin_preset_bytes(plugin) -> bytes:
-    """Stable binary snapshot compatible with ``apply_vstpreset_bytes_to_plugin``."""
-    blob = plugin.preset_data if hasattr(plugin, "preset_data") else plugin.raw_state
-    return bytes(blob)
-
-
-def apply_vstpreset_bytes_to_plugin(plugin, preset_bytes: bytes) -> None:
-    if hasattr(plugin, "preset_data"):
-        plugin.preset_data = preset_bytes
-    else:
-        plugin.raw_state = preset_bytes
-
-
-def reload_pedalboard_plugin_preserving_state(
-    plugin_path: str, plugin_name_hint: str | None, old_plugin
+def reload_plugin_preserving_state(
+    plugin_path: str, plugin_name_hint: str | None, old_plugin, old_engine
 ):
-    """Fresh ``load_plugin`` instance + prior preset blob.
-
-    Some VST3 instruments stop responding to background MIDI previews after ``show_editor``
-    is closed once; re-instantiating the processor restores normal behaviour.
-    """
-    blob = serialize_plugin_preset_bytes(old_plugin)
-    hint = plugin_name_hint.strip() if (plugin_name_hint and plugin_name_hint.strip()) else None
-    plug, resolved_name = load_pedalboard_plugin(plugin_path, hint)
-    effective_name = (
-        plugin_name_hint.strip()
-        if (plugin_name_hint and plugin_name_hint.strip())
-        else resolved_name
+    """Fresh processor + prior DawDreamer state file."""
+    del plugin_name_hint
+    new_proc = _reload_plugin_on_engine(
+        old_engine, plugin_path, old_plugin, name=old_plugin.get_name()
     )
-    apply_vstpreset_bytes_to_plugin(plug, blob)
-    return plug, effective_name
+    return new_proc, "", old_engine
 
 
-def write_plugin_state_to_vstpreset(preset_path: str, plugin) -> None:
-    os.makedirs(os.path.dirname(preset_path) or ".", exist_ok=True)
-    with open(preset_path, "wb") as f:
-        if hasattr(plugin, "preset_data"):
-            f.write(plugin.preset_data)
-        else:
-            f.write(plugin.raw_state)
-
-
-def preview_plugin(plugin, effect_chain_tuples: list):
+def preview_plugin(plugin, effect_chain_tuples: list, *, engine=None):
     """``effect_chain_tuples`` shape: ``(path, name, plugin_instance, meta_tuple)``."""
-    num_channels = 2
+    import soundfile as sf  # noqa: PLC0415
+
     sample = preview_sample_wav_path()
     if not os.path.isfile(sample):
         raise FileNotFoundError(f"Missing preview WAV: {sample}")
 
-    if plugin.is_instrument:
+    fx_procs = [fx[2] for fx in effect_chain_tuples]
+    eng = engine or create_engine()
+
+    if plugin_is_instrument(plugin):
         midi_messages, audio_length_s = generate_preview_midi()
-        pre_fx_signal = plugin(
-            midi_messages,
-            duration=audio_length_s,
-            sample_rate=PREVIEW_SAMPLE_RATE,
-            num_channels=num_channels,
-            buffer_size=8192,
-            reset=False,
-        )
-    elif plugin.is_effect:
-        with AudioFile(sample, "r") as f:
-            audio_length_s = f.frames / f.samplerate
-            pre_fx_signal = f.read(f.frames)
-        fx_chain = Pedalboard([fx[2] for fx in effect_chain_tuples])
-        pre_fx_signal = fx_chain(pre_fx_signal, PREVIEW_SAMPLE_RATE, reset=False)
+        notes = preview_midi_to_note_tuples(midi_messages, audio_length_s)
+        plugin.clear_midi()
+        for note, vel, start, dur in notes:
+            plugin.add_midi_note(note, vel, start, dur)
+        wired = [(plugin, [])]
+        tail = plugin.get_name()
+        for fx in fx_procs:
+            wired.append((fx, [tail]))
+            tail = fx.get_name()
+        eng.load_graph(wired)
+        eng.render(float(audio_length_s))
+        pre_fx_signal = daw_audio_to_samples_channels(eng.get_audio())
+    elif plugin_is_effect(plugin):
+        data, sr = sf.read(sample, dtype="float32", always_2d=True)
+        if sr != PREVIEW_SAMPLE_RATE:
+            raise ValueError(f"Preview WAV must be {PREVIEW_SAMPLE_RATE} Hz")
+        daw_in = data.T
+        duration = daw_in.shape[1] / float(sr)
+        playback = eng.make_playback_processor("preview_in", daw_in)
+        wired = [(playback, [])]
+        tail = playback.get_name()
+        for fx in fx_procs + [plugin]:
+            wired.append((fx, [tail]))
+            tail = fx.get_name()
+        eng.load_graph(wired)
+        eng.render(duration)
+        pre_fx_signal = daw_audio_to_samples_channels(eng.get_audio())
     else:
         return
 
+    sf.write(PREVIEW_TEMP_PATH, pre_fx_signal, PREVIEW_SAMPLE_RATE, subtype="PCM_16")
+    if sys.platform == "darwin":
+        subprocess.run(["afplay", PREVIEW_TEMP_PATH], check=False)
     try:
-        with AudioFile(PREVIEW_TEMP_PATH, "w", PREVIEW_SAMPLE_RATE, num_channels) as f:
-            f.write(pre_fx_signal)
-        if sys.platform == "darwin":
-            subprocess.run(["afplay", PREVIEW_TEMP_PATH], check=False)
-    finally:
-        if os.path.isfile(PREVIEW_TEMP_PATH):
-            try:
-                os.remove(PREVIEW_TEMP_PATH)
-            except OSError:
-                pass
+        os.remove(PREVIEW_TEMP_PATH)
+    except OSError:
+        pass
 
 
 def _presets_index_path() -> str:
@@ -476,6 +460,12 @@ def list_presets(show_chain_plugins: bool = False, show_patterns: bool = False) 
 
 def slot_allowed_as_chain_effect(plugin, plugin_name: str, assert_instrument: list[str]) -> bool:
     """FX chain accepts plug-ins that report as effects unless overridden by ASSERT_INSTRUMENT."""
-    if plugin.is_effect and plugin_name not in assert_instrument:
+    if plugin_is_effect(plugin) and plugin_name not in assert_instrument:
         return True
     return False
+
+
+# Backward-compatible aliases during migration
+load_pedalboard_plugin = load_plugin
+reload_pedalboard_plugin_preserving_state = reload_plugin_preserving_state
+macos_pedalboard_rejects_vst2_path = macos_legacy_vst2_path

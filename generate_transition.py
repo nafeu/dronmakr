@@ -10,8 +10,6 @@ import numpy as np
 import soundfile as sf
 from scipy.signal import butter, fftconvolve, lfilter, lfilter_zi
 
-from pedalboard import Chorus, Delay, Pedalboard, Phaser
-
 import dsp
 from settings import get_setting, parse_escaped_csv
 
@@ -887,22 +885,17 @@ def _apply_modulation_effects_with_curve(
             end = min(start + BLOCK_SIZE, num_samples)
             mid = start + (end - start) // 2
             rate = _curve_rate_hz(lfo_rate_frac, mid, p_min, p_max)
-            board = Pedalboard(
-                [
-                    Phaser(
-                        rate_hz=rate,
-                        depth=float(phaser_params["depth"]),
-                        centre_frequency_hz=float(phaser_params["centre_frequency_hz"]),
-                        feedback=float(phaser_params["feedback"]),
-                        mix=float(phaser_params["mix"]),
-                    )
-                ]
-            )
             block = out[start:end].reshape(1, -1)
-            processed = board(block, SAMPLE_RATE)
-            out[start:end] = (
-                np.mean(processed, axis=0) if processed.shape[0] == 2 else processed[0]
+            processed = dsp.apply_phaser(
+                block,
+                SAMPLE_RATE,
+                rate_hz=rate,
+                depth=float(phaser_params["depth"]),
+                centre_frequency_hz=float(phaser_params["centre_frequency_hz"]),
+                feedback=float(phaser_params["feedback"]),
+                mix=float(phaser_params["mix"]),
             )
+            out[start:end] = np.mean(processed, axis=0) if processed.shape[0] == 2 else processed[0]
 
     if chorus_enabled and chorus_params:
         mod_params["chorus"] = chorus_params
@@ -912,22 +905,17 @@ def _apply_modulation_effects_with_curve(
             end = min(start + BLOCK_SIZE, num_samples)
             mid = start + (end - start) // 2
             rate = _curve_rate_hz(lfo_rate_frac, mid, c_min, c_max)
-            board = Pedalboard(
-                [
-                    Chorus(
-                        rate_hz=rate,
-                        depth=float(chorus_params["depth"]),
-                        centre_delay_ms=float(chorus_params["centre_delay_ms"]),
-                        feedback=float(chorus_params.get("feedback", 0.0)),
-                        mix=float(chorus_params["mix"]),
-                    )
-                ]
-            )
             block = out[start:end].reshape(1, -1)
-            processed = board(block, SAMPLE_RATE)
-            out[start:end] = (
-                np.mean(processed, axis=0) if processed.shape[0] == 2 else processed[0]
+            processed = dsp.apply_modulated_delay_effect(
+                block,
+                SAMPLE_RATE,
+                rate_hz=rate,
+                depth=float(chorus_params["depth"]),
+                centre_delay_ms=float(chorus_params["centre_delay_ms"]),
+                feedback=float(chorus_params.get("feedback", 0.0)),
+                mix=float(chorus_params["mix"]),
             )
+            out[start:end] = np.mean(processed, axis=0) if processed.shape[0] == 2 else processed[0]
 
     if flanger_enabled and flanger_params:
         mod_params["flanger"] = flanger_params
@@ -937,22 +925,17 @@ def _apply_modulation_effects_with_curve(
             end = min(start + BLOCK_SIZE, num_samples)
             mid = start + (end - start) // 2
             rate = _curve_rate_hz(lfo_rate_frac, mid, f_min, f_max)
-            board = Pedalboard(
-                [
-                    Chorus(
-                        rate_hz=rate,
-                        depth=float(flanger_params["depth"]),
-                        centre_delay_ms=float(flanger_params["centre_delay_ms"]),
-                        feedback=float(flanger_params["feedback"]),
-                        mix=float(flanger_params["mix"]),
-                    )
-                ]
-            )
             block = out[start:end].reshape(1, -1)
-            processed = board(block, SAMPLE_RATE)
-            out[start:end] = (
-                np.mean(processed, axis=0) if processed.shape[0] == 2 else processed[0]
+            processed = dsp.apply_modulated_delay_effect(
+                block,
+                SAMPLE_RATE,
+                rate_hz=rate,
+                depth=float(flanger_params["depth"]),
+                centre_delay_ms=float(flanger_params["centre_delay_ms"]),
+                feedback=float(flanger_params["feedback"]),
+                mix=float(flanger_params["mix"]),
             )
+            out[start:end] = np.mean(processed, axis=0) if processed.shape[0] == 2 else processed[0]
 
     return out, mod_params
 
@@ -1373,23 +1356,14 @@ def _apply_wash_delay(
 ) -> np.ndarray:
     """Tempo-synced delay on wash signal."""
     delay_sec = dsp.delay_division_to_seconds(config["delay_division"], float(tempo))
-    delay_plugin = Delay(
-        delay_seconds=delay_sec,
-        feedback=config["delay_feedback"],
-        mix=config["delay_mix"],
+    return dsp.apply_feedback_delay(
+        processed,
+        SAMPLE_RATE,
+        time_mode="manual",
+        delay_ms=delay_sec * 1000.0,
+        feedback=float(config["delay_feedback"]),
+        mix=float(config["delay_mix"]),
     )
-    board = Pedalboard([delay_plugin])
-    chunk_samples = 44100
-    proc_len = processed.shape[1]
-    n_chunks = (proc_len + chunk_samples - 1) // chunk_samples
-    delay_chunks = []
-    for i in range(n_chunks):
-        start = i * chunk_samples
-        end = min(start + chunk_samples, proc_len)
-        chunk = processed[:, start:end]
-        out_chunk = board(chunk, SAMPLE_RATE, buffer_size=4096, reset=(i == 0))
-        delay_chunks.append(out_chunk)
-    return np.concatenate(delay_chunks, axis=1)
 
 
 def _process_wash_effects(
