@@ -515,10 +515,24 @@ _PARAM_SCHEMAS_UI: dict[str, list[dict]] = {
             "widget": "slider",
             "min": 0,
             "max": 1,
-            "step": 0.02,
-            "default": 0.56,
+            "step": 1 / 48.0,
+            "default": 0.5,
             "maps_to": "semitones",
             "range_linear": [-24, 24],
+            "range_linear_step": 1,
+        },
+        {
+            "key": "cents_ui",
+            "label": "Fine tune (cents)",
+            "widget": "slider",
+            "min": 0,
+            "max": 1,
+            "step": 0.01,
+            "default": 0.5,
+            "maps_to": "cents",
+            "range_linear": [-50, 50],
+            "range_linear_step": 1,
+            "display_suffix": " ct",
         },
     ],
     "reverb": [
@@ -1222,13 +1236,15 @@ def action_from_bracket_segment(seg: str) -> dict:
     if ptype == "pitch":
         mode = str(params.get("mode", "preserve")).lower()
         sem = float(params.get("semitones", 0))
+        cents = float(params.get("cents", 0))
+        total = sem + cents / 100.0
         if mode == "resample":
             return {
                 "token": seg_stripped,
                 "command": "pitch_shift_transpose_sample",
-                "params": {"semitones": sem},
+                "params": {"semitones": total},
             }
-        return {"token": seg_stripped, "command": "pitch_shift_sample", "params": {"semitones": sem}}
+        return {"token": seg_stripped, "command": "pitch_shift_sample", "params": {"semitones": total}}
 
     if ptype == "reverb":
         out_params: dict[str, object] = {

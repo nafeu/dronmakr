@@ -696,6 +696,28 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      cursor: text;
+    }
+
+    .daw-knob-readout-input {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      margin: 0;
+      padding: 0;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      outline: none;
+      font: inherit;
+      font-size: inherit;
+      font-weight: inherit;
+      font-variant-numeric: inherit;
+      color: inherit;
+      text-align: center;
+      line-height: inherit;
+      box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--primary) 50%, transparent);
     }
 
     .daw-knob.daw-knob-random .daw-knob-dial {
@@ -711,6 +733,7 @@
       font-style: italic;
       opacity: 0.72;
       letter-spacing: 0.02em;
+      cursor: default;
     }
 
     .daw-knob-input {
@@ -1421,30 +1444,166 @@
       margin: 0;
     }
 
-    .edit-sample-section h3 {
-      font-size: 0.82rem;
-      margin: 0 0 0.65rem 0;
-      color: var(--primary);
-    }
-
-    .edit-effect-viz-wrap {
-      margin: 0 0 0.55rem 0;
-      padding: 0;
-      border: none;
-      border-radius: 0;
-      background: color-mix(in srgb, var(--secondary) 92%, transparent);
-      overflow: hidden;
-      box-sizing: border-box;
-    }
-
-    canvas.edit-effect-viz {
-      display: block;
+    .edit-effect-card {
       width: 100%;
-      min-height: 172px;
+    }
+
+    .edit-effect-knobs {
+      width: 100%;
+    }
+
+    .edit-effect-card .generatr-sweep-effect-knobs {
+      gap: 0.1rem 0.2rem;
+    }
+
+    .edit-effect-knobs .daw-knob {
+      flex: 0 0 3rem;
+      width: 3rem;
+      margin: 0;
+    }
+
+    .edit-effect-knobs .daw-knob-label,
+    .edit-effect-knobs .edit-inline-number-label {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.1;
+      min-height: 0;
+      padding: 0;
+      max-width: 100%;
+      width: 100%;
+    }
+
+    .edit-effect-knobs .daw-knob-label[title],
+    .edit-effect-knobs .edit-inline-number-label[title] {
+      cursor: help;
+    }
+
+    .edit-effect-knobs .edit-control-item.daw-knob-select {
+      flex: 0 0 5.85rem;
+      width: 5.85rem;
+      min-width: 5.85rem;
+      max-width: 100%;
+    }
+
+    .edit-effect-knobs .daw-knob-select select {
+      font-size: 0.63rem;
+      line-height: 1.2;
+      height: 1.82rem;
+      padding: 0 0.32rem;
+    }
+
+    .edit-effect-knobs-delay-split {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 0.4rem 0.55rem;
+      width: 100%;
+    }
+
+    .edit-effect-knobs-col,
+    .edit-effect-selects-col {
+      display: flex;
+      flex-wrap: wrap;
+      align-content: flex-start;
+      align-items: flex-start;
+      gap: 0.1rem 0.2rem;
+      min-width: 0;
+    }
+
+    .edit-effect-selects-col .edit-control-item.daw-knob-select {
+      flex: 1 1 100%;
+      min-width: 0;
+      width: 100%;
+    }
+
+    .edit-effect-selects-col .daw-knob-select select {
+      width: 100%;
+    }
+
+    .edit-inline-number-row {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.1rem;
+      width: 100%;
+      min-width: 0;
+      flex: 1 1 100%;
+    }
+
+    .edit-inline-number-label {
+      font-size: 0.56rem;
+      color: var(--theme-a);
+      text-align: left;
+      line-height: 1.1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .edit-inline-number-field-row {
+      display: flex;
+      align-items: stretch;
+      gap: 0.25rem;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .edit-inline-number-input {
+      flex: 1 1 auto;
+      min-width: 0;
+      font-family: inherit;
+      font-size: 0.65rem;
+      line-height: 1.2;
+      height: 1.85rem;
+      padding: 0 0.35rem;
+      background: var(--theme-a);
+      border: 1px solid color-mix(in srgb, var(--theme-a) 70%, var(--primary));
+      border-radius: 4px;
+      color: var(--primary);
+      box-sizing: border-box;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .edit-inline-number-input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+
+    .edit-inline-number-field-row .btn-edit-bpm-wand {
+      align-self: stretch;
+      min-height: 1.85rem;
       height: auto;
-      vertical-align: top;
-      pointer-events: none;
-      cursor: default;
+    }
+
+    .edit-control-item {
+      min-width: 0;
+      margin: 0;
+    }
+
+    .edit-bpm-knob-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.25rem;
+      min-width: 0;
+    }
+
+    .edit-bpm-knob-row .daw-knob {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .edit-effect-card .edit-presets-row {
+      margin-top: 0.35rem;
+    }
+
+    .edit-sample-section > .edit-apply-row {
+      margin-top: 0.55rem;
+      padding-top: 0;
+      border-top: none;
+    }
+
+    .edit-sample-section > .edit-presets-divider {
+      margin-top: 0.5rem;
     }
 
     .edit-presets-row {
@@ -2995,15 +3154,6 @@
       return best;
     }
 
-    /** Sections that render the passive parameter canvas above controls (values come from sliders only). */
-    var EDIT_EFFECT_VIZ_TYPES = {
-      eq: 1,
-      filter: 1,
-      noisegate: 1,
-      compress: 1,
-      delay: 1,
-    };
-
     function mergeProcessingCatalog(payload) {
       if (!payload || typeof payload !== "object") return;
       processingCatalog.types = Array.isArray(payload.types) ? payload.types : [];
@@ -3129,25 +3279,154 @@
       return s;
     }
 
+    function editSnapPhysicalToStep(schema, phys) {
+      if (!schema || schema.range_linear_step == null || !schema.range_linear) return phys;
+      var step = parseFloat(schema.range_linear_step);
+      if (!isFinite(step) || step <= 0) return phys;
+      var lo = schema.range_linear[0];
+      var hi = schema.range_linear[1];
+      var snapped = lo + Math.round((phys - lo) / step) * step;
+      return Math.max(lo, Math.min(hi, snapped));
+    }
+
     function editSliderPhysical(schema, uRaw) {
       var u = Math.max(0, Math.min(1, parseFloat(uRaw)));
-      if (schema.range_db) return schema.range_db[0] + (schema.range_db[1] - schema.range_db[0]) * u;
-      if (schema.range_hz) return schema.range_hz[0] + (schema.range_hz[1] - schema.range_hz[0]) * u;
-      if (schema.range_ms) return schema.range_ms[0] + (schema.range_ms[1] - schema.range_ms[0]) * u;
-      if (schema.range_linear) return schema.range_linear[0] + (schema.range_linear[1] - schema.range_linear[0]) * u;
-      return u;
+      var phys;
+      if (schema.range_db) phys = schema.range_db[0] + (schema.range_db[1] - schema.range_db[0]) * u;
+      else if (schema.range_hz) phys = schema.range_hz[0] + (schema.range_hz[1] - schema.range_hz[0]) * u;
+      else if (schema.range_ms) phys = schema.range_ms[0] + (schema.range_ms[1] - schema.range_ms[0]) * u;
+      else if (schema.range_linear) phys = schema.range_linear[0] + (schema.range_linear[1] - schema.range_linear[0]) * u;
+      else phys = u;
+      return editSnapPhysicalToStep(schema, phys);
+    }
+
+    function isEditGainSchema(schema) {
+      if (!schema || !schema.range_db) return false;
+      var label = String(schema.label || "").toLowerCase();
+      var key = String(schema.key || "").toLowerCase();
+      return (
+        label.indexOf("gain") >= 0 ||
+        key.indexOf("gain") >= 0 ||
+        key === "db_ui" ||
+        schema.maps_to === "db" ||
+        schema.maps_to === "db_signed"
+      );
+    }
+
+    function formatEditDbGauge(phys) {
+      var n = parseFloat(phys);
+      if (!isFinite(n)) return "0 dB";
+      if (n > 0) return "+" + fmtSpecNum(n) + " dB";
+      return fmtSpecNum(n) + " dB";
     }
 
     function formatEditSliderDisplay(schema, uRaw) {
       var phys = editSliderPhysical(schema, uRaw);
-      if (schema.range_db) return fmtSpecNum(phys) + " dB";
+      if (schema.range_db) {
+        if (isEditGainSchema(schema)) return formatEditDbGauge(phys);
+        return fmtSpecNum(phys) + " dB";
+      }
       if (schema.range_hz) return fmtSpecNum(phys) + " Hz";
       if (schema.range_ms) return fmtSpecNum(phys) + " ms";
       if (schema.display_scale) {
         return fmtSpecNum(phys * schema.display_scale) + (schema.display_suffix || "");
       }
-      if (schema.range_linear) return fmtSpecNum(phys);
+      if (schema.range_linear) {
+        if (schema.range_linear_step === 1) {
+          return fmtSpecNum(Math.round(phys)) + (schema.display_suffix || "");
+        }
+        return fmtSpecNum(phys) + (schema.display_suffix || "");
+      }
       return fmtSpecNum(phys);
+    }
+
+    function editSchemaPhysicalRange(schema) {
+      if (!schema) return [0, 1];
+      if (schema.range_db) return schema.range_db.slice();
+      if (schema.range_hz) return schema.range_hz.slice();
+      if (schema.range_ms) return schema.range_ms.slice();
+      if (schema.range_linear) return schema.range_linear.slice();
+      return [0, 1];
+    }
+
+    function parseDawKnobReadoutText(text, unit) {
+      var s = String(text || "").trim();
+      if (!s) return NaN;
+      s = s.replace(/^\+/, "");
+      if (unit) {
+        var esc = unit.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        s = s.replace(new RegExp("\\s*" + esc + "\\s*$", "i"), "");
+      }
+      s = s.replace(/\s*(?:dB|Hz|ms|BPM|ct|s|x)\s*$/i, "").trim();
+      var n = parseFloat(s);
+      return isFinite(n) ? n : NaN;
+    }
+
+    function clampDawKnobInputToRange(raw, min, max, fallback) {
+      if (!isFinite(raw)) {
+        if (!isFinite(fallback)) return min;
+        return Math.abs(fallback - min) <= Math.abs(fallback - max) ? min : max;
+      }
+      if (raw < min) return min;
+      if (raw > max) return max;
+      return raw;
+    }
+
+    function bindDawKnobReadoutInlineEdit(readout, opts) {
+      if (!readout || readout.dataset.dawReadoutEditBound === "1") return;
+      readout.dataset.dawReadoutEditBound = "1";
+      readout.title = readout.title || "Double-click to type a value";
+
+      readout.addEventListener("dblclick", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (opts.isEditable && !opts.isEditable()) return;
+        if (readout.querySelector(".daw-knob-readout-input")) return;
+
+        var min = opts.getMin();
+        var max = opts.getMax();
+        var current = opts.getCurrentValue();
+        var inputEl = document.createElement("input");
+        inputEl.type = "text";
+        inputEl.className = "daw-knob-readout-input";
+        inputEl.value = opts.editText != null ? opts.editText(current) : String(current);
+        inputEl.setAttribute("aria-label", "Parameter value");
+        readout.textContent = "";
+        readout.appendChild(inputEl);
+        inputEl.focus();
+        inputEl.select();
+
+        function finishDisplay(v) {
+          readout.textContent = opts.formatReadout(v);
+        }
+
+        function commit() {
+          var parsed = opts.parseInput
+            ? opts.parseInput(inputEl.value)
+            : parseDawKnobReadoutText(inputEl.value, opts.unit || "");
+          var v = clampDawKnobInputToRange(parsed, min, max, current);
+          if (opts.snapValue) v = opts.snapValue(v);
+          finishDisplay(v);
+          opts.setValue(v);
+        }
+
+        function cancel() {
+          finishDisplay(current);
+        }
+
+        inputEl.addEventListener("blur", function () {
+          commit();
+        });
+        inputEl.addEventListener("keydown", function (ev) {
+          if (ev.key === "Enter") {
+            ev.preventDefault();
+            inputEl.blur();
+          } else if (ev.key === "Escape") {
+            ev.preventDefault();
+            cancel();
+          }
+        });
+      });
     }
 
     function clamp01(u) {
@@ -3221,7 +3500,6 @@
       });
       if (typeKey === "filter") syncEditFilterControlRows(sectionEl);
       if (typeKey === "delay") syncEditDelayControlRows(sectionEl);
-      queueEditVisibleEffectVizRepaint();
     }
 
     function editPhysicalToNormalized(schema, phys) {
@@ -3249,790 +3527,6 @@
       return null;
     }
 
-    /** Lightweight filter magnitude sketches for log-frequency preview. */
-    function editVizButterMagLP(fc, hz, poles) {
-      var n = Math.max(2, Math.min(Number(poles) || 4, 48));
-      var r = hz / Math.max(fc, 1e-9);
-      return Math.min(1, 1 / Math.sqrt(1 + Math.pow(r, 2 * n)));
-    }
-
-    function editVizButterMagHP(fc, hz, poles) {
-      var n = Math.max(2, Math.min(Number(poles) || 4, 48));
-      var r = hz / Math.max(fc, 1e-9);
-      var rp = Math.pow(Math.max(r, 1e-9), n);
-      return Math.min(1, rp / Math.sqrt(1 + Math.pow(r, 2 * n)));
-    }
-
-    function editVizMagResBell(fcCentre, hz, res) {
-      var rsn = clamp01(res);
-      if (rsn < 0.04) return 1;
-      var oct = Math.log(hz / Math.max(fcCentre, 1e-9)) / Math.LN2;
-      var sigma = 0.2 + (1 - rsn) * 0.38;
-      return 1 + rsn * 1.08 * Math.exp(-(oct * oct) / (2 * sigma * sigma));
-    }
-
-    /** Magnitude sketches vs steepness/resonance (visual guide; audio uses Chebyshev II + peaking). */
-    function editVizMagLP(fc, hz, poles, resonance) {
-      var p = poles != null ? poles : 4;
-      var m = editVizButterMagLP(fc, hz, p);
-      return clamp01(m * editVizMagResBell(fc, hz, resonance != null ? resonance : 0));
-    }
-
-    function editVizMagHP(fc, hz, poles, resonance) {
-      var p = poles != null ? poles : 4;
-      var m = editVizButterMagHP(fc, hz, p);
-      return clamp01(m * editVizMagResBell(fc, hz, resonance != null ? resonance : 0));
-    }
-
-    function editVizMagBPF(flow, fhigh, hz, poles, resonance) {
-      var p = poles != null ? poles : 4;
-      var mag = editVizButterMagHP(flow, hz, p) * editVizButterMagLP(fhigh, hz, p);
-      var cen = Math.sqrt(Math.max(flow * fhigh, 1));
-      return clamp01(mag * editVizMagResBell(cen, hz, resonance != null ? resonance : 0));
-    }
-
-    function getEditControlNormalized(sectionEl, schemaKey, fallbackU) {
-      var el = sectionEl.querySelector('[data-schema-key="' + schemaKey + '"]');
-      if (!el) return fallbackU != null ? clamp01(fallbackU) : 0.5;
-      return clamp01(el.value);
-    }
-
-    /** Read theme colors for canvases (auditionrReadCssVar hoisted to same script scope). */
-    function editEffectVizCssColors() {
-      return {
-        primary: auditionrReadCssVar("--primary", "#ff9505"),
-        secondary: auditionrReadCssVar("--secondary", "#000000"),
-        themeA: auditionrReadCssVar("--theme-a", "#353531"),
-        themeB: auditionrReadCssVar("--theme-b", "#016fb9"),
-        themeC: auditionrReadCssVar("--theme-c", "#ec4e20"),
-        themeD: auditionrReadCssVar("--theme-d", "#FFFFFF"),
-        themeE: auditionrReadCssVar("--theme-e", "#2e8b57"),
-      };
-    }
-
-    /** lnRatio from freq in Hz; f clamped inside [fMin,fMax]; axis is logarithmic between fMin and fMax */
-    function editVizHzToLogRatio(freq, fMin, fMax) {
-      var hz = parseFloat(freq);
-      if (!isFinite(hz) || hz <= 0) hz = fMin;
-      hz = Math.max(fMin, Math.min(fMax, hz));
-      return (Math.log(hz / fMin)) / Math.log(fMax / fMin);
-    }
-
-    /** inverse of editVizHzToLogRatio */
-    function editVizLogRatioToHz(lnRatio, fMin, fMax) {
-      var r = clamp01(lnRatio);
-      var hz = Math.exp(r * Math.log(fMax / fMin)) * fMin;
-      return Math.max(fMin, Math.min(fMax, hz));
-    }
-
-    var _editVizPaintScheduled = false;
-    function queueEditVisibleEffectVizRepaint() {
-      if (_editVizPaintScheduled) return;
-      _editVizPaintScheduled = true;
-      var rqf = typeof window.requestAnimationFrame === "function" ? window.requestAnimationFrame.bind(window) : function (fn) { setTimeout(fn, 18); };
-      rqf(function () {
-        _editVizPaintScheduled = false;
-        var visible = document.querySelector(".edit-sample-section.edit-sample-section-visible");
-        if (visible && typeof visible.__repaintEditEffectViz === "function") visible.__repaintEditEffectViz();
-      });
-    }
-
-    function drawEditVizGrid(ctx, gx0, gy0, gx1, gy1, css) {
-      ctx.strokeStyle = css.themeA;
-      ctx.globalAlpha = 0.2;
-      ctx.lineWidth = 1;
-      for (var i = 1; i < 12; i++) {
-        var x = gx0 + (gx1 - gx0) * (i / 12);
-        ctx.beginPath(); ctx.moveTo(x, gy0); ctx.lineTo(x, gy1); ctx.stroke();
-      }
-      for (var j = 1; j < 9; j++) {
-        var y = gy0 + (gy1 - gy0) * (j / 9);
-        ctx.beginPath(); ctx.moveTo(gx0, y); ctx.lineTo(gx1, y); ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-    }
-
-    /** Map symmetric peaking EQ dB (+/- range) onto vertical span (top brighter = +12 dB). */
-    function editVizDbToVerticalY(dbBell, yTopBright, yBotQuiet) {
-      var maxDb = 12;
-      var t = clamp01((dbBell + maxDb) / (2 * maxDb));
-      return yTopBright + (1 - t) * (yBotQuiet - yTopBright);
-    }
-
-    function editVizWaveshaperDrive(t01, steep) {
-      steep = Math.max(steep, 0.02);
-      var x = (clamp01(t01) * 2 - 1) * 1.42;
-      var denom = Math.tanh(1.42 * steep);
-      if (!isFinite(denom) || Math.abs(denom) < 1e-12) return clamp01(t01) * 2 - 1;
-      return Math.tanh(x * steep) / denom;
-    }
-
-    function installEditEffectViz(sec, typeKey) {
-      var vizWrap = sec.querySelector(".edit-effect-viz-wrap");
-      var canvas = sec.querySelector("canvas.edit-effect-viz");
-      if (!vizWrap || !canvas) return;
-
-      var cssHCanvas = 172;
-
-      function dprComputed() {
-        return typeof window.devicePixelRatio === "number" && window.devicePixelRatio > 0 ? window.devicePixelRatio : 1;
-      }
-
-      function resizeBacking() {
-        var dpr = dprComputed();
-        var w = vizWrap.clientWidth || 260;
-        if (w <= 1) return false;
-        canvas.style.height = cssHCanvas + "px";
-        canvas.width = Math.max(220, Math.floor(w * dpr));
-        canvas.height = Math.floor(cssHCanvas * dpr);
-        return true;
-      }
-
-      function schema(key) {
-        return editSchemaLookup(typeKey, key);
-      }
-
-      function phys(key) {
-        var s = schema(key);
-        var u = getEditControlNormalized(sec, key, s && s.default != null ? s.default : 0.5);
-        return s ? editSliderPhysical(s, u) : 0;
-      }
-
-      function uNorm(key, fb) {
-        return getEditControlNormalized(sec, key, fb);
-      }
-
-      function paintPassiveFrame() {
-        if (!resizeBacking()) return;
-        var colors = editEffectVizCssColors();
-        var ctx = canvas.getContext("2d");
-        if (!ctx || canvas.width <= 8) return;
-        ctx.setTransform(dprComputed(), 0, 0, dprComputed(), 0, 0);
-
-        var cssW = vizWrap.clientWidth || canvas.offsetWidth || 260;
-        var cssHcss = cssHCanvas;
-        ctx.clearRect(0, 0, cssW, cssHcss);
-
-        ctx.globalAlpha = 0.94;
-        ctx.fillStyle = colors.secondary;
-        ctx.fillRect(0, 0, cssW, cssHcss);
-        ctx.globalAlpha = 1;
-
-        var pad = Math.max(22, cssW * 0.06);
-        var gx0 = pad;
-        var gy0 = pad;
-        var gx1 = cssW - pad;
-        var gy1 = cssHcss - pad * 0.55;
-
-        drawEditVizGrid(ctx, gx0, gy0, gx1, gy1, colors);
-
-        switch (typeKey) {
-          case "eq":
-            paintEq(ctx, gx0, gy0, gx1, gy1, colors);
-            break;
-          case "filter":
-            paintFilter(ctx, gx0, gy0, gx1, gy1, colors);
-            break;
-          case "noisegate":
-            paintNoisegate(ctx, gx0, gy0, gx1, gy1, colors);
-            break;
-          case "reverb":
-            paintReverb(ctx, gx0, gy0, gx1, gy1, colors);
-            break;
-          case "delay":
-            paintDelay(ctx, gx0, gy0, gx1, gy1, colors);
-            break;
-          case "compress":
-            paintCompress(ctx, gx0, gy0, gx1, gy1, colors);
-            break;
-          case "overdrive":
-            paintOverdrive(ctx, gx0, gy0, gx1, gy1, colors);
-            break;
-          case "distort":
-            paintDistort(ctx, gx0, gy0, gx1, gy1, colors);
-            break;
-          case "chorus":
-            paintModDelay(ctx, gx0, gy0, gx1, gy1, colors, "chorus");
-            break;
-          case "flanger":
-            paintModDelay(ctx, gx0, gy0, gx1, gy1, colors, "flanger");
-            break;
-          case "phaser":
-            paintModDelay(ctx, gx0, gy0, gx1, gy1, colors, "phaser");
-            break;
-          default:
-            ctx.font = "12px Fragment Mono, monospace";
-            ctx.fillStyle = colors.themeA;
-            ctx.textAlign = "center";
-            ctx.fillText("No preview for this effect.", cssW / 2, cssHcss / 2);
-        }
-      }
-
-      function caption(ctx2, css3, x, y, text) {
-        ctx2.font = "10px Fragment Mono, monospace";
-        ctx2.fillStyle = css3.themeA;
-        ctx2.textAlign = "left";
-        ctx2.textBaseline = "alphabetic";
-        ctx2.fillText(text, x, y);
-      }
-
-      function paintEq(ctx2, xmin, ymin, xmax, ymax, css2) {
-        var band = readEditControl(sec, "band") || "lows";
-        var fc = band === "highs" ? 5200 : band === "mids" ? 1400 : 220;
-        var bwOct = band === "highs" ? 0.78 : band === "mids" ? 1.02 : 0.92;
-        var db = phys("db_ui");
-        var fLo = 40;
-        var fHi = 18000;
-        var yNom = ymin + (ymax - ymin) * 0.5;
-        var yTopBell = ymin + (ymax - ymin) * 0.16;
-        var yBotBell = ymin + (ymax - ymin) * 0.88;
-
-        ctx2.strokeStyle = css2.themeA;
-        ctx2.globalAlpha = 0.45;
-        ctx2.lineWidth = 1;
-        [140, 1000, 8000].forEach(function (fx) {
-          if (fx < fLo || fx > fHi) return;
-          var lx = xmin + editVizHzToLogRatio(fx, fLo, fHi) * (xmax - xmin);
-          ctx2.beginPath(); ctx2.moveTo(lx, ymin); ctx2.lineTo(lx, ymax); ctx2.stroke();
-        });
-        ctx2.globalAlpha = 1;
-
-        ctx2.strokeStyle = css2.themeD;
-        ctx2.globalAlpha = 0.42;
-        ctx2.setLineDash([5, 4]);
-        ctx2.beginPath();
-        ctx2.moveTo(xmin, yNom); ctx2.lineTo(xmax, yNom); ctx2.stroke();
-        ctx2.setLineDash([]); ctx2.globalAlpha = 1;
-
-        ctx2.strokeStyle = css2.primary;
-        ctx2.lineWidth = 2;
-        ctx2.beginPath();
-        for (var k = 0; k <= 160; k++) {
-          var u = k / 160;
-          var fhz = fLo * Math.pow(fHi / fLo, u);
-          var x = xmin + u * (xmax - xmin);
-          var oct = Math.log(Math.max(fhz, 1e-9) / Math.max(fc, 1e-9)) / Math.LN2;
-          var bell = Math.exp(-((oct / bwOct) * (oct / bwOct)));
-          var y = editVizDbToVerticalY(bell * db, yTopBell, yBotBell);
-          if (!k) ctx2.moveTo(x, y); else ctx2.lineTo(x, y);
-        }
-        ctx2.stroke();
-
-        ctx2.font = "9px Fragment Mono, monospace";
-        ctx2.fillStyle = css2.themeA;
-        ctx2.textAlign = "center";
-        ctx2.textBaseline = "top";
-        [100, 400, 1600, 6400].forEach(function (fz) {
-          if (fz < fLo || fz > fHi) return;
-          var tx = xmin + editVizHzToLogRatio(fz, fLo, fHi) * (xmax - xmin);
-          ctx2.fillText(fz >= 1000 ? (fz / 1000) + "k" : String(fz), tx, ymin - 2);
-        });
-
-        caption(ctx2, css2, xmin + 4, ymin + 14, "EQ · " + band + " bell ~" + fmtSpecNum(fc) + " Hz · " + fmtSpecNum(db) + " dB");
-      }
-
-      function paintFilter(ctx2, xmin, ymin, xmax, ymax, css2) {
-        var kind = readEditControl(sec, "kind") || "lpf";
-        var cutoff = editSliderPhysical(schema("cutoff_hz_ui"), uNorm("cutoff_hz_ui", 0.55));
-        var low = Math.min(phys("low_hz_ui"), phys("high_hz_ui"));
-        var hi = Math.max(phys("low_hz_ui"), phys("high_hz_ui"));
-        var steepNorm = uNorm("steepness_ui", 0.72);
-        var resNorm = uNorm("resonance_ui", 0.06);
-        var poleLpHp = Math.max(6, Math.min(40, Math.round(10 + steepNorm * 26)));
-        var poleBpf = steepNorm <= 0.02 ? 4 : Math.max(6, Math.min(38, Math.round(8 + steepNorm * 28)));
-        var fLo = 40;
-        var fHi = 18000;
-        var cw = xmax - xmin;
-        var midY = ymin + (ymax - ymin) * 0.54;
-        var yPeak = ymin + (ymax - ymin) * 0.2;
-
-        function magAt(fhz) {
-          if (kind === "bpf") return editVizMagBPF(low, hi, fhz, poleBpf, resNorm);
-          return kind === "lpf"
-            ? editVizMagLP(cutoff, fhz, poleLpHp, resNorm)
-            : editVizMagHP(cutoff, fhz, poleLpHp, resNorm);
-        }
-
-        freqStrip(ctx2, xmin, xmax, ymax, css2, fLo, fHi);
-
-        ctx2.globalAlpha = 0.42;
-        ctx2.fillStyle = css2.themeB;
-        ctx2.beginPath();
-        for (var p = 0; p <= 140; p++) {
-          var t = p / 140;
-          var fhz = fLo * Math.pow(fHi / fLo, t);
-          var x = xmin + t * cw;
-          var m = clamp01(magAt(fhz));
-          var yy = midY + (1 - m) * Math.max(midY - yPeak, 4);
-          if (!p) ctx2.moveTo(x, yy); else ctx2.lineTo(x, yy);
-        }
-        ctx2.lineTo(xmax, ymax + 14); ctx2.lineTo(xmin, ymax + 14); ctx2.closePath(); ctx2.fill(); ctx2.globalAlpha = 1;
-
-        ctx2.strokeStyle = css2.themeE;
-        ctx2.lineWidth = 2;
-        ctx2.beginPath();
-        for (var q = 0; q <= 140; q++) {
-          var tt = q / 140;
-          var fhz2 = fLo * Math.pow(fHi / fLo, tt);
-          var xx = xmin + tt * cw;
-          var m2 = clamp01(magAt(fhz2));
-          var yl = midY + (1 - m2) * Math.max(midY - yPeak, 4);
-          if (!q) ctx2.moveTo(xx, yl); else ctx2.lineTo(xx, yl);
-        }
-        ctx2.stroke();
-
-        var head = kind === "bpf"
-          ? "BPF · " + fmtSpecNum(low) + " · " + fmtSpecNum(hi) + " Hz"
-          : (kind.toUpperCase() + " · " + fmtSpecNum(cutoff) + " Hz");
-        caption(
-          ctx2,
-          css2,
-          xmin + 4,
-          ymin + 12,
-          head + " · res " + fmtSpecNum(resNorm) + " · steep " + fmtSpecNum(steepNorm)
-        );
-      }
-
-      function freqStrip(ctx2, fx0, fx1, ymaxStrip, css3, hzMin, hzMax) {
-        ctx2.font = "9px Fragment Mono, monospace";
-        ctx2.fillStyle = css3.themeA;
-        ctx2.textAlign = "center";
-        ctx2.textBaseline = "top";
-        [100, 400, 1000, 4000].forEach(function (fz) {
-          if (fz < hzMin || fz > hzMax) return;
-          var tx = fx0 + editVizHzToLogRatio(fz, hzMin, hzMax) * (fx1 - fx0);
-          ctx2.fillText(fz >= 1000 ? fz / 1000 + "k" : String(fz), tx, ymaxStrip + 8);
-        });
-      }
-
-      function paintNoisegate(ctx2, xmin, ymin, xmax, ymax, css2) {
-        var atkMs = Math.max(phys("attack_ms_ui"), 0.001);
-        var relMs = Math.max(phys("release_ms_ui"), 0.001);
-        var thDb = phys("threshold_db_ui");
-        var ratio = phys("ratio_ui");
-        var atkSch = schema("attack_ms_ui");
-        var relSch = schema("release_ms_ui");
-        var thSch = schema("threshold_db_ui");
-        var atkN = atkSch ? clamp01(editPhysicalToNormalized(atkSch, atkMs)) : 0;
-        var relN = relSch ? clamp01(editPhysicalToNormalized(relSch, relMs)) : 0;
-        var cw = xmax - xmin;
-        var ch = ymax - ymin;
-        var uTh = thSch ? clamp01(editPhysicalToNormalized(thSch, thDb)) : 0.5;
-
-        var yOpen = ymin + ch * 0.28;
-        var yShut = ymin + ch * (0.66 + clamp01((ratio - 2) / 18) * 0.1);
-        var yThMark = ymin + ch * (0.12 + uTh * 0.5);
-
-        var x0 = xmin + cw * 0.06;
-        var xHit = xmin + cw * (0.2 + atkN * 0.06);
-        var xAtkDone = Math.min(xHit + cw * (0.06 + atkN * 0.42), xmin + cw * 0.55);
-        var xHold = xmin + cw * (0.66 - relN * 0.04);
-        var xRelEnd = Math.min(xHold + cw * (0.04 + relN * 0.34), xmax - cw * 0.04);
-
-        ctx2.strokeStyle = css2.themeA;
-        ctx2.globalAlpha = 0.55;
-        ctx2.setLineDash([4, 4]);
-        ctx2.beginPath();
-        ctx2.moveTo(xmin, yThMark); ctx2.lineTo(xmax, yThMark); ctx2.stroke(); ctx2.setLineDash([]);
-        ctx2.globalAlpha = 1;
-
-        ctx2.strokeStyle = css2.themeE;
-        ctx2.lineWidth = 2;
-        ctx2.beginPath();
-        ctx2.moveTo(x0, yShut);
-        ctx2.lineTo(xHit, yShut);
-        ctx2.lineTo(xAtkDone, yOpen);
-        ctx2.lineTo(xHold, yOpen);
-        ctx2.lineTo(xRelEnd, yShut);
-        ctx2.lineTo(xmax - cw * 0.02, yShut);
-        ctx2.stroke();
-
-        caption(ctx2, css2, xmin + 4, ymin + 12,
-          "noise gate · threshold " + fmtSpecNum(thDb) + " dB · atk " + fmtSpecNum(atkMs) + " ms · rel " + fmtSpecNum(relMs) + " ms · ratio ×" + fmtSpecNum(ratio));
-      }
-
-      function paintReverb(ctx2, xmin, ymin, xmax, ymax, css2) {
-        var wetSch = schema("wet_level_ui");
-        var decaySch = schema("decay_sec_ui");
-        var lenSch = schema("length_sec_ui");
-        var wetPhy = phys("wet_level_ui");
-        var wetU = wetSch ? clamp01(editPhysicalToNormalized(wetSch, wetPhy)) : 0.35;
-        var decayPhy = Math.max(phys("decay_sec_ui"), 0.05);
-        var lenPhy = Math.max(phys("length_sec_ui"), 0.05);
-        var hp = phys("highpass_hz_ui");
-        var er = Math.max(3, Math.min(22, Math.round(phys("early_reflections_ui"))));
-        var tailD = clamp01(editPhysicalToNormalized(schema("tail_diffusion_ui"), phys("tail_diffusion_ui")));
-        var earlySpread = readEditControl(sec, "early_diffuse") !== "false";
-        var cw = xmax - xmin;
-        var ch = ymax - ymin;
-        var split = ymin + ch * (0.22 + (1 - wetU) * 0.62);
-
-        ctx2.strokeStyle = css2.themeD;
-        ctx2.globalAlpha = 0.55;
-        ctx2.setLineDash([5, 4]);
-        ctx2.beginPath();
-        ctx2.moveTo(xmin, split); ctx2.lineTo(xmax, split); ctx2.stroke(); ctx2.setLineDash([]);
-        ctx2.globalAlpha = 1;
-
-        var hpSch = schema("highpass_hz_ui");
-        var hpU = hpSch ? clamp01(editPhysicalToNormalized(hpSch, hp)) : 0.2;
-        ctx2.strokeStyle = css2.themeC;
-        ctx2.globalAlpha = 0.92;
-        ctx2.beginPath();
-        ctx2.moveTo(xmin + cw * 0.06, ymin + ch * 0.16);
-        ctx2.lineTo(xmin + cw * 0.1, ymin + ch * (0.2 + hpU * 0.1));
-        ctx2.lineTo(xmin + cw * 0.12, ymin + ch * (0.16 + hpU * 0.06));
-        ctx2.stroke(); ctx2.globalAlpha = 1;
-
-        var decayTau = decaySch ? clamp01(editPhysicalToNormalized(decaySch, decayPhy)) : 0.5;
-        var decayK = Math.max(6, decayTau * 38 + (1 - tailD) * 10);
-        var tailLenFrac = lenSch ? clamp01(editPhysicalToNormalized(lenSch, lenPhy)) : 0.4;
-
-        ctx2.strokeStyle = css2.themeB;
-        ctx2.globalAlpha = 0.92;
-        ctx2.lineWidth = 2;
-        ctx2.beginPath();
-        for (var i = 0; i <= 120; i++) {
-          var t = i / 120;
-          var env = tailD * 0.18 * Math.sin(t * Math.PI * decayK * 0.05) + Math.exp(-t * decayK * (0.78 + decayTau));
-          var xx = xmin + cw * (0.1 + t * tailLenFrac * 0.86);
-          var yy = split + (ymax - split) * 0.94 * (1 - env * 0.96);
-          if (!i) ctx2.moveTo(xx, yy); else ctx2.lineTo(xx, yy);
-        }
-        ctx2.stroke(); ctx2.globalAlpha = 1;
-
-        if (earlySpread) {
-          ctx2.strokeStyle = css2.primary;
-          ctx2.globalAlpha = 0.7;
-          for (var kk = 0; kk < er; kk++) {
-            var spikeX = xmin + cw * (0.12 + kk * Math.min(cw * 0.036, cw / Math.max(er, 3)));
-            ctx2.beginPath(); ctx2.moveTo(spikeX, split); ctx2.lineTo(spikeX, split - (10 + (kk % 4) * 3)); ctx2.stroke();
-          }
-          ctx2.globalAlpha = 1;
-        }
-
-        caption(ctx2, css2, xmin + 4, ymin + 10,
-          "reverb · wet " + fmtSpecNum(wetPhy) + " · length " + fmtSpecNum(lenPhy) + " s · decay " + fmtSpecNum(decayPhy) + " s · tail diffusion " + fmtSpecNum(tailD));
-      }
-
-      function paintDelay(ctx2, xmin, ymin, xmax, ymax, css2) {
-        var mode = readEditControl(sec, "time_mode") || "sync";
-        var dMs;
-        var bpmForCaption = Math.min(999, Math.max(20, readEditNumber(sec, "bpm", 120)));
-        if (mode === "sync") {
-          var bpm = Math.max(bpmForCaption, 1);
-          var beatMs = 60000 / bpm;
-          var div = readEditControl(sec, "division") || "1/8";
-          var mul = EDIT_DELAY_DIV_BEATS[div] != null ? EDIT_DELAY_DIV_BEATS[div] : 0.5;
-          dMs = beatMs * mul + phys("delay_offset_ms_ui");
-        } else {
-          dMs = phys("delay_ms_ui") + phys("delay_offset_ms_ui");
-        }
-        var spread = phys("stereo_spread_ms_ui");
-        var dL = Math.max(1, dMs + spread / 2);
-        var dR = Math.max(1, dMs - spread / 2);
-        var fbSch = schema("feedback_ui");
-        var fb = Math.min(0.999, Math.max(0, phys("feedback_ui")));
-        var fbNorm = fbSch ? clamp01(editPhysicalToNormalized(fbSch, fb)) : 0;
-        var mixPhy = phys("mix_ui");
-        var pp = readEditControl(sec, "ping_pong") === "true";
-        var cw = xmax - xmin;
-        var ch = ymax - ymin;
-        var yL = ymin + ch * 0.28;
-        var yR = ymin + ch * 0.72;
-        var winMs = Math.max(dL, dR) * (1 + fbNorm * 10);
-        winMs = Math.min(Math.max(winMs, dMs * 2), 4800);
-
-        function xAt(ms) {
-          return xmin + cw * clamp01(ms / winMs);
-        }
-
-        ctx2.strokeStyle = css2.themeE;
-        ctx2.globalAlpha = 0.55;
-        ctx2.setLineDash([4, 4]);
-        ctx2.beginPath();
-        ctx2.moveTo(xmin, yL); ctx2.lineTo(xmax, yL); ctx2.stroke();
-        ctx2.beginPath();
-        ctx2.moveTo(xmin, yR); ctx2.lineTo(xmax, yR); ctx2.stroke();
-        ctx2.setLineDash([]); ctx2.globalAlpha = 1;
-
-        function drawEchoLane(y, stepMs, col, alphaBase) {
-          var amp = alphaBase;
-          var t = 0;
-          var guard = 0;
-          while (t <= winMs * 1.02 && guard < 48) {
-            var xx = xAt(t);
-            ctx2.strokeStyle = col;
-            ctx2.globalAlpha = Math.min(0.95, amp);
-            ctx2.lineWidth = guard ? 1.6 : 2.4;
-            ctx2.beginPath(); ctx2.moveTo(xx, y - 9); ctx2.lineTo(xx, y + 9); ctx2.stroke();
-            t += stepMs;
-            amp *= fb;
-            guard += 1;
-          }
-          ctx2.globalAlpha = 1;
-        }
-
-        drawEchoLane(yL, dL, css2.primary, 0.92);
-        drawEchoLane(yR, dR, css2.themeB, pp ? 0.72 : 0.92);
-
-        if (pp) {
-          ctx2.strokeStyle = css2.themeC;
-          ctx2.globalAlpha = 0.78;
-          ctx2.lineWidth = 1.25;
-          ctx2.beginPath();
-          ctx2.moveTo(xAt(dR), yR); ctx2.lineTo(xAt(dL + dR), yL);
-          ctx2.stroke();
-          ctx2.beginPath();
-          ctx2.moveTo(xAt(dL), yL); ctx2.lineTo(xAt(dL + dR), yR);
-          ctx2.stroke(); ctx2.globalAlpha = 1;
-        }
-
-        var modeLab = mode === "sync"
-          ? "sync " + fmtSpecNum(bpmForCaption) + " bpm · " + (readEditControl(sec, "division") || "1/8")
-          : "ms";
-        caption(ctx2, css2, xmin + 4, ymin + 10,
-          "delay · " + modeLab + " · ~" + fmtSpecNum(dMs) + " ms centre · spread ±" + fmtSpecNum(spread / 2) +
-          " ms · fb " + fmtSpecNum(fb) + " · mix " + fmtSpecNum(mixPhy) + (pp ? " · ping-pong" : ""));
-      }
-
-      function paintCompress(ctx2, xmin, ymin, xmax, ymax, css2) {
-        var thDb = phys("threshold_db_ui");
-        var ratioNum = Math.max(phys("ratio_ui"), 1);
-
-        function outDb(inpDb) {
-          if (inpDb <= thDb) return inpDb;
-          return thDb + (inpDb - thDb) / ratioNum;
-        }
-
-        var dMin = -46;
-        var dMax = -3;
-        var plotW = xmax - xmin;
-        var plotH = ymax - ymin;
-
-        ctx2.strokeStyle = css2.themeA;
-        ctx2.globalAlpha = 0.45;
-        ctx2.setLineDash([4, 4]);
-        ctx2.beginPath();
-        for (var b = -40; b <= -8; b += 8) {
-          var lx = xmin + plotW * clamp01((b - dMin) / (dMax - dMin));
-          ctx2.moveTo(lx, ymin); ctx2.lineTo(lx, ymax);
-        }
-        ctx2.stroke();
-        ctx2.setLineDash([]); ctx2.globalAlpha = 1;
-
-        function xOf(inp) {
-          return xmin + plotW * clamp01((inp - dMin) / (dMax - dMin));
-        }
-        function yOf(outDbVal) {
-          return ymax - plotH * clamp01((outDbVal - dMin) / (dMax - dMin));
-        }
-
-        ctx2.strokeStyle = css2.themeD;
-        ctx2.globalAlpha = 0.52;
-        ctx2.lineWidth = 1.25;
-        ctx2.beginPath();
-        ctx2.moveTo(xOf(dMin), yOf(dMin));
-        ctx2.lineTo(xOf(dMax), yOf(dMax));
-        ctx2.stroke(); ctx2.globalAlpha = 1;
-
-        ctx2.strokeStyle = css2.themeE;
-        ctx2.lineWidth = 3;
-        ctx2.beginPath();
-        for (var uu = 0; uu <= 90; uu++) {
-          var inp = dMin + (dMax - dMin) * (uu / 90);
-          var outv = outDb(inp);
-          if (!uu) ctx2.moveTo(xOf(inp), yOf(outv)); else ctx2.lineTo(xOf(inp), yOf(outv));
-        }
-        ctx2.stroke(); ctx2.lineWidth = 1;
-
-        ctx2.strokeStyle = css2.primary;
-        ctx2.globalAlpha = 0.8;
-        ctx2.setLineDash([3, 3]);
-        ctx2.beginPath();
-        ctx2.moveTo(xOf(thDb), ymin);
-        ctx2.lineTo(xOf(thDb), ymax);
-        ctx2.stroke();
-        ctx2.setLineDash([]); ctx2.globalAlpha = 1;
-
-        var atkPhy = fmtSpecNum(phys("attack_ms_ui"));
-        var relPhy = fmtSpecNum(phys("release_ms_ui"));
-        caption(ctx2, css2, xmin + 4, ymin + 12,
-          "compressor · input (x) vs output (y) · thr " + fmtSpecNum(thDb) + " dB · ratio ×" + fmtSpecNum(ratioNum) + " · atk " + atkPhy + " ms · rel " + relPhy + " ms");
-      }
-
-      function paintOverdrive(ctx2, xmin, ymin, xmax, ymax, css2) {
-        var drv = phys("drive_db_ui");
-        var drvSch = schema("drive_db_ui");
-        var drvU = drvSch ? clamp01(editPhysicalToNormalized(drvSch, drv)) : 0.45;
-        var steep = 0.62 + drvU * 22;
-        var hp = phys("highpass_hz_ui");
-        var lp = phys("lowpass_hz_ui");
-        var cw = xmax - xmin;
-        var cx = xmin + cw * 0.34;
-        var cy = ymin + (ymax - ymin) * 0.46;
-        var span = Math.min(cw - 72, ymax - ymin - 56) / 2.35;
-
-        ctx2.strokeStyle = css2.themeA;
-        ctx2.lineWidth = 1;
-        ctx2.globalAlpha = 0.72;
-        ctx2.beginPath();
-        ctx2.moveTo(cx - span, cy + span); ctx2.lineTo(cx + span, cy - span);
-        ctx2.stroke(); ctx2.globalAlpha = 1;
-
-        ctx2.strokeStyle = css2.primary;
-        ctx2.lineWidth = 2;
-        ctx2.beginPath();
-        for (var ip = 0; ip <= 100; ip++) {
-          var t = ip / 100;
-          var outv = editVizWaveshaperDrive(t, steep);
-          var px = cx - span + t * span * 2;
-          var py = cy + span - outv * span * 2;
-          if (!ip) ctx2.moveTo(px, py); else ctx2.lineTo(px, py);
-        }
-        ctx2.stroke();
-
-        var stripTop = ymin + (ymax - ymin) * 0.72;
-        var stripBot = ymin + (ymax - ymin) * 0.86;
-
-        ctx2.strokeStyle = css2.themeE;
-        ctx2.lineWidth = 2;
-        var xHp = xmin + cw * (0.1 + clamp01(editPhysicalToNormalized(schema("highpass_hz_ui"), hp)) * 0.8);
-        ctx2.beginPath(); ctx2.moveTo(xHp, stripTop); ctx2.lineTo(xHp, stripBot); ctx2.stroke();
-        ctx2.strokeStyle = css2.themeC;
-        var xLp = xmin + cw * (0.08 + clamp01(editPhysicalToNormalized(schema("lowpass_hz_ui"), lp)) * 0.82);
-        ctx2.beginPath(); ctx2.moveTo(xLp, stripTop); ctx2.lineTo(xLp, stripBot); ctx2.stroke();
-
-        caption(ctx2, css2, xmin + 4, ymin + 12, "overdrive waveshaping · drive " + fmtSpecNum(drv) + " dB · tone HP " + fmtSpecNum(hp) + " Hz · LP " + fmtSpecNum(lp) + " Hz");
-      }
-
-      function paintDistort(ctx2, xmin, ymin, xmax, ymax, css2) {
-        var drv = phys("drive_db_ui");
-        var drvSch = schema("drive_db_ui");
-        var drvU = drvSch ? clamp01(editPhysicalToNormalized(drvSch, drv)) : 0.45;
-        var steep = 0.92 + drvU * 38;
-        var cx = xmin + (xmax - xmin) / 2;
-        var cy = ymin + (ymax - ymin) * 0.46;
-        var span = Math.min(xmax - xmin - 72, ymax - ymin - 56) / 2.25;
-
-        ctx2.strokeStyle = css2.themeA;
-        ctx2.lineWidth = 1;
-        ctx2.globalAlpha = 0.74;
-        ctx2.beginPath();
-        ctx2.moveTo(cx - span, cy + span); ctx2.lineTo(cx + span, cy - span);
-        ctx2.stroke(); ctx2.globalAlpha = 1;
-
-        ctx2.strokeStyle = css2.themeC;
-        ctx2.lineWidth = 2.5;
-        ctx2.beginPath();
-        for (var ip = 0; ip <= 100; ip++) {
-          var t = ip / 100;
-          var outv = editVizWaveshaperDrive(t, steep);
-          var px = cx - span + t * span * 2;
-          var py = cy + span - outv * span * 2;
-          if (!ip) ctx2.moveTo(px, py); else ctx2.lineTo(px, py);
-        }
-        ctx2.stroke();
-
-        caption(ctx2, css2, xmin + 4, ymin + 12, "distort · drive " + fmtSpecNum(drv) + " dB (saturation sketch)");
-      }
-
-      function paintModDelay(ctx2, xmin, ymin, xmax, ymax, css2, kind) {
-        var rate = Math.max(phys("rate_hz_ui"), 1e-4);
-        var depthPhys = phys("depth_ui");
-        var depthSch = schema("depth_ui");
-        var depthNorm = depthSch ? clamp01(editPhysicalToNormalized(depthSch, depthPhys)) : 0;
-        var mixSch = schema("mix_ui");
-        var mixPhy = phys("mix_ui");
-        var mixNorm = mixSch ? clamp01(editPhysicalToNormalized(mixSch, mixPhy)) : 0;
-        var cd = phys("centre_delay_ms_ui");
-        var cdSch = schema("centre_delay_ms_ui");
-        var cdMax = cdSch && cdSch.range_linear ? cdSch.range_linear[1] : 14;
-        var delayNorm = clamp01(cd / Math.max(cdMax, 1e-4));
-        var fb = phys("feedback_ui");
-
-        var cw = xmax - xmin;
-        var ch = ymax - ymin;
-        var mid = ymin + ch * 0.5;
-
-        var cyclesAcross = rate * (
-          kind === "flanger" ? 32 :
-          kind === "phaser" ? 22 : 20
-        );
-        var ampBoost = kind === "flanger" ? 1.08 : kind === "phaser" ? 0.72 : 0.95;
-        ctx2.strokeStyle = css2.themeE;
-        ctx2.globalAlpha = 0.55;
-        ctx2.beginPath();
-        ctx2.moveTo(xmin, mid); ctx2.lineTo(xmax, mid); ctx2.stroke(); ctx2.globalAlpha = 1;
-
-        var amp = Math.max(4, depthNorm * 0.5 * ampBoost) * Math.min(ch, 118);
-        ctx2.strokeStyle = css2.primary;
-        ctx2.lineWidth = 2;
-        ctx2.beginPath();
-        for (var iq = 0; iq <= 220; iq++) {
-          var t = iq / 220;
-          var px = xmin + cw * (0.04 + t * 0.92);
-          var ph = cyclesAcross * Math.PI * 2 * t;
-          var wobble = depthNorm + 0.12;
-          var py = mid + Math.sin(ph * (1 + wobble * (kind === "flanger" ? 0.32 : kind === "phaser" ? 0.52 : 0.18))) * amp * delayNorm;
-          if (!iq) ctx2.moveTo(px, py); else ctx2.lineTo(px, py);
-        }
-        ctx2.stroke();
-
-        ctx2.strokeStyle = css2.themeD;
-        ctx2.globalAlpha = 0.65;
-        var split = ymin + mixNorm * ch * (kind === "phaser" ? 0.32 : 0.36) + 18;
-        ctx2.beginPath();
-        ctx2.moveTo(xmin, split); ctx2.lineTo(xmax, split); ctx2.stroke(); ctx2.globalAlpha = 1;
-
-        ctx2.strokeStyle = css2.themeB;
-        ctx2.globalAlpha = 0.88;
-        var fbSchInner = schema("feedback_ui");
-        var fbFrac = fbSchInner ? clamp01(editPhysicalToNormalized(fbSchInner, fb)) : 0;
-        ctx2.beginPath(); ctx2.moveTo(xmax - cw * (0.3 + fbFrac * 0.45), ymin + ch * 0.32); ctx2.lineTo(xmax - 16, ymin + ch * (0.55 - fbFrac * 0.06)); ctx2.stroke(); ctx2.globalAlpha = 1;
-
-        var labelWord = kind === "flanger" ? "flanger" : kind === "phaser" ? "phaser" : "chorus";
-
-        var captionY = ymin + (kind === "phaser" ? 24 : 10);
-        var line1 =
-          labelWord + " modulation · rate " + fmtSpecNum(rate) + " Hz · depth " + fmtSpecNum(depthPhys) + " · delay " + fmtSpecNum(cd) + " ms · feedback " + fmtSpecNum(fb) + " · mix " + fmtSpecNum(mixPhy);
-
-        if (kind === "phaser") {
-          var cfSch = schema("centre_frequency_hz_ui");
-          var cf = Math.max(phys("centre_frequency_hz_ui"), 1);
-          var cfNorm = cfSch ? clamp01(editPhysicalToNormalized(cfSch, cf)) : 0;
-          var fMinAxis = cfSch && cfSch.range_linear ? cfSch.range_linear[0] : 400;
-          var fMaxAxis = cfSch && cfSch.range_linear ? cfSch.range_linear[1] : 2800;
-          var cxNotch = xmin + cw * (0.06 + cfNorm * 0.82);
-          var dip = ymin + split + (ymax - split) * 0.72;
-          ctx2.strokeStyle = css2.themeC;
-          ctx2.lineWidth = 2;
-          ctx2.beginPath(); ctx2.moveTo(cxNotch - 38, ymin + ch * 0.74); ctx2.lineTo(cxNotch - 22, ymin + split + depthNorm * 22); ctx2.lineTo(cxNotch, ymin + dip - depthNorm * 26); ctx2.lineTo(cxNotch + 22, ymin + split + depthNorm * 22); ctx2.lineTo(cxNotch + 38, ymin + ch * 0.74); ctx2.stroke();
-          line1 +=
-            " · sweep ~ " + fmtSpecNum(cf) + " Hz · UI axis " + fmtSpecNum(fMinAxis) + "–" + fmtSpecNum(fMaxAxis) + " Hz";
-        }
-
-        caption(ctx2, css2, xmin + 4, captionY, line1);
-      }
-
-      sec.__repaintEditEffectViz = paintPassiveFrame;
-
-      var ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(function () {
-        paintPassiveFrame();
-      });
-      if (ro) ro.observe(vizWrap);
-
-      function onCtl() {
-        queueEditVisibleEffectVizRepaint();
-      }
-
-      sec.querySelectorAll('[data-schema-key]').forEach(function (el) {
-        el.addEventListener("input", onCtl);
-        el.addEventListener("change", onCtl);
-      });
-
-      paintPassiveFrame();
-    }
 
 
     function readEditControl(sectionEl, schemaKey) {
@@ -4088,7 +3582,6 @@
       detail.querySelectorAll(".edit-sample-section").forEach(function (sec) {
         sec.classList.toggle("edit-sample-section-visible", sec.dataset.editType === editPanelSelectedActionType);
       });
-      queueEditVisibleEffectVizRepaint();
     }
 
     function openAuditionrSidebarTab(tab) {
@@ -4104,7 +3597,6 @@
       genPanel.classList.toggle("hidden", !isGen);
       editPanel.classList.toggle("hidden", isGen);
       try { sessionStorage.setItem(AUDITIONR_SIDEBAR_TAB_KEY, tab); } catch (e) {}
-      if (!isGen) queueEditVisibleEffectVizRepaint();
     }
 
     function ensureSidebarOpenForEdit() {
@@ -4119,12 +3611,485 @@
       }
     }
 
+    function editControlItemForEl(el) {
+      if (!el) return null;
+      return el.closest(".edit-control-item") || el.closest(".edit-control-row") || el.closest("label.edit-control-row");
+    }
+
+    var EDIT_PARAM_LABEL_OVERRIDES = {
+      "fade:duration_ms_ui": { short: "Time", full: "Duration" },
+      "eq:db_ui": { short: "Gain", full: "Gain (dB)" },
+      "gain:db_ui": { short: "Gain", full: "Gain change (dB)" },
+      "filter:cutoff_hz_ui": { short: "Cutoff", full: "Cutoff (Hz) LPF/HPF" },
+      "filter:low_hz_ui": { short: "Lo", full: "BPF low (Hz)" },
+      "filter:high_hz_ui": { short: "Hi", full: "BPF high (Hz)" },
+      "filter:steepness_ui": { short: "Slope", full: "Cutoff slope / brick-wall" },
+      "filter:resonance_ui": { short: "Res", full: "Resonance" },
+      "padding:amount_ui": { short: "Amt", full: "Amount" },
+      "noisegate:threshold_db_ui": { short: "Thresh", full: "Threshold" },
+      "timestretch:stretch_factor_ui": { short: "Stretch", full: "Stretch factor" },
+      "paulstretch:paul_stretch_ui": { short: "Stretch", full: "Stretch amount" },
+      "paulstretch:paul_window_ui": { short: "Window", full: "Window (s)" },
+      "pitch:semitones_ui": { short: "Semi", full: "Semitones" },
+      "pitch:cents_ui": { short: "Fine", full: "Fine tune (cents)" },
+      "reverb:length_sec_ui": { short: "Length", full: "IR length (s)" },
+      "reverb:decay_sec_ui": { short: "Decay", full: "Decay (s)" },
+      "reverb:highpass_hz_ui": { short: "HPF", full: "Reverb HPF (Hz)" },
+      "reverb:early_reflections_ui": { short: "Early", full: "Early reflections" },
+      "reverb:tail_diffusion_ui": { short: "Diff", full: "Tail diffusion" },
+      "reverb:early_diffuse": { short: "Diffuse", full: "Early diffuse" },
+      "delay:time_mode": { short: "Sync", full: "Time mode" },
+      "delay:bpm": { short: "BPM", full: "Tempo (BPM)" },
+      "delay:division": { short: "Div", full: "Note division" },
+      "delay:delay_ms_ui": { short: "Time", full: "Delay time (ms)" },
+      "delay:delay_offset_ms_ui": { short: "Offset", full: "Fine offset (ms)" },
+      "delay:stereo_spread_ms_ui": { short: "Spread", full: "L/R spread (ms)" },
+      "delay:mix_ui": { short: "Mix", full: "Mix (wet)" },
+      "delay:ping_pong": { short: "P-Pong", full: "Ping-pong feedback" },
+      "delay:stereo_width_ui": { short: "Width", full: "Wet stereo width" },
+      "delay:input_crossfeed_ui": { short: "Xfeed", full: "Input crossfeed" },
+      "delay:feedback_lowpass_hz_ui": { short: "FB LPF", full: "Feedback low-pass (Hz)" },
+      "delay:feedback_highpass_hz_ui": { short: "FB HPF", full: "Feedback high-pass (Hz)" },
+      "compress:threshold_db_ui": { short: "Thresh", full: "Threshold (dB)" },
+      "compress:attack_ms_ui": { short: "Atk", full: "Attack (ms)" },
+      "compress:release_ms_ui": { short: "Rel", full: "Release (ms)" },
+      "overdrive:drive_db_ui": { short: "Drive", full: "Drive (dB)" },
+      "overdrive:highpass_hz_ui": { short: "HPF", full: "High-pass (Hz)" },
+      "overdrive:lowpass_hz_ui": { short: "LPF", full: "Low-pass (Hz)" },
+      "distort:drive_db_ui": { short: "Drive", full: "Drive (dB)" },
+      "chorus:rate_hz_ui": { short: "Rate", full: "Rate (Hz)" },
+      "chorus:centre_delay_ms_ui": { short: "Delay", full: "Centre delay (ms)" },
+      "flanger:rate_hz_ui": { short: "Rate", full: "Rate (Hz)" },
+      "flanger:centre_delay_ms_ui": { short: "Delay", full: "Centre delay (ms)" },
+      "phaser:rate_hz_ui": { short: "Rate", full: "Rate (Hz)" },
+      "phaser:centre_frequency_hz_ui": { short: "Centre", full: "Centre freq (Hz)" }
+    };
+
+    var EDIT_PARAM_SHORT_LABELS = {
+      style: "Style",
+      band: "Band",
+      kind: "Type",
+      side: "Side",
+      mode: "Mode",
+      edge: "Edge",
+      wet_level_ui: "Wet",
+      feedback_ui: "FB",
+      mix_ui: "Mix",
+      depth_ui: "Depth",
+      ratio_ui: "Ratio",
+      attack_ms_ui: "Atk",
+      release_ms_ui: "Rel",
+      resonance_ui: "Res"
+    };
+
+    function editParamFullLabel(schema) {
+      if (!schema) return "";
+      return String(schema.label || schema.key || "").trim();
+    }
+
+    function editParamLabelMeta(schema, typeKey) {
+      var full = editParamFullLabel(schema);
+      var overrideKey = typeKey + ":" + (schema && schema.key);
+      if (EDIT_PARAM_LABEL_OVERRIDES[overrideKey]) {
+        return EDIT_PARAM_LABEL_OVERRIDES[overrideKey];
+      }
+      if (schema && schema.key && EDIT_PARAM_SHORT_LABELS[schema.key]) {
+        return { short: EDIT_PARAM_SHORT_LABELS[schema.key], full: full };
+      }
+      if (!full) return { short: "", full: "" };
+      return { short: full.split(/\s+/)[0], full: full };
+    }
+
+    function editApplyParamLabel(labelEl, schema, typeKey) {
+      if (!labelEl || !schema) return;
+      var meta = editParamLabelMeta(schema, typeKey);
+      labelEl.textContent = meta.short || meta.full || schema.key || "";
+      var tip = meta.full || editParamFullLabel(schema);
+      if (schema.hint) {
+        tip = tip ? tip + " — " + schema.hint : schema.hint;
+      }
+      if (tip) {
+        labelEl.title = tip;
+      } else {
+        labelEl.removeAttribute("title");
+      }
+    }
+
+    function editCreateSliderKnob(schema, typeKey) {
+      var wrap = document.createElement("div");
+      wrap.className = "edit-control-item";
+
+      var knob = document.createElement("div");
+      knob.className = "daw-knob";
+      knob.dataset.editKnob = "slider";
+      knob.dataset.editType = typeKey;
+      knob.dataset.knobSchemaKey = schema.key;
+
+      var label = document.createElement("span");
+      label.className = "daw-knob-label";
+      editApplyParamLabel(label, schema, typeKey);
+
+      var dial = document.createElement("button");
+      dial.type = "button";
+      dial.className = "daw-knob-dial";
+      dial.setAttribute("aria-label", schema.label || schema.key || "parameter");
+      var ring = document.createElement("span");
+      ring.className = "daw-knob-ring";
+      ring.setAttribute("aria-hidden", "true");
+      dial.appendChild(ring);
+
+      var defU = schema.default != null ? String(schema.default) : "0.5";
+      var readout = document.createElement("span");
+      readout.className = "daw-knob-readout";
+      readout.setAttribute("aria-hidden", "true");
+      readout.textContent = formatEditSliderDisplay(schema, defU);
+
+      var input = document.createElement("input");
+      input.type = "number";
+      input.className = "daw-knob-input";
+      input.min = "0";
+      input.max = "1";
+      input.step = schema.step != null ? String(schema.step) : "0.01";
+      input.value = defU;
+      input.dataset.schemaKey = schema.key;
+      input.tabIndex = -1;
+      input.setAttribute("aria-hidden", "true");
+
+      knob.appendChild(label);
+      knob.appendChild(dial);
+      knob.appendChild(readout);
+      knob.appendChild(input);
+      wrap.appendChild(knob);
+      return wrap;
+    }
+
+    function editCreateSelectControl(schema, typeKey, sec) {
+      var wrap = document.createElement("div");
+      wrap.className = "edit-control-item daw-knob-select";
+
+      var label = document.createElement("span");
+      label.className = "daw-knob-label";
+      editApplyParamLabel(label, schema, typeKey);
+
+      var sel = document.createElement("select");
+      sel.dataset.schemaKey = schema.key;
+      sel.setAttribute("aria-label", schema.label || schema.key || "option");
+      (schema.options || []).forEach(function (opt) {
+        var o = document.createElement("option");
+        o.value = opt.value;
+        o.textContent = opt.label;
+        sel.appendChild(o);
+      });
+      var def = schema.default || ((schema.options || [])[0] || {}).value;
+      if (def !== undefined) sel.value = String(def);
+
+      if (typeKey === "filter" && schema.key === "kind") {
+        sel.addEventListener("change", function () {
+          syncEditFilterControlRows(sec);
+        });
+      }
+      if (typeKey === "delay" && schema.key === "time_mode") {
+        sel.addEventListener("change", function () {
+          syncEditDelayControlRows(sec);
+        });
+      }
+
+      var spacer = document.createElement("span");
+      spacer.className = "daw-knob-select-spacer";
+      spacer.setAttribute("aria-hidden", "true");
+
+      wrap.appendChild(label);
+      wrap.appendChild(sel);
+      wrap.appendChild(spacer);
+      return wrap;
+    }
+
+    function editCreateInlineNumberField(schema, sec, typeKey) {
+      var wrap = document.createElement("div");
+      wrap.className = "edit-control-item edit-inline-number-row";
+
+      var label = document.createElement("span");
+      label.className = "edit-inline-number-label";
+      editApplyParamLabel(label, schema, typeKey || "delay");
+
+      var fieldRow = document.createElement("div");
+      fieldRow.className = "edit-inline-number-field-row";
+
+      var defN = schema.default != null ? schema.default : "";
+      var inpN = document.createElement("input");
+      inpN.type = "number";
+      inpN.className = "edit-inline-number-input";
+      inpN.dataset.schemaKey = schema.key;
+      if (schema.min != null) inpN.min = String(schema.min);
+      if (schema.max != null) inpN.max = String(schema.max);
+      inpN.step = schema.step != null ? String(schema.step) : "any";
+      inpN.value = defN === "" ? "" : String(defN);
+      inpN.setAttribute("aria-label", schema.label || schema.key || "parameter");
+
+      fieldRow.appendChild(inpN);
+
+      if (schema.suffix_button === "magic_detect_bpm") {
+        var wandBtn = document.createElement("button");
+        wandBtn.type = "button";
+        wandBtn.className = "btn-edit-bpm-wand";
+        wandBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>';
+        wandBtn.title = "Fill BPM from the selected sample filename (e.g. …140bpm…)";
+        wandBtn.setAttribute("aria-label", "Detect tempo from sample filename");
+        wandBtn.addEventListener("click", function (ev) {
+          ev.preventDefault();
+          if (!selectedEditAbsPath) {
+            window.alert("Select a sample first (click its name or waveform).");
+            return;
+          }
+          var parsed = auditionrParseBpmFromName(selectedEditAbsPath);
+          if (parsed != null) {
+            inpN.value = String(parsed);
+            inpN.dispatchEvent(new Event("input", { bubbles: true }));
+            inpN.dispatchEvent(new Event("change", { bubbles: true }));
+          } else {
+            window.alert("No bpm detected in filename");
+          }
+        });
+        fieldRow.appendChild(wandBtn);
+      }
+
+      wrap.appendChild(label);
+      wrap.appendChild(fieldRow);
+      return wrap;
+    }
+
+    function editCreateNumberControl(schema, typeKey, sec) {
+      if (typeKey === "delay") {
+        return editCreateInlineNumberField(schema, sec, typeKey);
+      }
+
+      var wrap = document.createElement("div");
+      wrap.className = "edit-control-item edit-bpm-knob-row";
+
+      var knob = document.createElement("div");
+      knob.className = "daw-knob";
+      knob.dataset.knobUnit = "BPM";
+      knob.dataset.knobDecimals = "1";
+
+      var label = document.createElement("span");
+      label.className = "daw-knob-label";
+      editApplyParamLabel(label, schema, typeKey);
+
+      var dial = document.createElement("button");
+      dial.type = "button";
+      dial.className = "daw-knob-dial";
+      dial.setAttribute("aria-label", schema.label || schema.key || "parameter");
+      var ring = document.createElement("span");
+      ring.className = "daw-knob-ring";
+      ring.setAttribute("aria-hidden", "true");
+      dial.appendChild(ring);
+
+      var defN = schema.default != null ? schema.default : "";
+      var readout = document.createElement("span");
+      readout.className = "daw-knob-readout";
+      readout.setAttribute("aria-hidden", "true");
+      readout.textContent = defN === "" ? "" : Number(defN).toFixed(1) + " BPM";
+
+      var inpN = document.createElement("input");
+      inpN.type = "number";
+      inpN.className = "daw-knob-input";
+      inpN.dataset.schemaKey = schema.key;
+      if (schema.min != null) inpN.min = String(schema.min);
+      if (schema.max != null) inpN.max = String(schema.max);
+      inpN.step = schema.step != null ? String(schema.step) : "any";
+      inpN.value = defN === "" ? "" : String(defN);
+      inpN.tabIndex = -1;
+      inpN.setAttribute("aria-hidden", "true");
+
+      knob.appendChild(label);
+      knob.appendChild(dial);
+      knob.appendChild(readout);
+      knob.appendChild(inpN);
+      wrap.appendChild(knob);
+
+      if (schema.suffix_button === "magic_detect_bpm") {
+        var wandBtn = document.createElement("button");
+        wandBtn.type = "button";
+        wandBtn.className = "btn-edit-bpm-wand";
+        wandBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>';
+        wandBtn.title = "Fill BPM from the selected sample filename (e.g. …140bpm…)";
+        wandBtn.setAttribute("aria-label", "Detect tempo from sample filename");
+        wandBtn.addEventListener("click", function (ev) {
+          ev.preventDefault();
+          if (!selectedEditAbsPath) {
+            window.alert("Select a sample first (click its name or waveform).");
+            return;
+          }
+          var parsed = auditionrParseBpmFromName(selectedEditAbsPath);
+          if (parsed != null) {
+            inpN.value = String(parsed);
+            inpN.dispatchEvent(new Event("input", { bubbles: true }));
+            inpN.dispatchEvent(new Event("change", { bubbles: true }));
+          } else {
+            window.alert("No bpm detected in filename");
+          }
+        });
+        wrap.appendChild(wandBtn);
+      }
+
+      return wrap;
+    }
+
+    function initEditPanelKnobs(root) {
+      if (!root) return;
+      root.querySelectorAll('.daw-knob[data-edit-knob="slider"]').forEach(function (knob) {
+        if (knob.dataset.editKnobBound === "1") return;
+        knob.dataset.editKnobBound = "1";
+
+        var input = knob.querySelector(".daw-knob-input");
+        var dial = knob.querySelector(".daw-knob-dial");
+        var readout = knob.querySelector(".daw-knob-readout");
+        if (!input || !dial || !readout) return;
+
+        var typeKey = knob.dataset.editType || "";
+        var schemaKey = knob.dataset.knobSchemaKey || input.dataset.schemaKey || "";
+        var schema = editSchemaLookup(typeKey, schemaKey);
+        if (!schema) return;
+
+        var min = 0;
+        var max = 1;
+        var step = parseFloat(schema.step != null ? schema.step : 0.01);
+        if (!isFinite(step) || step <= 0) step = 0.01;
+
+        var drag = { active: false, startY: 0, startVal: 0, pointerId: null };
+
+        function snapValue(raw) {
+          var v = Math.max(min, Math.min(max, raw));
+          var steps = Math.round((v - min) / step);
+          return Math.max(min, Math.min(max, min + steps * step));
+        }
+
+        function updateVisual(v) {
+          var ratio = Math.max(0, Math.min(1, v));
+          dial.style.setProperty("--knob-ratio", String(ratio));
+          readout.textContent = formatEditSliderDisplay(schema, v);
+          dial.setAttribute("aria-valuenow", String(v));
+          dial.setAttribute("aria-valuemin", String(min));
+          dial.setAttribute("aria-valuemax", String(max));
+        }
+
+        function setValue(raw, opts) {
+          var v = snapValue(raw);
+          if (schema.range_linear_step != null) {
+            v = editPhysicalToNormalized(schema, editSliderPhysical(schema, v));
+          }
+          input.value = String(v);
+          updateVisual(v);
+          if (!opts || !opts.silent) {
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+            input.dispatchEvent(new Event("change", { bubbles: true }));
+          }
+        }
+
+        var physRange = editSchemaPhysicalRange(schema);
+        bindDawKnobReadoutInlineEdit(readout, {
+          getMin: function () { return physRange[0]; },
+          getMax: function () { return physRange[1]; },
+          getCurrentValue: function () {
+            return editSliderPhysical(schema, parseFloat(input.value || String(min)));
+          },
+          editText: function (v) {
+            if (schema.range_db && isEditGainSchema(schema)) {
+              return v > 0 ? "+" + fmtSpecNum(v) : fmtSpecNum(v);
+            }
+            if (schema.range_linear_step === 1) return fmtSpecNum(Math.round(v));
+            return fmtSpecNum(v);
+          },
+          parseInput: function (text) {
+            return parseDawKnobReadoutText(text, schema.display_suffix || "");
+          },
+          formatReadout: function (v) {
+            return formatEditSliderDisplay(schema, editPhysicalToNormalized(schema, v));
+          },
+          snapValue: function (v) {
+            return editSnapPhysicalToStep(schema, v);
+          },
+          setValue: function (v) {
+            setValue(editPhysicalToNormalized(schema, v));
+          }
+        });
+
+        function nudge(deltaSteps) {
+          setValue(parseFloat(input.value || String(min)) + deltaSteps * step);
+        }
+
+        setValue(parseFloat(input.value || String(min)), { silent: true });
+
+        input.addEventListener("input", function () {
+          if (!drag.active) {
+            updateVisual(parseFloat(input.value || String(min)));
+          }
+        });
+
+        dial.addEventListener("pointerdown", function (e) {
+          if (e.button !== undefined && e.button !== 0) return;
+          drag.active = true;
+          drag.startY = e.clientY;
+          drag.startVal = parseFloat(input.value || String(min));
+          drag.pointerId = e.pointerId;
+          dial.setPointerCapture(e.pointerId);
+          e.preventDefault();
+        });
+
+        dial.addEventListener("pointermove", function (e) {
+          if (!drag.active || e.pointerId !== drag.pointerId) return;
+          var span = max - min;
+          var pxPerFull = Math.max(80, Math.min(220, span * 120));
+          var delta = (drag.startY - e.clientY) * (span / pxPerFull);
+          setValue(drag.startVal + delta);
+        });
+
+        function endDrag(e) {
+          if (drag.pointerId != null && dial.hasPointerCapture(drag.pointerId)) {
+            dial.releasePointerCapture(drag.pointerId);
+          }
+          drag.active = false;
+          drag.pointerId = null;
+        }
+
+        dial.addEventListener("pointerup", endDrag);
+        dial.addEventListener("pointercancel", endDrag);
+
+        dial.addEventListener("wheel", function (e) {
+          e.preventDefault();
+          var dir = e.deltaY < 0 ? 1 : -1;
+          var mult = e.shiftKey ? 10 : (e.altKey ? 0.1 : 1);
+          nudge(dir * mult);
+        }, { passive: false });
+
+        dial.addEventListener("keydown", function (e) {
+          if (e.key === "ArrowUp" || e.key === "ArrowRight") {
+            e.preventDefault();
+            nudge(e.shiftKey ? 10 : 1);
+          } else if (e.key === "ArrowDown" || e.key === "ArrowLeft") {
+            e.preventDefault();
+            nudge(e.shiftKey ? -10 : -1);
+          } else if (e.key === "Home") {
+            e.preventDefault();
+            setValue(min);
+          } else if (e.key === "End") {
+            e.preventDefault();
+            setValue(max);
+          }
+        });
+      });
+
+      if (typeof window.auditionrInitDawKnobs === "function") {
+        window.auditionrInitDawKnobs(root);
+      }
+    }
+
     function syncEditFilterControlRows(sec) {
       if (!sec || sec.dataset.editType !== "filter") return;
       function vis(key, show) {
         var el = sec.querySelector('[data-schema-key="' + key + '"]');
         if (!el) return;
-        var row = el.closest(".edit-control-row");
+        var row = editControlItemForEl(el);
         if (row) row.style.display = show ? "" : "none";
       }
       var kind = readEditControl(sec, "kind") || "lpf";
@@ -4139,8 +4104,7 @@
       function vis(key, show) {
         var el = sec.querySelector('[data-schema-key="' + key + '"]');
         if (!el) return;
-        var row = el.closest(".edit-control-row");
-        if (!row && el.closest("label.edit-control-row")) row = el.closest("label.edit-control-row");
+        var row = editControlItemForEl(el);
         if (row) row.style.display = show ? "" : "none";
       }
       var mode = readEditControl(sec, "time_mode") || "sync";
@@ -4209,7 +4173,8 @@
         case "pitch": {
           var pm = readEditControl(sectionEl, "mode") || "preserve";
           var sem = phys("semitones_ui");
-          return "pitch:[mode=" + pm + "][semitones=" + fmtSpecNum(sem) + "]";
+          var cents = phys("cents_ui");
+          return "pitch:[mode=" + pm + "][semitones=" + fmtSpecNum(sem) + "][cents=" + fmtSpecNum(cents) + "]";
         }
         case "reverb": {
           var wet = phys("wet_level_ui");
@@ -4346,153 +4311,57 @@
           }
           presetsWrap.appendChild(wrap);
         });
-        var vizWrap = null;
-        var vizSr = null;
-        if (EDIT_EFFECT_VIZ_TYPES[typeKey]) {
-          vizWrap = document.createElement("div");
-          vizWrap.className = "edit-effect-viz-wrap";
-          vizSr = document.createElement("span");
-          vizSr.className = "sr-only";
-          vizSr.textContent = "Passive preview of current " + typeKey + " parameters (matches sliders below).";
-          var vizCanvas = document.createElement("canvas");
-          vizCanvas.className = "edit-effect-viz";
-          vizCanvas.setAttribute("role", "img");
-          vizCanvas.setAttribute("aria-label", typeKey + " parameter preview");
-          vizWrap.appendChild(vizSr);
-          vizWrap.appendChild(vizCanvas);
+        var card = document.createElement("div");
+        card.className = "generatr-sweep-effect edit-effect-card";
+
+        var cardHead = document.createElement("div");
+        cardHead.className = "generatr-sweep-effect-head";
+        var cardTitle = document.createElement("span");
+        cardTitle.className = "generatr-sweep-effect-title";
+        cardTitle.textContent = typesByKey[typeKey] || typeKey;
+        cardHead.appendChild(cardTitle);
+
+        var cardBody = document.createElement("div");
+        cardBody.className = "generatr-sweep-effect-body";
+
+        var knobsWrap = document.createElement("div");
+        function appendSchemaControl(container, schema) {
+          var ctrl = null;
+          if (schema.widget === "slider") {
+            ctrl = editCreateSliderKnob(schema, typeKey);
+          } else if (schema.widget === "select") {
+            ctrl = editCreateSelectControl(schema, typeKey, sec);
+          } else if (schema.widget === "number") {
+            ctrl = editCreateNumberControl(schema, typeKey, sec);
+          }
+          if (ctrl) container.appendChild(ctrl);
         }
 
-        var controlsWrap = document.createElement("div");
-        controlsWrap.className = "edit-controls";
-        schemas.forEach(function (schema) {
-          if (schema.widget === "slider") {
-            var row = document.createElement("div");
-            row.className = "edit-control-row edit-control-row-slider";
-
-            var labelRow = document.createElement("div");
-            labelRow.className = "edit-slider-label-row";
-
-            var paramLabel = document.createElement("span");
-            paramLabel.className = "edit-slider-param-label";
-            paramLabel.textContent = schema.label;
-
-            var valueDisplay = document.createElement("span");
-            valueDisplay.className = "edit-slider-value-display";
-            valueDisplay.setAttribute("aria-live", "polite");
-
-            labelRow.appendChild(paramLabel);
-            labelRow.appendChild(valueDisplay);
-
-            var sliderWrap = document.createElement("div");
-            sliderWrap.className = "auditionr-sidebar-slider-wrap";
-            var fakeTrack = document.createElement("div");
-            fakeTrack.className = "auditionr-sidebar-slider-fake-track";
-            fakeTrack.setAttribute("aria-hidden", "true");
-
-            var input = document.createElement("input");
-            input.type = "range";
-            input.min = 0;
-            input.max = 1;
-            input.step = schema.step != null ? schema.step : 0.01;
-            input.value = schema.default != null ? String(schema.default) : "0.5";
-            input.dataset.schemaKey = schema.key;
-            input.setAttribute("aria-label", schema.label || schema.key || "parameter");
-
-            function refreshSliderDisplay() {
-              valueDisplay.textContent = formatEditSliderDisplay(schema, input.value);
+        if (typeKey === "delay") {
+          knobsWrap.className = "generatr-sweep-effect-knobs edit-effect-knobs edit-effect-knobs-delay-split";
+          var knobsCol = document.createElement("div");
+          knobsCol.className = "edit-effect-knobs-col";
+          var selectsCol = document.createElement("div");
+          selectsCol.className = "edit-effect-selects-col";
+          schemas.forEach(function (schema) {
+            if (schema.widget === "select" || schema.widget === "number") {
+              appendSchemaControl(selectsCol, schema);
+            } else {
+              appendSchemaControl(knobsCol, schema);
             }
-            input.addEventListener("input", refreshSliderDisplay);
-            input.addEventListener("change", refreshSliderDisplay);
-            refreshSliderDisplay();
-
-            sliderWrap.appendChild(fakeTrack);
-            sliderWrap.appendChild(input);
-
-            row.appendChild(labelRow);
-            row.appendChild(sliderWrap);
-            controlsWrap.appendChild(row);
-          } else if (schema.widget === "select") {
-            var row2 = document.createElement("label");
-            row2.className = "edit-control-row";
-            var span2 = document.createElement("span");
-            span2.textContent = schema.label;
-            var sel = document.createElement("select");
-            sel.dataset.schemaKey = schema.key;
-            (schema.options || []).forEach(function (opt) {
-              var o = document.createElement("option");
-              o.value = opt.value;
-              o.textContent = opt.label;
-              sel.appendChild(o);
-            });
-            var def = schema.default || ((schema.options || [])[0] || {}).value;
-            if (def !== undefined) sel.value = String(def);
-            if (typeKey === "filter" && schema.key === "kind") {
-              sel.addEventListener("change", function () {
-                syncEditFilterControlRows(sec);
-                queueEditVisibleEffectVizRepaint();
-              });
-            }
-            if (typeKey === "delay" && schema.key === "time_mode") {
-              sel.addEventListener("change", function () {
-                syncEditDelayControlRows(sec);
-                queueEditVisibleEffectVizRepaint();
-              });
-            }
-            row2.appendChild(span2);
-            row2.appendChild(sel);
-            controlsWrap.appendChild(row2);
-          } else if (schema.widget === "number") {
-            var rowN = document.createElement("label");
-            rowN.className = "edit-control-row edit-control-row-number";
-            var spanN = document.createElement("span");
-            spanN.textContent = schema.label;
-            var inpN = document.createElement("input");
-            inpN.type = "number";
-            inpN.className = "edit-param-number-input";
-            inpN.dataset.schemaKey = schema.key;
-            if (schema.min != null) inpN.min = String(schema.min);
-            if (schema.max != null) inpN.max = String(schema.max);
-            inpN.step = schema.step != null ? String(schema.step) : "any";
-            var defN = schema.default != null ? schema.default : "";
-            inpN.value = defN === "" ? "" : String(defN);
-            inpN.setAttribute("aria-label", schema.label || schema.key || "parameter");
-            if (schema.hint) rowN.title = schema.hint;
-            rowN.appendChild(spanN);
-            var numWrap = document.createElement("div");
-            numWrap.className = "edit-number-suffix-wrap";
-            numWrap.appendChild(inpN);
-            if (schema.suffix_button === "magic_detect_bpm") {
-              var wandBtn = document.createElement("button");
-              wandBtn.type = "button";
-              wandBtn.className = "btn-edit-bpm-wand";
-              wandBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>';
-              wandBtn.title = "Fill BPM from the selected sample filename (e.g. …140bpm…)";
-              wandBtn.setAttribute("aria-label", "Detect tempo from sample filename");
-              wandBtn.addEventListener("click", function (ev) {
-                ev.preventDefault();
-                if (!selectedEditAbsPath) {
-                  window.alert("Select a sample first (click its name or waveform).");
-                  return;
-                }
-                var parsed = auditionrParseBpmFromName(selectedEditAbsPath);
-                if (parsed != null) {
-                  inpN.value = String(parsed);
-                  queueEditVisibleEffectVizRepaint();
-                } else {
-                  window.alert("No bpm detected in filename");
-                }
-              });
-              numWrap.appendChild(wandBtn);
-            }
-            rowN.appendChild(numWrap);
-            controlsWrap.appendChild(rowN);
-          }
-        });
-        if (vizWrap) sec.appendChild(vizWrap);
-        sec.appendChild(controlsWrap);
-        if (EDIT_EFFECT_VIZ_TYPES[typeKey]) installEditEffectViz(sec, typeKey);
-        if (typeKey === "filter") syncEditFilterControlRows(sec);
-        if (typeKey === "delay") syncEditDelayControlRows(sec);
+          });
+          knobsWrap.appendChild(knobsCol);
+          knobsWrap.appendChild(selectsCol);
+        } else {
+          knobsWrap.className = "generatr-sweep-effect-knobs edit-effect-knobs";
+          schemas.forEach(function (schema) {
+            appendSchemaControl(knobsWrap, schema);
+          });
+        }
+        cardBody.appendChild(knobsWrap);
+        card.appendChild(cardHead);
+        card.appendChild(cardBody);
+        sec.appendChild(card);
 
         var applyBtn = document.createElement("button");
         applyBtn.type = "button";
@@ -4564,7 +4433,6 @@
         applyRow.appendChild(shortcutNameInput);
         applyRow.appendChild(saveShortcutBtn);
         applyRow.appendChild(toggleDelBtn);
-        sec.appendChild(applyRow);
 
         if (presetsWrap.childNodes.length) {
           var presetsDivider = document.createElement("div");
@@ -4573,6 +4441,12 @@
           sec.appendChild(presetsDivider);
           sec.appendChild(presetsWrap);
         }
+
+        sec.appendChild(applyRow);
+
+        if (typeKey === "filter") syncEditFilterControlRows(sec);
+        if (typeKey === "delay") syncEditDelayControlRows(sec);
+        initEditPanelKnobs(sec);
 
         detailEl.appendChild(sec);
       });
@@ -5619,6 +5493,7 @@
         var knobs = root.querySelectorAll(".daw-knob");
         knobs.forEach(function (knob) {
           if (knob.dataset.dawKnobBound === "1") return;
+          if (knob.dataset.editKnob === "slider") return;
           knob.dataset.dawKnobBound = "1";
 
           var input = knob.querySelector(".daw-knob-input");
@@ -5717,6 +5592,27 @@
             step: step
           };
 
+          bindDawKnobReadoutInlineEdit(readout, {
+            unit: unit,
+            isEditable: function () { return !randomMode; },
+            getMin: function () { return min; },
+            getMax: function () { return max; },
+            getCurrentValue: function () {
+              return parseFloat(input.value || String(min));
+            },
+            editText: function (v) {
+              return Number(v).toFixed(decimals);
+            },
+            parseInput: function (text) {
+              return parseDawKnobReadoutText(text, unit);
+            },
+            formatReadout: formatReadout,
+            snapValue: snapValue,
+            setValue: function (v) {
+              setValue(v, { force: true });
+            }
+          });
+
           if (randomMode) {
             knob.classList.add("daw-knob-random");
             readout.textContent = "random";
@@ -5798,6 +5694,8 @@
 
         linkDawKnobPairs(root);
       }
+
+      window.auditionrInitDawKnobs = initDawKnobs;
 
       function linkDawKnobPairs(root) {
         if (!root) return;
