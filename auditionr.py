@@ -789,7 +789,7 @@ def _run_generate_drone(payload: dict) -> list[str]:
 
     results: list[str] = []
     for _ in range(iterations):
-        midi_file, selected_chart = generate_drone_midi(
+        midi_file, selected_chart, render_duration_sec = generate_drone_midi(
             pattern=pattern,
             shift_octave_down=None,
             shift_root_note=None,
@@ -807,6 +807,7 @@ def _run_generate_drone(payload: dict) -> list[str]:
             presets_path=presets_path,
             instrument=instrument,
             effect=effect,
+            render_duration_sec=render_duration_sec,
         )
         results.append(midi_file)
         if split_actions is not None:

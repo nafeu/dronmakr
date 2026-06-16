@@ -23,7 +23,7 @@ from audio_host import (
     samples_channels_to_daw_audio,
 )
 
-from generate_midi import get_beat_patterns
+from generate_midi import get_beat_patterns, midi_musical_end_seconds
 from processing_actions import apply_post_processing_actions
 from utils import (
     CYAN,
@@ -90,6 +90,7 @@ def generate_drone_sample(
     presets_path=None,
     instrument=None,
     effect=None,
+    render_duration_sec: float | None = None,
 ):
     presets_path = presets_path or resolve_presets_index_path()
     if not presets_path:
@@ -106,6 +107,7 @@ def generate_drone_sample(
         os.path.abspath(presets_path),
         instrument,
         effect,
+        render_duration_sec,
     )
     if delegated is not None:
         return delegated
@@ -217,7 +219,11 @@ def generate_drone_sample(
     else:
         print(with_prompt("Skipping effect plug-ins — none listed in presets.json."))
 
-    _, audio_length_s = midi_to_messages(input_path)
+    audio_length_s = (
+        float(render_duration_sec)
+        if render_duration_sec is not None
+        else midi_musical_end_seconds(input_path)
+    )
     print(with_prompt(f"sending midi and rendering audio ({audio_length_s:.2f}s)"))
 
     post_fx_signal = render_midi_chain_from_paths(

@@ -112,6 +112,7 @@ def delegate_generate_drone_sample_if_needed(
     presets_path: str,
     instrument: str | None,
     effect: str | None,
+    render_duration_sec: float | None = None,
 ) -> str | None:
     if not _should_delegate_to_worker():
         return None
@@ -123,6 +124,7 @@ def delegate_generate_drone_sample_if_needed(
             "presets_path": presets_path,
             "instrument": instrument,
             "effect": effect,
+            "render_duration_sec": render_duration_sec,
         },
     )
     return str(data["output_path"])
@@ -164,6 +166,7 @@ def run_stdio_worker() -> None:
                 presets_path=params["presets_path"],
                 instrument=params.get("instrument"),
                 effect=params.get("effect"),
+                render_duration_sec=params.get("render_duration_sec"),
             )
             result = {"ok": True, "output_path": out}
         elif task == "apply_effect":

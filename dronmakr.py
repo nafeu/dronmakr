@@ -674,7 +674,7 @@ def generate_drone(
             print(f"{RED}│{RESET}   iteration {iteration + 1} of {iterations}")
             print(f"{RED}│{RESET}")
 
-        midi_file, selected_chart = generate_drone_midi(
+        midi_file, selected_chart, render_duration_sec = generate_drone_midi(
             pattern=pattern,
             shift_octave_down=shift_octave_down,
             shift_root_note=shift_root_note,
@@ -691,6 +691,7 @@ def generate_drone(
             output_path=f"{output_path}.wav",
             instrument=instrument,
             effect=effect,
+            render_duration_sec=render_duration_sec,
         )
         results.append(midi_file)
         if split_actions is not None:

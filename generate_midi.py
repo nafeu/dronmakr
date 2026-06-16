@@ -50,8 +50,8 @@ SUPPORTED_PATTERNS_INFO = [
     ),
     ("lead", "semi-random movement within the scale/chord"),
     ("lead_flat", "constant eighth notes, structured movement"),
-    ("lead_straight_eighth", "plays eighth notes from low to high once"),
-    ("lead_straight_sixteenth", "plays sixteenth notes from low to high once"),
+    ("lead_straight_eighth", "plays eighth notes from low to high, looping for the full phrase"),
+    ("lead_straight_sixteenth", "plays sixteenth notes from low to high, looping for the full phrase"),
     (
         "quantized_straight_eighth",
         "play eighth-notes one at a time, looping lowest to highest",
@@ -149,6 +149,26 @@ DRONE_MIDI_LENGTH_BARS_ALLOWED = frozenset({4, 8, 16, 32, 64})
 DRONE_MIDI_PADDING_BARS_ALLOWED = frozenset({0, 4, 8, 16, 32, 64})
 DEFAULT_DRONE_MIDI_LENGTH_BARS = 16
 DEFAULT_DRONE_MIDI_PADDING_BARS = 0
+DRONE_MIDI_TEMPO_BPM = 120
+DRONE_MIDI_BEATS_PER_BAR = 4
+
+
+def drone_midi_render_duration_sec(
+    num_bars: int,
+    padded_silence_bars: int = 0,
+    *,
+    tempo_bpm: float = DRONE_MIDI_TEMPO_BPM,
+) -> float:
+    """Wall-clock seconds for ``num_bars`` of musical content plus optional trailing silence."""
+    bar_length = DRONE_MIDI_BEATS_PER_BAR * (60.0 / float(tempo_bpm))
+    return (int(num_bars) + int(padded_silence_bars)) * bar_length
+
+
+def midi_musical_end_seconds(midi_path: str) -> float:
+    """Latest note-off/end time in a MIDI file (ignores trailing padding meta)."""
+    import pretty_midi  # noqa: PLC0415
+
+    return float(pretty_midi.PrettyMIDI(midi_path).get_end_time())
 
 
 def coerce_drone_midi_length_bars(value, *, default: int = DEFAULT_DRONE_MIDI_LENGTH_BARS) -> int:
@@ -457,25 +477,25 @@ def generate_drone_midi(
     if shift_octave_down and not notes:
         print(with_prompt("shifting all notes one octave down"))
 
-    # Create a PrettyMIDI object
-    midi = pretty_midi.PrettyMIDI()
-    instrument = pretty_midi.Instrument(program=0, name=track_name)
-
     # Define tempo and timing
     bpm = 120
     beats_per_bar = 4
     seconds_per_beat = 60.0 / bpm
     bar_length = beats_per_bar * seconds_per_beat
     total_duration = num_bars * bar_length  # Musical content length only
-    padding_duration = padded_silence_bars * bar_length
-    file_end_duration = total_duration + padding_duration
+    file_end_duration = drone_midi_render_duration_sec(num_bars, padded_silence_bars, tempo_bpm=bpm)
     if padded_silence_bars:
+        padding_duration = padded_silence_bars * bar_length
         print(
             with_prompt(
                 f"padded silence at end {YELLOW}{padded_silence_bars}{RESET} bars "
                 f"({padding_duration:.2f}s)"
             )
         )
+
+    # Create a PrettyMIDI object (explicit tempo keeps DawDreamer/file timing aligned).
+    midi = pretty_midi.PrettyMIDI(initial_tempo=bpm)
+    instrument = pretty_midi.Instrument(program=0, name=track_name)
 
     # Process chord notes
     midi_notes = []
@@ -628,21 +648,17 @@ def generate_drone_midi(
                 time += note_duration
 
     elif pattern == "lead":
-        # **Lead Melody:** Semi-random movement within the scale
+        # **Lead Melody:** Semi-random movement within the scale for the full phrase.
         note_durations = [
             seconds_per_beat * d for d in [0.25, 0.5, 1, 2]
         ]  # 16th, 8th, quarter, half
-        total_notes = random.randint(
-            len(midi_notes), 16
-        )  # Random note count (scale size to 16)
 
-        # 🎶 Start on a random note
         current_note = random.choice(midi_notes)
 
-        for _ in range(total_notes):
+        while time < total_duration:
             velocity = random.randint(*velocity_range)
             start_time = max(0.0, time)
-            duration = random.choice(note_durations)  # Random note length
+            duration = random.choice(note_durations)
             end_time = min(start_time + duration, total_duration)
 
             instrument.notes.append(
@@ -654,31 +670,23 @@ def generate_drone_midi(
                 )
             )
 
-            time += duration  # Move forward
+            time += duration
 
-            # 🎼 Melody Movement: Sometimes move up/down stepwise before jumping randomly
-            if random.random() < 0.6:  # 60% chance to move stepwise
+            if random.random() < 0.6:
                 idx = midi_notes.index(current_note)
-                if (
-                    random.random() < 0.5 and idx < len(midi_notes) - 1
-                ):  # Move up if possible
+                if random.random() < 0.5 and idx < len(midi_notes) - 1:
                     current_note = midi_notes[idx + 1]
-                elif idx > 0:  # Move down if possible
+                elif idx > 0:
                     current_note = midi_notes[idx - 1]
             else:
-                current_note = random.choice(midi_notes)  # 40% chance for a random jump
+                current_note = random.choice(midi_notes)
 
     elif pattern == "lead_flat":
-        # **Lead Melody (Flat):** Constant eighth notes, structured movement
-        note_duration = seconds_per_beat * 0.5  # Fixed eighth-note duration
-        total_notes = random.randint(
-            len(midi_notes), 16
-        )  # Random note count (scale size to 16)
-
-        # 🎶 Start on a random note
+        # **Lead Melody (Flat):** Constant eighth notes for the full phrase.
+        note_duration = seconds_per_beat * 0.5
         current_note = random.choice(midi_notes)
 
-        for _ in range(total_notes):
+        while time < total_duration:
             velocity = random.randint(*velocity_range)
             start_time = max(0.0, time)
             end_time = min(start_time + note_duration, total_duration)
@@ -692,55 +700,54 @@ def generate_drone_midi(
                 )
             )
 
-            time += note_duration  # Move forward
+            time += note_duration
 
-            # 🎼 Melody Movement: Mostly stepwise, sometimes jumps
-            if random.random() < 0.7:  # 70% chance to move stepwise
+            if random.random() < 0.7:
                 idx = midi_notes.index(current_note)
-                if (
-                    random.random() < 0.5 and idx < len(midi_notes) - 1
-                ):  # Move up if possible
+                if random.random() < 0.5 and idx < len(midi_notes) - 1:
                     current_note = midi_notes[idx + 1]
-                elif idx > 0:  # Move down if possible
+                elif idx > 0:
                     current_note = midi_notes[idx - 1]
             else:
-                current_note = random.choice(midi_notes)  # 30% chance for a jump
+                current_note = random.choice(midi_notes)
 
     elif pattern == "lead_straight_sixteenth":
-        # **Lead (Straight, Sixteenth Notes):** Plays notes from low to high once
-        note_duration = seconds_per_beat * 0.25  # Sixteenth-note duration
-        for note in midi_notes:
-            if time >= total_duration:
-                break
-            velocity = random.randint(*velocity_range)
-            start_time = max(0.0, time)
-            instrument.notes.append(
-                pretty_midi.Note(
-                    velocity=velocity,
-                    pitch=note,
-                    start=start_time,
-                    end=min(start_time + note_duration, total_duration),
+        # **Lead (Straight, Sixteenth Notes):** Loop low→high for the full phrase.
+        note_duration = seconds_per_beat * 0.25
+        while time < total_duration:
+            for note in midi_notes:
+                if time >= total_duration:
+                    break
+                velocity = random.randint(*velocity_range)
+                start_time = max(0.0, time)
+                instrument.notes.append(
+                    pretty_midi.Note(
+                        velocity=velocity,
+                        pitch=note,
+                        start=start_time,
+                        end=min(start_time + note_duration, total_duration),
+                    )
                 )
-            )
-            time += note_duration
+                time += note_duration
 
     elif pattern == "lead_straight_eighth":
-        # **Lead (Straight, Eighth Notes):** Plays notes from low to high once
-        note_duration = seconds_per_beat * 0.5  # Eighth-note duration
-        for note in midi_notes:
-            if time >= total_duration:
-                break
-            velocity = random.randint(*velocity_range)
-            start_time = max(0.0, time)
-            instrument.notes.append(
-                pretty_midi.Note(
-                    velocity=velocity,
-                    pitch=note,
-                    start=start_time,
-                    end=min(start_time + note_duration, total_duration),
+        # **Lead (Straight, Eighth Notes):** Loop low→high for the full phrase.
+        note_duration = seconds_per_beat * 0.5
+        while time < total_duration:
+            for note in midi_notes:
+                if time >= total_duration:
+                    break
+                velocity = random.randint(*velocity_range)
+                start_time = max(0.0, time)
+                instrument.notes.append(
+                    pretty_midi.Note(
+                        velocity=velocity,
+                        pitch=note,
+                        start=start_time,
+                        end=min(start_time + note_duration, total_duration),
+                    )
                 )
-            )
-            time += note_duration
+                time += note_duration
 
     elif pattern == "reverse_arpeggio_quarter":
         notes_desc = list(reversed(sorted(midi_notes)))
@@ -1351,16 +1358,6 @@ def generate_drone_midi(
     # Add instrument **without a name** to MIDI object
     midi.instruments.append(instrument)
 
-    # Pad to full musical length plus optional trailing silence (velocity-0 holder note).
-    if midi.get_end_time() < file_end_duration:
-        empty_note = pretty_midi.Note(
-            velocity=0,
-            pitch=60,
-            start=midi.get_end_time(),
-            end=file_end_duration,
-        )
-        instrument.notes.append(empty_note)
-
     # Write to a MIDI file
     os.makedirs(MIDI_DIR, exist_ok=True)
 
@@ -1372,7 +1369,7 @@ def generate_drone_midi(
 
     print(f"{YELLOW}│{RESET}")
 
-    return (output_path, f"{root} {chord_name}")
+    return (output_path, f"{root} {chord_name}", file_end_duration)
 
 
 def main():
