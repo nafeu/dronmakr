@@ -365,41 +365,51 @@ class DawDreamerGraphSession:
     instrument_path: str = field(default="", init=False)
     fx_processors: list[Any] = field(default_factory=list, init=False)
     fx_paths: list[str] = field(default_factory=list, init=False)
+    _engine_lock: threading.RLock = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         self.engine = create_engine(self.sample_rate, self.buffer_size)
         self.fx_processors = []
         self.fx_paths = []
+        self._engine_lock = threading.RLock()
+
+    @property
+    def engine_lock(self) -> threading.RLock:
+        return self._engine_lock
 
     def clear(self) -> None:
-        self.instrument = None
-        self.instrument_path = ""
-        self.fx_processors = []
-        self.fx_paths = []
-        self.engine = create_engine(self.sample_rate, self.buffer_size)
+        with self._engine_lock:
+            self.instrument = None
+            self.instrument_path = ""
+            self.fx_processors = []
+            self.fx_paths = []
+            self.engine = create_engine(self.sample_rate, self.buffer_size)
 
     def set_instrument(self, plugin_path: str, state_path: str | None = None) -> Any:
-        self.instrument_path = plugin_path
-        self.instrument = load_plugin(self.engine, plugin_path, name="instrument")
-        if state_path:
-            apply_plugin_state(self.instrument, state_path)
-        return self.instrument
+        with self._engine_lock:
+            self.instrument_path = plugin_path
+            self.instrument = load_plugin(self.engine, plugin_path, name="instrument")
+            if state_path:
+                apply_plugin_state(self.instrument, state_path)
+            return self.instrument
 
     def set_fx_chain(
         self,
         specs: Sequence[tuple[str, str | None]],
     ) -> list[Any]:
-        self.fx_processors = []
-        self.fx_paths = []
-        for idx, (path, state_path) in enumerate(specs):
-            fx = load_plugin(self.engine, path, name=f"fx_{idx}")
-            if state_path:
-                apply_plugin_state(fx, state_path)
-            self.fx_processors.append(fx)
-            self.fx_paths.append(path)
-        return self.fx_processors
+        with self._engine_lock:
+            self.fx_processors = []
+            self.fx_paths = []
+            for idx, (path, state_path) in enumerate(specs):
+                fx = load_plugin(self.engine, path, name=f"fx_{idx}")
+                if state_path:
+                    apply_plugin_state(fx, state_path)
+                self.fx_processors.append(fx)
+                self.fx_paths.append(path)
+            return self.fx_processors
 
     def rebuild_graph(self, playback: Any | None = None) -> None:
-        graph = _build_plugin_graph(self.instrument, self.fx_processors, playback=playback)
-        if graph:
-            self.engine.load_graph(graph)
+        with self._engine_lock:
+            graph = _build_plugin_graph(self.instrument, self.fx_processors, playback=playback)
+            if graph:
+                self.engine.load_graph(graph)

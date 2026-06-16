@@ -530,6 +530,10 @@ class PatchcraftrApp(tk.Tk):
 
     def _refresh_graph_session(self) -> None:
         """Rebuild shared RenderEngine graph from instrument + FX slot metadata."""
+        try:
+            self.update_idletasks()
+        except tk.TclError:
+            pass
         inst_blob = (
             serialize_plugin_preset_bytes(self._inst_plugin)
             if self._inst_plugin is not None
@@ -567,6 +571,9 @@ class PatchcraftrApp(tk.Tk):
                         apply_vstpreset_bytes_to_plugin(proc, blob)
                     st.plugin = proc
                     fx_i += 1
+
+        if self._inst_plugin_path or specs:
+            self._graph.rebuild_graph()
 
     def _validate_loaded_plugin_as_instrument(self, plug: Any) -> str | None:
         """Return a user-facing error string if ``plug`` cannot be used as an instrument slot."""
@@ -665,6 +672,13 @@ class PatchcraftrApp(tk.Tk):
 
     def _assign_instrument_from_path(self, path: str, pname: str = "") -> bool:
         """Load ``path`` on the shared graph session; return False if validation fails."""
+        if self._editor_active:
+            messagebox.showwarning(
+                "patchcraftr",
+                "Close the open plug-in editor before changing the instrument.",
+                parent=self,
+            )
+            return False
         prev_path = self._inst_plugin_path
         prev_name = self._inst_plugin_name
         prev_editor = self._inst_editor_was_shown_before
@@ -717,6 +731,13 @@ class PatchcraftrApp(tk.Tk):
         preset_path: str | None = None,
     ) -> bool:
         """Load an FX slot on the shared graph session; return False if validation fails."""
+        if self._editor_active:
+            messagebox.showwarning(
+                "patchcraftr",
+                "Close the open plug-in editor before changing FX slots.",
+                parent=self,
+            )
+            return False
         prev = self._fx_slots[idx]
         short = format_plugin_name(path)
         disp = effect_display_name or (f"{short} · {pname}" if pname else short)
@@ -1149,31 +1170,34 @@ class PatchcraftrApp(tk.Tk):
             )
             return
 
-        self._refresh_graph_session()
-        if instrument_editor:
-            plugin = self._inst_plugin
-        elif fx_slot_index is not None:
-            plugin = self._fx_processor_for_slot_idx(fx_slot_index)
-            st = self._fx_slots[fx_slot_index]
-            if st is not None and plugin is not None:
-                st.plugin = plugin
-        else:
-            plugin = editor_plugin
-
-        if plugin is None:
-            self._enqueue_msg(
-                "error",
-                "Plug-in instance is missing after refresh. Choose the plug-in again.",
-            )
-            return
-
         self._editor_active = True
-        _LOG.info(
-            "Opening DawDreamer editor instrument=%s fx_slot=%s",
-            instrument_editor,
-            fx_slot_index,
-        )
         try:
+            self._refresh_graph_session()
+            if instrument_editor:
+                plugin = self._inst_plugin
+            elif fx_slot_index is not None:
+                plugin = self._fx_processor_for_slot_idx(fx_slot_index)
+                st = self._fx_slots[fx_slot_index]
+                if st is not None and plugin is not None:
+                    st.plugin = plugin
+            elif self._inst_plugin is not None:
+                plugin = self._inst_plugin
+            else:
+                plugin = editor_plugin
+
+            if plugin is None:
+                self._enqueue_msg(
+                    "error",
+                    "Plug-in instance is missing after refresh. Choose the plug-in again.",
+                )
+                self._editor_active = False
+                return
+
+            _LOG.info(
+                "Opening DawDreamer editor instrument=%s fx_slot=%s",
+                instrument_editor,
+                fx_slot_index,
+            )
             open_plugin_editor(plugin)
         except BaseException as e:
             self._enqueue_msg("error", f"Editor error:\n{e}")

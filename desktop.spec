@@ -1,6 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-import importlib.util
 import shutil
 import sys
 from pathlib import Path
@@ -17,10 +16,6 @@ from version import __version__ as _DESKTOP_APP_VERSION  # noqa: E402
 _brand_ico = _spec_root / "static" / "branding" / "favicon.ico"
 _mac_icns = _spec_root / "static" / "branding" / "macos" / "dronmakr.icns"
 # Linux wheels usually omit bundled portaudio binaries; hooks fall back to the system library.
-_has_sounddevice_data = importlib.util.find_spec("_sounddevice_data") is not None
-
-_sounddevice_data_hiddenimports = ["_sounddevice_data"] if _has_sounddevice_data else []
-
 
 def _soundfile_packaged_binaries():
     """Libs shipped in the PyPI soundfile wheel — same pairing as contrib hook-soundfile.
@@ -97,14 +92,13 @@ hiddenimports_base = (
     + _hidden_socketio_threading
 )
 tk_datas, tk_bins, tk_hidden = collect_all("tkinter")
-_sd_collect_datas, _sd_collect_bins, _sd_collect_hidden = collect_all("sounddevice")
 _dd_collect_datas, _dd_collect_bins, _dd_collect_hidden = collect_all("dawdreamer")
 _dawdreamer_submodules = collect_submodules("dawdreamer")
 
 a = Analysis(
     ["desktop_app.py"],
     pathex=[],
-    binaries=tk_bins + _soundfile_bins + _sd_collect_bins + _dd_collect_bins,
+    binaries=tk_bins + _soundfile_bins + _dd_collect_bins,
     datas=[
         ("templates", "templates"),
         ("static", "static"),
@@ -112,16 +106,13 @@ a = Analysis(
         ("patchcraftr_gui.py", "."),
     ]
     + tk_datas
-    + _sd_collect_datas
     + _dd_collect_datas,
     hiddenimports=hiddenimports_base
     + [
         "_cffi_backend",
         "cffi",
-        "_sounddevice",
         "_soundfile",
         "_soundfile_data",
-        "sounddevice",
         "soundfile",
         "dawdreamer",
         "audio_host",
@@ -140,9 +131,7 @@ a = Analysis(
         "tkinter",
         "_tkinter",
     ]
-    + _sounddevice_data_hiddenimports
     + tk_hidden
-    + list(_sd_collect_hidden)
     + list(_dd_collect_hidden)
     + _dawdreamer_submodules,
     hookspath=["hooks"],
