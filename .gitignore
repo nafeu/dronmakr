@@ -66,14 +66,9 @@ htmlcov/
 # Local development
 .env
 
-# Dronmakr
+# Dronmakr user data (lives under configured dronmakr-files/, not in repo)
+archive/
 presets/
-temp_*
-*.asd
-export*.wav
-export*.mp3
-*.mid
-midi/
 exports/
 archive/
 saved/
@@ -88,6 +83,7 @@ vst-preset-files/
 output.wav
 config/
 dronmakr-files/
+midi/
 
 # FFmpeg vendored binaries (populate via scripts/vendor_ffmpeg.py before desktop build)
 resources/ffmpeg/ffmpeg

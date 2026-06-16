@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 echo "dronmakr-backend sidecar placeholder — run scripts/build_sidecar.sh before release builds." >&2
-exec python3 "$(dirname "$0")/../../../backend_server.py" "$@"
+ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+exec python3 "$ROOT/backend/backend_server.py" "$@"

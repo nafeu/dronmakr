@@ -7,8 +7,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-SRC="${ROOT_DIR}/static/branding/android-chrome-512x512.png"
-OUT_DIR="${ROOT_DIR}/static/branding/macos"
+SRC="${ROOT_DIR}/assets/static/branding/android-chrome-512x512.png"
+OUT_DIR="${ROOT_DIR}/assets/static/branding/macos"
 OUT_ICNS="${OUT_DIR}/dronmakr.icns"
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
@@ -52,4 +52,4 @@ rm -f "$OUT_ICNS"
 iconutil -c icns "$ICONSET" -o "$OUT_ICNS"
 rm -rf "$ICONSET"
 
-echo "Wrote $OUT_ICNS — commit static/branding/macos/dronmakr.icns before publishing a GitHub Release."
+echo "Wrote $OUT_ICNS — commit assets/static/branding/macos/dronmakr.icns before publishing a GitHub Release."

@@ -14,7 +14,7 @@ python -m pip install --upgrade pip >/dev/null
 python -m pip install -r requirements.txt pyinstaller >/dev/null
 python scripts/build_frontend.py
 python scripts/vendor_ffmpeg.py
-pyinstaller --noconfirm --clean backend.spec
+pyinstaller --noconfirm --clean backend/backend.spec
 
 if [[ "$(uname -s)" == "Darwin" ]]; then
   python scripts/verify_frozen_soundfile_macos.py "dist/dronmakr-backend/dronmakr-backend"

@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from pydub import AudioSegment
 
-from generate_sample import generate_beat_sample
+from dronmakr.generate.generate_sample import generate_beat_sample
 
 
 class GenerateBeatSampleTests(unittest.TestCase):

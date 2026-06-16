@@ -10,8 +10,8 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 ROOT = Path(__file__).resolve().parent.parent
-TEMPLATES = ROOT / "templates"
-STATIC = ROOT / "static"
+TEMPLATES = ROOT / "assets" / "templates"
+STATIC = ROOT / "assets" / "static"
 DIST = ROOT / "frontend" / "dist"
 
 URL_FOR_MAP = {
@@ -52,7 +52,10 @@ def _url_for(endpoint: str, **_kwargs: object) -> str:
 
 def _read_static_text(url_path: str) -> str:
     rel = url_path.lstrip("/")
-    path = ROOT / rel
+    if rel.startswith("static/"):
+        path = STATIC / rel[len("static/") :]
+    else:
+        path = ROOT / rel
     if not path.is_file():
         raise FileNotFoundError(f"Missing static asset referenced in template: {path}")
     text = path.read_text(encoding="utf-8")
@@ -92,8 +95,8 @@ def _build_page(env: Environment, version: str, template_name: str, out_name: st
 
 
 def main() -> int:
-    sys.path.insert(0, str(ROOT))
-    from version import __version__
+    sys.path.insert(0, str(ROOT / "backend"))
+    from dronmakr.version import __version__
 
     DIST.mkdir(parents=True, exist_ok=True)
     env = Environment(

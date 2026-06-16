@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="static/branding/logo.png" alt="dronmakr" width="100" />
+  <img src="assets/static/branding/logo.png" alt="dronmakr" width="100" />
 </p>
 
 <p align="center"><em>pronounced “drone maker”</em></p>
@@ -11,13 +11,13 @@
   <a href="https://www.patreon.com/phrakture"><img src="https://img.shields.io/badge/Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white" alt="Patreon" /></a>
 </p>
 
-![Auditionr Preview](preview-auditionr.png)
+![Auditionr Preview](docs/preview-auditionr.png)
 
-![Beatbuildr Preview](preview-beatbuildr.png)
+![Beatbuildr Preview](docs/preview-beatbuildr.png)
 
-![Folysplitr Preview](preview-folysplitr.png)
+![Folysplitr Preview](docs/preview-folysplitr.png)
 
-![Collections Preview](preview-collections.png)
+![Collections Preview](docs/preview-collections.png)
 
 ## Made with dronmakr
 
@@ -74,7 +74,7 @@ npm run dev
 **Run the Python backend only** (for backend/UI work without Tauri):
 
 ```sh
-python backend_server.py --port 3766
+python backend/backend_server.py --port 3766
 ```
 
 Then open `http://127.0.0.1:3766` in a browser.
@@ -87,6 +87,23 @@ Optional: copy `.env-sample` to `.env` to migrate legacy env vars into `config/s
 bash scripts/build_app.sh          # macOS / Linux
 # Windows: see scripts/build_app.ps1
 ```
+
+---
+
+## Repository layout
+
+| Path | Purpose |
+| --- | --- |
+| [`backend/`](backend/) | Python package (`dronmakr/`) and sidecar entry (`backend_server.py`) |
+| [`assets/`](assets/) | Web templates and static files (built into `frontend/dist/`) |
+| [`frontend/`](frontend/) | Pre-built HTML output from `scripts/build_frontend.py` |
+| [`resources/`](resources/) | Bundled sample JSON, FFmpeg, and other shipped assets |
+| [`src-tauri/`](src-tauri/) | Tauri desktop shell |
+| [`scripts/`](scripts/) | Build and maintenance scripts |
+| [`tests/`](tests/) | Python tests |
+| [`docs/`](docs/) | README screenshots and docs |
+
+User-generated audio, presets, and config live under your **`dronmakr-files`** directory (configured on first launch), not in this repository.
 
 ---
 

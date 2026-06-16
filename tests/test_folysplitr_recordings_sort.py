@@ -2,7 +2,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from folysplitr import _recordings_queue_sort_key
+from dronmakr.apps.folysplitr import _recordings_queue_sort_key
 
 
 class FolysplitrRecordingsSortTests(unittest.TestCase):

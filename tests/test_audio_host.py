@@ -1,6 +1,6 @@
 import numpy as np
 
-from audio_host import daw_audio_to_samples_channels, samples_channels_to_daw_audio
+from dronmakr.audio.audio_host import daw_audio_to_samples_channels, samples_channels_to_daw_audio
 
 
 def test_daw_audio_layout_roundtrip():

@@ -4,8 +4,8 @@ from pathlib import Path
 import numpy as np
 import soundfile as sf
 
-from process_sample import pad_sample
-from processing_actions import action_from_bracket_segment, parse_single_processing_spec
+from dronmakr.audio.process_sample import pad_sample
+from dronmakr.processing.processing_actions import action_from_bracket_segment, parse_single_processing_spec
 
 
 def test_pad_sample_after():

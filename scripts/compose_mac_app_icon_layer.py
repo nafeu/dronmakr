@@ -64,13 +64,13 @@ def main() -> None:
     parser.add_argument(
         "--source",
         type=Path,
-        default=_REPO_ROOT / "static/branding/android-chrome-512x512.png",
+        default=_REPO_ROOT / "assets/static/branding/android-chrome-512x512.png",
         help="PNG with transparency (typically the 512² PWA icon).",
     )
     parser.add_argument(
         "--css",
         type=Path,
-        default=_REPO_ROOT / "templates/_app_css_root.html",
+        default=_REPO_ROOT / "assets/templates/_app_css_root.html",
         help="Reads --theme-a from this file unless --theme-a is passed.",
     )
     parser.add_argument(

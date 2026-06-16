@@ -10,7 +10,7 @@ if (-not (Test-Path "venv")) {
 & .\venv\Scripts\python -m pip install -r requirements.txt pyinstaller | Out-Null
 & .\venv\Scripts\python scripts\build_frontend.py
 & .\venv\Scripts\python scripts\vendor_ffmpeg.py
-& .\venv\Scripts\pyinstaller --noconfirm --clean backend.spec
+& .\venv\Scripts\pyinstaller --noconfirm --clean backend/backend.spec
 
 $target = (& rustc --print host-tuple).Trim()
 $binDir = Join-Path $Root "src-tauri\binaries"

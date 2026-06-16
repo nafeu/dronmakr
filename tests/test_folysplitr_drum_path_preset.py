@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from settings import (
+from dronmakr.core.settings import (
     DRUM_PATH_PRESET_NAME_KEY,
     FOLYSPLITR_DRUM_PATH_PRESET_NAME,
     build_folysplitr_drum_path_preset,

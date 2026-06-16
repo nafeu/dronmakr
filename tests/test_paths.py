@@ -1,4 +1,4 @@
-from paths import normalize_path_basename
+from dronmakr.core.paths import normalize_path_basename
 
 
 def test_normalize_path_basename_windows_absolute_path():

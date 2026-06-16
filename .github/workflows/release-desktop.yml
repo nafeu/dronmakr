@@ -39,7 +39,7 @@ jobs:
           python scripts/vendor_ffmpeg.py
 
       - name: Require committed macOS app icon
-        run: test -f static/branding/macos/dronmakr.icns
+        run: test -f assets/static/branding/macos/dronmakr.icns
 
       - name: Build frontend, sidecar, and Tauri app
         run: |
@@ -97,7 +97,7 @@ jobs:
         shell: pwsh
         run: |
           .\venv\Scripts\python scripts/build_frontend.py
-          .\venv\Scripts\pyinstaller --noconfirm --clean backend.spec
+          .\venv\Scripts\pyinstaller --noconfirm --clean backend/backend.spec
           $target = (rustc --print host-tuple)
           New-Item -ItemType Directory -Path src-tauri/binaries -Force | Out-Null
           Copy-Item "dist/dronmakr-backend/dronmakr-backend.exe" "src-tauri/binaries/dronmakr-backend-$target.exe" -Force
