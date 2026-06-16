@@ -1,6 +1,6 @@
 # macOS Finder / Dock icon (committed)
 
-[`dronmakr.icns`](dronmakr.icns) is **tracked in git** and used by **`desktop.spec`** for the **`dronmakr.app`** bundle.
+[`dronmakr.icns`](dronmakr.icns) is **tracked in git** and used by the **Tauri** desktop bundle (`src-tauri/icons/icon.icns`).
 
 - **GitHub Actions** release builds **do not** generate this file (no Pillow / icon pipeline on the runner).
 - After changing artwork or theme colours, regenerate locally on a Mac and **commit** the updated `.icns`:

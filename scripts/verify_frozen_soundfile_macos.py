@@ -2,7 +2,7 @@
 """
 Verify a frozen dronmakr.app bundles libsndfile where PySoundFile expects it (macOS).
 
-Run after PyInstaller, before zipping / DMG. Used by build_desktop.sh and release-desktop.yml.
+Run after PyInstaller sidecar build, before Tauri packaging. Used by build_sidecar.sh and release-desktop.yml.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ def main() -> int:
     parser.add_argument(
         "app_bundle",
         type=Path,
-        help="Path to dronmakr.app",
+        help="Path to dronmakr.app or the dronmakr-backend sidecar executable",
     )
     args = parser.parse_args()
 
@@ -31,14 +31,23 @@ def main() -> int:
         print("verify_frozen_soundfile_macos: skip (not macOS)")
         return 0
 
-    app = args.app_bundle.expanduser().resolve()
-    fw = app / "Contents" / "Frameworks" / "_soundfile_data"
-    res = app / "Contents" / "Resources" / "_soundfile_data"
-    exe = app / "Contents" / "MacOS" / "dronmakr"
+    target = args.app_bundle.expanduser().resolve()
+    if target.suffix == ".app":
+        bundle = target
+        fw = bundle / "Contents" / "Frameworks" / "_soundfile_data"
+        res = bundle / "Contents" / "Resources" / "_soundfile_data"
+        exe = bundle / "Contents" / "MacOS" / "dronmakr"
+        work_dir = bundle.parent
+    else:
+        exe = target
+        sidecar_dir = exe.parent
+        fw = sidecar_dir / "_internal" / "_soundfile_data"
+        res = sidecar_dir / "_soundfile_data"
+        work_dir = sidecar_dir
 
     failed = False
-    if not app.is_dir():
-        _err(f"not a bundle: {app}")
+    if target.suffix == ".app" and not target.is_dir():
+        _err(f"not a bundle: {target}")
         return 1
     if not exe.is_file():
         _err(f"missing executable: {exe}")
@@ -66,7 +75,7 @@ def main() -> int:
     # Always require generic name: frozen PySoundFile may use this when platform.machine() is ''.
     if not generic.is_file() and not (res / "libsndfile.dylib").is_file():
         _err(
-            "missing libsndfile.dylib (desktop.spec must ship a copy for empty platform.machine()); "
+            "missing libsndfile.dylib (backend.spec must ship a copy for empty platform.machine()); "
             f"checked {fw} and {res}"
         )
         failed = True
@@ -79,7 +88,7 @@ def main() -> int:
     try:
         proc = subprocess.run(
             [str(exe), "--smoke-imports"],
-            cwd=str(app.parent),
+            cwd=str(work_dir),
             capture_output=True,
             text=True,
             timeout=180,

@@ -4,7 +4,7 @@
 
 <p align="center"><em>pronounced “drone maker”</em></p>
 
-<p align="center">Sample generation, editing, and packaging — with a local browser UI for auditioning, beat building, collections, and more.</p>
+<p align="center">Sample generation, editing, and packaging — in a local desktop app for auditioning, beat building, collections, and more.</p>
 
 <p align="center">
   <a href="https://discord.gg/BysAyRje57"><img src="https://img.shields.io/discord/1358944581873307871?label=discord&logo=discord&style=for-the-badge" alt="Discord" /></a>
@@ -41,19 +41,18 @@ Prebuilt apps are published on **[GitHub Releases](https://github.com/nafeu/dron
 **Install & run**
 
 1. Install or extract the archive for your platform.
-2. Launch **dronmakr** (`dronmakr.app`, `./dronmakr/dronmakr`, or `dronmakr.exe`).
-3. Use the **system tray / menu bar icon** → **Open dronmakr in browser** (local server on `127.0.0.1`).
-4. On first launch, pick where to store **`dronmakr-files`** (generated audio, presets, config).
+2. Launch **dronmakr** (`dronmakr.app` on macOS, or the Windows/Linux bundle from the release).
+3. On first launch, pick where to store **`dronmakr-files`** (generated audio, presets, config).
 
-**Requirements:** VST3 and/or AU plug-ins if you use Patchcraftr or drone generation. Configure paths in **Settings** after setup.
+**Requirements:** VST3 and/or AU plug-ins for drone generation. Configure paths in **Settings** after setup.
+
+**Updates:** When a newer release is available, the app prompts you to download it from GitHub. Replace the existing app in your Applications folder (or equivalent) to update.
 
 ---
 
-## Manual installation
+## Development
 
-Run from a git checkout (development or contributors).
-
-**Requirements:** Python **3.10+**, git, and VST3/AU plug-ins for preset-based workflows.
+**Requirements:** Python **3.10+**, [Node.js](https://nodejs.org/) **18+**, [Rust](https://www.rust-lang.org/tools/install) **1.85+**, git, and VST3/AU plug-ins for preset-based workflows.
 
 ```sh
 git clone https://github.com/nafeu/dronmakr.git
@@ -62,25 +61,32 @@ python -m venv venv
 source venv/bin/activate          # Windows: venv\Scripts\activate
 pip install --upgrade pip
 pip install -r requirements.txt
+npm install
+python scripts/build_frontend.py
 ```
 
-**Run the desktop tray + browser UI** (recommended):
+**Run the Tauri desktop app in dev mode** (starts the Python backend and opens the in-app window):
 
 ```sh
-python dronmakr.py desktop
+npm run dev
 ```
 
-**Or run the web server only:**
+**Run the Python backend only** (for backend/UI work without Tauri):
 
 ```sh
-python dronmakr.py webui
+python backend_server.py --port 3766
 ```
 
-Open the URL printed in the terminal (default port **3766**). Configure plug-in paths, drum libraries, and storage in **Settings** or during onboarding.
+Then open `http://127.0.0.1:3766` in a browser.
 
 Optional: copy `.env-sample` to `.env` to migrate legacy env vars into `config/settings.json` on first run.
 
-**CLI & advanced usage:** see **[CLI.md](CLI.md)** (generators, Patchcraftr, local desktop builds).
+**Release build (maintainers):**
+
+```sh
+bash scripts/build_app.sh          # macOS / Linux
+# Windows: see scripts/build_app.ps1
+```
 
 ---
 
@@ -99,7 +105,7 @@ Rotating log file **`errors.log`**:
 - **Desktop Linux:** `~/.local/share/dronmakr/logs/errors.log`
 - **From source:** `logs/errors.log` in the repo root
 
-Use the tray menu **Report issue (errors.log)…** to reveal the file. Startup failures on macOS may also write `~/Library/Application Support/dronmakr/last-startup-error.txt`.
+Use the app menu **Report issue** to open the about page, or locate the log file directly.
 
 **How do I report a bug?**
 
@@ -111,11 +117,11 @@ Yes. Desktop releases ship a **vendored FFmpeg** for Folysplitr browser recordin
 
 **macOS says the app is blocked or won’t open**
 
-CI builds are not Apple-notarized. After download, use **System Settings → Privacy & Security → Open Anyway**, or **Control-click the app → Open** once. If needed: `xattr -dr com.apple.quarantine /Applications/dronmakr.app`. To see startup errors in Terminal: `/Applications/dronmakr.app/Contents/MacOS/dronmakr`.
+CI builds are not Apple-notarized. After download, use **System Settings → Privacy & Security → Open Anyway**, or **Control-click the app → Open** once. If needed: `xattr -dr com.apple.quarantine /Applications/dronmakr.app`.
 
 **Plug-in compatibility**
 
-Audio runs through [DawDreamer](https://github.com/DBraun/DawDreamer) (JUCE-based offline VST/AU hosting). **Python 3.11+** is required. On **macOS**, use **VST3** (`.vst3`) and **AU** (`.component`). After upgrading from Pedalboard-based builds, **re-save presets in Patchcraftr** — existing `.vstpreset` sidecars are not compatible.
+Audio runs through [DawDreamer](https://github.com/DBraun/DawDreamer) (JUCE-based offline VST/AU hosting). On **macOS**, use **VST3** (`.vst3`) and **AU** (`.component`). Edit `config/presets.json` in your dronmakr files folder to manage instrument and effect presets.
 
 **License note:** DawDreamer is **GPLv3**. Bundling it in desktop releases may affect how you distribute combined builds; see [DawDreamer licensing](https://github.com/DBraun/DawDreamer).
 
@@ -125,11 +131,7 @@ Add its name to **`ASSERT_INSTRUMENT`** in **Settings** so it is treated as an i
 
 **Desktop updates**
 
-Packaged builds can check **GitHub Releases** from the tray (**Check for updates…** / updater prompt on startup).
-
-**Linux tray icon missing**
-
-Install GTK AppIndicator / `libappindicator` (or equivalent) for `pystray`.
+Packaged builds check **GitHub Releases** on startup and prompt you to download the latest release. Install it manually by replacing the app bundle.
 
 **Maintainers: version bump & release**
 

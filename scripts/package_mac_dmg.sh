@@ -7,9 +7,12 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-APP="${APP:-dist/dronmakr.app}"
+APP="${APP:-src-tauri/target/release/bundle/macos/dronmakr.app}"
 if [[ ! -d "$APP" ]]; then
-  echo "error: ${APP} not found. Run PyInstaller (desktop.spec) first." >&2
+  APP="dist/dronmakr.app"
+fi
+if [[ ! -d "$APP" ]]; then
+  echo "error: ${APP} not found. Run the Tauri release build first." >&2
   exit 1
 fi
 

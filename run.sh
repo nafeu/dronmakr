@@ -10,7 +10,7 @@ VENV_DIRS=(
 for VENV in "${VENV_DIRS[@]}"; do
     if [ -d "$VENV" ]; then
         source "$VENV/bin/activate"
-        python dronmakr.py "$@"  # <-- Pass all script arguments to Python
+        python backend_server.py "$@"
         deactivate
         exit 0
     fi

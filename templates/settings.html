@@ -310,7 +310,7 @@
         <label for="PLUGIN_PATHS">PLUGIN_PATHS</label>
         <div class="field-row">
           <textarea id="PLUGIN_PATHS" name="PLUGIN_PATHS" rows="2"
-            placeholder="macOS: VST3 + AU folders only (omit legacy Plug-Ins/VST — .vst not supported); comma-separated">{{ settings.get('PLUGIN_PATHS', '') }}</textarea>
+            placeholder="macOS: VST3 + AU folders only (omit legacy Plug-Ins/VST — .vst not supported); comma-separated"></textarea>
           <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
@@ -318,7 +318,7 @@
         <label for="CUSTOM_PLUGINS">CUSTOM_PLUGINS</label>
         <div class="field-row">
           <textarea id="CUSTOM_PLUGINS" name="CUSTOM_PLUGINS" rows="2"
-            placeholder="Comma-separated paths">{{ settings.get('CUSTOM_PLUGINS', '') }}</textarea>
+            placeholder="Comma-separated paths"></textarea>
           <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
@@ -326,7 +326,7 @@
         <label for="ASSERT_INSTRUMENT">ASSERT_INSTRUMENT</label>
         <div class="field-row">
           <textarea id="ASSERT_INSTRUMENT" name="ASSERT_INSTRUMENT" rows="2"
-            placeholder="Plugin names treated as instruments">{{ settings.get('ASSERT_INSTRUMENT', '') }}</textarea>
+            placeholder="Plugin names treated as instruments"></textarea>
         </div>
         <div class="append-row">
           <input type="text" id="ASSERT_INSTRUMENT_append" placeholder="Add plugin name..."
@@ -338,7 +338,7 @@
         <label for="IGNORE_PLUGINS">IGNORE_PLUGINS</label>
         <div class="field-row">
           <textarea id="IGNORE_PLUGINS" name="IGNORE_PLUGINS" rows="2"
-            placeholder="Plugin names to ignore">{{ settings.get('IGNORE_PLUGINS', '') }}</textarea>
+            placeholder="Plugin names to ignore"></textarea>
         </div>
         <div class="append-row">
           <input type="text" id="IGNORE_PLUGINS_append" placeholder="Add plugin name..." data-target="IGNORE_PLUGINS">
@@ -348,19 +348,19 @@
       <div class="field-group" data-key="QT_LOGGING_RULES">
         <label for="QT_LOGGING_RULES">QT_LOGGING_RULES</label>
         <textarea id="QT_LOGGING_RULES" name="QT_LOGGING_RULES" rows="1"
-          placeholder="e.g. *.debug=false">{{ settings.get('QT_LOGGING_RULES', '*.debug=false') }}</textarea>
+          placeholder="e.g. *.debug=false"></textarea>
       </div>
       <div class="field-group" data-key="IMKLogLevel">
         <label for="IMKLogLevel">IMKLogLevel</label>
         <textarea id="IMKLogLevel" name="IMKLogLevel" rows="1"
-          placeholder="e.g. none">{{ settings.get('IMKLogLevel', 'none') }}</textarea>
+          placeholder="e.g. none"></textarea>
       </div>
       <div class="section-title">Storage</div>
       <div class="field-group" data-key="FILES_ROOT" data-is-path="true">
         <label for="FILES_ROOT">FILES_ROOT</label>
         <div class="field-row">
           <textarea id="FILES_ROOT" name="FILES_ROOT" rows="2"
-            placeholder="Path to dronmakr-files root directory">{{ settings.get('FILES_ROOT', '') }}</textarea>
+            placeholder="Path to dronmakr-files root directory"></textarea>
           <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
@@ -383,7 +383,7 @@
         <label for="DRUM_KICK_PATHS">DRUM_KICK_PATHS</label>
         <div class="field-row">
           <textarea id="DRUM_KICK_PATHS" name="DRUM_KICK_PATHS" rows="2"
-            placeholder="Path(s) to kick samples">{{ settings.get('DRUM_KICK_PATHS', '') }}</textarea>
+            placeholder="Path(s) to kick samples"></textarea>
           <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
@@ -391,7 +391,7 @@
         <label for="DRUM_SNARE_PATHS">DRUM_SNARE_PATHS</label>
         <div class="field-row">
           <textarea id="DRUM_SNARE_PATHS" name="DRUM_SNARE_PATHS" rows="2"
-            placeholder="Path(s) to snare samples">{{ settings.get('DRUM_SNARE_PATHS', '') }}</textarea>
+            placeholder="Path(s) to snare samples"></textarea>
           <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
@@ -399,7 +399,7 @@
         <label for="DRUM_HIHAT_PATHS">DRUM_HIHAT_PATHS</label>
         <div class="field-row">
           <textarea id="DRUM_HIHAT_PATHS" name="DRUM_HIHAT_PATHS" rows="2"
-            placeholder="Path(s) to hihat samples">{{ settings.get('DRUM_HIHAT_PATHS', '') }}</textarea>
+            placeholder="Path(s) to hihat samples"></textarea>
           <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
@@ -407,7 +407,7 @@
         <label for="DRUM_CLAP_PATHS">DRUM_CLAP_PATHS</label>
         <div class="field-row">
           <textarea id="DRUM_CLAP_PATHS" name="DRUM_CLAP_PATHS" rows="2"
-            placeholder="Path(s) to clap samples">{{ settings.get('DRUM_CLAP_PATHS', '') }}</textarea>
+            placeholder="Path(s) to clap samples"></textarea>
           <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
@@ -415,7 +415,7 @@
         <label for="DRUM_PERC_PATHS">DRUM_PERC_PATHS</label>
         <div class="field-row">
           <textarea id="DRUM_PERC_PATHS" name="DRUM_PERC_PATHS" rows="2"
-            placeholder="Path(s) to percussion samples">{{ settings.get('DRUM_PERC_PATHS', '') }}</textarea>
+            placeholder="Path(s) to percussion samples"></textarea>
           <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
@@ -423,7 +423,7 @@
         <label for="DRUM_TOM_PATHS">DRUM_TOM_PATHS</label>
         <div class="field-row">
           <textarea id="DRUM_TOM_PATHS" name="DRUM_TOM_PATHS" rows="2"
-            placeholder="Path(s) to tom samples">{{ settings.get('DRUM_TOM_PATHS', '') }}</textarea>
+            placeholder="Path(s) to tom samples"></textarea>
           <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
@@ -431,7 +431,7 @@
         <label for="DRUM_SHAKER_PATHS">DRUM_SHAKER_PATHS</label>
         <div class="field-row">
           <textarea id="DRUM_SHAKER_PATHS" name="DRUM_SHAKER_PATHS" rows="2"
-            placeholder="Path(s) to shaker samples">{{ settings.get('DRUM_SHAKER_PATHS', '') }}</textarea>
+            placeholder="Path(s) to shaker samples"></textarea>
           <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
@@ -439,7 +439,7 @@
         <label for="DRUM_CYMBAL_PATHS">DRUM_CYMBAL_PATHS</label>
         <div class="field-row">
           <textarea id="DRUM_CYMBAL_PATHS" name="DRUM_CYMBAL_PATHS" rows="2"
-            placeholder="Path(s) to cymbal samples">{{ settings.get('DRUM_CYMBAL_PATHS', '') }}</textarea>
+            placeholder="Path(s) to cymbal samples"></textarea>
           <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
@@ -685,7 +685,22 @@
       btn.disabled = false;
     });
 
-    loadDrumPathPresets().catch((err) => showToast(err.message, true));
+    async function loadSettingsFromApi() {
+      const res = await fetch("/api/settings");
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to load settings");
+      }
+      document.querySelectorAll("input[name], textarea[name]").forEach((el) => {
+        if (el.name && !el.name.endsWith("_append") && data[el.name] != null) {
+          el.value = data[el.name];
+        }
+      });
+    }
+
+    loadSettingsFromApi()
+      .then(() => loadDrumPathPresets())
+      .catch((err) => showToast(err.message, true));
     document.addEventListener("DOMContentLoaded", function () { if (window.__pageReady) window.__pageReady(); });
   </script>
 </body>

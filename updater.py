@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-import os
 import platform
-import subprocess
-import sys
 import time
 from dataclasses import dataclass
 
@@ -12,6 +9,7 @@ import requests
 from version import __version__
 
 GITHUB_RELEASES_API = "https://api.github.com/repos/nafeu/dronmakr/releases/latest"
+GITHUB_RELEASES_LATEST_PAGE = "https://github.com/nafeu/dronmakr/releases/latest"
 
 
 @dataclass
@@ -19,7 +17,14 @@ class UpdateInfo:
     tag: str
     notes: str
     asset_name: str
-    asset_url: str
+    release_url: str
+
+
+def release_page_url(tag: str | None = None) -> str:
+    if tag:
+        cleaned = tag.strip().lstrip("v")
+        return f"https://github.com/nafeu/dronmakr/releases/tag/v{cleaned}"
+    return GITHUB_RELEASES_LATEST_PAGE
 
 
 def _normalize_version(value: str) -> tuple[int, ...]:
@@ -44,10 +49,6 @@ def _platform_asset_hint() -> str:
 
 
 def _asset_download_priority(asset_name: str) -> int:
-    """
-    Pick a sensible default when multiple release assets match the platform hint
-    (e.g. macOS ships both .dmg and .tar.gz). Lower value = higher priority.
-    """
     system = platform.system().lower()
     n = asset_name.lower()
     if "darwin" in system:
@@ -80,16 +81,21 @@ def check_for_update(timeout: int = 5) -> UpdateInfo | None:
     hint = _platform_asset_hint()
     assets = data.get("assets", []) if isinstance(data.get("assets"), list) else []
     notes = str(data.get("body", ""))
+    html_url = str(data.get("html_url", "")).strip() or release_page_url(tag)
     matching: list[UpdateInfo] = []
     for asset in assets:
         name = str(asset.get("name", ""))
-        url = str(asset.get("browser_download_url", ""))
-        if hint in name.lower() and url:
+        if hint in name.lower():
             matching.append(
-                UpdateInfo(tag=tag, notes=notes, asset_name=name, asset_url=url)
+                UpdateInfo(
+                    tag=tag,
+                    notes=notes,
+                    asset_name=name,
+                    release_url=html_url,
+                )
             )
     if not matching:
-        return None
+        return UpdateInfo(tag=tag, notes=notes, asset_name="", release_url=html_url)
     matching.sort(
         key=lambda info: (_asset_download_priority(info.asset_name), info.asset_name)
     )
@@ -111,10 +117,6 @@ def fetch_update_info_throttled(
     min_interval_s: float = _UPDATE_CHECK_MIN_INTERVAL_S,
     timeout: int = 5,
 ) -> UpdateInfo | None:
-    """
-    Query GitHub Releases at most once per ``min_interval_s`` unless ``force`` is True.
-    Caches the latest result (including \"no update\") for tray menu state.
-    """
     global _cached_update_info, _cached_update_check_monotonic
     now = time.monotonic()
     if not force and (now - _cached_update_check_monotonic) < min_interval_s:
@@ -122,24 +124,3 @@ def fetch_update_info_throttled(
     _cached_update_info = check_for_update(timeout=timeout)
     _cached_update_check_monotonic = now
     return _cached_update_info
-
-
-def download_update(info: UpdateInfo, destination_dir: str) -> str:
-    os.makedirs(destination_dir, exist_ok=True)
-    target = os.path.join(destination_dir, info.asset_name)
-    with requests.get(info.asset_url, stream=True, timeout=30) as resp:
-        resp.raise_for_status()
-        with open(target, "wb") as handle:
-            for chunk in resp.iter_content(chunk_size=1024 * 128):
-                if chunk:
-                    handle.write(chunk)
-    return target
-
-
-def reveal_file(path: str) -> None:
-    if sys.platform == "darwin":
-        subprocess.run(["open", "-R", path], check=False)
-    elif sys.platform == "win32":
-        subprocess.run(["explorer", f"/select,{path}"], check=False)
-    else:
-        subprocess.run(["xdg-open", os.path.dirname(path)], check=False)

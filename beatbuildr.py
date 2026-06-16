@@ -1077,6 +1077,6 @@ def register_beatbuildr(app, socketio):
 
 
 if __name__ == "__main__":
-    from webui import run
+    from backend_server import main
 
-    run()
+    main()

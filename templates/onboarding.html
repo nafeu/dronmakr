@@ -179,7 +179,7 @@
           <label for="FILES_ROOT">Storage</label>
           <div class="field-row">
             <textarea id="FILES_ROOT" name="FILES_ROOT" rows="2"
-              placeholder="/path/to/dronmakr-files">{{ settings.get('FILES_ROOT', '') }}</textarea>
+              placeholder="/path/to/dronmakr-files"></textarea>
             <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-folder-open"></i></button>
           </div>
         </div>
@@ -190,7 +190,7 @@
           <label for="PLUGIN_PATHS">VIRTUAL INSTRUMENTS & FX (optional)</label>
           <div class="field-row">
             <textarea id="PLUGIN_PATHS" name="PLUGIN_PATHS" rows="2"
-              placeholder="Please enter a comma seperated list of paths to VST3/AU install directories">{{ settings.get('PLUGIN_PATHS', '') }}</textarea>
+              placeholder="Please enter a comma seperated list of paths to VST3/AU install directories"></textarea>
             <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
           </div>
         </div>
@@ -203,7 +203,7 @@
           <label for="DRUM_KICK_PATHS">KICKS</label>
           <div class="field-row">
             <textarea id="DRUM_KICK_PATHS" name="DRUM_KICK_PATHS" rows="2"
-              placeholder="Path(s) to kick samples">{{ settings.get('DRUM_KICK_PATHS', '') }}</textarea>
+              placeholder="Path(s) to kick samples"></textarea>
             <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
           </div>
         </div>
@@ -211,7 +211,7 @@
           <label for="DRUM_SNARE_PATHS">SNARES</label>
           <div class="field-row">
             <textarea id="DRUM_SNARE_PATHS" name="DRUM_SNARE_PATHS" rows="2"
-              placeholder="Path(s) to snare samples">{{ settings.get('DRUM_SNARE_PATHS', '') }}</textarea>
+              placeholder="Path(s) to snare samples"></textarea>
             <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
           </div>
         </div>
@@ -219,7 +219,7 @@
           <label for="DRUM_HIHAT_PATHS">HIHATS</label>
           <div class="field-row">
             <textarea id="DRUM_HIHAT_PATHS" name="DRUM_HIHAT_PATHS" rows="2"
-              placeholder="Path(s) to hihat samples">{{ settings.get('DRUM_HIHAT_PATHS', '') }}</textarea>
+              placeholder="Path(s) to hihat samples"></textarea>
             <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
           </div>
         </div>
@@ -227,7 +227,7 @@
           <label for="DRUM_CLAP_PATHS">CLAPS</label>
           <div class="field-row">
             <textarea id="DRUM_CLAP_PATHS" name="DRUM_CLAP_PATHS" rows="2"
-              placeholder="Path(s) to clap samples">{{ settings.get('DRUM_CLAP_PATHS', '') }}</textarea>
+              placeholder="Path(s) to clap samples"></textarea>
             <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
           </div>
         </div>
@@ -235,7 +235,7 @@
           <label for="DRUM_PERC_PATHS">PERCS</label>
           <div class="field-row">
             <textarea id="DRUM_PERC_PATHS" name="DRUM_PERC_PATHS" rows="2"
-              placeholder="Path(s) to percussion samples">{{ settings.get('DRUM_PERC_PATHS', '') }}</textarea>
+              placeholder="Path(s) to percussion samples"></textarea>
             <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
           </div>
         </div>
@@ -243,7 +243,7 @@
           <label for="DRUM_TOM_PATHS">TOMS</label>
           <div class="field-row">
             <textarea id="DRUM_TOM_PATHS" name="DRUM_TOM_PATHS" rows="2"
-              placeholder="Path(s) to tom samples">{{ settings.get('DRUM_TOM_PATHS', '') }}</textarea>
+              placeholder="Path(s) to tom samples"></textarea>
             <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
           </div>
         </div>
@@ -251,7 +251,7 @@
           <label for="DRUM_SHAKER_PATHS">SHAKERS</label>
           <div class="field-row">
             <textarea id="DRUM_SHAKER_PATHS" name="DRUM_SHAKER_PATHS" rows="2"
-              placeholder="Path(s) to shaker samples">{{ settings.get('DRUM_SHAKER_PATHS', '') }}</textarea>
+              placeholder="Path(s) to shaker samples"></textarea>
             <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
           </div>
         </div>
@@ -259,7 +259,7 @@
           <label for="DRUM_CYMBAL_PATHS">CYMBALS</label>
           <div class="field-row">
             <textarea id="DRUM_CYMBAL_PATHS" name="DRUM_CYMBAL_PATHS" rows="2"
-              placeholder="Path(s) to cymbal samples">{{ settings.get('DRUM_CYMBAL_PATHS', '') }}</textarea>
+              placeholder="Path(s) to cymbal samples"></textarea>
             <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
           </div>
         </div>
@@ -294,6 +294,46 @@
       }
       return out;
     }
+
+    const drumPathKeys = [
+      "DRUM_KICK_PATHS",
+      "DRUM_SNARE_PATHS",
+      "DRUM_HIHAT_PATHS",
+      "DRUM_CLAP_PATHS",
+      "DRUM_PERC_PATHS",
+      "DRUM_TOM_PATHS",
+      "DRUM_SHAKER_PATHS",
+      "DRUM_CYMBAL_PATHS",
+    ];
+
+    async function loadOnboardingFromApi() {
+      const [settingsRes, presetsRes] = await Promise.all([
+        fetch("/api/settings"),
+        fetch("/api/drum-path-presets"),
+      ]);
+      const settings = await settingsRes.json();
+      const presetsPayload = await presetsRes.json();
+      if (!settingsRes.ok) {
+        throw new Error(settings.error || "Failed to load settings");
+      }
+      document.querySelectorAll("textarea[name]").forEach((el) => {
+        if (el.name && settings[el.name] != null) {
+          el.value = settings[el.name];
+        }
+      });
+      const active = presetsPayload.activePreset || "default";
+      const preset = (presetsPayload.presets || {})[active] || {};
+      drumPathKeys.forEach((key) => {
+        const input = document.getElementById(key);
+        if (input && typeof preset[key] === "string") {
+          input.value = preset[key];
+        }
+      });
+    }
+
+    loadOnboardingFromApi().catch((err) => {
+      message.textContent = err.message;
+    });
 
     document.querySelectorAll("[data-is-path='true'] .btn-add").forEach((btn) => {
       btn.addEventListener("click", async () => {

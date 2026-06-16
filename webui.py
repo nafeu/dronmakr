@@ -4,29 +4,20 @@ Unified Flask web UI for dronmakr: serves auditionr and beatbuildr on a single s
 
 import os
 
-# Tray/desktop launcher runs the server in a worker thread while pystray owns the main
-# thread. Eventlet + monkey_patch in that layout deadlocks/hangs HTTP; use threading mode.
-_DESKTOP_THREADING = os.environ.get("DRONMAKR_ASYNC_MODE", "").lower() == "threading"
-
-if not _DESKTOP_THREADING:
-    import eventlet
-
-    eventlet.monkey_patch()
+os.environ.setdefault("DRONMAKR_ASYNC_MODE", "threading")
 
 import logging
-import subprocess
 import sys
 import threading
 import time
 import urllib.error
 import urllib.request
-import webbrowser
 
-from flask import Flask, jsonify, redirect, render_template, request, send_from_directory, url_for
+from flask import Flask, jsonify, redirect, request, send_from_directory, url_for
 from flask_socketio import SocketIO
 
-from version import __version__
-from utils import get_version, with_final_main_prompt, with_main_prompt as with_prompt
+from bundle_paths import get_frontend_dist_dir
+from utils import get_version, with_main_prompt as with_prompt
 
 # Import registration and helpers from sub-apps
 from auditionr import register_auditionr
@@ -78,13 +69,17 @@ from server_error_logging import (
 )
 
 
-app = Flask(__name__, static_folder="static", template_folder="templates")
-if _DESKTOP_THREADING:
-    socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
-else:
-    socketio = SocketIO(app, cors_allowed_origins="*")
+app = Flask(__name__, static_folder="static")
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 DEBUG_WEBSOCKETS = False
+_FRONTEND_DIST = get_frontend_dist_dir()
+
+
+def _serve_page(filename: str):
+    if not (_FRONTEND_DIST / filename).is_file():
+        return jsonify({"error": f"Missing built page: {filename}. Run scripts/build_frontend.py."}), 503
+    return send_from_directory(str(_FRONTEND_DIST), filename)
 
 
 @socketio.on("connect")
@@ -109,9 +104,7 @@ def index():
     """Landing page with app links."""
     if not has_configured_files_root():
         return redirect(url_for("onboarding_page"))
-    return render_template(
-        "index.html", version=__version__, pagename="home"
-    )
+    return _serve_page("index.html")
 
 
 @app.route("/auditionr")
@@ -119,9 +112,7 @@ def auditionr_page():
     """Auditionr single-page app."""
     if not has_configured_files_root():
         return redirect(url_for("onboarding_page"))
-    return render_template(
-        "auditionr.html", version=__version__, pagename="auditionr"
-    )
+    return _serve_page("auditionr.html")
 
 
 @app.route("/beatbuildr")
@@ -129,49 +120,41 @@ def beatbuildr_page():
     """Beatbuildr single-page app."""
     if not has_configured_files_root():
         return redirect(url_for("onboarding_page"))
-    return render_template(
-        "beatbuildr.html", version=__version__, pagename="beatbuildr"
-    )
+    return _serve_page("beatbuildr.html")
 
 
 @app.route("/settings")
 def settings_page():
     """Settings page for editing config/settings.json values."""
-    settings = load_settings()
-    settings["FILES_ROOT"] = get_files_root(settings=settings, allow_default=False)
-    return render_template(
-        "settings.html",
-        version=__version__,
-        pagename="settings",
-        settings=settings,
-    )
-
-
-def _settings_for_onboarding() -> dict:
-    """Settings dict with FILES_ROOT and active drum preset paths flattened for forms."""
-    settings = load_settings()
-    settings["FILES_ROOT"] = get_files_root(settings=settings, allow_default=False)
-    active = get_active_drum_path_preset_name(settings)
-    presets = get_drum_path_presets(settings)
-    active_paths = presets.get(active, {})
-    for key in DRUM_PATH_KEYS:
-        settings[key] = active_paths.get(key, "")
-    if not (isinstance(settings.get("PLUGIN_PATHS"), str) and settings["PLUGIN_PATHS"].strip()):
-        from plugin_default_paths import default_plugin_paths_csv
-
-        settings["PLUGIN_PATHS"] = default_plugin_paths_csv()
-    return settings
+    return _serve_page("settings.html")
 
 
 @app.route("/onboarding")
 def onboarding_page():
     """First-run onboarding to select the dronmakr files root."""
-    return render_template(
-        "onboarding.html",
-        version=__version__,
-        pagename="onboarding",
-        settings=_settings_for_onboarding(),
-    )
+    return _serve_page("onboarding.html")
+
+
+@app.route("/about")
+def about_page():
+    """Desktop-friendly about / credits."""
+    return _serve_page("about.html")
+
+
+@app.route("/collections")
+def collections_page():
+    """Collections view: saved folder as waveform grid with filters and packaging sidebar."""
+    if not has_configured_files_root():
+        return redirect(url_for("onboarding_page"))
+    return _serve_page("collections.html")
+
+
+@app.route("/folysplitr")
+def folysplitr_page():
+    """Folysplitr recorder + split workflow page."""
+    if not has_configured_files_root():
+        return redirect(url_for("onboarding_page"))
+    return _serve_page("folysplitr.html")
 
 
 @app.route("/api/settings/config-status")
@@ -182,36 +165,6 @@ def api_settings_config_status():
             "drumPathsConfigured": has_configured_drum_paths(),
             "pluginPathsConfigured": has_configured_plugin_paths(),
         }
-    )
-
-
-@app.route("/about")
-def about_page():
-    """Desktop-friendly about / credits (also valid when opened from the web UI)."""
-    return render_template(
-        "about.html",
-        version=__version__,
-        pagename="about",
-    )
-
-
-@app.route("/collections")
-def collections_page():
-    """Collections view: saved folder as waveform grid with filters and packaging sidebar."""
-    if not has_configured_files_root():
-        return redirect(url_for("onboarding_page"))
-    return render_template(
-        "collections.html", version=__version__, pagename="collections"
-    )
-
-
-@app.route("/folysplitr")
-def folysplitr_page():
-    """Folysplitr recorder + split workflow page."""
-    if not has_configured_files_root():
-        return redirect(url_for("onboarding_page"))
-    return render_template(
-        "folysplitr.html", version=__version__, pagename="folysplitr"
     )
 
 
@@ -476,126 +429,6 @@ def _wait_for_server_health(host: str, port: int, timeout_s: float = 30.0) -> bo
     return False
 
 
-def _print_webui_ready_messages(*, debug: bool, port: int) -> None:
-    open_url = f"http://localhost:{port}"
-    if debug:
-        print(with_prompt(f"Open: {open_url} in your browser."))
-        print(
-            with_final_main_prompt(
-                "Dev mode: template changes apply on refresh (no restart needed)."
-            )
-        )
-    else:
-        print(with_final_main_prompt(f"Open: {open_url} in your browser."))
-
-
-def _macos_default_http_handler_app_path() -> str | None:
-    """Path to the .app bundle Launch Services uses for http: URLs (macOS only)."""
-    if sys.platform != "darwin":
-        return None
-    try:
-        from AppKit import NSWorkspace  # type: ignore[import-not-found]
-        from Foundation import NSURL  # type: ignore[import-not-found]
-    except ImportError:
-        return None
-    try:
-        ws = NSWorkspace.sharedWorkspace()
-        ns_url = NSURL.URLWithString_("http://127.0.0.1/")
-        app_url = ws.URLForApplicationToOpenURL_(ns_url)
-        if app_url is None:
-            return None
-        return str(app_url.path())
-    except Exception:
-        return None
-
-
-def open_webui_in_browser(url: str) -> None:
-    """
-    Open the web UI in the system default browser.
-
-    On macOS, uses ``open URL`` so Launch Services picks the user's default
-    (Chrome, Safari, etc.). Logs the resolved http handler when available.
-    """
-    if sys.platform == "darwin":
-        handler = _macos_default_http_handler_app_path()
-        if handler:
-            print(with_prompt(f"Default http browser: {handler}"), flush=True)
-        try:
-            result = subprocess.run(
-                ["open", url],
-                capture_output=True,
-                text=True,
-                timeout=60,
-            )
-            if result.returncode == 0:
-                print(with_prompt(f"Opened via: open {url!r}"), flush=True)
-                return
-            err = (result.stderr or result.stdout or "").strip()
-            if err:
-                print(with_prompt(f"open(1) failed ({result.returncode}): {err}"), flush=True)
-        except (OSError, subprocess.TimeoutExpired) as e:
-            print(with_prompt(f"open(1) error: {e}"), flush=True)
-    try:
-        webbrowser.open(url, new=0, autoraise=True)
-    except Exception:
-        pass
-
-
-def run(
-    debug: bool = False,
-    port: int = 3766,
-    open_browser: bool = True,
-    host: str = "0.0.0.0",
-):
-    """Run the unified web server (auditionr + beatbuildr on one port)."""
-    global DEBUG_WEBSOCKETS
-    DEBUG_WEBSOCKETS = debug
-
-    if debug:
-        app.config["TEMPLATES_AUTO_RELOAD"] = True
-
-    _print_webui_startup_header()
-    ensure_settings()
-    if has_configured_files_root():
-        ensure_managed_files_root()
-        ensure_folysplitr_drum_path_preset()
-    ensure_beat_patterns()
-    ensure_drum_kits()
-    ensure_recordings_dir()
-    ensure_splits_dirs()
-    try:
-        validate_server_config_names()
-    except ValueError as e:
-        print(with_prompt(str(e)))
-        raise SystemExit(1) from e
-
-    print(with_prompt("Building sample cache..."))
-    ensure_all_sample_caches()
-    print(with_prompt("Sample cache ready."))
-
-    def _run_server():
-        socketio.run(
-            app,
-            host=host,
-            port=int(port),
-            debug=debug,
-            use_reloader=False,
-        )
-
-    server_thread = threading.Thread(target=_run_server, daemon=False)
-    server_thread.start()
-
-    if not _wait_for_server_health(host, port):
-        print(with_prompt("Server did not become ready in time."), flush=True)
-
-    _print_webui_ready_messages(debug=debug, port=port)
-
-    if open_browser and server_thread.is_alive():
-        open_webui_in_browser(f"http://localhost:{port}")
-
-    server_thread.join()
-
-
 _DESKTOP_STDERR_LOGGING_CONFIGURED = False
 
 
@@ -660,6 +493,11 @@ def start_server(
     ensure_recordings_dir()
     print(with_prompt("[desktop] startup: ensure splits dirs"))
     ensure_splits_dirs()
+    try:
+        validate_server_config_names()
+    except ValueError as e:
+        print(with_prompt(str(e)))
+        raise SystemExit(1) from e
     if build_sample_cache:
         print(with_prompt("[desktop] startup: build sample cache (blocking)"))
         ensure_all_sample_caches()
@@ -683,6 +521,9 @@ def start_server(
 
     server_thread = threading.Thread(target=_run_server, daemon=True)
     server_thread.start()
+
+    if not _wait_for_server_health(host, port):
+        print(with_prompt("[desktop] server did not become ready in time."), flush=True)
 
     if not build_sample_cache:
         def _warm_cache_background():

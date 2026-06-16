@@ -12,13 +12,18 @@ def get_bundle_app_root() -> Path:
     """
     Root directory holding templates/static/resources beside the runnable app.
 
-    Mirrors desktop_app._bundle_root: PyInstaller uses sys._MEIPASS; otherwise repo root.
+    PyInstaller uses sys._MEIPASS; otherwise repo root.
     """
     if getattr(sys, "frozen", False):
         meipass = getattr(sys, "_MEIPASS", "") or ""
         if meipass:
             return Path(meipass)
     return Path(__file__).resolve().parent
+
+
+def get_frontend_dist_dir() -> Path:
+    """Pre-built HTML pages served by the Flask UI."""
+    return get_bundle_app_root() / "frontend" / "dist"
 
 
 def bundled_asset_path(*relative_segments: str) -> Path:

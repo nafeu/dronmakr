@@ -1,0 +1,16 @@
+{
+  "name": "dronmakr",
+  "version": "0.51.0",
+  "private": true,
+  "description": "dronmakr desktop app",
+  "scripts": {
+    "build:frontend": "python scripts/build_frontend.py",
+    "build:sidecar": "bash scripts/build_sidecar.sh",
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "npm run build:frontend && npm run build:sidecar && tauri build"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.2"
+  }
+}

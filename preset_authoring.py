@@ -31,7 +31,7 @@ from utils import (
     PRESETS_DIR,
     resolve_presets_index_path,
     TEMP_DIR,
-    with_patchcraftr_prompt as with_prompt,
+    with_main_prompt as with_prompt,
 )
 
 MAX_CHAIN_SLOTS = 5
@@ -276,7 +276,7 @@ def list_presets(show_chain_plugins: bool = False, show_patterns: bool = False) 
     if len(instruments) < 1:
         print(
             with_prompt(
-                "No instruments — use Patchcraftr from the desktop tray (Launch patchcraftr)."
+                "No instruments — edit config/presets.json in your dronmakr files folder."
             )
         )
         return
@@ -284,7 +284,7 @@ def list_presets(show_chain_plugins: bool = False, show_patterns: bool = False) 
     if len(effects_index) < 1:
         print(
             with_prompt(
-                "No saved effects — use Patchcraftr from the desktop tray (Launch patchcraftr)."
+                "No saved effects — edit config/presets.json in your dronmakr files folder."
             )
         )
         return

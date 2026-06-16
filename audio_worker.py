@@ -39,14 +39,13 @@ def _package_root() -> Path:
 def _worker_argv() -> list[str]:
     if getattr(sys, "frozen", False):
         return [sys.executable, _WORKER_FLAG]
-    try:
-        import desktop_app
-    except ImportError as e:  # pragma: no cover
+    backend_entry = _package_root() / "backend_server.py"
+    if not backend_entry.is_file():
         raise RuntimeError(
-            "Cannot spawn audio worker: desktop_app is not importable. "
+            "Cannot spawn audio worker: backend_server.py is missing. "
             "Run from the dronmakr repo/install layout."
-        ) from e
-    return [sys.executable, str(Path(desktop_app.__file__).resolve()), _WORKER_FLAG]
+        )
+    return [sys.executable, str(backend_entry.resolve()), _WORKER_FLAG]
 
 
 _ORIGINAL_BUILTIN_PRINT = builtins.print

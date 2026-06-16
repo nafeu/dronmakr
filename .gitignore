@@ -47,6 +47,7 @@ config.py
 .DS_Store
 Thumbs.db
 node_modules/
+src-tauri/target/
 
 # Testing
 .coverage
