@@ -13,7 +13,7 @@ import time
 import urllib.error
 import urllib.request
 
-from flask import Flask, jsonify, redirect, request, send_from_directory, url_for
+from flask import Flask, Response, jsonify, redirect, request, send_from_directory, url_for
 from flask_socketio import SocketIO
 
 from dronmakr.core.bundle_paths import get_frontend_dist_dir, get_static_dir
@@ -67,6 +67,7 @@ from dronmakr.core.server_error_logging import (
     ensure_server_error_file_logging,
     register_flask_server_error_signals,
 )
+from dronmakr.server.dev_frontend import enable_dev_frontend, get_dev_frontend
 
 
 app = Flask(__name__, static_folder=str(get_static_dir()))
@@ -77,9 +78,29 @@ _FRONTEND_DIST = get_frontend_dist_dir()
 
 
 def _serve_page(filename: str):
+    dev = get_dev_frontend()
+    if dev is not None:
+        try:
+            html = dev.render_page(filename)
+        except KeyError:
+            return jsonify({"error": f"Unknown page: {filename}"}), 404
+        except Exception as exc:
+            app.logger.exception("dev-frontend render failed for %s", filename)
+            return jsonify({"error": f"Template render failed: {exc}"}), 500
+        return Response(html, mimetype="text/html; charset=utf-8")
+
     if not (_FRONTEND_DIST / filename).is_file():
         return jsonify({"error": f"Missing built page: {filename}. Run scripts/build_frontend.py."}), 503
     return send_from_directory(str(_FRONTEND_DIST), filename)
+
+
+@app.route("/dev/reload-check")
+def dev_reload_check():
+    """Poll endpoint used by the dev auto-reload script injected into HTML pages."""
+    dev = get_dev_frontend()
+    if dev is None:
+        return jsonify({"error": "Dev frontend mode is not enabled"}), 404
+    return jsonify({"version": dev.current_version()})
 
 
 @socketio.on("connect")
@@ -465,11 +486,14 @@ def start_server(
     host: str = "127.0.0.1",
     build_sample_cache: bool = True,
     stderr_logging: bool = True,
+    dev_frontend: bool = False,
 ) -> threading.Thread:
     """Start web server in a background thread for desktop runtime."""
     global DEBUG_WEBSOCKETS
     DEBUG_WEBSOCKETS = debug
     _print_webui_startup_header()
+    if dev_frontend:
+        enable_dev_frontend()
     if stderr_logging:
         configure_desktop_process_logging(
             logging.DEBUG if debug else logging.INFO

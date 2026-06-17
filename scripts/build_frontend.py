@@ -7,34 +7,19 @@ import re
 import sys
 from pathlib import Path
 
-from jinja2 import Environment, FileSystemLoader, select_autoescape
-
 ROOT = Path(__file__).resolve().parent.parent
-TEMPLATES = ROOT / "assets" / "templates"
 STATIC = ROOT / "assets" / "static"
 DIST = ROOT / "frontend" / "dist"
 
-URL_FOR_MAP = {
-    "index": "/",
-    "auditionr_page": "/auditionr",
-    "beatbuildr_page": "/beatbuildr",
-    "folysplitr_page": "/folysplitr",
-    "collections_page": "/collections",
-    "settings_page": "/settings",
-    "onboarding_page": "/onboarding",
-    "about_page": "/about",
-}
+sys.path.insert(0, str(ROOT / "backend"))
 
-PAGES: list[tuple[str, str, str]] = [
-    ("index.html", "index.html", "/"),
-    ("auditionr.html", "auditionr.html", "/auditionr"),
-    ("beatbuildr.html", "beatbuildr.html", "/beatbuildr"),
-    ("folysplitr.html", "folysplitr.html", "/folysplitr"),
-    ("collections.html", "collections.html", "/collections"),
-    ("settings.html", "settings.html", "/settings"),
-    ("onboarding.html", "onboarding.html", "/onboarding"),
-    ("about.html", "about.html", "/about"),
-]
+from dronmakr.server.frontend_pages import (  # noqa: E402
+    PAGE_SPECS,
+    build_url_for,
+    create_jinja_env,
+    pagename_for,
+)
+from dronmakr.version import __version__  # noqa: E402
 
 LINK_RE = re.compile(
     r'<link\s+rel="stylesheet"\s+href="(/static/[^"]+)"\s*/?\s*>',
@@ -44,10 +29,6 @@ SCRIPT_SRC_RE = re.compile(
     r'<script\s+src="(/static/[^"]+)"\s*></script>',
     re.IGNORECASE,
 )
-
-
-def _url_for(endpoint: str, **_kwargs: object) -> str:
-    return URL_FOR_MAP.get(endpoint, "/")
 
 
 def _read_static_text(url_path: str) -> str:
@@ -78,15 +59,14 @@ def _inline_assets(html: str) -> str:
     return html
 
 
-def _build_page(env: Environment, version: str, template_name: str, out_name: str, active_path: str) -> None:
+def _build_page(env, template_name: str, out_name: str, active_path: str) -> None:
     template = env.get_template(template_name)
-    pagename = Path(template_name).stem
     rendered = template.render(
-        version=version,
-        pagename=pagename,
+        version=__version__,
+        pagename=pagename_for(template_name),
         active_path=active_path,
         settings={},
-        url_for=_url_for,
+        url_for=build_url_for,
     )
     rendered = _inline_assets(rendered)
     out_path = DIST / out_name
@@ -95,17 +75,11 @@ def _build_page(env: Environment, version: str, template_name: str, out_name: st
 
 
 def main() -> int:
-    sys.path.insert(0, str(ROOT / "backend"))
-    from dronmakr.version import __version__
-
     DIST.mkdir(parents=True, exist_ok=True)
-    env = Environment(
-        loader=FileSystemLoader(str(TEMPLATES)),
-        autoescape=select_autoescape(["html", "xml"]),
-    )
+    env = create_jinja_env()
     print(f"Building frontend dist (v{__version__})...")
-    for template_name, out_name, active_path in PAGES:
-        _build_page(env, __version__, template_name, out_name, active_path)
+    for template_name, out_name, active_path in PAGE_SPECS:
+        _build_page(env, template_name, out_name, active_path)
     print("Done.")
     return 0
 

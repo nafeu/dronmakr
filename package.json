@@ -8,6 +8,7 @@
     "build:sidecar": "bash scripts/build_sidecar.sh",
     "tauri": "tauri",
     "dev": "tauri dev",
+    "dev:backend": "python backend/backend_server.py --port 3766 --dev-frontend",
     "build": "npm run build:frontend && npm run build:sidecar && tauri build"
   },
   "devDependencies": {

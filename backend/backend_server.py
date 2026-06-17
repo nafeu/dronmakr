@@ -27,6 +27,11 @@ def _parse_args() -> argparse.Namespace:
         help="Verbose logging and Flask debug mode",
     )
     parser.add_argument(
+        "--dev-frontend",
+        action="store_true",
+        help="Serve live Jinja templates from assets/ with auto-reload (development only)",
+    )
+    parser.add_argument(
         "--smoke-imports",
         action="store_true",
         help="Minimal import check for CI (soundfile + libsndfile)",
@@ -63,6 +68,7 @@ def main() -> None:
         port=int(args.port),
         host=str(args.host),
         build_sample_cache=True,
+        dev_frontend=args.dev_frontend,
     )
     print(f"[backend] ready on http://{args.host}:{args.port}", flush=True)
 
