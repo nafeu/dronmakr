@@ -10,6 +10,7 @@
   {% include '_app_favicons.html' %}
   <link rel="stylesheet" href="/static/vendor/fonts/fragment-mono.css">
   <link rel="stylesheet" href="/static/vendor/fontawesome/css/all.min.css">
+  {% include '_app_ui_vendor.html' %}
   <style>
     {% include '_app_css_root.html' %}
 
@@ -21,30 +22,6 @@
       padding-right: 0;
       display: flex;
       flex-direction: column;
-    }
-
-    /* Themed scrollbar */
-    * {
-      scrollbar-width: thin;
-      scrollbar-color: var(--theme-a) var(--secondary);
-    }
-
-    *::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-
-    *::-webkit-scrollbar-track {
-      background: var(--secondary);
-    }
-
-    *::-webkit-scrollbar-thumb {
-      background: var(--theme-a);
-      border-radius: 4px;
-    }
-
-    *::-webkit-scrollbar-thumb:hover {
-      background: var(--theme-b);
     }
 
     /* Floating chip (bottom-left): mirror #app-version-chip */
@@ -285,6 +262,7 @@
     }
 
     .generatr-form .form-row select,
+    .generatr-form .form-row .nice-select,
     .generatr-form .form-row input[type="text"],
     .generatr-form .form-row input[type="number"],
     .generatr-form .form-row textarea {
@@ -310,6 +288,8 @@
     }
 
     .generatr-form .form-row select:focus,
+    .generatr-form .form-row .nice-select.open,
+    .generatr-form .form-row .nice-select:focus,
     .generatr-form .form-row input[type="text"]:focus,
     .generatr-form .form-row input[type="number"]:focus,
     .generatr-form .form-row textarea:focus {
@@ -409,7 +389,6 @@
       height: 0.9rem;
       margin: 0;
       cursor: pointer;
-      accent-color: var(--primary);
     }
 
     .generatr-sweep-effect-body {
@@ -447,7 +426,8 @@
       min-width: 0;
     }
 
-    .daw-knob-select select {
+    .daw-knob-select select,
+    .daw-knob-select .nice-select {
       font-family: inherit;
       font-size: 0.58rem;
       line-height: 1.2;
@@ -463,7 +443,9 @@
       cursor: pointer;
     }
 
-    .daw-knob-select select:focus {
+    .daw-knob-select select:focus,
+    .daw-knob-select .nice-select.open,
+    .daw-knob-select .nice-select:focus {
       outline: none;
       border-color: var(--primary);
     }
@@ -755,17 +737,15 @@
     }
 
     .generatr-sweep-panel .form-row select,
+    .generatr-sweep-panel .form-row .nice-select,
     .generatr-sweep-panel .form-row input[type="number"] {
       font-size: 0.8rem;
       padding: 0.32rem 0.65rem;
     }
 
     .generatr-form .form-row input[type="checkbox"] {
-      width: 16px;
-      height: 16px;
       margin: 0;
       flex: 0 0 auto;
-      accent-color: var(--primary);
     }
 
     .generatr-form .form-row.form-row-post-processing {
@@ -1480,17 +1460,19 @@
     }
 
     .edit-effect-knobs .edit-control-item.daw-knob-select {
-      flex: 0 0 5.85rem;
-      width: 5.85rem;
-      min-width: 5.85rem;
+      flex: 1 1 8.5rem;
+      width: 8.5rem;
+      min-width: 8.5rem;
       max-width: 100%;
     }
 
-    .edit-effect-knobs .daw-knob-select select {
-      font-size: 0.63rem;
-      line-height: 1.2;
-      height: 1.82rem;
-      padding: 0 0.32rem;
+    .edit-effect-knobs .daw-knob-select select,
+    .edit-effect-knobs .daw-knob-select .nice-select {
+      font-size: 0.78rem;
+      line-height: 1.35;
+      min-height: 2.15rem;
+      height: auto;
+      padding: 0.4rem 1.65rem 0.4rem 0.5rem;
     }
 
     .edit-effect-knobs-delay-split {
@@ -1516,8 +1498,11 @@
       width: 100%;
     }
 
-    .edit-effect-selects-col .daw-knob-select select {
+    .edit-effect-selects-col .daw-knob-select select,
+    .edit-effect-selects-col .daw-knob-select .nice-select {
       width: 100%;
+      font-size: 0.78rem;
+      min-height: 2.15rem;
     }
 
     .edit-inline-number-row {
@@ -1855,7 +1840,8 @@
       outline: none;
     }
 
-    .edit-control-row select {
+    .edit-control-row select,
+    .edit-control-row .nice-select {
       font-family: inherit;
       font-size: 0.78rem;
       padding: 0.35rem;

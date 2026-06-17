@@ -9,31 +9,9 @@
   {% include '_app_favicons.html' %}
   <link rel="stylesheet" href="/static/vendor/fonts/fragment-mono.css">
   <link rel="stylesheet" href="/static/vendor/fontawesome/css/all.min.css">
+  {% include '_app_ui_vendor.html' %}
   <style>
     {% include '_app_css_root.html' %}
-
-    * {
-      scrollbar-width: thin;
-      scrollbar-color: var(--theme-a) var(--secondary);
-    }
-
-    *::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-
-    *::-webkit-scrollbar-track {
-      background: var(--secondary);
-    }
-
-    *::-webkit-scrollbar-thumb {
-      background: var(--theme-a);
-      border-radius: 4px;
-    }
-
-    *::-webkit-scrollbar-thumb:hover {
-      background: var(--theme-b);
-    }
 
     main {
       max-width: 64rem;

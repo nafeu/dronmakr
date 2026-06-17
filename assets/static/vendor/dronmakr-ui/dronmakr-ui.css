@@ -1,0 +1,436 @@
+/**
+ * dronmakr cross-platform UI skin for Tauri webviews.
+ * Hides native OS chrome for scrollbars, checkboxes, and select dropdowns.
+ */
+
+/* --- Scrollbars (OverlayScrollbars theme + CSS fallback) --- */
+.os-theme-dronmakr {
+  --os-size: 8px;
+  --os-padding-perpendicular: 2px;
+  --os-padding-axis: 2px;
+  --os-track-border-radius: 4px;
+  --os-handle-border-radius: 4px;
+  --os-handle-interactive-area-offset: 3px;
+  --os-track-bg: var(--secondary);
+  --os-track-bg-hover: color-mix(in srgb, var(--theme-a) 80%, var(--secondary));
+  --os-track-bg-active: color-mix(in srgb, var(--theme-a) 65%, var(--secondary));
+  --os-handle-bg: var(--theme-a);
+  --os-handle-bg-hover: color-mix(in srgb, var(--theme-a) 45%, var(--primary));
+  --os-handle-bg-active: var(--primary);
+}
+
+/* Fallback for elements not yet wrapped by OverlayScrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--theme-a) var(--secondary);
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--secondary);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--theme-a);
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--theme-a) 45%, var(--primary));
+}
+
+*::-webkit-scrollbar-corner {
+  background: var(--secondary);
+}
+
+/* --- Number inputs (hide native spinners; use .dron-number-steppers) --- */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.dron-number-field {
+  display: flex;
+  align-items: stretch;
+  gap: 0.4rem;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.dron-number-field > input[type="number"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  margin: 0;
+}
+
+.dron-number-field:focus-within > input[type="number"] {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.dron-number-steppers {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 1.35rem;
+  width: 1.35rem;
+  border: 1px solid var(--theme-a);
+  border-radius: 4px;
+  overflow: hidden;
+  background: #0a0a0a;
+  box-sizing: border-box;
+}
+
+.dron-number-field:focus-within .dron-number-steppers {
+  border-color: var(--primary);
+}
+
+.dron-number-step {
+  flex: 1 1 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: #0a0a0a;
+  color: var(--primary);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.5rem;
+  line-height: 1;
+  min-height: 0;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.dron-number-step + .dron-number-step {
+  border-top: 1px solid color-mix(in srgb, var(--theme-a) 75%, transparent);
+}
+
+.dron-number-step:hover {
+  background: rgba(255, 149, 5, 0.18);
+}
+
+.dron-number-step:active {
+  background: rgba(255, 149, 5, 0.32);
+}
+
+.dron-number-step:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.edit-inline-number-field-row .dron-number-field,
+.edit-number-suffix-wrap .dron-number-field,
+.transport-setting .dron-number-field,
+.generatr-form .form-row .dron-number-field {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* --- Checkboxes --- */
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex: 0 0 auto;
+  border: 1px solid var(--theme-a);
+  border-radius: 3px;
+  background: #0a0a0a;
+  cursor: pointer;
+  position: relative;
+  vertical-align: middle;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+input[type="checkbox"]:checked {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 5px;
+  height: 9px;
+  border: solid var(--secondary);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+input[type="checkbox"]:focus-visible {
+  outline: 1px solid var(--primary);
+  outline-offset: 2px;
+}
+
+input[type="checkbox"]:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Hide native select chrome before/without nice-select binding */
+select:not([data-native-ui]) {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: none;
+}
+
+select:not([data-native-ui])::-ms-expand {
+  display: none;
+}
+
+/* --- nice-select2 theme (classes copied from underlying select) --- */
+.nice-select {
+  float: none;
+  display: block;
+  width: 100%;
+  min-height: 2rem;
+  height: auto;
+  line-height: 1.35;
+  padding: 0.4rem 1.75rem 0.4rem 0.5rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 400;
+  text-align: left !important;
+  background-color: var(--theme-a);
+  border: 1px solid var(--theme-a);
+  border-radius: 4px;
+  color: var(--primary);
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.nice-select:hover {
+  border-color: color-mix(in srgb, var(--theme-a) 70%, var(--primary));
+}
+
+.nice-select:active,
+.nice-select.open,
+.nice-select:focus {
+  border-color: var(--primary);
+  outline: none;
+}
+
+.nice-select:after {
+  border-bottom: 2px solid var(--primary);
+  border-right: 2px solid var(--primary);
+  height: 6px;
+  width: 6px;
+  right: 0.65rem;
+  margin-top: -5px;
+}
+
+.nice-select.disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.nice-select .nice-select-dropdown {
+  margin-top: 4px;
+  background-color: #0a0a0a;
+  border: 1px solid var(--theme-a);
+  border-radius: 4px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+  z-index: 2500;
+}
+
+.nice-select .nice-select-search-box {
+  padding: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.nice-select .nice-select-search {
+  width: 100%;
+  min-height: 2rem;
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  font-family: inherit;
+  font-size: 0.82rem;
+  line-height: 1.3;
+  color: var(--primary);
+  background: #050505;
+  border: 1px solid var(--theme-a);
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.nice-select .nice-select-search:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.nice-select .list {
+  max-height: 220px;
+  padding: 4px 0;
+}
+
+.nice-select .list::-webkit-scrollbar {
+  width: 6px !important;
+  height: 6px !important;
+}
+
+.nice-select .option {
+  min-height: 2rem;
+  line-height: 1.35;
+  padding: 0.35rem 0.65rem;
+  color: var(--primary);
+  font-size: 0.82rem;
+  font-weight: 400;
+}
+
+.nice-select .option:hover,
+.nice-select .option.focus,
+.nice-select .option.selected.focus {
+  background: rgba(255, 149, 5, 0.14) !important;
+}
+
+.nice-select .option.selected {
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.nice-select .option.disabled {
+  color: color-mix(in srgb, var(--primary) 45%, var(--theme-a));
+  cursor: not-allowed;
+}
+
+.nice-select .optgroup {
+  color: var(--theme-b);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding-top: 0.35rem;
+}
+
+/* Layout variants (class names copied from <select>) */
+.nice-select.toolbar-select {
+  min-width: 7rem;
+  height: 24px;
+  min-height: 24px;
+  padding: 0 1.35rem 0 0.55rem;
+  font-size: 0.72rem;
+  line-height: 22px;
+  background: #0a0a0a;
+}
+
+.nice-select.browser-sample-type-select {
+  min-width: 8rem;
+  font-size: 0.78rem;
+}
+
+.nice-select.generatr-sweep-preview-select {
+  font-size: 0.8rem;
+  padding: 0.32rem 1.65rem 0.32rem 0.65rem;
+  min-height: 2.1rem;
+}
+
+.daw-knob-select .nice-select {
+  font-size: 0.58rem;
+  line-height: 1.2;
+  height: 1.75rem;
+  min-height: 1.75rem;
+  padding: 0 1.1rem 0 0.18rem;
+  border-color: color-mix(in srgb, var(--theme-a) 70%, var(--primary));
+}
+
+/* Edit Samples effect cards — readable dropdowns (override compact DAW knob sizing) */
+.edit-effect-card .edit-control-item.daw-knob-select {
+  flex: 1 1 8.5rem;
+  width: 8.5rem;
+  min-width: 8.5rem;
+  max-width: 100%;
+}
+
+.edit-effect-card .edit-effect-selects-col .edit-control-item.daw-knob-select {
+  flex: 1 1 100%;
+  width: 100%;
+  min-width: 0;
+}
+
+.edit-effect-card .daw-knob-select .nice-select {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  min-height: 2.15rem;
+  height: auto;
+  padding: 0.4rem 1.65rem 0.4rem 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.edit-effect-card .daw-knob-select .nice-select .current {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.edit-effect-card .daw-knob-select .nice-select .option {
+  font-size: 0.78rem;
+  min-height: 2.1rem;
+  white-space: normal;
+  line-height: 1.3;
+}
+
+.edit-effect-card .daw-knob-label {
+  font-size: 0.62rem;
+}
+
+.transport-setting .nice-select {
+  min-height: 2.5rem;
+  padding: 0.5rem 1.75rem 0.5rem 0.75rem;
+  font-size: 0.95rem;
+  background: #0a0a0a;
+}
+
+.transport-setting .nice-select:focus,
+.transport-setting .nice-select.open {
+  border-color: var(--theme-b);
+}
+
+.generatr-form .form-row .nice-select {
+  font-size: 0.85rem;
+  padding: 0.4rem 1.75rem 0.4rem 0.5rem;
+}
+
+.generatr-sweep-panel .form-row .nice-select {
+  font-size: 0.8rem;
+  padding: 0.32rem 1.65rem 0.32rem 0.65rem;
+}
+
+.edit-control-row .nice-select {
+  width: 100%;
+  min-width: 0;
+}
+
+.preset-toolbar .nice-select,
+.settings-card .nice-select,
+.field-group .nice-select {
+  background: #0a0a0a;
+}
+
+.collections-filters .nice-select {
+  min-width: 10rem;
+}
+
+.splitr-threshold .nice-select,
+.splitr-param-row .nice-select,
+.device-picker .nice-select {
+  min-width: 0;
+  width: 100%;
+}
