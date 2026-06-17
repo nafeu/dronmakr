@@ -4458,6 +4458,28 @@
       if (!sharedAudioContext) sharedAudioContext = new (window.AudioContext || window.webkitAudioContext)();
       return sharedAudioContext;
     }
+
+    function resumeAuditionrAudioContext() {
+      var ctx = getAudioContext();
+      if (ctx.state === "suspended") return ctx.resume();
+      return Promise.resolve();
+    }
+
+    function resumeWaveSurferAudio(wavesurfer) {
+      resumeAuditionrAudioContext();
+      if (!wavesurfer || !wavesurfer.getMediaElement) return Promise.resolve();
+      var player = wavesurfer.getMediaElement();
+      if (player && player.audioContext && player.audioContext.state === "suspended") {
+        return player.audioContext.resume();
+      }
+      return Promise.resolve();
+    }
+
+    function enableWaveSurferLoop(wavesurfer) {
+      if (!wavesurfer || !wavesurfer.getMediaElement) return;
+      var player = wavesurfer.getMediaElement();
+      if (player && player.bufferNode) player.bufferNode.loop = true;
+    }
     function emptyTrash() {
       var button = document.getElementById("empty-trash-button");
       var originalHtml = button.innerHTML;
@@ -5087,8 +5109,10 @@
         container: "#" + waveformIdSafe,
         waveColor: "#353531",
         progressColor: isDrumpattern ? "#016fb9" : (isTransition ? "#ec4e20" : (isFolysplitr ? themeEProgress : "#ff9505")),
-        backend: "MediaElement",
-        height: 80
+        backend: "WebAudio",
+        height: 80,
+        autoScroll: false,
+        autoCenter: false
       };
       if (isFolysplitr) wsOpts.cursorColor = themeEProgress;
       var wavesurfer = WaveSurfer.create(wsOpts);
@@ -5126,19 +5150,25 @@
           endWaveformProcessing(file, { skipDurationRepair: true });
         }
         if (isDrumpattern) {
-          fetch(mediaUrl)
-            .then(function (r) { return r.arrayBuffer(); })
-            .then(function (ab) {
-              return getAudioContext().decodeAudioData(ab);
-            })
-            .then(function (buffer) {
-              drumpatternBuffer = buffer;
-              playButton.classList.remove("disabled");
-            })
-            .catch(function (e) {
-              console.error("Drumpattern decode failed", e);
-              playButton.classList.remove("disabled");
-            });
+          var decoded = wavesurfer.getDecodedData && wavesurfer.getDecodedData();
+          if (decoded) {
+            drumpatternBuffer = decoded;
+            playButton.classList.remove("disabled");
+          } else {
+            fetch(mediaUrl)
+              .then(function (r) { return r.arrayBuffer(); })
+              .then(function (ab) {
+                return getAudioContext().decodeAudioData(ab);
+              })
+              .then(function (buffer) {
+                drumpatternBuffer = buffer;
+                playButton.classList.remove("disabled");
+              })
+              .catch(function (e) {
+                console.error("Drumpattern decode failed", e);
+                playButton.classList.remove("disabled");
+              });
+          }
         }
         if (typeof onReady === "function") onReady();
       });
@@ -5166,7 +5196,7 @@
           return;
         }
         var mediaEl = wavesurfer.getMediaElement && wavesurfer.getMediaElement();
-        if (mediaEl) mediaEl.loop = false;
+        if (mediaEl && "loop" in mediaEl) mediaEl.loop = false;
         try { wavesurfer.pause(); } catch (e) { }
         updatePlayButton(false);
       }
@@ -5184,6 +5214,7 @@
       wavesurfer.on("play", function () {
         selectSampleForEdit(file, apiPath, {});
         updatePlayButton(true);
+        if (!isDrumpattern) enableWaveSurferLoop(wavesurfer);
       });
 
       wavesurfer.on("pause", function () {
@@ -5200,28 +5231,31 @@
             return;
           }
           if (currentDrumpatternStop && currentDrumpatternStop !== stopPlayback) currentDrumpatternStop();
-          var ctx = getAudioContext();
-          if (ctx.state === "suspended") ctx.resume();
-          var src = ctx.createBufferSource();
-          src.buffer = drumpatternBuffer;
-          src.loop = true;
-          src.connect(ctx.destination);
-          src.start(0);
-          drumpatternSourceNode = src;
-          drumpatternStartTime = ctx.currentTime;
-          drumpatternPlaying = true;
-          currentDrumpatternStop = stopPlayback;
-          updatePlayButton(true);
-          drumpatternRafId = requestAnimationFrame(updateDrumpatternPlayhead);
+          resumeAuditionrAudioContext().then(function () {
+            var ctx = getAudioContext();
+            var src = ctx.createBufferSource();
+            src.buffer = drumpatternBuffer;
+            src.loop = true;
+            src.connect(ctx.destination);
+            src.start(0);
+            drumpatternSourceNode = src;
+            drumpatternStartTime = ctx.currentTime;
+            drumpatternPlaying = true;
+            currentDrumpatternStop = stopPlayback;
+            updatePlayButton(true);
+            drumpatternRafId = requestAnimationFrame(updateDrumpatternPlayhead);
+          });
           return;
         }
 
         if (wavesurfer.isPlaying()) {
           stopPlayback();
         } else {
-          var mediaEl = wavesurfer.getMediaElement && wavesurfer.getMediaElement();
-          if (mediaEl) mediaEl.loop = true;
-          wavesurfer.play();
+          resumeWaveSurferAudio(wavesurfer).then(function () {
+            wavesurfer.play().catch(function (err) {
+              console.error("WaveSurfer play failed", err);
+            });
+          });
         }
       });
 

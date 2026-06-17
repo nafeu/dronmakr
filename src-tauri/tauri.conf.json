@@ -42,5 +42,10 @@
     "macOS": {
       "minimumSystemVersion": "10.15"
     }
+  },
+  "plugins": {
+    "macos-fps": {
+      "enabled": true
+    }
   }
 }
