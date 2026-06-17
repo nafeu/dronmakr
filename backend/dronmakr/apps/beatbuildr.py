@@ -32,7 +32,7 @@ from dronmakr.core.utils import (
     generate_beat_name,
     generate_id,
 )
-from dronmakr.generate.generate_sample import generate_beat_sample
+from dronmakr.generate.generate_sample import generate_beat_sample, BEAT_EXPORT_PEAK_DB
 from dronmakr.core.paths import get_managed_file
 from dronmakr.processing.processing_actions import apply_post_processing_actions
 from dronmakr.core.bundle_paths import bundled_asset_path
@@ -1025,7 +1025,10 @@ def _handle_export_beat(payload):
                 pattern_data=pattern,
                 loops=loops,
             )
-            apply_post_processing_actions(output_path, [])
+            # generate_beat_sample finalizes loudness; re-normalize only if post-FX were applied.
+            apply_post_processing_actions(
+                output_path, [], normalize_peak_db=BEAT_EXPORT_PEAK_DB
+            )
             filenames.append(os.path.basename(output_path))
 
         _socketio.emit(

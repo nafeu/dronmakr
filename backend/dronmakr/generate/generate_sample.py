@@ -5,7 +5,6 @@ import os
 import json
 import random
 import subprocess
-import math
 from pathlib import Path
 from dronmakr.core.settings import get_setting, parse_escaped_csv
 from pydub import AudioSegment
@@ -358,6 +357,115 @@ def open_file_with_default_player(file_path: str) -> None:
 
 # Export sample rate for drum loops: 44.1 kHz is standard for DAWs (Ableton, etc.).
 BEAT_EXPORT_SAMPLE_RATE = 44100
+# Drum loops: peak at 0 dBFS with makeup gain so level matches beatbuildr preview / legacy exports.
+BEAT_EXPORT_PEAK_DB = 0.0
+BEAT_EXPORT_MAKEUP_DB = 10.0
+
+BEAT_ROW_KEYS = frozenset(
+    {
+        "kick",
+        "snar",
+        "ghos",
+        "clap",
+        "hhat",
+        "halt",
+        "shkr",
+        "prca",
+        "prcb",
+        "prcc",
+        "tomm",
+        "cymb",
+    }
+)
+
+
+def _resample_beat_hit(
+    audio: np.ndarray, orig_sr: int, target_sr: int = BEAT_EXPORT_SAMPLE_RATE
+) -> np.ndarray:
+    if orig_sr == target_sr:
+        return np.ascontiguousarray(audio, dtype=np.float32)
+    import librosa  # noqa: PLC0415
+
+    if audio.ndim == 1:
+        return librosa.resample(audio, orig_sr=orig_sr, target_sr=target_sr).astype(
+            np.float32
+        )
+    resampled = [
+        librosa.resample(audio[:, ch], orig_sr=orig_sr, target_sr=target_sr)
+        for ch in range(audio.shape[1])
+    ]
+    return np.stack(resampled, axis=1).astype(np.float32)
+
+
+def _load_beat_hit(path: str | Path) -> np.ndarray:
+    """Load a one-shot as float32 (samples, channels) at BEAT_EXPORT_SAMPLE_RATE."""
+    p = Path(path)
+    if not p.exists() or not p.is_file():
+        raise ValueError(f"Sample file not found: {path}")
+    audio, sr = sf.read(str(p), dtype="float32", always_2d=True)
+    return _resample_beat_hit(audio, int(sr))
+
+
+def _get_random_beat_hit(folder: Path) -> np.ndarray | None:
+    files = [f for f in folder.iterdir() if f.suffix.lower() == ".wav"]
+    if not files:
+        return None
+    return _load_beat_hit(random.choice(files))
+
+
+def _beat_hit_channel_count(hit: np.ndarray) -> int:
+    return 1 if hit.ndim == 1 else int(hit.shape[1])
+
+
+def _align_hit_channels(hit: np.ndarray, channels: int) -> np.ndarray:
+    if hit.ndim == 1:
+        hit = hit[:, np.newaxis]
+    hit_ch = hit.shape[1]
+    if hit_ch == channels:
+        return hit
+    if hit_ch == 1 and channels == 2:
+        return np.repeat(hit, 2, axis=1)
+    if hit_ch == 2 and channels == 1:
+        return hit.mean(axis=1, keepdims=True)
+    return hit[:, :channels]
+
+
+def _mix_hit_into_buffer(
+    mix: np.ndarray,
+    hit: np.ndarray,
+    start_sample: int,
+    velocity: float,
+) -> None:
+    """Sum a velocity-scaled one-shot into a float mix buffer (matches Web Audio gain)."""
+    gain = max(0.0, min(1.0, float(velocity)))
+    if gain <= 0.0 or start_sample >= mix.shape[0]:
+        return
+    hit = _align_hit_channels(hit, mix.shape[1])
+    scaled = hit * gain
+    end = min(mix.shape[0], start_sample + scaled.shape[0])
+    count = end - start_sample
+    if count <= 0:
+        return
+    mix[start_sample:end, :] += scaled[:count, :]
+
+
+def _finalize_beat_export_mix(mix: np.ndarray) -> np.ndarray:
+    """
+    Apply makeup gain then peak-normalize for beat exports.
+
+    Float32 summing avoids the old pydub 16-bit clip "fattening", so we add makeup
+    gain before peaking at BEAT_EXPORT_PEAK_DB to match beatbuildr preview loudness.
+    """
+    out = np.asarray(mix, dtype=np.float64)
+    if out.size == 0:
+        return out.astype(np.float32)
+    out *= 10 ** (BEAT_EXPORT_MAKEUP_DB / 20.0)
+    peak = float(np.max(np.abs(out)))
+    if peak <= 1e-12:
+        return np.zeros_like(out, dtype=np.float32)
+    target = 10 ** (BEAT_EXPORT_PEAK_DB / 20.0)
+    out *= target / peak
+    return np.clip(out, -1.0, 1.0).astype(np.float32)
 
 
 def generate_beat_sample(
@@ -417,11 +525,11 @@ def generate_beat_sample(
         return (list(arr) * ((n // len(arr)) + 1))[:n] if arr else [0] * n
 
     if kit_paths:
-        def _load(row: str, fallback_row: str | None = None) -> AudioSegment | None:
+        def _load(row: str, fallback_row: str | None = None) -> np.ndarray | None:
             path = kit_paths.get(row) or (kit_paths.get(fallback_row) if fallback_row else None)
             if not path:
                 return None
-            return load_sample_from_path(path)
+            return _load_beat_hit(path)
 
         kick = _load("kick")
         snare = _load("snar")
@@ -445,18 +553,18 @@ def generate_beat_sample(
         shakers = Path(drum_path("DRUM_SHAKER_PATHS") or ".")
         claps = Path(drum_path("DRUM_CLAP_PATHS") or ".")
         cymbals = Path(drum_path("DRUM_CYMBAL_PATHS") or ".")
-        kick = get_random_sample(kicks)
-        snare = get_random_sample(snares)
-        ghost_snare = get_random_sample(snares)
-        hihat = get_random_sample(hihats)
-        hihat_alt = get_random_sample(hihats)
-        perc_a = get_random_sample(percs)
-        perc_b = get_random_sample(percs)
-        perc_c = get_random_sample(percs)
-        clap = get_random_sample(claps)
-        tom = get_random_sample(toms)
-        shaker = get_random_sample(shakers)
-        cymbal = get_random_sample(cymbals)
+        kick = _get_random_beat_hit(kicks)
+        snare = _get_random_beat_hit(snares)
+        ghost_snare = _get_random_beat_hit(snares)
+        hihat = _get_random_beat_hit(hihats)
+        hihat_alt = _get_random_beat_hit(hihats)
+        perc_a = _get_random_beat_hit(percs)
+        perc_b = _get_random_beat_hit(percs)
+        perc_c = _get_random_beat_hit(percs)
+        clap = _get_random_beat_hit(claps)
+        tom = _get_random_beat_hit(toms)
+        shaker = _get_random_beat_hit(shakers)
+        cymbal = _get_random_beat_hit(cymbals)
 
     # Pattern arrays: from pattern_data or get_beat_patterns
     if pattern_data and isinstance(pattern_data, dict):
@@ -498,7 +606,7 @@ def generate_beat_sample(
             return {}
         sanitized: dict[str, tuple[float, float]] = {}
         for row_key, value in raw.items():
-            if row_key not in ROW_KEYS:
+            if row_key not in BEAT_ROW_KEYS:
                 continue
             if not isinstance(value, list) or len(value) != 2:
                 continue
@@ -519,7 +627,7 @@ def generate_beat_sample(
             return {}
         sanitized: dict[str, float] = {}
         for row_key, value in raw.items():
-            if row_key not in ROW_KEYS:
+            if row_key not in BEAT_ROW_KEYS:
                 continue
             try:
                 amount = float(value)
@@ -543,51 +651,49 @@ def generate_beat_sample(
         max_offset_ms = step_duration_ms * 0.1 * amount
         return random.uniform(0.0, max_offset_ms)
 
-    def _apply_linear_velocity(segment: AudioSegment, velocity: float) -> AudioSegment:
-        v = max(0.0, min(1.0, velocity))
-        if v >= 1.0:
-            return segment
-        if v <= 0.0:
-            return segment - 120
-        return segment.apply_gain(20.0 * math.log10(v))
-
-    ROW_KEYS = {
-        "kick",
-        "snar",
-        "ghos",
-        "clap",
-        "hhat",
-        "halt",
-        "shkr",
-        "prca",
-        "prcb",
-        "prcc",
-        "tomm",
-        "cymb",
-    }
     velocity_randomization = _sanitize_velocity_randomization_map(meta.get("velocityRandomization"))
     timing_randomization_by_row = _sanitize_timing_randomization_map(meta.get("timingRandomization"))
 
+    row_hits: dict[str, np.ndarray | None] = {
+        "kick": kick,
+        "snar": snare,
+        "ghos": ghost_snare,
+        "clap": clap,
+        "hhat": hihat,
+        "halt": hihat_alt,
+        "shkr": shaker,
+        "prca": perc_a,
+        "prcb": perc_b,
+        "prcc": perc_c,
+        "tomm": tom,
+        "cymb": cymbal,
+    }
+    channel_count = 1
+    for hit in row_hits.values():
+        if hit is not None:
+            channel_count = max(channel_count, _beat_hit_channel_count(hit))
+
     approx_loop_ms = steps * step_duration_ms + swing_triplet_offset_ms * swing_clamped + 100
-    track = AudioSegment.silent(duration=int(round(approx_loop_ms))).set_frame_rate(BEAT_EXPORT_SAMPLE_RATE)
+    exact_loop_sec = length * beats_per_bar * 60.0 / bpm
+    exact_sample_count = round(exact_loop_sec * BEAT_EXPORT_SAMPLE_RATE)
+    approx_sample_count = int(round(approx_loop_ms * BEAT_EXPORT_SAMPLE_RATE / 1000.0))
+    buffer_samples = max(exact_sample_count, approx_sample_count)
+    mix = np.zeros((buffer_samples, channel_count), dtype=np.float32)
 
     for i in range(steps):
         base_start_ms = i * step_duration_ms
         swing_offset_ms = swing_offset_for_step(i)
         step_start_ms = base_start_ms + swing_offset_ms
-        position_ms = max(0, int(round(step_start_ms)))
 
-        def overlay_row(row_key: str, pattern_value: int, sample: AudioSegment | None, base_ms: float):
-            nonlocal track
-            if not pattern_value or sample is None:
+        def overlay_row(row_key: str, pattern_value: int, hit: np.ndarray | None, base_ms: float):
+            if not pattern_value or hit is None:
                 return
             velocity = _random_velocity_for_row(row_key)
             human_offset = _timing_randomization_offset_ms_for_row(row_key)
-            position = max(0, int(round(base_ms + human_offset)))
-            # Match browser preview behavior: play full one-shot sample per trigger.
-            # Truncating to a single step makes rendered exports sound unnaturally choked.
-            segment = _apply_linear_velocity(sample, velocity)
-            track = track.overlay(segment, position=position)
+            position_ms = max(0.0, base_ms + human_offset)
+            start_sample = int(round(position_ms * BEAT_EXPORT_SAMPLE_RATE / 1000.0))
+            # Match browser preview: full one-shot per trigger, float32 linear gain.
+            _mix_hit_into_buffer(mix, hit, start_sample, velocity)
 
         overlay_row("kick", kick_pattern[i], kick, step_start_ms)
         overlay_row("snar", snare_pattern[i], snare, step_start_ms)
@@ -603,22 +709,18 @@ def generate_beat_sample(
         overlay_row("cymb", cymbal_pattern[i], cymbal, step_start_ms)
 
     # Trim to exact loop length so the exported WAV loops seamlessly and lines up in DAWs.
-    exact_loop_sec = length * beats_per_bar * 60.0 / bpm
-    exact_sample_count = round(exact_loop_sec * BEAT_EXPORT_SAMPLE_RATE)
-    exact_loop_ms = exact_sample_count * 1000.0 / BEAT_EXPORT_SAMPLE_RATE
-    one_loop = track[: int(round(exact_loop_ms))]
+    one_loop = mix[:exact_sample_count]
 
     # Repeat loop N times when loops > 1
     loops_clamped = max(1, int(loops))
     if loops_clamped > 1:
-        track = one_loop * loops_clamped
+        mix = np.tile(one_loop, (loops_clamped, 1))
     else:
-        track = one_loop
+        mix = one_loop
 
-    # Export as 16-bit, 44.1 kHz for DAW compatibility (Ableton, etc.). Ableton rejects
-    # 32-bit and non-standard WAV formats. Normalize to this format so tempo analysis works.
-    track = track.set_frame_rate(BEAT_EXPORT_SAMPLE_RATE).set_sample_width(2)
-    track.export(output, format="wav")
+    # Export as 16-bit, 44.1 kHz for DAW compatibility (Ableton, etc.).
+    mix = _finalize_beat_export_mix(mix)
+    sf.write(output, mix, BEAT_EXPORT_SAMPLE_RATE, subtype="PCM_16")
     print(with_generate_beat_prompt(f"exported {output}"))
 
     if play:

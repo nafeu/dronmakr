@@ -1870,10 +1870,11 @@ def apply_post_processing_actions(
     *,
     on_before_chain_step=None,
     on_before_finalize_normalize=None,
+    normalize_peak_db: float = -1.0,
 ) -> None:
     """
     Apply optional preprocessing steps from `actions`, then always finalize with
-    peak normalization (-1 dBFS), matching the Normalize action in the UI.
+    peak normalization, matching the Normalize action in the UI.
     """
     chain = actions_without_normalize(actions or [])
     for i, action in enumerate(chain, start=1):
@@ -1886,4 +1887,4 @@ def apply_post_processing_actions(
         )
     if on_before_finalize_normalize is not None:
         on_before_finalize_normalize()
-    normalize_sample(file_path)
+    normalize_sample(file_path, target_peak_db=normalize_peak_db)

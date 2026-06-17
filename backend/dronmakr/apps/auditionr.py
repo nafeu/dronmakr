@@ -63,7 +63,7 @@ from dronmakr.processing.processing_actions import (
     read_post_processing_shortcuts_document,
     remove_post_processing_shortcut,
 )
-from dronmakr.generate.generate_sample import apply_effect, generate_drone_sample, generate_beat_sample
+from dronmakr.generate.generate_sample import apply_effect, generate_drone_sample, generate_beat_sample, BEAT_EXPORT_PEAK_DB
 from dronmakr.core.paths import get_managed_file, normalize_path_basename
 from dronmakr.generate.generate_transition import (
     generate_sweep_sample,
@@ -1198,7 +1198,9 @@ def _run_generate_beat(payload: dict):
                     kit_paths=current_kit_paths,
                     pattern_data=raw if isinstance(raw, dict) else None,
                 )
-                apply_post_processing_actions(output_path, post_actions)
+                apply_post_processing_actions(
+                    output_path, post_actions, normalize_peak_db=BEAT_EXPORT_PEAK_DB
+                )
                 paths.append(output_path)
     finally:
         if original_preset_name:
