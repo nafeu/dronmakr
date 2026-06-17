@@ -6,8 +6,9 @@
 - After changing artwork or theme colours, regenerate locally on a Mac and **commit** the updated `.icns`:
 
   ```sh
-  bash scripts/build_mac_app_icns.sh
-  git add static/branding/macos/dronmakr.icns
+  npm run icons
+  cd src-tauri && cargo build
+  git add assets/static/branding/macos/dronmakr.icns src-tauri/icons/
   ```
 
   That script uses [`scripts/compose_mac_app_icon_layer.py`](../../../scripts/compose_mac_app_icon_layer.py) (reads **`--theme-a`** from [`assets/templates/_app_css_root.html`](../../../assets/templates/_app_css_root.html)), then **`sips` + `iconutil`**. Requires Pillow (install locally for icon builds).

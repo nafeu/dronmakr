@@ -6,6 +6,7 @@
   "scripts": {
     "build:frontend": "python scripts/build_frontend.py",
     "build:sidecar": "bash scripts/build_sidecar.sh",
+    "icons": "bash scripts/build_mac_app_icns.sh",
     "tauri": "tauri",
     "dev": "tauri dev",
     "dev:backend": "python backend/backend_server.py --port 3766 --dev-frontend",
