@@ -73,7 +73,7 @@ def invoke_audio_worker(task: str, params: dict) -> dict:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         env=env,
-        cwd=str(_package_root()),
+        cwd=str(_backend_root()),
         timeout=_WORKER_TIMEOUT_S,
         check=False,
     )
