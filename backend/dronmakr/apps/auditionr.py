@@ -25,6 +25,7 @@ from dronmakr.core.settings import (
 )
 from dronmakr.core.utils import (
     BLUE,
+    allocate_dragged_saved_filename,
     get_latest_exports,
     get_auditionr_folder_counts,
     get_presets,
@@ -405,6 +406,34 @@ def duplicate_file():
 def refresh_configs():
     _emit_configs_to_clients()
     return jsonify({"success": "Refreshed configurations"}), 200
+
+
+def prepare_drag_copy():
+    """Copy a managed sample into saved/ with a _dragged suffix for stable DAW references."""
+    params = request.get_json() or {}
+    if not params.get("path"):
+        return jsonify({"error": "File path is required."}), 400
+
+    file_path = _resolve_managed_audio_path(params["path"])
+    if not file_path:
+        return jsonify({"error": "File path is not allowed."}), 400
+
+    if not os.path.exists(file_path):
+        return jsonify({"error": "File does not exist."}), 404
+
+    os.makedirs(SAVED_DIR, exist_ok=True)
+    dest_name = allocate_dragged_saved_filename(os.path.basename(file_path), SAVED_DIR)
+    dest_path = os.path.join(SAVED_DIR, dest_name)
+    shutil.copy2(file_path, dest_path)
+
+    return jsonify(
+        {
+            "success": True,
+            "absPath": os.path.abspath(dest_path),
+            "savedPath": f"/saved/{dest_name}",
+            "name": dest_name.replace(".wav", ""),
+        }
+    ), 200
 
 
 def save_file():
@@ -1345,6 +1374,12 @@ def register_auditionr(app, socketio):
         "/refresh", "auditionr_refresh_configs", refresh_configs, methods=["GET"]
     )
     app.add_url_rule("/save", "auditionr_save_file", save_file, methods=["POST"])
+    app.add_url_rule(
+        "/prepare-drag-copy",
+        "auditionr_prepare_drag_copy",
+        prepare_drag_copy,
+        methods=["POST"],
+    )
     app.add_url_rule(
         "/process", "auditionr_process_file", process_file, methods=["POST"]
     )

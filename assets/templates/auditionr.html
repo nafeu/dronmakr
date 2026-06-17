@@ -2003,6 +2003,41 @@
       margin-bottom: 1rem;
     }
 
+    .waveform.waveform-external-drag {
+      cursor: grab;
+    }
+
+    .waveform.waveform-external-drag.waveform-external-dragging {
+      cursor: grabbing;
+    }
+
+    body.auditionr-drag-prep-active,
+    body.auditionr-drag-prep-active * {
+      cursor: progress !important;
+    }
+
+    .auditionr-drag-prep-indicator {
+      position: fixed;
+      z-index: 10000;
+      width: 36px;
+      height: 36px;
+      margin-left: -18px;
+      margin-top: -18px;
+      border-radius: 8px;
+      background: var(--secondary, #1a1a18);
+      border: 1px solid var(--theme-a, #353531);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .auditionr-drag-prep-indicator i {
+      font-size: 1rem;
+      color: var(--primary, #ff9505);
+    }
+
     .waveform-wrapper {
       /* border: 2px solid var(--theme-a); */
       padding: 10px;
@@ -4580,6 +4615,165 @@
       return "/exports/" + auditionrBasename(absPath);
     }
 
+    var AUDITIONR_DRAG_PREVIEW_ICON =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEPElEQVR4AexUb0idVRj/Pee93uncvJumbcoq9scNc0TFch+29qFR0ZdgZARjFLH2h4VUZDIjfPPqtJbibBWURR9ylTCIDAajDwNpaiELWRvZh1YwtSU6b3Pe63vOeXrOe5lDmCsNFoUvz/Oe8/w5z/M7v3PeV+FffhYALDCwwMB/kwFmELfmP2tact/noyvv+ye/kvkx0JJXCZNsUxzsZpP85JYC4PfWFID1a7AMp6SD9dz2SO58Qag5L5xIvAhtsmHSAGQ94Y+zd8g4L5kTAG7YuFyo3we5BLDEMHAKzUHBvLrLojkBgDf4MqyNSVtART4CRb+FZURgb5Na08LNJbncnNvBzcvOcvPKrdOBG0xmAGDfV9pf8RjX5r3DdXknOZ53muvzuvlQXi83xAagkwddc3a751izzMfDmlrFwlFezExsh45BTz2BICiBnawV96wyDSDpFxUzt3Z7NvkVbLBfCmyHndoMnSoT3YRAr4WVOqKEjK+p6pfzchQJOQaAzTKJpOVw4Q7SwcOh34hLmzLuKI/K7IYSAmD/rg1RPdFFRm+CtYE1XjtMxh5g8U6D7J2ILHlFdosQgNw98KLWsJq2OvRZWu5saeTBXI1DjgXsdYj+DMOZuHC6xMWdctPqYt2Y/yS3rs1xtnKLODXeTsbkw9IkKHu7Fx/bRfHRNqr57dOIKLReChDSILwfUb3vBMLHS0AYgQ6KQvOnU09L7gawGkKsaDcQOR6CMcFmF+fG/AeR/P17zyQ/Q+JSD/trChT6uh4lY+51lFlE3qb4UJdLvqbslyyRo9gL99k5SpHRSuS7toBRY2lQdhvXryqFTtaFgDhaTwfOXQFHekNbTz2VjBeuRyr1OQLO5IC+gaZOQ5Nlylr9UIhSqGVadOZa4+lRD9cisAVhIev9iqXFH0/HoC464NC2EMnRfhi7ApCcnAc+DHMyirqh5aYEwbaoTpxjY/ONjT6n/MRW8serIjWDnUp2kCMKB8ILrh5IVa8q5Y49Ma6+vZSr5WsIghfCJoYYJlpBL3VPhsXlpafUeWkgTIjh2BG1JtpAFSdS4gFVnRlkRHrJgClgIu0djNSOpsG5BFElxX9wzcFiab0lmhrr555jY0hN9GMqtZ+ssK0Z1mTWUsPIl5I1LZHl9/SAvSvQ4jKQrXp9SpXOaDCllzxjkdUElb2DDo0flswZolSs4AMY9R3CMxYUMpK7xUYay1xiw4azdnlvjrw+Y6UYVHlyQs7ZZ9khGzWQsovLyT/l4Eg0LZkNFwe8+pFKqrv0Rdoz863Il8ty97otwKJyi2iDhfeuRcZRIFoDL+tx5Ny/OtI00j5z2XWL3hhtpqV3FtG64o1ZjcMXrkf+3ky5NNrbF9CR0ePekbFXvZbE817L5QpquRynt0Y6ZUdJl3MzlU0Muxo3y5ktFgKYLXgr/AsAFhj4/zPwV1/SnwAAAP//YsfmyQAAAAZJREFUAwDMrwRfx2Wp7AAAAABJRU5ErkJggg==";
+
+    function auditionrCanExternalFileDrag() {
+      return !!(
+        window.__TAURI__ &&
+        window.__TAURI__.core &&
+        typeof window.__TAURI__.core.invoke === "function" &&
+        typeof window.__TAURI__.core.Channel === "function"
+      );
+    }
+
+    function auditionrPrepareDragCopy(apiPath) {
+      return fetch("/prepare-drag-copy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: apiPath })
+      })
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+          if (data.error) throw new Error(data.error);
+          if (!data.absPath) throw new Error("Drag copy did not return a file path.");
+          return data.absPath;
+        });
+    }
+
+    function auditionrStartExternalFileDrag(absPath) {
+      if (!auditionrCanExternalFileDrag() || !absPath) return Promise.resolve();
+      var invoke = window.__TAURI__.core.invoke;
+      var channel = new window.__TAURI__.core.Channel();
+      return invoke("plugin:drag|start_drag", {
+        item: [absPath],
+        image: AUDITIONR_DRAG_PREVIEW_ICON,
+        options: { mode: "copy" },
+        onEvent: channel
+      }).catch(function (err) {
+        console.error("External file drag failed", err);
+      });
+    }
+
+    function auditionrCreateDragPrepIndicator(clientX, clientY) {
+      var el = document.createElement("div");
+      el.className = "auditionr-drag-prep-indicator";
+      el.setAttribute("aria-hidden", "true");
+      el.innerHTML = "<i class=\"fa-solid fa-spinner fa-spin\"></i>";
+      el.style.left = clientX + "px";
+      el.style.top = clientY + "px";
+      document.body.appendChild(el);
+      document.body.classList.add("auditionr-drag-prep-active");
+      return {
+        move: function (x, y) {
+          el.style.left = x + "px";
+          el.style.top = y + "px";
+        },
+        remove: function () {
+          if (el.parentNode) el.parentNode.removeChild(el);
+          document.body.classList.remove("auditionr-drag-prep-active");
+        }
+      };
+    }
+
+    function attachWaveformExternalDrag(waveformEl, absPath, apiPath) {
+      if (!auditionrCanExternalFileDrag() || !waveformEl) return;
+      waveformEl.classList.add("waveform-external-drag");
+      waveformEl.title = (waveformEl.title ? waveformEl.title + " — " : "") +
+        "Click to seek; drag to drop a saved copy into your DAW";
+
+      var DRAG_THRESHOLD_PX = 10;
+      var gesture = null;
+
+      function clearGesture() {
+        gesture = null;
+        waveformEl.classList.remove("waveform-external-dragging");
+      }
+
+      waveformEl.addEventListener("pointerdown", function (e) {
+        if (e.button !== 0 || !e.isPrimary) return;
+        gesture = {
+          pointerId: e.pointerId,
+          startX: e.clientX,
+          startY: e.clientY,
+          externalDragStarted: false
+        };
+      });
+
+      waveformEl.addEventListener("pointermove", function (e) {
+        if (!gesture || gesture.externalDragStarted || e.pointerId !== gesture.pointerId) return;
+        var dx = e.clientX - gesture.startX;
+        var dy = e.clientY - gesture.startY;
+        if (Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
+        gesture.externalDragStarted = true;
+        waveformEl.classList.add("waveform-external-dragging");
+        e.preventDefault();
+        e.stopPropagation();
+        selectSampleForEdit(absPath, apiPath, {});
+
+        var pointerId = gesture.pointerId;
+        var cancelled = false;
+        var indicator = auditionrCreateDragPrepIndicator(e.clientX, e.clientY);
+
+        function cleanupPrepListeners() {
+          document.removeEventListener("pointermove", onPrepPointerMove, true);
+          document.removeEventListener("pointerup", onPrepPointerUp, true);
+          document.removeEventListener("pointercancel", onPrepPointerCancel, true);
+        }
+
+        function finishPrep() {
+          cleanupPrepListeners();
+          indicator.remove();
+        }
+
+        function onPrepPointerMove(ev) {
+          if (ev.pointerId !== pointerId) return;
+          indicator.move(ev.clientX, ev.clientY);
+        }
+
+        function onPrepPointerUp(ev) {
+          if (ev.pointerId !== pointerId) return;
+          cancelled = true;
+          finishPrep();
+          clearGesture();
+        }
+
+        function onPrepPointerCancel(ev) {
+          if (ev.pointerId !== pointerId) return;
+          cancelled = true;
+          finishPrep();
+          clearGesture();
+        }
+
+        document.addEventListener("pointermove", onPrepPointerMove, true);
+        document.addEventListener("pointerup", onPrepPointerUp, true);
+        document.addEventListener("pointercancel", onPrepPointerCancel, true);
+
+        auditionrPrepareDragCopy(apiPath)
+          .then(function (copyPath) {
+            if (cancelled) return;
+            finishPrep();
+            return auditionrStartExternalFileDrag(copyPath);
+          })
+          .catch(function (err) {
+            finishPrep();
+            window.alert(err && err.message ? err.message : "Could not prepare drag copy.");
+          })
+          .finally(clearGesture);
+      }, true);
+
+      waveformEl.addEventListener("pointerup", function (e) {
+        if (!gesture || e.pointerId !== gesture.pointerId) return;
+        if (gesture.externalDragStarted) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        clearGesture();
+      }, true);
+
+      waveformEl.addEventListener("pointercancel", clearGesture, true);
+    }
+
     function revealSample(path) {
       fetch("/reveal", {
         method: "POST",
@@ -5104,6 +5298,8 @@
       };
       if (isFolysplitr) wsOpts.cursorColor = themeEProgress;
       var wavesurfer = WaveSurfer.create(wsOpts);
+
+      attachWaveformExternalDrag(waveformDiv, file, apiPath);
 
       wavesurfer.load(mediaUrl);
 

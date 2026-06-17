@@ -1113,6 +1113,31 @@ def ensure_post_processing_shortcuts_file() -> None:
     )
 
 
+DRAGGED_SAVED_MARKER = "_dragged"
+
+
+def is_dragged_saved_artifact(filename: str) -> bool:
+    """True for saved/ copies created for DAW drag-out (not user-approved collection items)."""
+    return DRAGGED_SAVED_MARKER in (filename or "")
+
+
+def allocate_dragged_saved_filename(source_basename: str, saved_dir: str) -> str:
+    """Return an unused filename under saved/ for a drag-out copy of source_basename."""
+    stem, ext = os.path.splitext(source_basename or "")
+    if ext.lower() != ".wav":
+        ext = ".wav"
+    base = f"{stem}{DRAGGED_SAVED_MARKER}"
+    candidate = f"{base}{ext}"
+    if not os.path.exists(os.path.join(saved_dir, candidate)):
+        return candidate
+    counter = 1
+    while True:
+        candidate = f"{base}_{counter}{ext}"
+        if not os.path.exists(os.path.join(saved_dir, candidate)):
+            return candidate
+        counter += 1
+
+
 def _infer_saved_sample_type(filename):
     """Infer sample type from filename for collections display. Returns one of: drone, bass, closh, drumpattern, transition, folysplitr, other."""
     name = filename.replace(".wav", "").lower()
@@ -1135,7 +1160,13 @@ def get_saved_files():
     """Return list of .wav files in the saved/ directory with name, path, and inferred type for collections."""
     if not os.path.exists(SAVED_DIR):
         return []
-    wav_files = sorted([f for f in os.listdir(SAVED_DIR) if f.endswith(".wav")])
+    wav_files = sorted(
+        [
+            f
+            for f in os.listdir(SAVED_DIR)
+            if f.endswith(".wav") and not is_dragged_saved_artifact(f)
+        ]
+    )
     return [
         {
             "name": f.replace(".wav", ""),
