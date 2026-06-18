@@ -12,7 +12,6 @@ import hashlib
 import json
 import random
 import fnmatch
-import tempfile
 import time
 
 from flask import request, jsonify, send_from_directory
@@ -60,7 +59,6 @@ from dronmakr.processing.processing_actions import (
     parse_single_processing_spec,
     apply_post_processing_actions,
     apply_processing_command,
-    actions_without_normalize,
     read_post_processing_shortcuts_document,
     remove_post_processing_shortcut,
 )
@@ -687,62 +685,6 @@ def _apply_drone_post_processing_to_wavs(
         print(f"{BLUE}│{RESET}")
 
 
-def _export_split_drone_post_processing_variants(
-    output_stem: str, source_wav: str, actions: list[dict]
-) -> list[str]:
-    chain = actions_without_normalize(actions)
-    n = len(chain) + 1
-    first_path = f"{output_stem}_1of{n}.wav"
-    stem_short = os.path.basename(output_stem)
-
-    print(process_drone_sample_header())
-    print(
-        with_process_drone_sample_prompt(
-            f"split-processing ({n} milestones) — {stem_short}"
-        )
-    )
-
-    os.replace(source_wav, first_path)
-    paths: list[str] = [first_path]
-    print(with_process_drone_sample_prompt(f"[1/{n}] _1of{n} baseline → normalize"))
-    apply_processing_command(first_path, "normalize_sample", {})
-
-    if not chain:
-        print(f"{BLUE}│{RESET}")
-        return paths
-
-    out_dir = os.path.dirname(os.path.abspath(first_path)) or os.getcwd()
-    fd, work_path = tempfile.mkstemp(suffix=".wav", dir=out_dir)
-    os.close(fd)
-    try:
-        shutil.copy2(first_path, work_path)
-        for i, action in enumerate(chain):
-            tok = action.get("token") or action.get("command", "")
-            milestone = i + 2
-            step_path = f"{output_stem}_{milestone}of{n}.wav"
-            print(
-                with_process_drone_sample_prompt(
-                    f"[{milestone}/{n}] {tok} → _{milestone}of{n} → normalize"
-                )
-            )
-            apply_processing_command(
-                work_path,
-                action.get("command", ""),
-                action.get("params", {}),
-            )
-            shutil.copy2(work_path, step_path)
-            apply_processing_command(step_path, "normalize_sample", {})
-            paths.append(step_path)
-    finally:
-        if os.path.exists(work_path):
-            try:
-                os.remove(work_path)
-            except OSError:
-                pass
-    print(f"{BLUE}│{RESET}")
-    return paths
-
-
 def _run_generate_drone(payload: dict) -> list[str]:
     """`generate-drone` CLI parity (omits UI for --shift-octave-down, --shift-root-note, --dry-run, --log-server, --play)."""
     from dronmakr.core.utils import resolve_presets_index_path
@@ -752,14 +694,6 @@ def _run_generate_drone(payload: dict) -> list[str]:
         raise FileNotFoundError(
             "config/presets.json does not exist — open Patchcraftr from the desktop tray (Launch patchcraftr)."
         )
-
-    name = (payload.get("name") or "").strip() or None
-    notes_raw = (payload.get("notes") or "").strip()
-    notes_list = None
-    if notes_raw:
-        _nl = [n.strip() for n in notes_raw.split(",") if n.strip()]
-        if _nl:
-            notes_list = _nl
 
     chart_name = (payload.get("chartName") or "").strip() or None
     instrument = (payload.get("instrument") or "").strip() or None
@@ -778,7 +712,7 @@ def _run_generate_drone(payload: dict) -> list[str]:
     padded_silence_bars = coerce_drone_midi_padding_bars(payload.get("paddedSilenceBars"))
 
     try:
-        iterations = max(1, int(payload.get("iterations", 1)))
+        iterations = max(1, min(50, int(payload.get("iterations", 1))))
     except (TypeError, ValueError):
         iterations = 1
 
@@ -789,22 +723,6 @@ def _run_generate_drone(payload: dict) -> list[str]:
         )
     else:
         post_processing_spec = (post_processing or "").strip() or None
-
-    split_processing = bool(payload.get("splitProcessing"))
-    split_actions: list[dict] | None = None
-    if split_processing:
-        if not post_processing_spec:
-            raise ValueError(
-                "Split processing requires post-processing with at least one action."
-            )
-        try:
-            split_actions = parse_post_processing_spec(post_processing_spec)
-        except ValueError as e:
-            raise ValueError(str(e)) from e
-        if not split_actions:
-            raise ValueError(
-                "Split processing requires at least one post-processing action."
-            )
 
     filters = {}
     if tags_raw:
@@ -823,11 +741,10 @@ def _run_generate_drone(payload: dict) -> list[str]:
             shift_octave_down=None,
             shift_root_note=None,
             filters=filters,
-            notes=notes_list,
             num_bars=length_bars,
             padded_silence_bars=padded_silence_bars,
         )
-        base_sample_name = f"{name or generate_drone_name()}_-_{selected_chart}_-_{generate_id()}"
+        base_sample_name = f"{generate_drone_name()}_-_{selected_chart}_-_{generate_id()}"
         sample_name = format_name(f"drone___{base_sample_name}")
         output_path = f"{EXPORTS_DIR}/{sample_name}"
         generated_sample = generate_drone_sample(
@@ -839,17 +756,10 @@ def _run_generate_drone(payload: dict) -> list[str]:
             render_duration_sec=render_duration_sec,
         )
         results.append(midi_file)
-        if split_actions is not None:
-            variant_paths = _export_split_drone_post_processing_variants(
-                output_path, generated_sample, split_actions
-            )
-            results.extend(variant_paths)
-        else:
-            results.append(generated_sample)
+        results.append(generated_sample)
 
     wav_files = [f for f in results if f.endswith(".wav")]
-    if split_actions is None:
-        _apply_drone_post_processing_to_wavs(wav_files, post_processing_spec)
+    _apply_drone_post_processing_to_wavs(wav_files, post_processing_spec)
 
     return results
 

@@ -145,10 +145,10 @@ SUPPORTED_PATTERNS_INFO = [
 SUPPORTED_PATTERNS = [item[0] for item in SUPPORTED_PATTERNS_INFO]
 
 # Drone MIDI: fixed bar counts for CLI + Auditionr Generate Samples.
-DRONE_MIDI_LENGTH_BARS_ALLOWED = frozenset({4, 8, 16, 32, 64})
-DRONE_MIDI_PADDING_BARS_ALLOWED = frozenset({0, 4, 8, 16, 32, 64})
+DRONE_MIDI_LENGTH_BARS_ALLOWED = frozenset({1, 2, 4, 8, 16, 32, 64})
+DRONE_MIDI_PADDING_BARS_ALLOWED = frozenset({1, 2, 4, 8, 16, 32, 64})
 DEFAULT_DRONE_MIDI_LENGTH_BARS = 16
-DEFAULT_DRONE_MIDI_PADDING_BARS = 0
+DEFAULT_DRONE_MIDI_PADDING_BARS = 1
 DRONE_MIDI_TEMPO_BPM = 120
 DRONE_MIDI_BEATS_PER_BAR = 4
 
@@ -172,7 +172,7 @@ def midi_musical_end_seconds(midi_path: str) -> float:
 
 
 def coerce_drone_midi_length_bars(value, *, default: int = DEFAULT_DRONE_MIDI_LENGTH_BARS) -> int:
-    """Parse UI/API ``lengthBars`` (must be 4, 8, 16, 32, or 64)."""
+    """Parse UI/API ``lengthBars`` (must be 1, 2, 4, 8, 16, 32, or 64)."""
     if value is None or value == "":
         return default
     try:
@@ -189,7 +189,7 @@ def coerce_drone_midi_length_bars(value, *, default: int = DEFAULT_DRONE_MIDI_LE
 def coerce_drone_midi_padding_bars(
     value, *, default: int = DEFAULT_DRONE_MIDI_PADDING_BARS
 ) -> int:
-    """Parse UI/API ``paddedSilenceBars`` (0 or 4/8/16/32/64)."""
+    """Parse UI/API ``paddedSilenceBars`` (1, 2, 4, 8, 16, 32, or 64)."""
     if value is None or value == "":
         return default
     try:

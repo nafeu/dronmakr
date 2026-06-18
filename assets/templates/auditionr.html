@@ -551,12 +551,61 @@
       box-sizing: border-box;
     }
 
+    .generatr-pp-queue,
     .generatr-pp-shortcut-buttons {
       flex: 1 1 auto;
-      overflow-y: auto;
+      min-height: 0;
+      overflow: hidden;
       display: flex;
       flex-direction: column;
+    }
+
+    .generatr-pp-list-scroll {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--theme-a) var(--secondary);
+    }
+
+    .generatr-pp-list-scroll::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    .generatr-pp-list-scroll::-webkit-scrollbar-track {
+      background: var(--secondary);
+    }
+
+    .generatr-pp-list-scroll::-webkit-scrollbar-thumb {
+      background: var(--theme-a);
+      border-radius: 4px;
+    }
+
+    .generatr-pp-list-scroll::-webkit-scrollbar-thumb:hover {
+      background: color-mix(in srgb, var(--theme-a) 45%, var(--primary));
+    }
+
+    .generatr-pp-list-stack {
+      display: flex;
+      flex-direction: column;
+      flex-wrap: nowrap;
+      align-items: stretch;
       gap: 4px;
+      min-height: min-content;
+      padding-right: 16px;
+    }
+
+    .generatr-pp-list-stack > .generatr-pp-queue-item,
+    .generatr-pp-list-stack > .generatr-pp-shortcut-btn {
+      flex: 0 0 auto;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    .generatr-pp-list-scroll.os-host {
+      flex: 1 1 auto;
       min-height: 0;
     }
 
@@ -605,15 +654,6 @@
     .generatr-pp-queue-hint {
       opacity: 0.75;
       font-weight: normal;
-    }
-
-    .generatr-pp-queue {
-      flex: 1 1 auto;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      min-height: 0;
     }
 
     .generatr-pp-queue-item {
@@ -2527,14 +2567,6 @@
                   </div>
                 </div>
               </div>
-              <div class="form-row hidden" id="generatr-drone-name-row">
-                <label for="generatr-drone-name">Sample name</label>
-                <input type="text" id="generatr-drone-name" placeholder="omit for random">
-              </div>
-              <div class="form-row hidden" id="generatr-drone-notes-row">
-                <label for="generatr-drone-notes">Notes</label>
-                <input type="text" id="generatr-drone-notes" placeholder="e.g. C2,D#3,F#3 (overrides chord/scale picks)">
-              </div>
               <div class="form-row hidden" id="generatr-drone-chart-name-row">
                 <label for="generatr-drone-chart-name">Chart name</label>
                 <div class="generatr-input-with-picker">
@@ -2568,27 +2600,6 @@
                 <label for="generatr-drone-pattern">MIDI pattern</label>
                 <select id="generatr-drone-pattern"></select>
               </div>
-              <div class="form-row hidden" id="generatr-drone-length-row">
-                <label for="generatr-drone-length">Length (bars)</label>
-                <select id="generatr-drone-length" aria-label="MIDI length in bars">
-                  <option value="4">4</option>
-                  <option value="8">8</option>
-                  <option value="16" selected>16</option>
-                  <option value="32">32</option>
-                  <option value="64">64</option>
-                </select>
-              </div>
-              <div class="form-row hidden" id="generatr-drone-padded-silence-row">
-                <label for="generatr-drone-padded-silence">Padded silence (bars)</label>
-                <select id="generatr-drone-padded-silence" aria-label="Trailing silence after MIDI pattern for export">
-                  <option value="0" selected>0 (none)</option>
-                  <option value="4">4</option>
-                  <option value="8">8</option>
-                  <option value="16">16</option>
-                  <option value="32">32</option>
-                  <option value="64">64</option>
-                </select>
-              </div>
               <div class="form-row hidden" id="generatr-drone-instrument-row">
                 <label for="generatr-drone-instrument">Instrument</label>
                 <select id="generatr-drone-instrument"></select>
@@ -2597,14 +2608,39 @@
                 <label for="generatr-drone-effect">Effect / FX chain</label>
                 <select id="generatr-drone-effect"></select>
               </div>
-              <div class="form-row hidden" id="generatr-drone-iterations-row">
-                <label for="generatr-drone-iterations">Iterations</label>
-                <input type="number" id="generatr-drone-iterations" min="1" value="1">
-              </div>
-              <div class="form-row form-row-full hidden" id="generatr-drone-split-row">
-                <label for="generatr-drone-split">Render Options</label>
-                <div class="generatr-checkbox-group">
-                  <label><input type="checkbox" id="generatr-drone-split"> Split processing milestones</label>
+              <div class="form-row form-row-full hidden" id="generatr-drone-export-row">
+                <div class="generatr-sweep-effect generatr-drone-export-card">
+                  <div class="generatr-sweep-effect-head">
+                    <span class="generatr-sweep-effect-title">Export</span>
+                  </div>
+                  <div class="generatr-sweep-effect-body">
+                    <div class="generatr-sweep-effect-knobs">
+                      <div class="daw-knob" data-knob-choices="1,2,4,8,16,32,64" data-knob-unit="bars" data-knob-decimals="0">
+                        <span class="daw-knob-label">Length</span>
+                        <button type="button" class="daw-knob-dial" aria-label="MIDI length in bars">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">16 bars</span>
+                        <input type="number" class="daw-knob-input" id="generatr-drone-length" step="1" min="1" max="64" value="16" tabindex="-1" aria-hidden="true">
+                      </div>
+                      <div class="daw-knob" data-knob-choices="1,2,4,8,16,32,64" data-knob-unit="bars" data-knob-decimals="0">
+                        <span class="daw-knob-label">Pad silence</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Trailing silence after MIDI pattern for export">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">1 bars</span>
+                        <input type="number" class="daw-knob-input" id="generatr-drone-padded-silence" step="1" min="1" max="64" value="1" tabindex="-1" aria-hidden="true">
+                      </div>
+                      <div class="daw-knob" data-knob-unit="" data-knob-decimals="0">
+                        <span class="daw-knob-label">Iterations</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Number of export iterations">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">1</span>
+                        <input type="number" class="daw-knob-input" id="generatr-drone-iterations" step="1" min="1" max="50" value="1" tabindex="-1" aria-hidden="true">
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div class="form-row hidden" id="generatr-beat-tempo-row">
@@ -2649,11 +2685,19 @@
                   <div class="generatr-pp-columns">
                     <div class="generatr-pp-library">
                       <input type="text" id="generatr-pp-filter" class="generatr-pp-filter" placeholder="Filter shortcuts…" autocomplete="off">
-                      <div id="generatr-pp-shortcut-buttons" class="generatr-pp-shortcut-buttons" aria-label="Shortcut library"></div>
+                      <div class="generatr-pp-shortcut-buttons" aria-label="Shortcut library">
+                        <div class="generatr-pp-list-scroll">
+                          <div class="generatr-pp-list-stack" id="generatr-pp-shortcut-buttons"></div>
+                        </div>
+                      </div>
                     </div>
                     <div class="generatr-pp-queue-panel">
                       <div class="generatr-pp-queue-label">Processing Chain</div>
-                      <div id="generatr-pp-queue" class="generatr-pp-queue" aria-label="Processing queue"></div>
+                      <div class="generatr-pp-queue" aria-label="Processing queue">
+                        <div class="generatr-pp-list-scroll">
+                          <div class="generatr-pp-list-stack" id="generatr-pp-queue"></div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -2798,6 +2842,12 @@
       renderGeneratrPostProcessingQueue();
     }
 
+    function generatrRefreshPostProcessingScrollbars() {
+      if (!window.dronmakrUi || typeof window.dronmakrUi.refreshScrollLists !== "function") return;
+      var root = document.getElementById("generatr-beat-post-processing-row");
+      window.dronmakrUi.refreshScrollLists(root || document);
+    }
+
     function renderGeneratrPostProcessingLibraryFromCatalog() {
       var box = document.getElementById("generatr-pp-shortcut-buttons");
       var filterEl = document.getElementById("generatr-pp-filter");
@@ -2837,6 +2887,7 @@
         });
         box.appendChild(btn);
       });
+      generatrRefreshPostProcessingScrollbars();
     }
 
     function renderGeneratrPostProcessingQueue() {
@@ -2902,6 +2953,7 @@
         row.appendChild(rm);
         queueEl.appendChild(row);
       });
+      generatrRefreshPostProcessingScrollbars();
     }
 
     function fmtSpecNum(x) {
@@ -5120,19 +5172,14 @@
         if (!stillValid) kindSelect.value = "beat";
       })();
       var droneRows = [
-        document.getElementById("generatr-drone-name-row"),
-        document.getElementById("generatr-drone-notes-row"),
         document.getElementById("generatr-drone-chart-name-row"),
         document.getElementById("generatr-drone-chart-type-row"),
         document.getElementById("generatr-drone-tags-row"),
         document.getElementById("generatr-drone-roots-row"),
         document.getElementById("generatr-drone-pattern-row"),
-        document.getElementById("generatr-drone-length-row"),
-        document.getElementById("generatr-drone-padded-silence-row"),
         document.getElementById("generatr-drone-instrument-row"),
         document.getElementById("generatr-drone-effect-row"),
-        document.getElementById("generatr-drone-iterations-row"),
-        document.getElementById("generatr-drone-split-row")
+        document.getElementById("generatr-drone-export-row")
       ];
       var beatRows = [
         document.getElementById("generatr-beat-tempo-row"),
@@ -5160,19 +5207,16 @@
       var beatSwingInput = document.getElementById("generatr-beat-swing");
       var beatIterationsInput = document.getElementById("generatr-beat-iterations");
       var beatVariantsList = document.getElementById("generatr-beat-variants-list");
-      var droneNameInput = document.getElementById("generatr-drone-name");
-      var droneNotesInput = document.getElementById("generatr-drone-notes");
       var droneChartNameInput = document.getElementById("generatr-drone-chart-name");
       var droneChartTypeSelect = document.getElementById("generatr-drone-chart-type");
       var droneTagsInput = document.getElementById("generatr-drone-tags");
       var droneRootsInput = document.getElementById("generatr-drone-roots");
       var dronePatternSelect = document.getElementById("generatr-drone-pattern");
-      var droneLengthSelect = document.getElementById("generatr-drone-length");
-      var dronePaddedSilenceSelect = document.getElementById("generatr-drone-padded-silence");
+      var droneLengthInput = document.getElementById("generatr-drone-length");
+      var dronePaddedSilenceInput = document.getElementById("generatr-drone-padded-silence");
       var droneInstrumentSelect = document.getElementById("generatr-drone-instrument");
       var droneEffectSelect = document.getElementById("generatr-drone-effect");
       var droneIterationsInput = document.getElementById("generatr-drone-iterations");
-      var droneSplitCheckbox = document.getElementById("generatr-drone-split");
       var form = document.getElementById("generatr-form");
       var btnGenerate = document.getElementById("generatr-btn");
       var busyOverlay = document.getElementById("generatr-busy-overlay");
@@ -5331,6 +5375,20 @@
           var max = parseFloat(input.max || knob.dataset.knobMax || "1");
           var step = parseFloat(input.step || knob.dataset.knobStep || "0.01");
           if (!isFinite(step) || step <= 0) step = 0.01;
+          var choiceList = null;
+          var choicesRaw = (knob.dataset.knobChoices || "").trim();
+          if (choicesRaw) {
+            choiceList = choicesRaw.split(",").map(function (part) {
+              return parseFloat(String(part).trim());
+            }).filter(function (n) { return isFinite(n); });
+            if (!choiceList.length) {
+              choiceList = null;
+            } else {
+              min = choiceList[0];
+              max = choiceList[choiceList.length - 1];
+              step = 1;
+            }
+          }
           var unit = (knob.dataset.knobUnit || "").trim();
           var decimals = parseInt(knob.dataset.knobDecimals || "2", 10);
           if (!isFinite(decimals) || decimals < 0) decimals = 2;
@@ -5340,9 +5398,40 @@
           var savedValue = null;
 
           function snapValue(raw) {
+            if (choiceList) {
+              var best = choiceList[0];
+              var bestDist = Infinity;
+              choiceList.forEach(function (choice) {
+                var dist = Math.abs(choice - raw);
+                if (dist < bestDist) {
+                  bestDist = dist;
+                  best = choice;
+                }
+              });
+              return best;
+            }
             var v = Math.max(min, Math.min(max, raw));
             var steps = Math.round((v - min) / step);
             return Math.max(min, Math.min(max, min + steps * step));
+          }
+
+          function choiceRatio(v) {
+            if (!choiceList || choiceList.length < 2) return 0;
+            var snapped = snapValue(v);
+            var idx = choiceList.indexOf(snapped);
+            if (idx < 0) idx = 0;
+            return idx / (choiceList.length - 1);
+          }
+
+          function nudgeChoice(deltaSteps) {
+            if (!choiceList) return;
+            var cur = snapValue(parseFloat(input.value || String(min)));
+            var idx = choiceList.indexOf(cur);
+            if (idx < 0) idx = 0;
+            var next = idx + (deltaSteps > 0 ? 1 : deltaSteps < 0 ? -1 : 0);
+            if (next < 0) next = 0;
+            if (next >= choiceList.length) next = choiceList.length - 1;
+            setValue(choiceList[next]);
           }
 
           function formatReadout(v) {
@@ -5352,7 +5441,9 @@
           }
 
           function updateVisual(v) {
-            var ratio = (max - min) > 0 ? (v - min) / (max - min) : 0;
+            var ratio = choiceList
+              ? choiceRatio(v)
+              : ((max - min) > 0 ? (v - min) / (max - min) : 0);
             ratio = Math.max(0, Math.min(1, ratio));
             dial.style.setProperty("--knob-ratio", String(ratio));
             readout.textContent = formatReadout(v);
@@ -5447,6 +5538,10 @@
 
           function nudge(deltaSteps) {
             if (randomMode) return;
+            if (choiceList) {
+              nudgeChoice(deltaSteps);
+              return;
+            }
             setValue(parseFloat(input.value || String(min)) + deltaSteps * step);
           }
 
@@ -5510,10 +5605,10 @@
               nudge(e.shiftKey ? -10 : -1);
             } else if (e.key === "Home") {
               e.preventDefault();
-              setValue(min);
+              setValue(choiceList ? choiceList[0] : min);
             } else if (e.key === "End") {
               e.preventDefault();
-              setValue(max);
+              setValue(choiceList ? choiceList[choiceList.length - 1] : max);
             }
           });
         });
@@ -5964,6 +6059,11 @@
         initDawKnobs(document.getElementById("generatr-panel-tx-wash"));
       }
       generatrInitWashPanelControls();
+
+      function generatrInitDroneExportControls() {
+        initDawKnobs(document.getElementById("generatr-drone-export-row"));
+      }
+      generatrInitDroneExportControls();
 
       function generatrCollectWashPayload(body) {
         body.library = washLibrarySelect ? (washLibrarySelect.value || "") : "";
@@ -6417,19 +6517,16 @@
           ).map(function (el) { return el.value; });
           body.postProcessing = postCmds();
         } else if (type === "drone") {
-          body.name = (droneNameInput.value || "").trim();
-          body.notes = (droneNotesInput.value || "").trim();
           body.chartName = (droneChartNameInput.value || "").trim();
           body.chartType = (droneChartTypeSelect.value || "").trim();
           body.tags = (droneTagsInput.value || "").trim();
           body.roots = (droneRootsInput.value || "").trim();
           body.pattern = (dronePatternSelect.value || "").trim();
-          body.lengthBars = parseInt(droneLengthSelect.value || "16", 10);
-          body.paddedSilenceBars = parseInt(dronePaddedSilenceSelect.value || "0", 10);
+          body.lengthBars = parseInt(droneLengthInput.value || "16", 10);
+          body.paddedSilenceBars = parseInt(dronePaddedSilenceInput.value || "1", 10);
           body.instrument = (droneInstrumentSelect.value || "").trim();
           body.effect = (droneEffectSelect.value || "").trim();
-          body.iterations = Math.max(1, parseInt(droneIterationsInput.value || "1", 10) || 1);
-          body.splitProcessing = !!droneSplitCheckbox.checked;
+          body.iterations = Math.max(1, Math.min(50, parseInt(droneIterationsInput.value || "1", 10) || 1));
           body.postProcessing = postCmds();
         } else if (kind === "reese") {
           body.tempo = parseInt(document.getElementById("generatr-reese-tempo").value || "170", 10);

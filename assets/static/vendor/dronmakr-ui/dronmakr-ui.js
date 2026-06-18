@@ -58,6 +58,13 @@
     if (el.hasAttribute("data-overlayscrollbars")) return true;
     if (el.classList.contains("os-scrollbar")) return true;
     if (el.closest(".os-size-observer, .os-trinsic-observer")) return true;
+    if (el.classList.contains("generatr-pp-list-stack")) return true;
+    if (
+      el.classList.contains("generatr-pp-queue") ||
+      el.classList.contains("generatr-pp-shortcut-buttons")
+    ) {
+      return true;
+    }
     return false;
   }
 
@@ -132,6 +139,36 @@
     );
   }
 
+  function bindListScrollbar(el) {
+    if (!el || el.nodeType !== 1 || !el.classList.contains("generatr-pp-list-scroll")) return;
+    if (shouldSkipScrollbar(el)) return;
+    var OverlayScrollbars = getOverlayScrollbars();
+    if (!OverlayScrollbars) return;
+    if (scrollbarInstances.has(el)) {
+      var existing = scrollbarInstances.get(el);
+      if (existing && typeof existing.update === "function") {
+        existing.update();
+      }
+      return;
+    }
+
+    el.setAttribute("data-overlayscrollbars-initialize", "");
+    var instance = OverlayScrollbars(el, {
+      overflow: {
+        x: "hidden",
+        y: "scroll",
+      },
+      scrollbars: scrollbarOptions.scrollbars,
+    });
+    if (!instance) {
+      el.removeAttribute("data-overlayscrollbars-initialize");
+      return;
+    }
+
+    scrollbarInstances.set(el, instance);
+    el.dataset.dronUiScrollbar = "true";
+  }
+
   function bindScrollbar(el) {
     if (shouldSkipScrollbar(el) || !isOverflowScrollable(el)) return;
     var OverlayScrollbars = getOverlayScrollbars();
@@ -182,8 +219,16 @@
     });
   }
 
+  function refreshScrollLists(root) {
+    var scope = resolveElementRoot(root);
+    scope.querySelectorAll(".generatr-pp-list-scroll").forEach(function (el) {
+      bindListScrollbar(el);
+    });
+  }
+
   function refreshScrollbars(root) {
     scanScrollbars(root);
+    refreshScrollLists(root);
   }
 
   function scheduleScrollbarRefresh(el) {
@@ -359,9 +404,11 @@
     refreshSelects: refreshSelects,
     refreshNumbers: refreshNumbers,
     refreshScrollbars: refreshScrollbars,
+    refreshScrollLists: refreshScrollLists,
     bindSelect: bindSelect,
     unbindSelect: unbindSelect,
     bindScrollbar: bindScrollbar,
+    bindListScrollbar: bindListScrollbar,
     unbindScrollbar: unbindScrollbar,
   };
 

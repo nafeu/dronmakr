@@ -253,7 +253,7 @@ label.edit-control-row {
 .dron-control,
 .dron-field input[type="text"],
 .dron-field input[type="number"]:not(.daw-knob-input):not(.dron-control--native),
-.generatr-form .form-row input[type="text"],
+.generatr-form .form-row input[type="text"]:not(.generatr-pp-filter),
 .generatr-form .form-row input[type="number"]:not(.daw-knob-input),
 .field-group input[type="text"],
 .field-group input[type="number"],
