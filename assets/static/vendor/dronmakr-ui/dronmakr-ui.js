@@ -101,6 +101,7 @@
     });
     selectInstances.set(select, instance);
     select.dataset.dronUiBound = "true";
+    select.style.display = "none";
   }
 
   function unbindSelect(select) {
@@ -109,6 +110,7 @@
     instance.destroy();
     selectInstances.delete(select);
     delete select.dataset.dronUiBound;
+    select.style.display = "";
   }
 
   function refreshSelects(root) {

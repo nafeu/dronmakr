@@ -195,6 +195,14 @@ select:not([data-native-ui])::-ms-expand {
   display: none;
 }
 
+/* nice-select2 keeps the native select in DOM (inserts .nice-select after it).
+   Our control min-height prevented its inline collapse, leaving a full-height
+   ghost row between the label and the visible dropdown. */
+select:not([data-native-ui="true"])[data-dron-ui-bound="true"],
+select:not([data-native-ui="true"]):has(+ .nice-select) {
+  display: none !important;
+}
+
 /* --- nice-select2 theme (classes copied from underlying select) --- */
 .splitr-threshold .nice-select,
 .splitr-param-row .nice-select,
@@ -243,25 +251,18 @@ label.edit-control-row {
 }
 
 .dron-control,
-.dron-field select:not([data-native-ui]),
 .dron-field input[type="text"],
 .dron-field input[type="number"]:not(.daw-knob-input):not(.dron-control--native),
-.generatr-form .form-row select,
 .generatr-form .form-row input[type="text"],
 .generatr-form .form-row input[type="number"]:not(.daw-knob-input),
-.field-group select,
 .field-group input[type="text"],
 .field-group input[type="number"],
-.transport-setting select,
 .transport-setting input[type="number"],
 .transport-tempo input[type="number"],
-.splitr-param-row select,
 .splitr-organize-form input[type="text"],
 .packaging-form input[type="text"],
-.preset-toolbar select,
 .preset-toolbar input[type="text"],
 .preset-toolbar input[type="number"],
-.edit-control-row select,
 .edit-param-number-input,
 .edit-control-row-number .edit-param-number-input {
   display: block;
@@ -269,6 +270,31 @@ label.edit-control-row {
   min-width: 0;
   height: var(--dron-control-h);
   min-height: var(--dron-control-h);
+  margin: 0;
+  padding: 0 var(--dron-control-pad-x);
+  box-sizing: border-box;
+  font-family: inherit;
+  font-size: var(--dron-control-font);
+  line-height: calc(var(--dron-control-h) - 2px);
+  background: var(--dron-control-bg);
+  border: 1px solid var(--dron-control-border);
+  border-radius: var(--dron-control-radius);
+  color: var(--primary);
+  cursor: text;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.dron-field select:not([data-native-ui]),
+.generatr-form .form-row select,
+.field-group select,
+.transport-setting select,
+.splitr-param-row select,
+.preset-toolbar select,
+.edit-control-row select {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  height: var(--dron-control-h);
   margin: 0;
   padding: 0 var(--dron-control-pad-x);
   box-sizing: border-box;
@@ -584,12 +610,15 @@ label.edit-control-row {
 .daw-knob-select select,
 .daw-knob-select .nice-select {
   height: var(--dron-control-h-compact);
-  min-height: var(--dron-control-h-compact);
   padding: 0 1.1rem 0 0.18rem;
   font-size: 0.58rem;
   line-height: calc(var(--dron-control-h-compact) - 2px);
   background: var(--theme-a);
   border: 1px solid color-mix(in srgb, var(--theme-a) 70%, var(--primary));
+}
+
+.daw-knob-select .nice-select {
+  min-height: var(--dron-control-h-compact);
 }
 
 .daw-knob-select-spacer {
@@ -858,7 +887,6 @@ label.edit-control-row {
 .collections-filters input[type="text"],
 .collections-filters select {
   height: var(--dron-control-h);
-  min-height: var(--dron-control-h);
   padding: 0 var(--dron-control-pad-x);
   font-size: var(--dron-control-font);
   line-height: calc(var(--dron-control-h) - 2px);
@@ -867,6 +895,10 @@ label.edit-control-row {
   border-radius: var(--dron-control-radius);
   color: var(--primary);
   box-sizing: border-box;
+}
+
+.collections-filters input[type="text"] {
+  min-height: var(--dron-control-h);
 }
 
 .collections-filters .nice-select {
