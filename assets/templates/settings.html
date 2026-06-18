@@ -46,16 +46,7 @@
     }
 
     .field-group {
-      display: flex;
-      flex-direction: column;
-      gap: 0.2rem;
-    }
-
-    .field-group label {
-      font-size: 0.65rem;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--theme-a);
+      gap: var(--dron-field-gap);
     }
 
     .field-row {
@@ -136,13 +127,17 @@
 
     .append-row input {
       width: 568px;
-      padding: 0.3rem 0.5rem;
+      height: var(--dron-control-h);
+      min-height: var(--dron-control-h);
+      padding: 0 var(--dron-control-pad-x);
       font-family: inherit;
-      font-size: 0.75rem;
-      background: #0a0a0a;
-      border: 1px solid var(--theme-a);
-      border-radius: 4px;
+      font-size: var(--dron-control-font);
+      line-height: calc(var(--dron-control-h) - 2px);
+      background: var(--dron-control-bg);
+      border: 1px solid var(--dron-control-border);
+      border-radius: var(--dron-control-radius);
       color: var(--primary);
+      box-sizing: border-box;
     }
 
     .append-row input:focus {
@@ -216,25 +211,7 @@
     }
 
     .preset-toolbar .field-group {
-      gap: 0.3rem;
-    }
-
-    .preset-toolbar select,
-    .preset-toolbar input {
-      height: 2rem;
-      padding: 0 0.6rem;
-      font-family: inherit;
-      font-size: 0.75rem;
-      background: #0a0a0a;
-      border: 1px solid var(--theme-a);
-      border-radius: 4px;
-      color: var(--primary);
-    }
-
-    .preset-toolbar select:focus,
-    .preset-toolbar input:focus {
-      outline: none;
-      border-color: var(--primary);
+      gap: var(--dron-field-gap);
     }
 
     @keyframes fadeIn {

@@ -238,7 +238,7 @@
       display: flex;
       flex-direction: column;
       align-items: stretch;
-      gap: 0.3rem;
+      gap: var(--dron-field-gap);
       min-width: 0;
     }
 
@@ -252,49 +252,17 @@
     }
 
     .generatr-form .form-row > label:first-of-type {
-      font-size: 0.72rem;
-      color: var(--theme-a);
       text-align: left;
       align-self: flex-start;
-      min-width: 0;
-      line-height: 1.2;
-      margin: 0;
-    }
-
-    .generatr-form .form-row select,
-    .generatr-form .form-row .nice-select,
-    .generatr-form .form-row input[type="text"],
-    .generatr-form .form-row input[type="number"],
-    .generatr-form .form-row textarea {
-      font-family: inherit;
-      font-size: 0.85rem;
-      padding: 0.4rem 0.5rem;
-      background: var(--theme-a);
-      border: 1px solid var(--theme-a);
-      border-radius: 4px;
-      color: var(--primary);
-      width: 100%;
-      box-sizing: border-box;
-      min-width: 0;
-      cursor: pointer;
     }
 
     .generatr-form .form-row textarea {
-      font-size: 0.82rem;
       cursor: text;
-      resize: vertical;
-      min-height: 2.5rem;
-      line-height: 1.3;
     }
 
-    .generatr-form .form-row select:focus,
-    .generatr-form .form-row .nice-select.open,
-    .generatr-form .form-row .nice-select:focus,
-    .generatr-form .form-row input[type="text"]:focus,
-    .generatr-form .form-row input[type="number"]:focus,
-    .generatr-form .form-row textarea:focus {
-      outline: none;
-      border-color: var(--primary);
+    .generatr-form .form-row input[type="checkbox"] {
+      margin: 0;
+      flex: 0 0 auto;
     }
 
     /* Transition sub-panels span the full generate form width */
@@ -416,44 +384,6 @@
       gap: 0.1rem 0.2rem;
     }
 
-    .daw-knob-select {
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      gap: 0.08rem;
-      width: 3.25rem;
-      flex: 0 0 3.25rem;
-      min-width: 0;
-    }
-
-    .daw-knob-select select,
-    .daw-knob-select .nice-select {
-      font-family: inherit;
-      font-size: 0.58rem;
-      line-height: 1.2;
-      height: 1.75rem;
-      padding: 0 0.18rem;
-      background: var(--theme-a);
-      border: 1px solid color-mix(in srgb, var(--theme-a) 70%, var(--primary));
-      border-radius: 4px;
-      color: var(--primary);
-      width: 100%;
-      box-sizing: border-box;
-      min-width: 0;
-      cursor: pointer;
-    }
-
-    .daw-knob-select select:focus,
-    .daw-knob-select .nice-select.open,
-    .daw-knob-select .nice-select:focus {
-      outline: none;
-      border-color: var(--primary);
-    }
-
-    .daw-knob-select-spacer {
-      min-height: 0.62rem;
-    }
-
     .generatr-sweep-source-card .generatr-sweep-effect-head {
       justify-content: flex-start;
     }
@@ -464,25 +394,6 @@
       gap: 0.35rem;
       width: 100%;
       min-width: 0;
-    }
-
-    .generatr-sweep-preview-select {
-      font-family: inherit;
-      font-size: 0.72rem;
-      padding: 0.28rem 0.4rem;
-      background: var(--theme-a);
-      border: 1px solid color-mix(in srgb, var(--theme-a) 70%, var(--primary));
-      border-radius: 4px;
-      color: var(--primary);
-      width: 100%;
-      box-sizing: border-box;
-      min-width: 0;
-      cursor: pointer;
-    }
-
-    .generatr-sweep-preview-select:focus {
-      outline: none;
-      border-color: var(--primary);
     }
 
     .generatr-sweep-preview-svg-wrap {
@@ -589,161 +500,7 @@
       display: contents;
     }
 
-    /* Reusable DAW-style rotary knob (sweep menu first; propagate app-wide later) */
-    .daw-knob {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.08rem;
-      min-width: 0;
-      width: 3rem;
-      flex: 0 0 3rem;
-      user-select: none;
-      touch-action: none;
-    }
-
-    .daw-knob-label {
-      font-size: 0.56rem;
-      color: var(--theme-a);
-      text-align: center;
-      line-height: 1.1;
-      max-width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .daw-knob-dial {
-      --knob-ratio: 0;
-      width: 1.75rem;
-      height: 1.75rem;
-      border: none;
-      border-radius: 50%;
-      padding: 0;
-      margin: 0;
-      position: relative;
-      cursor: ns-resize;
-      background: radial-gradient(
-        circle at 32% 28%,
-        color-mix(in srgb, var(--primary) 22%, var(--theme-a)),
-        color-mix(in srgb, var(--theme-a) 88%, #000)
-      );
-      box-shadow:
-        inset 0 1px 2px rgba(255, 255, 255, 0.12),
-        inset 0 -2px 4px rgba(0, 0, 0, 0.35),
-        0 1px 2px rgba(0, 0, 0, 0.25);
-      flex-shrink: 0;
-    }
-
-    .daw-knob-dial:focus {
-      outline: none;
-      box-shadow:
-        inset 0 1px 2px rgba(255, 255, 255, 0.12),
-        inset 0 -2px 4px rgba(0, 0, 0, 0.35),
-        0 0 0 2px color-mix(in srgb, var(--primary) 45%, transparent);
-    }
-
-    .daw-knob-dial:focus-visible {
-      outline: none;
-      box-shadow:
-        inset 0 1px 2px rgba(255, 255, 255, 0.12),
-        inset 0 -2px 4px rgba(0, 0, 0, 0.35),
-        0 0 0 2px var(--primary);
-    }
-
-    .daw-knob-ring {
-      position: absolute;
-      inset: 1px;
-      border-radius: 50%;
-      pointer-events: none;
-      background: conic-gradient(
-        from -135deg,
-        var(--primary) calc(var(--knob-ratio) * 270deg),
-        color-mix(in srgb, var(--theme-a) 70%, transparent) 0
-      );
-      mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
-      -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
-      opacity: 0.9;
-    }
-
-    .daw-knob-readout {
-      font-size: 0.56rem;
-      color: var(--primary);
-      font-weight: 600;
-      font-variant-numeric: tabular-nums;
-      text-align: center;
-      line-height: 1.05;
-      min-height: 0.62rem;
-      max-width: 100%;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      cursor: text;
-    }
-
-    .daw-knob-readout-input {
-      display: block;
-      width: 100%;
-      max-width: 100%;
-      min-width: 0;
-      margin: 0;
-      padding: 0;
-      border: none;
-      border-radius: 0;
-      background: transparent;
-      outline: none;
-      font: inherit;
-      font-size: inherit;
-      font-weight: inherit;
-      font-variant-numeric: inherit;
-      color: inherit;
-      text-align: center;
-      line-height: inherit;
-      box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--primary) 50%, transparent);
-    }
-
-    .daw-knob.daw-knob-random .daw-knob-dial {
-      opacity: 0.42;
-      cursor: default;
-    }
-
-    .daw-knob.daw-knob-random .daw-knob-ring {
-      opacity: 0.55;
-    }
-
-    .daw-knob.daw-knob-random .daw-knob-readout {
-      font-style: italic;
-      opacity: 0.72;
-      letter-spacing: 0.02em;
-      cursor: default;
-    }
-
-    .daw-knob-input {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      opacity: 0;
-      pointer-events: none;
-      margin: -1px;
-      padding: 0;
-      border: 0;
-      clip: rect(0 0 0 0);
-      overflow: hidden;
-    }
-
-    .generatr-sweep-panel .form-row > label:first-of-type,
-    .generatr-tx-timing-row .form-row > label:first-of-type {
-      font-size: 0.68rem;
-    }
-
-    .generatr-sweep-panel .form-row select,
-    .generatr-sweep-panel .form-row .nice-select,
-    .generatr-sweep-panel .form-row input[type="number"] {
-      font-size: 0.8rem;
-      padding: 0.32rem 0.65rem;
-    }
-
-    .generatr-form .form-row input[type="checkbox"] {
+    .generatr-sweep-source-card .generatr-sweep-effect-head {
       margin: 0;
       flex: 0 0 auto;
     }
@@ -1436,43 +1193,9 @@
       gap: 0.1rem 0.2rem;
     }
 
-    .edit-effect-knobs .daw-knob {
-      flex: 0 0 3rem;
-      width: 3rem;
-      margin: 0;
-    }
-
     .edit-effect-knobs .daw-knob-label,
     .edit-effect-knobs .edit-inline-number-label {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      line-height: 1.1;
-      min-height: 0;
-      padding: 0;
-      max-width: 100%;
-      width: 100%;
-    }
-
-    .edit-effect-knobs .daw-knob-label[title],
-    .edit-effect-knobs .edit-inline-number-label[title] {
-      cursor: help;
-    }
-
-    .edit-effect-knobs .edit-control-item.daw-knob-select {
-      flex: 1 1 8.5rem;
-      width: 8.5rem;
-      min-width: 8.5rem;
-      max-width: 100%;
-    }
-
-    .edit-effect-knobs .daw-knob-select select,
-    .edit-effect-knobs .daw-knob-select .nice-select {
-      font-size: 0.78rem;
-      line-height: 1.35;
-      min-height: 2.15rem;
-      height: auto;
-      padding: 0.4rem 1.65rem 0.4rem 0.5rem;
+      text-align: left;
     }
 
     .edit-effect-knobs-delay-split {
@@ -1492,74 +1215,6 @@
       min-width: 0;
     }
 
-    .edit-effect-selects-col .edit-control-item.daw-knob-select {
-      flex: 1 1 100%;
-      min-width: 0;
-      width: 100%;
-    }
-
-    .edit-effect-selects-col .daw-knob-select select,
-    .edit-effect-selects-col .daw-knob-select .nice-select {
-      width: 100%;
-      font-size: 0.78rem;
-      min-height: 2.15rem;
-    }
-
-    .edit-inline-number-row {
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      gap: 0.1rem;
-      width: 100%;
-      min-width: 0;
-      flex: 1 1 100%;
-    }
-
-    .edit-inline-number-label {
-      font-size: 0.56rem;
-      color: var(--theme-a);
-      text-align: left;
-      line-height: 1.1;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .edit-inline-number-field-row {
-      display: flex;
-      align-items: stretch;
-      gap: 0.25rem;
-      width: 100%;
-      min-width: 0;
-    }
-
-    .edit-inline-number-input {
-      flex: 1 1 auto;
-      min-width: 0;
-      font-family: inherit;
-      font-size: 0.65rem;
-      line-height: 1.2;
-      height: 1.85rem;
-      padding: 0 0.35rem;
-      background: var(--theme-a);
-      border: 1px solid color-mix(in srgb, var(--theme-a) 70%, var(--primary));
-      border-radius: 4px;
-      color: var(--primary);
-      box-sizing: border-box;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .edit-inline-number-input:focus {
-      outline: none;
-      border-color: var(--primary);
-    }
-
-    .edit-inline-number-field-row .btn-edit-bpm-wand {
-      align-self: stretch;
-      min-height: 1.85rem;
-      height: auto;
-    }
-
     .edit-control-item {
       min-width: 0;
       margin: 0;
@@ -1569,11 +1224,6 @@
       display: flex;
       align-items: flex-end;
       gap: 0.25rem;
-      min-width: 0;
-    }
-
-    .edit-bpm-knob-row .daw-knob {
-      flex: 1 1 auto;
       min-width: 0;
     }
 
@@ -1720,13 +1370,8 @@
     }
 
     .edit-control-row {
-      display: flex;
-      flex-direction: column;
-      align-items: stretch;
-      gap: 0.2rem;
       font-size: 0.72rem;
       color: var(--theme-a);
-      min-width: 0;
     }
 
     /* Edit sidebar sliders (beatbuildr-style track + thumb; native track hidden) */
@@ -1840,34 +1485,8 @@
       outline: none;
     }
 
-    .edit-control-row select,
-    .edit-control-row .nice-select {
-      font-family: inherit;
-      font-size: 0.78rem;
-      padding: 0.35rem;
-      background: var(--theme-a);
-      border: 1px solid var(--theme-a);
-      color: var(--primary);
-      border-radius: 4px;
-    }
-
     .edit-controls .edit-control-span-2 {
       grid-column: 1 / -1;
-    }
-
-    .edit-control-row-number .edit-param-number-input,
-    .edit-param-number-input {
-      font-family: inherit;
-      font-size: 0.78rem;
-      padding: 0.35rem 0.65rem;
-      width: 100%;
-      max-width: 100%;
-      box-sizing: border-box;
-      background: var(--theme-a);
-      border: 1px solid var(--theme-a);
-      color: var(--primary);
-      border-radius: 4px;
-      font-variant-numeric: tabular-nums;
     }
 
     .edit-number-suffix-wrap {
@@ -1878,17 +1497,10 @@
       min-width: 0;
     }
 
-    .edit-number-suffix-wrap .edit-param-number-input {
-      flex: 1 1 auto;
-      min-width: 0;
-      width: auto;
-      max-width: none;
-    }
-
     .btn-edit-bpm-wand {
       flex-shrink: 0;
       width: 2.15rem;
-      min-height: 2rem;
+      min-height: var(--dron-control-h);
       padding: 0.25rem;
       font-size: 0.82rem;
       line-height: 1;

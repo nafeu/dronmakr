@@ -3,16 +3,22 @@ use std::sync::Mutex;
 use std::thread;
 use std::time::{Duration, Instant};
 
+#[cfg(not(debug_assertions))]
 use serde::Deserialize;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{AppHandle, Emitter, Manager, RunEvent, Url};
+#[cfg(not(debug_assertions))]
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_opener::OpenerExt;
+#[cfg(not(debug_assertions))]
 use tauri_plugin_shell::process::CommandEvent;
+#[cfg(not(debug_assertions))]
 use tauri_plugin_shell::ShellExt;
 
 const PREFERRED_PORTS: [u16; 4] = [3766, 3767, 3768, 3769];
+#[cfg(not(debug_assertions))]
 const GITHUB_RELEASES_API: &str = "https://api.github.com/repos/nafeu/dronmakr/releases/latest";
+#[cfg(not(debug_assertions))]
 const INSTALLED_VERSION: &str = env!("CARGO_PKG_VERSION");
 const DEV_PORT: u16 = 3766;
 
@@ -61,6 +67,7 @@ fn navigate_main(app: &AppHandle, port: u16) {
     }
 }
 
+#[cfg(not(debug_assertions))]
 fn spawn_backend_sidecar(
     app: &AppHandle,
     port: u16,
@@ -86,12 +93,14 @@ fn spawn_backend_sidecar(
     Ok(child)
 }
 
+#[cfg(not(debug_assertions))]
 #[derive(Deserialize)]
 struct ReleaseAsset {
     name: String,
     browser_download_url: String,
 }
 
+#[cfg(not(debug_assertions))]
 #[derive(Deserialize)]
 struct ReleaseInfo {
     tag_name: String,
@@ -99,6 +108,7 @@ struct ReleaseInfo {
     assets: Vec<ReleaseAsset>,
 }
 
+#[cfg(not(debug_assertions))]
 fn parse_version(value: &str) -> Vec<u32> {
     value
         .trim()
@@ -108,6 +118,7 @@ fn parse_version(value: &str) -> Vec<u32> {
         .collect()
 }
 
+#[cfg(not(debug_assertions))]
 fn is_newer_version(remote: &str, local: &str) -> bool {
     let remote_parts = parse_version(remote);
     let local_parts = parse_version(local);
@@ -125,6 +136,7 @@ fn is_newer_version(remote: &str, local: &str) -> bool {
     false
 }
 
+#[cfg(not(debug_assertions))]
 fn platform_asset_hint() -> &'static str {
     if cfg!(target_os = "macos") {
         if cfg!(target_arch = "aarch64") {
@@ -139,6 +151,7 @@ fn platform_asset_hint() -> &'static str {
     }
 }
 
+#[cfg(not(debug_assertions))]
 fn fetch_update_url() -> Option<String> {
     let agent = ureq::agent();
     let resp = agent
@@ -168,6 +181,7 @@ fn fetch_update_url() -> Option<String> {
     Some(release.html_url)
 }
 
+#[cfg(not(debug_assertions))]
 fn maybe_prompt_for_update(app: AppHandle) {
     thread::spawn(move || {
         let Some(download_url) = fetch_update_url() else {
@@ -314,7 +328,7 @@ pub fn run() {
         .run(|app, event| {
             if let RunEvent::Exit = event {
                 if let Some(state) = app.try_state::<BackendState>() {
-                    if let Some(mut child) = state.child.lock().unwrap().take() {
+                    if let Some(child) = state.child.lock().unwrap().take() {
                         let _ = child.kill();
                     }
                 }

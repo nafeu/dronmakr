@@ -69,7 +69,7 @@
       margin: 0;
     }
 
-    select,
+    select:not(.dron-control--native),
     button {
       font-family: inherit;
       font-size: 0.85rem;
@@ -80,7 +80,7 @@
       padding: 0.5rem 0.7rem;
     }
 
-    select {
+    select:not(.dron-control--native) {
       min-width: 22rem;
       max-width: 100%;
     }
@@ -317,29 +317,10 @@
     }
 
     .splitr-organize-form label.splitr-organize-field-label {
-      font-size: 0.65rem;
-      color: var(--theme-b);
       text-transform: uppercase;
       letter-spacing: 0.06em;
       display: block;
-      margin-bottom: 0.2rem;
-    }
-
-    .splitr-organize-form input[type="text"] {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 0.4rem 0.5rem;
-      font-family: inherit;
-      font-size: 0.74rem;
-      background: #121211;
-      border: 1px solid var(--theme-a);
-      border-radius: 4px;
-      color: var(--primary);
-    }
-
-    .splitr-organize-form input[type="text"]:focus {
-      outline: none;
-      border-color: var(--theme-b);
+      margin: 0;
     }
 
     .splitr-organize-preview-inline {
@@ -428,12 +409,12 @@
       width: 4.2rem;
       font-family: inherit;
       font-size: 0.74rem;
-      border-radius: 4px;
-      border: 1px solid var(--theme-a);
-      background: #121211;
+      border-radius: var(--dron-control-radius);
+      border: 1px solid var(--dron-control-border);
+      background: var(--dron-control-bg);
       color: var(--primary);
-      padding: 0.34rem 0.4rem;
-      height: 2rem;
+      padding: 0 var(--dron-control-pad-x);
+      height: var(--dron-control-h);
       box-sizing: border-box;
       min-width: auto;
     }
@@ -443,12 +424,12 @@
       min-width: auto;
       font-family: inherit;
       font-size: 0.74rem;
-      border-radius: 4px;
-      border: 1px solid var(--theme-a);
-      background: #121211;
+      border-radius: var(--dron-control-radius);
+      border: 1px solid var(--dron-control-border);
+      background: var(--dron-control-bg);
       color: var(--primary);
-      padding: 0.34rem 0.4rem;
-      height: 2rem;
+      padding: 0 var(--dron-control-pad-x);
+      height: var(--dron-control-h);
       box-sizing: border-box;
     }
 
@@ -483,33 +464,15 @@
     }
 
     .splitr-param-row {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-      width: 100%;
+      gap: var(--dron-field-gap);
     }
 
     .splitr-param-row label,
     .splitr-param-row .splitr-param-label-row {
-      display: flex;
       justify-content: space-between;
       align-items: baseline;
       gap: 0.5rem;
-      font-size: 0.72rem;
       color: var(--theme-b);
-    }
-
-    .splitr-param-row select {
-      width: 100%;
-      font-family: inherit;
-      font-size: 0.74rem;
-      border-radius: 4px;
-      border: 1px solid var(--theme-a);
-      background: #121211;
-      color: var(--primary);
-      padding: 0.34rem 0.4rem;
-      height: 2rem;
-      box-sizing: border-box;
     }
 
     .splitr-slider-wrap {

@@ -53,35 +53,10 @@
     .collections-filters input[type="text"] {
       flex: 1;
       min-width: 160px;
-      padding: 0.5rem 0.75rem;
-      font-family: inherit;
-      font-size: 0.85rem;
-      background: #0a0a0a;
-      border: 1px solid var(--theme-a);
-      border-radius: 4px;
-      color: var(--primary);
-      box-sizing: border-box;
-    }
-
-    .collections-filters input:focus {
-      outline: none;
-      border-color: var(--theme-b);
     }
 
     .collections-filters select {
-      padding: 0.5rem 0.75rem;
-      font-family: inherit;
-      font-size: 0.85rem;
-      background: #0a0a0a;
-      border: 1px solid var(--theme-a);
-      border-radius: 4px;
-      color: var(--primary);
       min-width: 140px;
-    }
-
-    .collections-filters select:focus {
-      outline: none;
-      border-color: var(--theme-b);
     }
 
     .collections-grid {
@@ -433,7 +408,7 @@
       background: var(--theme-a);
       color: var(--primary);
       cursor: pointer;
-      height: 2rem;
+      height: var(--dron-control-h);
       white-space: nowrap;
       transition: background 0.15s ease, border-color 0.15s ease;
     }
@@ -463,15 +438,6 @@
       padding: 1.5rem;
     }
 
-    #filter-name,
-    #filter-type,
-    #select-all-packaging,
-    #deselect-all-packaging,
-    #page-prev,
-    #page-next {
-      height: 2rem;
-    }
-
     #filter-type {
       font-size: 0.75rem;
     }
@@ -486,29 +452,10 @@
     }
 
     .packaging-form label {
-      font-size: 0.65rem;
-      color: var(--theme-a);
       text-transform: uppercase;
       letter-spacing: 0.06em;
       display: block;
-      margin-bottom: 0.25rem;
-    }
-
-    .packaging-form input[type="text"] {
-      width: 100%;
-      box-sizing: border-box;
-      padding: 0.45rem 0.55rem;
-      font-family: inherit;
-      font-size: 0.78rem;
-      background: #0a0a0a;
-      border: 1px solid var(--theme-a);
-      border-radius: 4px;
-      color: var(--primary);
-    }
-
-    .packaging-form input[type="text"]:focus {
-      outline: none;
-      border-color: var(--theme-b);
+      margin: 0;
     }
 
     .packaging-options-row {

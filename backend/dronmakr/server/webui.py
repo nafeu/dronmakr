@@ -7,6 +7,7 @@ import os
 os.environ.setdefault("DRONMAKR_ASYNC_MODE", "threading")
 
 import logging
+import re
 import sys
 import threading
 import time
@@ -451,6 +452,32 @@ def _wait_for_server_health(host: str, port: int, timeout_s: float = 30.0) -> bo
 
 
 _DESKTOP_STDERR_LOGGING_CONFIGURED = False
+_QUIET_PROBE_LOG_FILTER: logging.Filter | None = None
+_QUIET_PROBE_REQUEST_RE = re.compile(
+    r'"(?:GET|HEAD) (?:'
+    + "|".join(re.escape(path) for path in ("/api/health", "/dev/reload-check"))
+    + r")(?:\?[^\"]*)? HTTP/[^\"]+\" (\d{3})"
+)
+
+
+class _QuietProbeLogFilter(logging.Filter):
+    """Drop successful health/reload probe lines from werkzeug access logs."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        match = _QUIET_PROBE_REQUEST_RE.search(record.getMessage())
+        if match is None:
+            return True
+        status = int(match.group(1))
+        return not (200 <= status < 400)
+
+
+def _configure_quiet_probe_request_logs() -> logging.Filter:
+    global _QUIET_PROBE_LOG_FILTER
+    if _QUIET_PROBE_LOG_FILTER is None:
+        _QUIET_PROBE_LOG_FILTER = _QuietProbeLogFilter()
+        for logger_name in ("werkzeug", "geventwebsocket.handler"):
+            logging.getLogger(logger_name).addFilter(_QUIET_PROBE_LOG_FILTER)
+    return _QUIET_PROBE_LOG_FILTER
 
 
 def configure_desktop_process_logging(level: int = logging.INFO) -> None:
@@ -468,6 +495,7 @@ def configure_desktop_process_logging(level: int = logging.INFO) -> None:
     root = logging.getLogger()
     handler = logging.StreamHandler(sys.stderr)
     handler.setFormatter(logging.Formatter(fmt, datefmt=datefmt))
+    handler.addFilter(_configure_quiet_probe_request_logs())
     root.addHandler(handler)
     root.setLevel(level)
     for name in (
@@ -492,6 +520,7 @@ def start_server(
     global DEBUG_WEBSOCKETS
     DEBUG_WEBSOCKETS = debug
     _print_webui_startup_header()
+    _configure_quiet_probe_request_logs()
     if dev_frontend:
         enable_dev_frontend()
     if stderr_logging:
