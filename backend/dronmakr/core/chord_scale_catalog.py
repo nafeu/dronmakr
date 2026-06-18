@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
-import os
 from typing import TypedDict
+
+from dronmakr.core.bundle_paths import bundled_asset_path
 
 
 class ChordScalePicklists(TypedDict):
@@ -12,9 +13,6 @@ class ChordScalePicklists(TypedDict):
     tags: list[str]
     chartNames: list[str]
 
-
-_REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
-_CHORD_SCALE_JSON = os.path.join(_REPO_ROOT, "resources", "chord-scale-data.json")
 
 _picklists_cache: ChordScalePicklists | None = None
 
@@ -30,7 +28,7 @@ def get_chord_scale_picklists(path: str | None = None) -> ChordScalePicklists:
         return _picklists_cache
 
     empty: ChordScalePicklists = {"roots": [], "tags": [], "chartNames": []}
-    data_path = path or _CHORD_SCALE_JSON
+    data_path = path or str(bundled_asset_path("resources", "chord-scale-data.json"))
     try:
         with open(data_path, "r", encoding="utf-8") as f:
             raw = json.load(f)

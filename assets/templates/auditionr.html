@@ -529,14 +529,12 @@
       flex-direction: column;
       gap: 0.35rem;
       min-width: 0;
+      min-height: 0;
+      max-height: 200px;
       border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: 6px;
       padding: 8px;
       background: rgba(0, 0, 0, 0.15);
-    }
-
-    .generatr-pp-library {
-      max-height: 200px;
     }
 
     .generatr-pp-filter {
@@ -649,6 +647,7 @@
     .generatr-pp-queue-label {
       font-size: 0.72rem;
       color: var(--theme-a);
+      flex-shrink: 0;
     }
 
     .generatr-pp-queue-hint {
@@ -666,19 +665,40 @@
       border-radius: 4px;
       border: 1px solid rgba(255, 255, 255, 0.1);
       background: rgba(0, 0, 0, 0.2);
-      cursor: grab;
     }
 
-    .generatr-pp-queue-item:active {
-      cursor: grabbing;
-    }
-
-    .generatr-pp-drag-handle {
+    .generatr-pp-queue-reorder {
+      display: flex;
+      flex-direction: column;
       flex: 0 0 auto;
-      opacity: 0.45;
-      cursor: grab;
-      user-select: none;
-      font-size: 0.9rem;
+      gap: 1px;
+    }
+
+    .generatr-pp-move-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.15rem;
+      height: 0.85rem;
+      padding: 0;
+      margin: 0;
+      border: 1px solid var(--theme-a);
+      border-radius: 2px;
+      background: rgba(0, 0, 0, 0.25);
+      color: var(--theme-a);
+      cursor: pointer;
+      font-size: 0.45rem;
+      line-height: 1;
+    }
+
+    .generatr-pp-move-btn:hover:not(:disabled) {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .generatr-pp-move-btn:disabled {
+      opacity: 0.28;
+      cursor: not-allowed;
     }
 
     .generatr-pp-queue-item-label {
@@ -2768,7 +2788,6 @@
     var GENERATR_PP_QUEUE_KEY = "auditionr_post_process_queue";
     var generatrPostProcessQueue = [];
     var editShortcutMode = false;
-    var generatrPpDragSourceIndex = null;
 
     function loadGeneratrPostProcessQueueFromStorage() {
       try {
@@ -2796,6 +2815,18 @@
     }
 
     loadGeneratrPostProcessQueueFromStorage();
+
+    function generatrMovePostProcessItem(fromIdx, delta) {
+      var toIdx = fromIdx + delta;
+      if (fromIdx < 0 || fromIdx >= generatrPostProcessQueue.length) return;
+      if (toIdx < 0 || toIdx >= generatrPostProcessQueue.length) return;
+      var copy = generatrPostProcessQueue.slice();
+      var moved = copy.splice(fromIdx, 1)[0];
+      copy.splice(toIdx, 0, moved);
+      generatrPostProcessQueue = copy;
+      saveGeneratrPostProcessQueueToStorage();
+      renderGeneratrPostProcessingQueue();
+    }
 
     var EDIT_SECTION_ORDER = ["fade", "padding", "eq", "gain", "filter", "noisegate", "timestretch", "paulstretch", "pitch", "reverb", "delay", "compress", "overdrive", "distort", "chorus", "flanger", "phaser"];
     /** Beat multipliers for tempo-sync delay preview (matches dsp.delay_division_to_seconds). */
@@ -2897,12 +2928,38 @@
       generatrPostProcessQueue.forEach(function (item, idx) {
         var row = document.createElement("div");
         row.className = "generatr-pp-queue-item";
-        row.draggable = true;
 
-        var handle = document.createElement("span");
-        handle.className = "generatr-pp-drag-handle";
-        handle.textContent = "\u2630";
-        handle.title = "Drag to reorder";
+        var reorder = document.createElement("div");
+        reorder.className = "generatr-pp-queue-reorder";
+
+        var upBtn = document.createElement("button");
+        upBtn.type = "button";
+        upBtn.className = "generatr-pp-move-btn";
+        upBtn.innerHTML = '<i class="fa-solid fa-chevron-up" aria-hidden="true"></i>';
+        upBtn.title = "Move up";
+        upBtn.setAttribute("aria-label", "Move up");
+        upBtn.disabled = idx === 0;
+        upBtn.addEventListener("click", function (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          generatrMovePostProcessItem(idx, -1);
+        });
+
+        var downBtn = document.createElement("button");
+        downBtn.type = "button";
+        downBtn.className = "generatr-pp-move-btn";
+        downBtn.innerHTML = '<i class="fa-solid fa-chevron-down" aria-hidden="true"></i>';
+        downBtn.title = "Move down";
+        downBtn.setAttribute("aria-label", "Move down");
+        downBtn.disabled = idx === generatrPostProcessQueue.length - 1;
+        downBtn.addEventListener("click", function (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          generatrMovePostProcessItem(idx, 1);
+        });
+
+        reorder.appendChild(upBtn);
+        reorder.appendChild(downBtn);
 
         var lab = document.createElement("span");
         lab.className = "generatr-pp-queue-item-label";
@@ -2920,35 +2977,7 @@
           renderGeneratrPostProcessingQueue();
         });
 
-        row.addEventListener("dragstart", function (e) {
-          generatrPpDragSourceIndex = idx;
-          e.dataTransfer.effectAllowed = "move";
-          try {
-            e.dataTransfer.setData("text/plain", String(idx));
-          } catch (err) { /* ignore */ }
-        });
-        row.addEventListener("dragover", function (e) {
-          e.preventDefault();
-          e.dataTransfer.dropEffect = "move";
-        });
-        row.addEventListener("drop", function (e) {
-          e.preventDefault();
-          var from = generatrPpDragSourceIndex;
-          var to = idx;
-          if (from === null || from === undefined || from === to) return;
-          var copy = generatrPostProcessQueue.slice();
-          var moved = copy.splice(from, 1)[0];
-          copy.splice(to, 0, moved);
-          generatrPostProcessQueue = copy;
-          generatrPpDragSourceIndex = null;
-          saveGeneratrPostProcessQueueToStorage();
-          renderGeneratrPostProcessingQueue();
-        });
-        row.addEventListener("dragend", function () {
-          generatrPpDragSourceIndex = null;
-        });
-
-        row.appendChild(handle);
+        row.appendChild(reorder);
         row.appendChild(lab);
         row.appendChild(rm);
         queueEl.appendChild(row);

@@ -54,11 +54,12 @@
     if (el.tagName === "HTML") return true;
     if (el.dataset.nativeUi === "true") return true;
     if (el.closest("[data-native-ui]")) return true;
-    if (el.dataset.dronUiScrollbar === "true") return true;
     if (el.hasAttribute("data-overlayscrollbars")) return true;
     if (el.classList.contains("os-scrollbar")) return true;
     if (el.closest(".os-size-observer, .os-trinsic-observer")) return true;
     if (el.classList.contains("generatr-pp-list-stack")) return true;
+    if (el.classList.contains("browser-list-shell")) return true;
+    if (el.classList.contains("browser-list")) return true;
     if (
       el.classList.contains("generatr-pp-queue") ||
       el.classList.contains("generatr-pp-shortcut-buttons")
@@ -66,6 +67,37 @@
       return true;
     }
     return false;
+  }
+
+  var LIST_SCROLL_CLASS = "dron-list-scroll";
+  var LEGACY_LIST_SCROLL_CLASS = "generatr-pp-list-scroll";
+
+  function isListScrollEl(el) {
+    if (!el || el.nodeType !== 1) return false;
+    return (
+      el.classList.contains(LIST_SCROLL_CLASS) ||
+      el.classList.contains(LEGACY_LIST_SCROLL_CLASS)
+    );
+  }
+
+  var SCROLLBAR_TARGET_SELECTOR =
+    ".dron-list-scroll, .generatr-pp-list-scroll, [data-dron-scrollbar], .dron-scrollbar";
+
+  function isScrollbarTarget(el) {
+    if (!el || el.nodeType !== 1) return false;
+    if (isListScrollEl(el)) return true;
+    if (el.hasAttribute("data-dron-scrollbar")) return true;
+    if (el.classList.contains("dron-scrollbar")) return true;
+    return false;
+  }
+
+  function bindScrollbarTarget(el) {
+    if (!el || shouldSkipScrollbar(el)) return;
+    if (isListScrollEl(el)) {
+      bindListScrollbar(el);
+      return;
+    }
+    if (isOverflowScrollable(el)) bindScrollbar(el);
   }
 
   function isOverflowScrollable(el) {
@@ -95,9 +127,19 @@
     return select.options && select.options.length > 12;
   }
 
+  /** nice-select2 reads option selected state from the attribute, not .selected. */
+  function syncSelectSelectedAttributes(select) {
+    if (!select || select.tagName !== "SELECT") return;
+    Array.prototype.forEach.call(select.options, function (opt) {
+      if (opt.selected) opt.setAttribute("selected", "selected");
+      else opt.removeAttribute("selected");
+    });
+  }
+
   function bindSelect(select) {
     if (shouldSkipSelect(select)) return;
     if (typeof window.NiceSelect === "undefined") return;
+    syncSelectSelectedAttributes(select);
     if (selectInstances.has(select)) {
       selectInstances.get(select).update();
       return;
@@ -140,7 +182,7 @@
   }
 
   function bindListScrollbar(el) {
-    if (!el || el.nodeType !== 1 || !el.classList.contains("generatr-pp-list-scroll")) return;
+    if (!el || el.nodeType !== 1 || !isListScrollEl(el)) return;
     if (shouldSkipScrollbar(el)) return;
     var OverlayScrollbars = getOverlayScrollbars();
     if (!OverlayScrollbars) return;
@@ -213,31 +255,30 @@
   function scanScrollbars(root) {
     var scope = resolveElementRoot(root);
     if (!scope) return;
-    if (isOverflowScrollable(scope)) bindScrollbar(scope);
-    scope.querySelectorAll("*").forEach(function (el) {
-      if (isOverflowScrollable(el)) bindScrollbar(el);
+    if (scope.nodeType === 1 && scope.matches && scope.matches(SCROLLBAR_TARGET_SELECTOR)) {
+      bindScrollbarTarget(scope);
+    }
+    if (!scope.querySelectorAll) return;
+    scope.querySelectorAll(SCROLLBAR_TARGET_SELECTOR).forEach(function (el) {
+      bindScrollbarTarget(el);
     });
   }
 
   function refreshScrollLists(root) {
-    var scope = resolveElementRoot(root);
-    scope.querySelectorAll(".generatr-pp-list-scroll").forEach(function (el) {
-      bindListScrollbar(el);
-    });
+    scanScrollbars(root);
   }
 
   function refreshScrollbars(root) {
     scanScrollbars(root);
-    refreshScrollLists(root);
   }
 
   function scheduleScrollbarRefresh(el) {
-    if (shouldSkipScrollbar(el)) return;
+    if (!isScrollbarTarget(el) || shouldSkipScrollbar(el)) return;
     clearTimeout(scrollbarPending.get(el));
     scrollbarPending.set(
       el,
       setTimeout(function () {
-        if (isOverflowScrollable(el)) bindScrollbar(el);
+        bindScrollbarTarget(el);
       }, 0)
     );
   }
@@ -339,7 +380,7 @@
         if (mutation.type === "attributes") {
           var target = mutation.target;
           if (target.tagName === "SELECT") scheduleSelectRefresh(target);
-          if (target.nodeType === 1) scheduleScrollbarRefresh(target);
+          if (target.nodeType === 1 && isScrollbarTarget(target)) scheduleScrollbarRefresh(target);
           return;
         }
         if (mutation.type !== "childList") return;
@@ -348,7 +389,7 @@
           walkAddedNode(node, function (el) {
             if (el.tagName === "SELECT") scheduleSelectRefresh(el);
             if (el.tagName === "INPUT" && el.type === "number") wrapNumberInput(el);
-            scheduleScrollbarRefresh(el);
+            if (isScrollbarTarget(el)) scheduleScrollbarRefresh(el);
           });
         });
 

@@ -1214,12 +1214,38 @@
       box-shadow: 0 0 0 1px var(--theme-b);
     }
 
-    .browser-list {
+    .browser-list-shell {
       max-height: 180px;
-      overflow-y: auto;
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .browser-list-scroll {
+      flex: 1 1 auto;
+      min-height: 0;
+      max-height: 180px;
+    }
+
+    .browser-list {
       list-style: none;
       margin: 0;
       padding: 0;
+      display: flex;
+      flex-direction: column;
+      flex-wrap: nowrap;
+      align-items: stretch;
+      min-height: min-content;
+      padding-right: 16px;
+    }
+
+    .browser-list > .browser-list-item,
+    .browser-list > .browser-list-empty {
+      flex: 0 0 auto;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
     }
 
     #browser-kick-list:focus,
@@ -1825,15 +1851,27 @@
         </div>
         <div id="browser-tab-patterns" class="browser-tab-panel">
           <input type="text" id="browser-pattern-filter" class="browser-filter-input" placeholder="Filter patterns…">
-          <ul id="browser-pattern-list" class="browser-list"></ul>
+          <div class="browser-list-shell">
+            <div class="browser-list-scroll dron-list-scroll">
+              <ul id="browser-pattern-list" class="browser-list"></ul>
+            </div>
+          </div>
         </div>
         <div id="browser-tab-kits" class="browser-tab-panel" hidden>
           <input type="text" id="browser-kit-filter" class="browser-filter-input" placeholder="Filter kits…">
-          <ul id="browser-kit-list" class="browser-list"></ul>
+          <div class="browser-list-shell">
+            <div class="browser-list-scroll dron-list-scroll">
+              <ul id="browser-kit-list" class="browser-list"></ul>
+            </div>
+          </div>
         </div>
         <div id="browser-tab-grooves" class="browser-tab-panel" hidden>
           <input type="text" id="browser-groove-filter" class="browser-filter-input" placeholder="Filter grooves…">
-          <ul id="browser-groove-list" class="browser-list"></ul>
+          <div class="browser-list-shell">
+            <div class="browser-list-scroll dron-list-scroll">
+              <ul id="browser-groove-list" class="browser-list"></ul>
+            </div>
+          </div>
         </div>
         <div id="browser-tab-samples" class="browser-tab-panel" hidden>
           <div class="browser-samples-header">
@@ -1843,7 +1881,11 @@
               <i class="fa-solid fa-arrow-rotate-right"></i> Refresh
             </button>
           </div>
-          <ul id="browser-sample-list" class="browser-list" tabindex="0"></ul>
+          <div class="browser-list-shell">
+            <div class="browser-list-scroll dron-list-scroll">
+              <ul id="browser-sample-list" class="browser-list" tabindex="0"></ul>
+            </div>
+          </div>
         </div>
       </div>
       <div id="replace-sample-overlay" class="replace-overlay" hidden>
@@ -2644,8 +2686,17 @@
         option.textContent = name;
         drumPathPresetSelect.appendChild(option);
       });
-      if (active) {
-        drumPathPresetSelect.value = active;
+      const selectedPreset =
+        active && presets.includes(active)
+          ? active
+          : presets.includes("default")
+            ? "default"
+            : presets[0] || "";
+      if (selectedPreset) {
+        drumPathPresetSelect.value = selectedPreset;
+      }
+      if (window.dronmakrUi && typeof window.dronmakrUi.refreshSelects === "function") {
+        window.dronmakrUi.refreshSelects(drumPathPresetSelect);
       }
       if (!browserTabSamples.hidden) {
         requestSamplesForType(currentSampleType);
@@ -2680,6 +2731,9 @@
         showErrorModal(data.error);
         if (state.activeDrumPathPreset) {
           drumPathPresetSelect.value = state.activeDrumPathPreset;
+          if (window.dronmakrUi && typeof window.dronmakrUi.refreshSelects === "function") {
+            window.dronmakrUi.refreshSelects(drumPathPresetSelect);
+          }
         }
         if (awaitingPresetSyncForInitialRestore && !initialKitRestoreAttempted) {
           const snap = readBeatbuildrStorage();
@@ -3283,6 +3337,13 @@
     const browserTabSamples = document.getElementById("browser-tab-samples");
     const browserSampleTypeSelect = document.getElementById("browser-sample-type-select");
 
+    function refreshBrowserListScrollbars() {
+      if (window.dronmakrUi && typeof window.dronmakrUi.refreshScrollLists === "function") {
+        var root = document.querySelector(".browser-card");
+        window.dronmakrUi.refreshScrollLists(root || document);
+      }
+    }
+
     browserTabBtns.forEach((btn) => {
       btn.addEventListener("click", () => {
         const tab = btn.dataset.tab;
@@ -3303,6 +3364,7 @@
           currentSampleType = browserSampleTypeSelect.value;
           requestSamplesForType(currentSampleType);
         }
+        refreshBrowserListScrollbars();
       });
     });
 
@@ -3332,9 +3394,7 @@
         li.className = "browser-list-empty";
         li.textContent = patternList.length === 0 ? "No patterns saved yet" : "No matching patterns";
         browserPatternList.appendChild(li);
-        return;
-      }
-
+      } else {
       filtered.forEach((patternName) => {
         const li = document.createElement("li");
         li.className = "browser-list-item";
@@ -3369,6 +3429,8 @@
         li.appendChild(deleteBtn);
         browserPatternList.appendChild(li);
       });
+      }
+      refreshBrowserListScrollbars();
     }
 
     browserPatternFilter.addEventListener("input", renderPatternList);
@@ -3483,9 +3545,7 @@
         li.className = "browser-list-empty";
         li.textContent = drumKitsList.length === 0 ? "No kits saved yet" : "No matching kits";
         browserKitList.appendChild(li);
-        return;
-      }
-
+      } else {
       filtered.forEach((kitName) => {
         const li = document.createElement("li");
         li.className = "browser-list-item";
@@ -3520,6 +3580,8 @@
         li.appendChild(deleteBtn);
         browserKitList.appendChild(li);
       });
+      }
+      refreshBrowserListScrollbars();
     }
 
     browserKitFilter.addEventListener("input", renderKitList);
@@ -3548,9 +3610,7 @@
         li.className = "browser-list-empty";
         li.textContent = grooves.length === 0 ? "No grooves saved yet" : "No matching grooves";
         browserGrooveList.appendChild(li);
-        return;
-      }
-
+      } else {
       filtered.forEach((grooveName) => {
         const li = document.createElement("li");
         li.className = "browser-list-item";
@@ -3567,6 +3627,8 @@
         });
         browserGrooveList.appendChild(li);
       });
+      }
+      refreshBrowserListScrollbars();
     }
 
     browserGrooveFilter.addEventListener("input", renderGrooveList);
@@ -3841,9 +3903,7 @@
         li.className = "browser-list-empty";
         li.textContent = emptyMsg;
         browserSampleList.appendChild(li);
-        return;
-      }
-
+      } else {
       filteredSamples.forEach((sample, idx) => {
         const li = document.createElement("li");
         li.className = "browser-list-item";
@@ -3885,6 +3945,8 @@
         });
         browserSampleList.appendChild(li);
       });
+      }
+      refreshBrowserListScrollbars();
     }
 
     function selectAndPreviewSample(idx) {
