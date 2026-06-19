@@ -965,20 +965,30 @@ def apply_pitch_shift_preserve_length(
 
 def apply_resample_transpose(
     audio: np.ndarray, sample_rate: float, semitones: float
-) -> tuple[np.ndarray, int]:
+) -> np.ndarray:
+    """Tape-style transpose: change pitch by resampling, keep output at input sample rate."""
     import librosa  # noqa: PLC0415
 
     x = _ensure_channels_first(audio)
     pitch_factor = 2 ** (float(semitones) / 12.0)
-    new_sr = int(round(float(sample_rate) * pitch_factor))
+    if abs(pitch_factor - 1.0) < 1e-12:
+        return x.astype(np.float32, copy=False)
+
+    # Higher pitch => fewer samples at the same playback sample rate.
+    resample_orig_sr = int(round(float(sample_rate) * pitch_factor))
+    resample_target_sr = int(sample_rate)
     out_ch = []
     for ch in range(x.shape[0]):
         out_ch.append(
-            librosa.resample(x[ch], orig_sr=int(sample_rate), target_sr=new_sr)
+            librosa.resample(
+                x[ch],
+                orig_sr=resample_orig_sr,
+                target_sr=resample_target_sr,
+            )
         )
     min_len = min(len(c) for c in out_ch)
     stacked = np.stack([c[:min_len] for c in out_ch], axis=0)
-    return stacked.astype(np.float32, copy=False), new_sr
+    return stacked.astype(np.float32, copy=False)
 
 
 def apply_master_normalization_chain(

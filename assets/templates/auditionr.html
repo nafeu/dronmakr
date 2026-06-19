@@ -4421,6 +4421,24 @@
       return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
     }
 
+    function auditionrWaveSurferDuration(wavesurfer) {
+      if (!wavesurfer) return NaN;
+      var decoded = wavesurfer.getDecodedData && wavesurfer.getDecodedData();
+      if (decoded && typeof decoded.duration === "number" && isFinite(decoded.duration) && decoded.duration > 0) {
+        return decoded.duration;
+      }
+      var d = wavesurfer.getDuration();
+      return (typeof d === "number" && isFinite(d) && d > 0) ? d : NaN;
+    }
+
+    function auditionrSetWaveformDuration(inst, seconds, absPath) {
+      if (!inst || !inst.durationEl) return;
+      if (typeof seconds !== "number" || !isFinite(seconds) || seconds <= 0) return;
+      inst.durationEl.textContent = formatTimestamp(seconds);
+      var pathKey = absPath || inst.absPath;
+      if (pathKey) waveformDurations[pathKey] = seconds;
+    }
+
     function auditionrBasename(absPath) {
       if (!absPath) return "";
       var normalized = String(absPath).replace(/\\/g, "/").replace(/\/+$/, "");
@@ -4647,9 +4665,9 @@
       }
       if (inst.wrapper) inst.wrapper.classList.remove("waveform-processing");
       if (!opts.skipDurationRepair && inst.wavesurfer && inst.durationEl) {
-        var d = inst.wavesurfer.getDuration();
+        var d = auditionrWaveSurferDuration(inst.wavesurfer);
         if (typeof d === "number" && !isNaN(d) && d > 0) {
-          inst.durationEl.textContent = formatTimestamp(d);
+          auditionrSetWaveformDuration(inst, d, absPath);
         }
       }
     }
@@ -5155,10 +5173,15 @@
       var drumpatternStartTime = 0;
       var drumpatternRafId = null;
 
+      wavesurfer.on("decode", function () {
+        var pinnedDecode = waveformInstances[file];
+        if (!pinnedDecode || !pinnedDecode.durationEl) return;
+        auditionrSetWaveformDuration(pinnedDecode, auditionrWaveSurferDuration(wavesurfer), file);
+      });
+
       wavesurfer.on("ready", function () {
-        var dur = wavesurfer.getDuration();
-        waveformDurations[file] = dur;
-        duration.innerText = `${formatTimestamp(dur)}`;
+        var dur = auditionrWaveSurferDuration(wavesurfer);
+        auditionrSetWaveformDuration(waveformInstances[file], dur, file);
         var pinnedReady = waveformInstances[file];
         if (pinnedReady && pinnedReady.pendingProcessingReveal) {
           endWaveformProcessing(file, { skipDurationRepair: true });
@@ -5271,6 +5294,7 @@
 
       return {
         wrapper: wrapper,
+        absPath: file,
         wavesurfer: wavesurfer,
         durationEl: duration,
         stopPlayback: stopPlayback,

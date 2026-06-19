@@ -348,10 +348,10 @@ def apply_transpose_pitch_by_resampling_inplace(input_path: str, semitones: floa
         return
 
     audio, sample_rate = _read_channels_first(input_path)
-    processed_audio, new_sample_rate = dsp.apply_resample_transpose(audio, sample_rate, semitones)
-    _write_channels_first(input_path, processed_audio, new_sample_rate)
+    processed_audio = dsp.apply_resample_transpose(audio, sample_rate, semitones)
+    _write_channels_first(input_path, processed_audio, sample_rate)
     log_sample_processing_line(
-        f"Applied resampling transpose ({semitones:+g} semitones, SR {sample_rate}→{new_sample_rate})"
+        f"Applied resampling transpose ({semitones:+g} semitones)"
     )
 
 

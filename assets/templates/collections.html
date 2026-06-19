@@ -67,17 +67,20 @@
       max-width: 11rem;
     }
 
+    .collections-grid-scroll {
+      flex: 1 1 0;
+      min-height: 0;
+      min-width: 0;
+      max-height: 80vh;
+      padding-right: 0.5rem;
+    }
+
     .collections-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 1rem;
       min-width: 0;
-      flex: 1 1 0;
-      min-height: 0;
-      overflow-y: auto;
       align-content: start;
-      max-height: 80vh;
-      padding-right: 0.5rem;
     }
 
     .collection-card {
@@ -792,13 +795,15 @@
               class="fa-solid fa-chevron-right"></i></button>
         </div>
       </div>
-      <div id="collections-grid" class="collections-grid dron-list-scroll"></div>
+      <div id="collections-grid-scroll" class="collections-grid-scroll dron-list-scroll">
+        <div id="collections-grid" class="collections-grid"></div>
+      </div>
     </section>
     <div class="collections-sidebar">
       <aside class="sidebar-card">
         <h2><i class="fa-solid fa-box"></i> Packaging Options</h2>
         <p class="packaging-count" id="packaging-count">0 samples selected</p>
-        <div class="packaging-selected-list-wrap">
+        <div class="packaging-selected-list-wrap dron-list-scroll">
           <ul id="packaging-selected-list" class="packaging-selected-list" aria-live="polite"></ul>
         </div>
         <button type="button" id="pkg-trash-selected-btn" class="packaging-trash-btn" disabled>
@@ -851,7 +856,7 @@
           </div>
           <div>
             <div class="packaging-preview-label">Export name preview</div>
-            <div class="packaging-preview-scroll">
+            <div class="packaging-preview-scroll dron-list-scroll">
               <ul id="pkg-preview" class="packaging-preview-list" aria-live="polite"></ul>
             </div>
           </div>
@@ -1030,11 +1035,21 @@
         waveformEl.addEventListener("pointercancel", clearGesture, true);
       }
 
-      function refreshCollectionsGridScrollbar() {
-        var grid = document.getElementById("collections-grid");
-        if (window.dronmakrUi && typeof window.dronmakrUi.refreshScrollbars === "function") {
-          window.dronmakrUi.refreshScrollbars(grid);
-        }
+      function refreshCollectionsScrollbars() {
+        if (!window.dronmakrUi || typeof window.dronmakrUi.refreshScrollbars !== "function") return;
+        var targets = [
+          document.getElementById("collections-grid-scroll"),
+          document.querySelector(".packaging-preview-scroll"),
+          document.querySelector(".packaging-selected-list-wrap")
+        ];
+        targets.forEach(function (el) {
+          if (el) window.dronmakrUi.refreshScrollbars(el);
+        });
+        requestAnimationFrame(function () {
+          targets.forEach(function (el) {
+            if (el) window.dronmakrUi.refreshScrollbars(el);
+          });
+        });
       }
 
       function getFiltered() {
@@ -1071,6 +1086,7 @@
         }
         updatePackagingPreview();
         updateExportBtnState();
+        refreshCollectionsScrollbars();
       }
 
       function normalizePiece(text) {
@@ -1324,6 +1340,7 @@
           ? buildExportPreviewItemsFromEntries(getLayoutDemoEntries(layoutMode))
           : buildSelectedExportPreviewItems();
         renderExportPreviewTree(el, items, layoutMode);
+        refreshCollectionsScrollbars();
       }
 
       function showLayoutHelpModal() {
@@ -1693,7 +1710,7 @@
         } else {
           pageInfo.textContent = (currentPage + 1) + " of " + totalPages + " (" + total + ")";
         }
-        refreshCollectionsGridScrollbar();
+        refreshCollectionsScrollbars();
       }
 
       function goPrev() {
@@ -1760,6 +1777,7 @@
         .catch(function (err) {
           console.error("Collections load error", err);
           document.getElementById("collections-grid").innerHTML = "<div class=\"collections-empty\" style=\"grid-column:1/-1\">Failed to load saved samples.</div>";
+          refreshCollectionsScrollbars();
           if (window.__pageReady) window.__pageReady();
         });
     })();
