@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bump __version__ in version.py (semver), git commit + annotated tag + push origin.
+# Bump __version__ in backend/dronmakr/version.py (semver), git commit + annotated tag + push origin.
 # To bump and immediately create the GitHub Release for the new tag, use scripts/bump_and_release.sh.
 #
 # Examples:
@@ -11,7 +11,7 @@ set -e
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
-VERSION_FILE="version.py"
+VERSION_FILE="backend/dronmakr/version.py"
 DRY_RUN=false
 
 POSITIONAL=()

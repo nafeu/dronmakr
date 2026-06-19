@@ -16,7 +16,7 @@ if [[ ! -d "$APP" ]]; then
   exit 1
 fi
 
-VERSION="$(python3 -c "from version import __version__; print(__version__)")"
+VERSION="$(PYTHONPATH=backend python3 -c "from dronmakr.version import __version__; print(__version__)")"
 case "$(uname -m)" in
   arm64|aarch64) ARCH_LABEL="arm64" ;;
   x86_64|amd64) ARCH_LABEL="x64" ;;

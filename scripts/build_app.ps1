@@ -22,7 +22,7 @@ Copy-Item $src $dest -Force
 npm ci
 npm run tauri build
 
-$version = (& .\venv\Scripts\python -c "from version import __version__; print(__version__)").Trim()
+$version = (& .\venv\Scripts\python -c "import sys; sys.path.insert(0, 'backend'); from dronmakr.version import __version__; print(__version__)").Trim()
 $artifactDir = Join-Path $Root "dist-artifacts"
 New-Item -ItemType Directory -Path $artifactDir -Force | Out-Null
 $zipPath = Join-Path $artifactDir "dronmakr-v$version-windows-x64.zip"

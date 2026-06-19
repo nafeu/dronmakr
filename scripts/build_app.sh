@@ -7,7 +7,7 @@ cd "$ROOT_DIR"
 source "venv/bin/activate"
 npm run build
 
-VERSION="$(python -c 'from version import __version__; print(__version__)')"
+VERSION="$(PYTHONPATH=backend python -c 'from dronmakr.version import __version__; print(__version__)')"
 ARTIFACT_DIR="dist-artifacts"
 mkdir -p "$ARTIFACT_DIR"
 

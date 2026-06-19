@@ -50,7 +50,7 @@ jobs:
       - name: Create archive and DMG
         run: |
           source venv/bin/activate
-          VERSION=$(python -c "from version import __version__; print(__version__)")
+          VERSION=$(PYTHONPATH=backend python -c "from dronmakr.version import __version__; print(__version__)")
           mkdir -p dist-artifacts
           APP="src-tauri/target/release/bundle/macos/dronmakr.app"
           test -d "$APP"
@@ -106,7 +106,7 @@ jobs:
       - name: Create zip
         shell: pwsh
         run: |
-          $v = .\venv\Scripts\python -c "from version import __version__; print(__version__)"
+          $v = .\venv\Scripts\python -c "import sys; sys.path.insert(0, 'backend'); from dronmakr.version import __version__; print(__version__)"
           New-Item -ItemType Directory -Path dist-artifacts -Force | Out-Null
           $bundle = Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse -Filter "*.exe" | Where-Object { $_.Directory.Name -match "dronmakr" } | Select-Object -First 1
           if ($null -eq $bundle) {
@@ -165,7 +165,7 @@ jobs:
       - name: Create archive
         run: |
           source venv/bin/activate
-          VERSION=$(python -c "from version import __version__; print(__version__)")
+          VERSION=$(PYTHONPATH=backend python -c "from dronmakr.version import __version__; print(__version__)")
           mkdir -p dist-artifacts
           tar -czf "dist-artifacts/dronmakr-v${VERSION}-linux-x64.tar.gz" -C src-tauri/target/release/bundle .
 
