@@ -1171,6 +1171,7 @@ def get_saved_files():
         {
             "name": f.replace(".wav", ""),
             "path": f"/saved/{f}",
+            "absPath": os.path.abspath(os.path.join(SAVED_DIR, f)),
             "type": _infer_saved_sample_type(f),
         }
         for f in wav_files
@@ -1201,6 +1202,7 @@ def get_splits_wav_files():
                 {
                     "name": stem,
                     "path": path,
+                    "absPath": abs_path,
                     "type": _infer_splits_entry_type(stem),
                 }
             )

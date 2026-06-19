@@ -1,6 +1,6 @@
 /**
  * dronmakr cross-platform UI skin for Tauri webviews.
- * Hides native OS chrome for scrollbars, checkboxes, and select dropdowns.
+ * Hides native OS chrome for scrollbars, checkboxes, radio buttons, and select dropdowns.
  */
 
 /* --- Scrollbars (OverlayScrollbars theme + CSS fallback) --- */
@@ -78,8 +78,18 @@
 }
 
 .dron-list-scroll.os-host,
-.generatr-pp-list-scroll.os-host {
+.generatr-pp-list-scroll.os-host,
+.dron-select-list-scroll.os-host {
   min-height: 0;
+}
+
+.dron-select-list-scroll.os-host {
+  overflow: hidden !important;
+}
+
+.dron-select-list-scroll.os-host .os-viewport {
+  overflow-x: hidden !important;
+  overflow-y: scroll !important;
 }
 
 /* --- Number inputs (hide native spinners; use .dron-number-steppers) --- */
@@ -214,6 +224,50 @@ input[type="checkbox"]:focus-visible {
 }
 
 input[type="checkbox"]:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* --- Radio buttons --- */
+input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  flex: 0 0 auto;
+  border: 1px solid var(--theme-a);
+  border-radius: 50%;
+  background: #0a0a0a;
+  cursor: pointer;
+  position: relative;
+  vertical-align: middle;
+  box-sizing: border-box;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+input[type="radio"]:checked {
+  border-color: var(--primary);
+}
+
+input[type="radio"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+  transform: translate(-50%, -50%);
+}
+
+input[type="radio"]:focus-visible {
+  outline: 1px solid var(--primary);
+  outline-offset: 2px;
+}
+
+input[type="radio"]:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
@@ -761,6 +815,32 @@ label.edit-control-row {
   border-radius: 4px;
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
   z-index: 2500;
+  box-sizing: border-box;
+  min-width: max(100%, 14rem);
+  width: max-content;
+  max-width: min(36rem, calc(100vw - 2rem));
+}
+
+.nice-select.wide .nice-select-dropdown {
+  left: 0 !important;
+  right: auto !important;
+  min-width: max(100%, 14rem);
+  width: max-content;
+  max-width: min(36rem, calc(100vw - 2rem));
+}
+
+.nice-select.right .nice-select-dropdown {
+  left: auto !important;
+  right: 0 !important;
+  min-width: max(100%, 14rem);
+  width: max-content;
+  max-width: min(36rem, calc(100vw - 2rem));
+}
+
+.nice-select.toolbar-select .nice-select-dropdown,
+.nice-select.browser-sample-type-select .nice-select-dropdown,
+.nice-select.collections-filter-select .nice-select-dropdown {
+  min-width: max(100%, 16rem);
 }
 
 .nice-select .nice-select-search-box {
@@ -791,11 +871,13 @@ label.edit-control-row {
 .nice-select .list {
   max-height: 220px;
   padding: 4px 0;
+  overflow: hidden;
 }
 
-.nice-select .list::-webkit-scrollbar {
-  width: 6px !important;
-  height: 6px !important;
+.nice-select .list.dron-select-list-scroll:not(.os-host) {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--theme-a) var(--secondary);
 }
 
 .nice-select .option {
@@ -805,6 +887,9 @@ label.edit-control-row {
   color: var(--primary);
   font-size: 0.82rem;
   font-weight: 400;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .nice-select .option:hover,
@@ -853,11 +938,14 @@ label.edit-control-row {
   max-width: none;
 }
 
-.collections-filters .nice-select {
-  min-width: 10rem;
+.edit-effect-card .daw-knob-select .nice-select .current {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.edit-effect-card .daw-knob-select .nice-select .current {
+.nice-select .current {
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -865,7 +953,8 @@ label.edit-control-row {
 
 .edit-effect-card .daw-knob-select .nice-select .option {
   white-space: normal;
-  line-height: 1.3;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .edit-inline-number-row {
@@ -937,8 +1026,26 @@ label.edit-control-row {
 }
 
 .collections-filters input[type="text"],
-.collections-filters select {
+.collections-filters .collections-filter-input {
   height: var(--dron-control-h);
+  min-height: var(--dron-control-h);
+  padding: 0 var(--dron-control-pad-x);
+  font-size: var(--dron-control-font);
+  line-height: calc(var(--dron-control-h) - 2px);
+  background: var(--dron-control-bg);
+  border: 1px solid var(--dron-control-border);
+  border-radius: var(--dron-control-radius);
+  color: var(--primary);
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  min-width: 8rem;
+  width: auto;
+  max-width: none;
+}
+
+.collections-filters select.collections-filter-select {
+  height: var(--dron-control-h);
+  min-height: var(--dron-control-h);
   padding: 0 var(--dron-control-pad-x);
   font-size: var(--dron-control-font);
   line-height: calc(var(--dron-control-h) - 2px);
@@ -949,11 +1056,14 @@ label.edit-control-row {
   box-sizing: border-box;
 }
 
-.collections-filters input[type="text"] {
-  min-height: var(--dron-control-h);
-}
-
-.collections-filters .nice-select {
+.collections-filters .nice-select.collections-filter-select {
+  float: none;
+  clear: none;
+  display: inline-block;
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 9rem;
+  max-width: 11rem;
   height: var(--dron-control-h);
   min-height: var(--dron-control-h);
 }

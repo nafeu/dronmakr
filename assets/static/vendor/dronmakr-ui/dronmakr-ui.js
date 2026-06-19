@@ -71,17 +71,19 @@
 
   var LIST_SCROLL_CLASS = "dron-list-scroll";
   var LEGACY_LIST_SCROLL_CLASS = "generatr-pp-list-scroll";
+  var SELECT_LIST_SCROLL_CLASS = "dron-select-list-scroll";
 
   function isListScrollEl(el) {
     if (!el || el.nodeType !== 1) return false;
     return (
       el.classList.contains(LIST_SCROLL_CLASS) ||
-      el.classList.contains(LEGACY_LIST_SCROLL_CLASS)
+      el.classList.contains(LEGACY_LIST_SCROLL_CLASS) ||
+      el.classList.contains(SELECT_LIST_SCROLL_CLASS)
     );
   }
 
   var SCROLLBAR_TARGET_SELECTOR =
-    ".dron-list-scroll, .generatr-pp-list-scroll, [data-dron-scrollbar], .dron-scrollbar";
+    ".dron-list-scroll, .generatr-pp-list-scroll, .dron-select-list-scroll, [data-dron-scrollbar], .dron-scrollbar";
 
   function isScrollbarTarget(el) {
     if (!el || el.nodeType !== 1) return false;
@@ -136,12 +138,40 @@
     });
   }
 
+  function getNiceSelectRoot(select) {
+    if (!select || select.tagName !== "SELECT") return null;
+    var next = select.nextElementSibling;
+    if (next && next.classList && next.classList.contains("nice-select")) return next;
+    return null;
+  }
+
+  function bindSelectDropdownList(select) {
+    var root = getNiceSelectRoot(select);
+    if (!root) return;
+    var list = root.querySelector(".list");
+    if (!list) return;
+    list.classList.add(SELECT_LIST_SCROLL_CLASS);
+    bindListScrollbar(list);
+  }
+
+  function ensureSelectDropdownEvents(select) {
+    if (!select || select.dataset.dronUiSelectEvents === "true") return;
+    select.dataset.dronUiSelectEvents = "true";
+    select.addEventListener("modalopen", function () {
+      requestAnimationFrame(function () {
+        bindSelectDropdownList(select);
+      });
+    });
+  }
+
   function bindSelect(select) {
     if (shouldSkipSelect(select)) return;
     if (typeof window.NiceSelect === "undefined") return;
     syncSelectSelectedAttributes(select);
     if (selectInstances.has(select)) {
       selectInstances.get(select).update();
+      bindSelectDropdownList(select);
+      ensureSelectDropdownEvents(select);
       return;
     }
     select.classList.add("wide");
@@ -151,6 +181,8 @@
     selectInstances.set(select, instance);
     select.dataset.dronUiBound = "true";
     select.style.display = "none";
+    bindSelectDropdownList(select);
+    ensureSelectDropdownEvents(select);
   }
 
   function unbindSelect(select) {
@@ -167,6 +199,9 @@
     scope.querySelectorAll("select").forEach(function (select) {
       if (shouldSkipSelect(select)) return;
       bindSelect(select);
+    });
+    scope.querySelectorAll('select[data-dron-ui-bound="true"]').forEach(function (select) {
+      bindSelectDropdownList(select);
     });
   }
 
@@ -390,6 +425,10 @@
             if (el.tagName === "SELECT") scheduleSelectRefresh(el);
             if (el.tagName === "INPUT" && el.type === "number") wrapNumberInput(el);
             if (isScrollbarTarget(el)) scheduleScrollbarRefresh(el);
+            if (el.classList && el.classList.contains("list") && el.closest(".nice-select")) {
+              var select = el.closest(".nice-select").previousElementSibling;
+              if (select && select.tagName === "SELECT") bindSelectDropdownList(select);
+            }
           });
         });
 

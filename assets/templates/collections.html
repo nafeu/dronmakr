@@ -41,22 +41,30 @@
 
     .collections-filters {
       display: flex;
+      flex-wrap: nowrap;
       gap: 0.75rem;
       align-items: center;
-      flex-wrap: wrap;
+      min-width: 0;
+      width: 100%;
     }
 
     .collections-main .collections-filters {
       flex-shrink: 0;
     }
 
-    .collections-filters input[type="text"] {
-      flex: 1;
-      min-width: 160px;
+    .collections-filters .collections-filter-input {
+      flex: 1 1 auto;
+      min-width: 8rem;
+      width: auto;
+      max-width: none;
     }
 
-    .collections-filters select {
-      min-width: 140px;
+    .collections-filters .collections-filter-select,
+    .collections-filters .nice-select.collections-filter-select {
+      flex: 0 0 auto;
+      width: auto;
+      min-width: 9rem;
+      max-width: 11rem;
     }
 
     .collections-grid {
@@ -246,6 +254,7 @@
       align-items: center;
       gap: 0.5rem;
       margin-left: auto;
+      flex-shrink: 0;
     }
 
     .collections-filters .collections-pagination button {
@@ -400,6 +409,7 @@
     }
 
     .collections-filters .collections-filter-btn {
+      flex-shrink: 0;
       padding: 0 0.65rem;
       font-family: inherit;
       font-size: 0.75rem;
@@ -438,10 +448,6 @@
       padding: 1.5rem;
     }
 
-    #filter-type {
-      font-size: 0.75rem;
-    }
-
     .packaging-form {
       display: flex;
       flex-direction: column;
@@ -473,12 +479,6 @@
       cursor: pointer;
     }
 
-    .packaging-option input {
-      width: 1rem;
-      height: 1rem;
-      margin: 0;
-      cursor: pointer;
-    }
 
     .packaging-layout-group {
       display: flex;
@@ -573,11 +573,7 @@
       cursor: pointer;
     }
 
-    .packaging-radio input {
-      width: 1rem;
-      height: 1rem;
-      margin: 0;
-      cursor: pointer;
+    .packaging-radio input[type="radio"] {
       flex-shrink: 0;
     }
 
@@ -751,6 +747,14 @@
     #app-version-chip a:hover {
       opacity: 1;
     }
+
+    .collection-card .card-waveform.waveform-external-drag {
+      cursor: grab;
+    }
+
+    .collection-card .card-waveform.waveform-external-drag.waveform-external-dragging {
+      cursor: grabbing;
+    }
   </style>
 </head>
 
@@ -761,8 +765,8 @@
   <main id="collections-layout" class="page-layout">
     <section class="collections-main">
       <div class="collections-filters">
-        <input type="text" id="filter-name" placeholder="Filter by sample name…" aria-label="Filter by name">
-        <select id="filter-type" aria-label="Sample type">
+        <input type="text" id="filter-name" class="collections-filter-input" placeholder="Filter by sample name…" aria-label="Filter by name">
+        <select id="filter-type" class="collections-filter-select" aria-label="Sample type">
           <option value="">All types</option>
           <option value="drone">drone</option>
           <option value="bass">bass</option>
@@ -788,7 +792,7 @@
               class="fa-solid fa-chevron-right"></i></button>
         </div>
       </div>
-      <div id="collections-grid" class="collections-grid"></div>
+      <div id="collections-grid" class="collections-grid dron-list-scroll"></div>
     </section>
     <div class="collections-sidebar">
       <aside class="sidebar-card">
@@ -950,6 +954,87 @@
         var m = Math.floor(seconds / 60);
         var s = Math.floor(seconds % 60);
         return m + ":" + (s < 10 ? "0" : "") + s;
+      }
+
+      var COLLECTIONS_DRAG_PREVIEW_ICON =
+        "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAEPElEQVR4AexUb0idVRj/Pee93uncvJumbcoq9scNc0TFch+29qFR0ZdgZARjFLH2h4VUZDIjfPPqtJbibBWURR9ylTCIDAajDwNpaiELWRvZh1YwtSU6b3Pe63vOeXrOe5lDmCsNFoUvz/Oe8/w5z/M7v3PeV+FffhYALDCwwMB/kwFmELfmP2tact/noyvv+ye/kvkx0JJXCZNsUxzsZpP85JYC4PfWFID1a7AMp6SD9dz2SO58Qag5L5xIvAhtsmHSAGQ94Y+zd8g4L5kTAG7YuFyo3we5BLDEMHAKzUHBvLrLojkBgDf4MqyNSVtART4CRb+FZURgb5Na08LNJbncnNvBzcvOcvPKrdOBG0xmAGDfV9pf8RjX5r3DdXknOZ53muvzuvlQXi83xAagkwddc3a751izzMfDmlrFwlFezExsh45BTz2BICiBnawV96wyDSDpFxUzt3Z7NvkVbLBfCmyHndoMnSoT3YRAr4WVOqKEjK+p6pfzchQJOQaAzTKJpOVw4Q7SwcOh34hLmzLuKI/K7IYSAmD/rg1RPdFFRm+CtYE1XjtMxh5g8U6D7J2ILHlFdosQgNw98KLWsJq2OvRZWu5saeTBXI1DjgXsdYj+DMOZuHC6xMWdctPqYt2Y/yS3rs1xtnKLODXeTsbkw9IkKHu7Fx/bRfHRNqr57dOIKLReChDSILwfUb3vBMLHS0AYgQ6KQvOnU09L7gawGkKsaDcQOR6CMcFmF+fG/AeR/P17zyQ/Q+JSD/trChT6uh4lY+51lFlE3qb4UJdLvqbslyyRo9gL99k5SpHRSuS7toBRY2lQdhvXryqFTtaFgDhaTwfOXQFHekNbTz2VjBeuRyr1OQLO5IC+gaZOQ5Nlylr9UIhSqGVadOZa4+lRD9cisAVhIev9iqXFH0/HoC464NC2EMnRfhi7ApCcnAc+DHMyirqh5aYEwbaoTpxjY/ONjT6n/MRW8serIjWDnUp2kCMKB8ILrh5IVa8q5Y49Ma6+vZSr5WsIghfCJoYYJlpBL3VPhsXlpafUeWkgTIjh2BG1JtpAFSdS4gFVnRlkRHrJgClgIu0djNSOpsG5BFElxX9wzcFiab0lmhrr555jY0hN9GMqtZ+ssK0Z1mTWUsPIl5I1LZHl9/SAvSvQ4jKQrXp9SpXOaDCllzxjkdUElb2DDo0flswZolSs4AMY9R3CMxYUMpK7xUYay1xiw4azdnlvjrw+Y6UYVHlyQs7ZZ9khGzWQsovLyT/l4Eg0LZkNFwe8+pFKqrv0Rdoz863Il8ty97otwKJyi2iDhfeuRcZRIFoDL+tx5Ny/OtI00j5z2XWL3hhtpqV3FtG64o1ZjcMXrkf+3ky5NNrbF9CR0ePekbFXvZbE817L5QpquRynt0Y6ZUdJl3MzlU0Muxo3y5ktFgKYLXgr/AsAFhj4/zPwV1/SnwAAAP//YsfmyQAAAAZJREFUAwDMrwRfx2Wp7AAAAABJRU5ErkJggg==";
+
+      function collectionsCanExternalFileDrag() {
+        return !!(
+          window.__TAURI__ &&
+          window.__TAURI__.core &&
+          typeof window.__TAURI__.core.invoke === "function" &&
+          typeof window.__TAURI__.core.Channel === "function"
+        );
+      }
+
+      function collectionsStartExternalFileDrag(absPath) {
+        if (!collectionsCanExternalFileDrag() || !absPath) return Promise.resolve();
+        var invoke = window.__TAURI__.core.invoke;
+        var channel = new window.__TAURI__.core.Channel();
+        return invoke("plugin:drag|start_drag", {
+          item: [absPath],
+          image: COLLECTIONS_DRAG_PREVIEW_ICON,
+          options: { mode: "copy" },
+          onEvent: channel
+        }).catch(function (err) {
+          console.error("External file drag failed", err);
+        });
+      }
+
+      function attachCollectionsExternalDrag(waveformEl, absPath) {
+        if (!collectionsCanExternalFileDrag() || !waveformEl || !absPath) return;
+        waveformEl.classList.add("waveform-external-drag");
+        waveformEl.title = (waveformEl.title ? waveformEl.title + " — " : "") +
+          "Drag to drop into your DAW";
+
+        var DRAG_THRESHOLD_PX = 10;
+        var gesture = null;
+
+        function clearGesture() {
+          gesture = null;
+          waveformEl.classList.remove("waveform-external-dragging");
+        }
+
+        waveformEl.addEventListener("pointerdown", function (e) {
+          if (e.button !== 0 || !e.isPrimary) return;
+          gesture = {
+            pointerId: e.pointerId,
+            startX: e.clientX,
+            startY: e.clientY,
+            externalDragStarted: false
+          };
+        });
+
+        waveformEl.addEventListener("pointermove", function (e) {
+          if (!gesture || gesture.externalDragStarted || e.pointerId !== gesture.pointerId) return;
+          var dx = e.clientX - gesture.startX;
+          var dy = e.clientY - gesture.startY;
+          if (Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
+          gesture.externalDragStarted = true;
+          waveformEl.classList.add("waveform-external-dragging");
+          e.preventDefault();
+          e.stopPropagation();
+          collectionsStartExternalFileDrag(absPath).finally(clearGesture);
+        }, true);
+
+        waveformEl.addEventListener("pointerup", function (e) {
+          if (!gesture || e.pointerId !== gesture.pointerId) return;
+          if (gesture.externalDragStarted) {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+          clearGesture();
+        }, true);
+
+        waveformEl.addEventListener("pointercancel", clearGesture, true);
+      }
+
+      function refreshCollectionsGridScrollbar() {
+        var grid = document.getElementById("collections-grid");
+        if (window.dronmakrUi && typeof window.dronmakrUi.refreshScrollbars === "function") {
+          window.dronmakrUi.refreshScrollbars(grid);
+        }
       }
 
       function getFiltered() {
@@ -1529,6 +1614,7 @@
             var waveId = "wave-" + item.path.replace(/[/.]/g, "-").replace(/\s/g, "_");
             waveDiv.id = waveId;
             waveformRow.appendChild(waveDiv);
+            attachCollectionsExternalDrag(waveDiv, item.absPath);
             var playBtn = document.createElement("button");
             playBtn.type = "button";
             playBtn.className = "card-play";
@@ -1607,6 +1693,7 @@
         } else {
           pageInfo.textContent = (currentPage + 1) + " of " + totalPages + " (" + total + ")";
         }
+        refreshCollectionsGridScrollbar();
       }
 
       function goPrev() {
