@@ -198,24 +198,17 @@ input[type="checkbox"] {
   cursor: pointer;
   position: relative;
   vertical-align: middle;
+  box-sizing: border-box;
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 input[type="checkbox"]:checked {
-  background: var(--primary);
+  background-color: var(--primary);
   border-color: var(--primary);
-}
-
-input[type="checkbox"]:checked::after {
-  content: "";
-  position: absolute;
-  left: 4px;
-  top: 1px;
-  width: 5px;
-  height: 9px;
-  border: solid var(--secondary);
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none'%3E%3Cpath stroke='%23000000' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round' d='M5 12l5 5 9-10'/%3E%3C/svg%3E");
+  background-size: 72% 72%;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 input[type="checkbox"]:focus-visible {
@@ -808,6 +801,18 @@ label.edit-control-row {
   pointer-events: none;
 }
 
+.nice-select.open {
+  position: relative;
+  z-index: 2600;
+}
+
+/* Let open dropdowns escape scroll/clip parents (Generate Samples cards, etc.) */
+.dron-list-scroll:has(.nice-select.open),
+.os-host:has(.nice-select.open),
+.generatr-form:has(.nice-select.open) {
+  overflow: visible !important;
+}
+
 .nice-select .nice-select-dropdown {
   margin-top: 4px;
   background-color: #0a0a0a;
@@ -872,6 +877,10 @@ label.edit-control-row {
   max-height: 220px;
   padding: 4px 0;
   overflow: hidden;
+}
+
+.nice-select.generatr-sweep-preview-select .list {
+  max-height: min(320px, 45vh);
 }
 
 .nice-select .list.dron-select-list-scroll:not(.os-host) {

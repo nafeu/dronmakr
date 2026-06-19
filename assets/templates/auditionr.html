@@ -14,8 +14,13 @@
   <style>
     {% include '_app_css_root.html' %}
 
+    html {
+      height: 100%;
+    }
+
     body {
       height: 100%;
+      min-height: 100%;
       box-sizing: border-box;
       overflow: hidden;
       padding-top: calc(var(--toolbar-height) + 0.1rem);
@@ -99,8 +104,11 @@
       width: 100%;
       max-width: 100%;
       gap: 0;
-      flex: 1 1 auto;
+      flex: 1 1 0;
       min-height: 0;
+      min-width: 0;
+      overflow-x: hidden;
+      align-items: stretch;
     }
 
     .auditionr-main {
@@ -116,11 +124,16 @@
       max-width: 100%;
       flex: 1 1 auto;
       min-height: 0;
+      overflow-x: hidden;
       overflow-y: auto;
       padding-right: 0.5rem;
       padding-bottom: 4rem;
       box-sizing: border-box;
       position: relative;
+    }
+
+    #waveforms.os-host {
+      overflow: hidden !important;
     }
 
     .queue-empty {
@@ -145,27 +158,45 @@
 
     .auditionr-sidebar {
       width: 600px;
-      flex: 1 1 auto;
+      flex: 0 0 600px;
+      max-width: 600px;
       min-height: 0;
+      height: 100%;
+      align-self: stretch;
       display: flex;
       flex-direction: column;
-      transition: width 0.2s ease, min-width 0.2s ease;
+      transition: width 0.2s ease, min-width 0.2s ease, flex-basis 0.2s ease, max-width 0.2s ease;
       overflow: hidden;
+      border-left: 1px solid var(--theme-a);
+      box-sizing: border-box;
     }
 
     .auditionr-sidebar.collapsed {
       width: 0;
       min-width: 0;
+      flex-basis: 0;
+      max-width: 0;
       border-left-width: 0;
       overflow: hidden;
     }
 
-    .auditionr-sidebar-content {
-      min-width: 500px;
+    .auditionr-sidebar-shell {
+      display: flex;
+      flex-direction: column;
       flex: 1 1 auto;
       min-height: 0;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    .auditionr-sidebar-panels {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
     }
 
     .sidebar-toggle {
@@ -182,7 +213,7 @@
       color: var(--primary);
       cursor: pointer;
       font-size: 0.75rem;
-      z-index: 2;
+      z-index: 25;
       transition: background 0.15s ease;
     }
 
@@ -193,11 +224,11 @@
 
     .auditionr-sidebar-wrapper {
       position: relative;
-      flex-shrink: 0;
-      min-width: 20px;
-      height: 100%;
-      min-height: 0;
+      flex: 0 0 auto;
       align-self: stretch;
+      min-width: 20px;
+      min-height: 0;
+      overflow: visible;
       display: flex;
       flex-direction: column;
     }
@@ -205,8 +236,12 @@
     .generatr-card {
       padding: 1rem;
       padding-left: 2rem;
-      overflow-y: scroll;
-      max-height: 85vh;
+      overflow-x: hidden;
+      overflow-y: auto;
+      flex: 1 1 auto;
+      min-height: 0;
+      min-width: 0;
+      box-sizing: border-box;
     }
 
     .generatr-card h2 {
@@ -224,7 +259,7 @@
       background: transparent;
       padding-left: 2rem;
       padding-right: 1rem;
-      min-height: 85vh;
+      min-height: 0;
     }
 
     .generatr-form {
@@ -232,6 +267,8 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 0.65rem 0.85rem;
       align-items: start;
+      min-width: 0;
+      max-width: 100%;
     }
 
     .generatr-form .form-row {
@@ -244,10 +281,6 @@
 
     /* Type, subcommands as single selects, checkbox blocks, post-processing */
     .generatr-form .form-row-full {
-      grid-column: 1 / -1;
-    }
-
-    .generatr-form > .btn-generate {
       grid-column: 1 / -1;
     }
 
@@ -272,6 +305,8 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 0.65rem 0.65rem;
       align-items: start;
+      min-width: 0;
+      max-width: 100%;
     }
 
     .generatr-tx-panel > .form-row-full {
@@ -300,20 +335,23 @@
       gap: 0.65rem;
       width: 100%;
       min-width: 0;
+      max-width: 100%;
     }
 
     .generatr-sweep-effect-row {
       display: flex;
-      flex-wrap: nowrap;
+      flex-wrap: wrap;
       align-items: stretch;
       gap: 0.65rem 0.65rem;
       width: 100%;
       min-width: 0;
+      max-width: 100%;
     }
 
     .generatr-sweep-effect-row > .generatr-sweep-effect {
-      flex: 1 1 0;
-      min-width: 0;
+      flex: 1 1 11.5rem;
+      min-width: min(100%, 11.5rem);
+      max-width: 100%;
     }
 
     .generatr-sweep-effect {
@@ -322,9 +360,32 @@
       padding: 0.4rem 0.5rem 0.65rem;
       background: color-mix(in srgb, var(--theme-a) 18%, transparent);
       min-width: 0;
+      max-width: 100%;
       display: flex;
       flex-direction: column;
       box-sizing: border-box;
+      overflow: visible;
+    }
+
+    .generatr-sweep-effect:has(.nice-select.open) {
+      position: relative;
+      z-index: 30;
+    }
+
+    .generatr-sweep-effect-body,
+    .generatr-sweep-preview-card,
+    .generatr-sweep-shape-select-wrap {
+      overflow: visible;
+    }
+
+    .generatr-card:has(.nice-select.open),
+    .generatr-sweep-effects:has(.nice-select.open),
+    .sidebar-tab-panel:has(.nice-select.open) {
+      overflow: visible;
+    }
+
+    .generatr-card.os-host:has(.nice-select.open) {
+      overflow: visible !important;
     }
 
     .generatr-sweep-effect-head {
@@ -353,10 +414,14 @@
     }
 
     .generatr-sweep-effect-enable input[type="checkbox"] {
-      width: 0.9rem;
-      height: 0.9rem;
+      width: 16px;
+      height: 16px;
+      min-width: 16px;
+      min-height: 16px;
       margin: 0;
       cursor: pointer;
+      flex-shrink: 0;
+      box-sizing: border-box;
     }
 
     .generatr-sweep-effect-body {
@@ -373,6 +438,30 @@
     .generatr-sweep-voice-pitch-knobs.generatr-sweep-effect-disabled {
       opacity: 0.42;
       pointer-events: none;
+    }
+
+    .generatr-sweep-voice-pitch-knobs .generatr-sweep-use-notes {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin: 0 0 0 0.2rem;
+      font-size: 0.72rem;
+      color: var(--text-muted, #9aa3b2);
+      cursor: pointer;
+      user-select: none;
+      align-self: center;
+      white-space: nowrap;
+    }
+
+    .generatr-sweep-voice-pitch-knobs .generatr-sweep-use-notes input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      min-width: 14px;
+      min-height: 14px;
+      margin: 0;
+      cursor: pointer;
+      flex-shrink: 0;
     }
 
     .generatr-sweep-effect-knobs {
@@ -394,6 +483,15 @@
       gap: 0.35rem;
       width: 100%;
       min-width: 0;
+      max-width: 100%;
+      padding-top: 10px;
+    }
+
+    .generatr-sweep-preview-card .nice-select,
+    .generatr-sweep-preview-card .generatr-sweep-preview-select {
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
     }
 
     .generatr-sweep-preview-svg-wrap {
@@ -433,16 +531,19 @@
     }
 
     .generatr-sweep-source-row > .generatr-sweep-voice-card {
-      flex: 0.5 1 0;
+      flex: 1 1 14rem;
+      min-width: min(100%, 14rem);
     }
 
     .generatr-sweep-source-row > .generatr-sweep-shape-card {
-      flex: 2 2 0;
+      flex: 2 1 18rem;
+      min-width: min(100%, 18rem);
     }
 
     .generatr-sweep-shape-controls {
       display: flex;
       align-items: flex-start;
+      flex-wrap: wrap;
       gap: 0.35rem 0.5rem;
       width: 100%;
       min-width: 0;
@@ -454,6 +555,7 @@
       flex: 1 1 auto;
       min-width: 0;
       gap: 0.15rem;
+      padding-top: 10px;
     }
 
     .generatr-wash-source-row > .generatr-wash-source-card {
@@ -760,11 +862,28 @@
       border: 1px solid var(--primary);
       border-radius: 4px;
       cursor: pointer;
-      align-self: flex-start;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 0.4rem;
       transition: opacity 0.15s ease;
+      box-sizing: border-box;
+    }
+
+    .auditionr-sidebar-footer {
+      flex-shrink: 0;
+      padding: 0.75rem 1rem 3rem 2rem;
+      border-top: 1px solid var(--theme-a);
+      background: var(--secondary);
+      box-sizing: border-box;
+    }
+
+    .auditionr-sidebar-footer.hidden {
+      display: none !important;
+    }
+
+    .auditionr-sidebar-footer .btn-generate {
+      width: 100%;
     }
 
     .btn-generate:hover:not(:disabled) {
@@ -800,11 +919,9 @@
       display: none !important;
     }
 
-    .auditionr-sidebar-tabs {
-      display: flex;
-      flex-direction: column;
+    .auditionr-sidebar-wrapper > .auditionr-sidebar {
+      flex: 1 1 auto;
       min-height: 0;
-      flex: 1;
     }
 
     .sidebar-tab-row {
@@ -833,8 +950,10 @@
     .sidebar-tab-panel {
       flex: 1 1 auto;
       min-height: 0;
-      overflow-y: auto;
-      -webkit-overflow-scrolling: touch;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
 
     .sidebar-tab-panel.hidden {
@@ -843,6 +962,13 @@
 
     #sidebar-panel-generate {
       position: relative;
+      flex: 1 1 auto;
+      min-height: 0;
+    }
+
+    #sidebar-panel-edit {
+      flex: 1 1 auto;
+      min-height: 0;
     }
 
     .generatr-busy-overlay {
@@ -1918,7 +2044,7 @@
 
   <div class="auditionr-layout page-layout">
     <div class="auditionr-main">
-      <main id="waveforms">
+      <main id="waveforms" class="dron-list-scroll">
         <div id="waveform-container"></div>
         <div id="queue-empty-placeholder" class="queue-empty hidden">
           <div class="queue-empty-icon"><i class="fa-solid fa-inbox"></i></div>
@@ -1932,18 +2058,18 @@
         <i class="fa-solid fa-chevron-left" id="sidebar-toggle-icon"></i>
       </button>
       <aside class="auditionr-sidebar collapsed" id="auditionr-sidebar">
-        <div class="auditionr-sidebar-content">
-          <div class="auditionr-sidebar-tabs">
-            <div class="sidebar-tab-row">
-              <button type="button" class="sidebar-tab-btn sidebar-tab-active" id="sidebar-tab-btn-generate" data-sidebar-tab="generate"><i class="fa-solid fa-wand-magic-sparkles"></i> Generate Samples</button>
-              <button type="button" class="sidebar-tab-btn" id="sidebar-tab-btn-edit" data-sidebar-tab="edit"><i class="fa-solid fa-pencil"></i> Edit Samples</button>
-            </div>
+        <div class="auditionr-sidebar-shell">
+          <div class="sidebar-tab-row">
+            <button type="button" class="sidebar-tab-btn sidebar-tab-active" id="sidebar-tab-btn-generate" data-sidebar-tab="generate"><i class="fa-solid fa-wand-magic-sparkles"></i> Generate Samples</button>
+            <button type="button" class="sidebar-tab-btn" id="sidebar-tab-btn-edit" data-sidebar-tab="edit"><i class="fa-solid fa-pencil"></i> Edit Samples</button>
+          </div>
+          <div class="auditionr-sidebar-panels">
             <div id="sidebar-panel-generate" class="sidebar-tab-panel">
               <div class="generatr-busy-overlay hidden" id="generatr-busy-overlay" role="status" aria-live="polite" aria-hidden="true" aria-busy="false">
                 <i class="fa-solid fa-spinner fa-spin generatr-busy-icon" aria-hidden="true"></i>
                 <span class="generatr-busy-text">Generating</span>
               </div>
-          <div class="generatr-card">
+              <div class="generatr-card dron-list-scroll">
             <div class="generatr-config-empty hidden" id="generatr-config-empty-beat" role="status">
               <div class="generatr-config-empty-icon"><i class="fa-solid fa-drum"></i></div>
               <p>Please configure drum paths first: <a href="/settings">Settings</a></p>
@@ -2227,17 +2353,21 @@
                             <button type="button" class="daw-knob-dial" aria-label="Pitch minimum">
                               <span class="daw-knob-ring" aria-hidden="true"></span>
                             </button>
-                            <span class="daw-knob-readout" aria-hidden="true">110</span>
-                            <input type="number" class="daw-knob-input" id="generatr-tx-pitch-min" step="1" min="20" max="20000" value="110" tabindex="-1" aria-hidden="true">
+                            <span class="daw-knob-readout" aria-hidden="true">16 Hz</span>
+                            <input type="number" class="daw-knob-input" id="generatr-tx-pitch-min" step="1" min="16" max="20000" value="16" tabindex="-1" aria-hidden="true">
                           </div>
                           <div class="daw-knob" data-knob-pair="pitch" data-knob-role="max" data-knob-pair-gap="50" data-knob-unit="Hz" data-knob-decimals="0">
                             <span class="daw-knob-label">Max</span>
                             <button type="button" class="daw-knob-dial" aria-label="Pitch maximum">
                               <span class="daw-knob-ring" aria-hidden="true"></span>
                             </button>
-                            <span class="daw-knob-readout" aria-hidden="true">523</span>
-                            <input type="number" class="daw-knob-input" id="generatr-tx-pitch-max" step="1" min="20" max="20000" value="523" tabindex="-1" aria-hidden="true">
+                            <span class="daw-knob-readout" aria-hidden="true">523 Hz</span>
+                            <input type="number" class="daw-knob-input" id="generatr-tx-pitch-max" step="1" min="16" max="20000" value="523" tabindex="-1" aria-hidden="true">
                           </div>
+                          <label class="generatr-sweep-use-notes" for="generatr-tx-pitch-use-notes">
+                            <input type="checkbox" id="generatr-tx-pitch-use-notes" aria-label="Use notes for pitch range">
+                            Use notes
+                          </label>
                         </div>
                       </div>
                     </div>
@@ -2250,38 +2380,23 @@
                           <div class="generatr-sweep-shape-select-wrap">
                             <select id="generatr-tx-curve-shape" class="generatr-sweep-preview-select" aria-label="Sweep curve shape">
                               <option value="" selected>Random</option>
-                              <optgroup label="Sine">
-                                <option value="easeInSine">Ease in sine</option>
-                                <option value="easeOutSine">Ease out sine</option>
-                              </optgroup>
-                              <optgroup label="Quad">
-                                <option value="easeInQuad">Ease in quad</option>
-                                <option value="easeOutQuad">Ease out quad</option>
-                              </optgroup>
-                              <optgroup label="Cubic">
-                                <option value="easeInCubic">Ease in cubic</option>
-                                <option value="easeOutCubic">Ease out cubic</option>
-                              </optgroup>
-                              <optgroup label="Quart">
-                                <option value="easeInQuart">Ease in quart</option>
-                                <option value="easeOutQuart">Ease out quart</option>
-                              </optgroup>
-                              <optgroup label="Quint">
-                                <option value="easeInQuint">Ease in quint</option>
-                                <option value="easeOutQuint">Ease out quint</option>
-                              </optgroup>
-                              <optgroup label="Expo">
-                                <option value="easeInExpo">Ease in expo</option>
-                                <option value="easeOutExpo">Ease out expo</option>
-                              </optgroup>
-                              <optgroup label="Circ">
-                                <option value="easeInCirc">Ease in circ</option>
-                                <option value="easeOutCirc">Ease out circ</option>
-                              </optgroup>
-                              <optgroup label="Back">
-                                <option value="easeInBack">Ease in back</option>
-                                <option value="easeOutBack">Ease out back</option>
-                              </optgroup>
+                              <option value="linear">Linear</option>
+                              <option value="easeInSine">Ease in sine</option>
+                              <option value="easeOutSine">Ease out sine</option>
+                              <option value="easeInQuad">Ease in quad</option>
+                              <option value="easeOutQuad">Ease out quad</option>
+                              <option value="easeInCubic">Ease in cubic</option>
+                              <option value="easeOutCubic">Ease out cubic</option>
+                              <option value="easeInQuart">Ease in quart</option>
+                              <option value="easeOutQuart">Ease out quart</option>
+                              <option value="easeInQuint">Ease in quint</option>
+                              <option value="easeOutQuint">Ease out quint</option>
+                              <option value="easeInExpo">Ease in expo</option>
+                              <option value="easeOutExpo">Ease out expo</option>
+                              <option value="easeInCirc">Ease in circ</option>
+                              <option value="easeOutCirc">Ease out circ</option>
+                              <option value="easeInBack">Ease in back</option>
+                              <option value="easeOutBack">Ease out back</option>
                             </select>
                             <span id="generatr-tx-curve-mode-label" class="generatr-sweep-curve-mode-label" aria-live="polite">Mode: SWEEP</span>
                           </div>
@@ -2644,7 +2759,7 @@
                         <input type="number" class="daw-knob-input" id="generatr-drone-length" step="1" min="1" max="64" value="16" tabindex="-1" aria-hidden="true">
                       </div>
                       <div class="daw-knob" data-knob-choices="1,2,4,8,16,32,64" data-knob-unit="bars" data-knob-decimals="0">
-                        <span class="daw-knob-label">Pad silence</span>
+                        <span class="daw-knob-label">Silence</span>
                         <button type="button" class="daw-knob-dial" aria-label="Trailing silence after MIDI pattern for export">
                           <span class="daw-knob-ring" aria-hidden="true"></span>
                         </button>
@@ -2652,7 +2767,7 @@
                         <input type="number" class="daw-knob-input" id="generatr-drone-padded-silence" step="1" min="1" max="64" value="1" tabindex="-1" aria-hidden="true">
                       </div>
                       <div class="daw-knob" data-knob-unit="" data-knob-decimals="0">
-                        <span class="daw-knob-label">Iterations</span>
+                        <span class="daw-knob-label">Iters</span>
                         <button type="button" class="daw-knob-dial" aria-label="Number of export iterations">
                           <span class="daw-knob-ring" aria-hidden="true"></span>
                         </button>
@@ -2722,9 +2837,6 @@
                   </div>
                 </div>
               </div>
-              <button type="submit" class="btn-generate" id="generatr-btn">
-                <i class="fa-solid fa-play"></i> Generate
-              </button>
             </form>
             <div class="generatr-result hidden" id="generatr-result">
               <p class="error generatr-error hidden" id="generatr-error"></p>
@@ -2732,11 +2844,16 @@
           </div>
             </div>
             <div id="sidebar-panel-edit" class="sidebar-tab-panel hidden">
-              <div class="generatr-card edit-samples-card">
+              <div class="generatr-card edit-samples-card dron-list-scroll">
                 <div id="edit-action-nav" class="edit-action-nav" aria-label="Processing actions"></div>
                 <div id="edit-action-detail" class="edit-action-detail"></div>
               </div>
             </div>
+          </div>
+          <div class="auditionr-sidebar-footer" id="generatr-sidebar-footer">
+            <button type="submit" class="btn-generate" id="generatr-btn" form="generatr-form">
+              <i class="fa-solid fa-play"></i> Generate
+            </button>
           </div>
         </div>
       </aside>
@@ -2874,9 +2991,19 @@
     }
 
     function generatrRefreshPostProcessingScrollbars() {
-      if (!window.dronmakrUi || typeof window.dronmakrUi.refreshScrollLists !== "function") return;
-      var root = document.getElementById("generatr-beat-post-processing-row");
-      window.dronmakrUi.refreshScrollLists(root || document);
+      auditionrRefreshSidebarScrollbars();
+    }
+
+    function auditionrRefreshSidebarScrollbars() {
+      if (!window.dronmakrUi || typeof window.dronmakrUi.refreshScrollbars !== "function") return;
+      var sidebar = document.getElementById("auditionr-sidebar");
+      window.dronmakrUi.refreshScrollbars(sidebar || document);
+    }
+
+    function auditionrRefreshWaveformScrollbars() {
+      if (!window.dronmakrUi || typeof window.dronmakrUi.refreshScrollbars !== "function") return;
+      var waveforms = document.getElementById("waveforms");
+      window.dronmakrUi.refreshScrollbars(waveforms || document);
     }
 
     function renderGeneratrPostProcessingLibraryFromCatalog() {
@@ -3303,6 +3430,7 @@
       var editBtn = document.getElementById("sidebar-tab-btn-edit");
       var genPanel = document.getElementById("sidebar-panel-generate");
       var editPanel = document.getElementById("sidebar-panel-edit");
+      var genFooter = document.getElementById("generatr-sidebar-footer");
       if (!genBtn || !editBtn || !genPanel || !editPanel) return;
       var isGen = tab === "generate";
       auditionrSidebarActiveTab = isGen ? "generate" : "edit";
@@ -3310,7 +3438,9 @@
       editBtn.classList.toggle("sidebar-tab-active", !isGen);
       genPanel.classList.toggle("hidden", !isGen);
       editPanel.classList.toggle("hidden", isGen);
+      if (genFooter) genFooter.classList.toggle("hidden", !isGen);
       try { sessionStorage.setItem(AUDITIONR_SIDEBAR_TAB_KEY, tab); } catch (e) {}
+      requestAnimationFrame(auditionrRefreshSidebarScrollbars);
     }
 
     function ensureSidebarOpenForEdit() {
@@ -4166,6 +4296,7 @@
       });
 
       updateEditActionVisibility();
+      requestAnimationFrame(auditionrRefreshSidebarScrollbars);
     }
 
     function getAudioContext() {
@@ -4638,6 +4769,7 @@
         container.innerHTML = "";
         applyUndoRows();
         auditionrRefreshQueueFloatingChip();
+        requestAnimationFrame(auditionrRefreshWaveformScrollbars);
         if (window.__pageReady) window.__pageReady();
         return;
       }
@@ -4660,7 +4792,10 @@
           pendingReady++;
           var created = createSingleWaveform(file, function () {
             pendingReady--;
-            if (pendingReady === 0 && window.__pageReady) window.__pageReady();
+            if (pendingReady === 0) {
+              requestAnimationFrame(auditionrRefreshWaveformScrollbars);
+              if (window.__pageReady) window.__pageReady();
+            }
           });
           if (created) {
             waveformInstances[file] = created;
@@ -4686,6 +4821,8 @@
       if (updatedPath && newFiles.indexOf(updatedPath) !== -1 && slice.indexOf(updatedPath) !== -1) {
         refreshWaveform(updatedPath);
       }
+
+      requestAnimationFrame(auditionrRefreshWaveformScrollbars);
     }
 
     function getCurrentFiles() {
@@ -5386,6 +5523,238 @@
         bodyEl.classList.toggle("generatr-sweep-effect-disabled", !checkboxEl.checked);
       }
 
+      var GENERATR_PITCH_NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+      var GENERATR_SWEEP_PITCH_NOTE_MIN_MIDI = 12;
+      var GENERATR_SWEEP_PITCH_DEFAULT_MAX_MIDI = 72;
+
+      function generatrMidiToHz(midi) {
+        return 440 * Math.pow(2, (midi - 69) / 12);
+      }
+
+      function generatrHzToMidi(hz) {
+        if (!isFinite(hz) || hz <= 0) return GENERATR_SWEEP_PITCH_NOTE_MIN_MIDI;
+        return Math.round(69 + 12 * Math.log2(hz / 440));
+      }
+
+      function generatrMidiToNoteName(midi) {
+        var pitchClass = ((midi % 12) + 12) % 12;
+        var octave = Math.floor(midi / 12) - 1;
+        return GENERATR_PITCH_NOTE_NAMES[pitchClass] + octave;
+      }
+
+      function generatrHzToNoteName(hz) {
+        return generatrMidiToNoteName(generatrHzToMidi(hz));
+      }
+
+      function generatrNoteNameToMidi(name) {
+        var s = String(name || "").trim();
+        var m = s.match(/^([A-Ga-g])([#b♯♭]?)(-?\d+)$/);
+        if (!m) return NaN;
+        var letter = m[1].toUpperCase();
+        var acc = m[2];
+        var octave = parseInt(m[3], 10);
+        if (!isFinite(octave)) return NaN;
+        var pitchClass = -1;
+        if (!acc) {
+          pitchClass = GENERATR_PITCH_NOTE_NAMES.indexOf(letter);
+        } else if (acc === "#" || acc === "♯") {
+          pitchClass = GENERATR_PITCH_NOTE_NAMES.indexOf(letter + "#");
+        } else if (acc === "b" || acc === "♭") {
+          var flatMap = { A: "G#", B: "A#", C: "B", D: "C#", E: "D#", F: "E", G: "F#" };
+          var sharpName = flatMap[letter];
+          if (sharpName) pitchClass = GENERATR_PITCH_NOTE_NAMES.indexOf(sharpName);
+        }
+        if (pitchClass < 0) return NaN;
+        return (octave + 1) * 12 + pitchClass;
+      }
+
+      function generatrParseNoteName(text) {
+        var midi = generatrNoteNameToMidi(text);
+        if (!isFinite(midi)) return NaN;
+        return generatrMidiToHz(midi);
+      }
+
+      function generatrSweepPitchDefaultMinHz() {
+        return Math.round(generatrMidiToHz(GENERATR_SWEEP_PITCH_NOTE_MIN_MIDI));
+      }
+
+      function generatrSweepPitchDefaultMaxHz() {
+        return Math.round(generatrMidiToHz(GENERATR_SWEEP_PITCH_DEFAULT_MAX_MIDI));
+      }
+
+      function generatrParseNoteNameInChoices(text, choices) {
+        if (!choices || !choices.length) return null;
+        var midi = generatrNoteNameToMidi(text);
+        if (!isFinite(midi)) return null;
+        var minMidi = GENERATR_SWEEP_PITCH_NOTE_MIN_MIDI;
+        var maxMidi = minMidi + choices.length - 1;
+        if (midi < minMidi || midi > maxMidi) return null;
+        var hz = Math.round(generatrMidiToHz(midi));
+        return choices.indexOf(hz) >= 0 ? hz : null;
+      }
+
+      function generatrSweepPitchNoteInvalidFallback(knobRole) {
+        return knobRole === "max"
+          ? generatrSweepPitchDefaultMaxHz()
+          : generatrSweepPitchDefaultMinHz();
+      }
+
+      function generatrSweepPitchNoteChoices() {
+        var choices = [];
+        for (var midi = GENERATR_SWEEP_PITCH_NOTE_MIN_MIDI; midi <= 140; midi++) {
+          var hz = generatrMidiToHz(midi);
+          if (hz > 20000) break;
+          choices.push(Math.round(hz));
+        }
+        return choices;
+      }
+
+      function generatrNearestPitchChoice(hz, choices) {
+        if (!choices || !choices.length) return hz;
+        var best = choices[0];
+        var bestDist = Infinity;
+        choices.forEach(function (choice) {
+          var dist = Math.abs(choice - hz);
+          if (dist < bestDist) {
+            bestDist = dist;
+            best = choice;
+          }
+        });
+        return best;
+      }
+
+      function generatrPitchChoiceIndex(hz, choices) {
+        var snapped = generatrNearestPitchChoice(hz, choices);
+        var idx = choices.indexOf(snapped);
+        return idx < 0 ? 0 : idx;
+      }
+
+      function generatrResetDawKnob(knob) {
+        if (!knob) return;
+        delete knob.dataset.dawKnobBound;
+        delete knob.dataset.dawKnobPairLinked;
+        var readout = knob.querySelector(".daw-knob-readout");
+        if (readout) delete readout.dataset.dawReadoutEditBound;
+        knob._dawKnobApi = null;
+      }
+
+      function generatrRelinkSweepPitchKnobs(useNotes) {
+        var container = document.getElementById("generatr-tx-voice-pitch-knobs");
+        if (!container) return;
+        var minKnob = container.querySelector('.daw-knob[data-knob-role="min"]');
+        var maxKnob = container.querySelector('.daw-knob[data-knob-role="max"]');
+        if (!minKnob || !maxKnob) return;
+
+        delete minKnob.dataset.dawKnobPairLinked;
+        linkDawKnobPairs(container);
+        if (!useNotes) return;
+
+        var choices = generatrSweepPitchNoteChoices();
+        var minApi = minKnob._dawKnobApi;
+        var maxApi = maxKnob._dawKnobApi;
+        if (!minApi || !maxApi || !choices.length) return;
+
+        var origMinSet = minApi.setValue;
+        var origMaxSet = maxApi.setValue;
+
+        minApi.setValue = function (raw, opts) {
+          if (!maxApi.isRandom()) {
+            var maxIdx = generatrPitchChoiceIndex(parseFloat(maxApi.input.value), choices);
+            var idx = generatrPitchChoiceIndex(raw, choices);
+            if (idx >= maxIdx) idx = Math.max(0, maxIdx - 1);
+            raw = choices[idx];
+          }
+          origMinSet(raw, opts);
+        };
+
+        maxApi.setValue = function (raw, opts) {
+          if (!minApi.isRandom()) {
+            var minIdx = generatrPitchChoiceIndex(parseFloat(minApi.input.value), choices);
+            var idx = generatrPitchChoiceIndex(raw, choices);
+            if (idx <= minIdx) idx = Math.min(choices.length - 1, minIdx + 1);
+            raw = choices[idx];
+          }
+          origMaxSet(raw, opts);
+        };
+      }
+
+      function generatrConfigureSweepPitchKnobs(useNotes) {
+        var container = document.getElementById("generatr-tx-voice-pitch-knobs");
+        if (!container) return;
+        var minKnob = container.querySelector('.daw-knob[data-knob-role="min"]');
+        var maxKnob = container.querySelector('.daw-knob[data-knob-role="max"]');
+        var minInput = document.getElementById("generatr-tx-pitch-min");
+        var maxInput = document.getElementById("generatr-tx-pitch-max");
+        if (!minKnob || !maxKnob || !minInput || !maxInput) return;
+
+        var savedMin = parseFloat(minInput.value);
+        var savedMax = parseFloat(maxInput.value);
+        if (isNaN(savedMin)) savedMin = Math.round(generatrMidiToHz(GENERATR_SWEEP_PITCH_NOTE_MIN_MIDI));
+        if (isNaN(savedMax)) savedMax = Math.round(generatrMidiToHz(72));
+
+        generatrResetDawKnob(minKnob);
+        generatrResetDawKnob(maxKnob);
+
+        if (useNotes) {
+          var choices = generatrSweepPitchNoteChoices();
+          var choicesAttr = choices.join(",");
+          minKnob.dataset.knobChoices = choicesAttr;
+          maxKnob.dataset.knobChoices = choicesAttr;
+          minKnob.dataset.knobReadout = "note";
+          maxKnob.dataset.knobReadout = "note";
+          minKnob.dataset.knobChoicesLinear = "1";
+          maxKnob.dataset.knobChoicesLinear = "1";
+          minKnob.dataset.knobUnit = "";
+          maxKnob.dataset.knobUnit = "";
+          minKnob.dataset.knobPairGap = "0";
+          maxKnob.dataset.knobPairGap = "0";
+          minInput.min = String(choices[0]);
+          minInput.max = "20000";
+          maxInput.min = String(choices[0]);
+          maxInput.max = "20000";
+          minInput.step = "1";
+          maxInput.step = "1";
+          savedMin = generatrNearestPitchChoice(savedMin, choices);
+          savedMax = generatrNearestPitchChoice(savedMax, choices);
+          if (savedMin >= savedMax) {
+            savedMax = choices[Math.min(choices.length - 1, generatrPitchChoiceIndex(savedMin, choices) + 1)];
+          }
+        } else {
+          delete minKnob.dataset.knobChoices;
+          delete maxKnob.dataset.knobChoices;
+          delete minKnob.dataset.knobReadout;
+          delete maxKnob.dataset.knobReadout;
+          delete minKnob.dataset.knobChoicesLinear;
+          delete maxKnob.dataset.knobChoicesLinear;
+          minKnob.dataset.knobUnit = "Hz";
+          maxKnob.dataset.knobUnit = "Hz";
+          minKnob.dataset.knobPairGap = "50";
+          maxKnob.dataset.knobPairGap = "50";
+          minInput.min = "16";
+          minInput.max = "20000";
+          maxInput.min = "16";
+          maxInput.max = "20000";
+          minInput.step = "1";
+          maxInput.step = "1";
+        }
+
+        initDawKnobs(container);
+        generatrRelinkSweepPitchKnobs(useNotes);
+
+        var minApi = minKnob._dawKnobApi;
+        var maxApi = maxKnob._dawKnobApi;
+        if (minApi) minApi.setValue(savedMin, { force: true, silent: true });
+        if (maxApi) maxApi.setValue(savedMax, { force: true, silent: true });
+      }
+
+      function generatrInitSweepPitchNoteMode() {
+        var checkbox = document.getElementById("generatr-tx-pitch-use-notes");
+        if (!checkbox) return;
+        checkbox.addEventListener("change", function () {
+          generatrConfigureSweepPitchKnobs(checkbox.checked);
+        });
+      }
+
       /** Reusable DAW-style knob controller. Pass a root element to bind all .daw-knob inside it. */
       function initDawKnobs(root) {
         if (!root) return;
@@ -5419,10 +5788,12 @@
             }
           }
           var unit = (knob.dataset.knobUnit || "").trim();
+          var readoutMode = (knob.dataset.knobReadout || "").trim();
+          var choicesLinear = knob.dataset.knobChoicesLinear === "1" && !!choiceList;
           var decimals = parseInt(knob.dataset.knobDecimals || "2", 10);
           if (!isFinite(decimals) || decimals < 0) decimals = 2;
 
-          var drag = { active: false, startY: 0, startVal: 0, pointerId: null };
+          var drag = { active: false, startY: 0, startVal: 0, startIdx: null, pointerId: null };
           var randomMode = input.dataset.dawKnobRandom === "1";
           var savedValue = null;
 
@@ -5452,6 +5823,13 @@
             return idx / (choiceList.length - 1);
           }
 
+          function choiceIndexForValue(v) {
+            if (!choiceList) return 0;
+            var snapped = snapValue(v);
+            var idx = choiceList.indexOf(snapped);
+            return idx < 0 ? 0 : idx;
+          }
+
           function nudgeChoice(deltaSteps) {
             if (!choiceList) return;
             var cur = snapValue(parseFloat(input.value || String(min)));
@@ -5464,6 +5842,7 @@
           }
 
           function formatReadout(v) {
+            if (readoutMode === "note") return generatrHzToNoteName(v);
             var text = Number(v).toFixed(decimals);
             if (unit) return text + " " + unit;
             return text;
@@ -5546,12 +5925,18 @@
             getCurrentValue: function () {
               return parseFloat(input.value || String(min));
             },
-            editText: function (v) {
-              return Number(v).toFixed(decimals);
-            },
-            parseInput: function (text) {
-              return parseDawKnobReadoutText(text, unit);
-            },
+            editText: readoutMode === "note"
+              ? function (v) { return generatrHzToNoteName(v); }
+              : function (v) { return Number(v).toFixed(decimals); },
+            parseInput: readoutMode === "note"
+              ? function (text) {
+                  var hz = choiceList
+                    ? generatrParseNoteNameInChoices(text, choiceList)
+                    : null;
+                  if (hz != null) return hz;
+                  return generatrSweepPitchNoteInvalidFallback(knob.dataset.knobRole);
+                }
+              : function (text) { return parseDawKnobReadoutText(text, unit); },
             formatReadout: formatReadout,
             snapValue: snapValue,
             setValue: function (v) {
@@ -5592,6 +5977,7 @@
             drag.active = true;
             drag.startY = e.clientY;
             drag.startVal = parseFloat(input.value || String(min));
+            drag.startIdx = choicesLinear ? choiceIndexForValue(drag.startVal) : null;
             drag.pointerId = e.pointerId;
             dial.setPointerCapture(e.pointerId);
             e.preventDefault();
@@ -5599,6 +5985,17 @@
 
           dial.addEventListener("pointermove", function (e) {
             if (randomMode || !drag.active || e.pointerId !== drag.pointerId) return;
+            if (choicesLinear && drag.startIdx != null) {
+              var count = choiceList.length;
+              var steps = Math.max(1, count - 1);
+              var pxPerFull = Math.max(140, Math.min(320, steps * 3));
+              var idxDelta = (drag.startY - e.clientY) * (steps / pxPerFull);
+              var nextIdx = Math.round(drag.startIdx + idxDelta);
+              if (nextIdx < 0) nextIdx = 0;
+              if (nextIdx >= count) nextIdx = count - 1;
+              setValue(choiceList[nextIdx]);
+              return;
+            }
             var span = max - min;
             var pxPerFull = Math.max(80, Math.min(220, span * 120));
             var delta = (drag.startY - e.clientY) * (span / pxPerFull);
@@ -6044,6 +6441,7 @@
         });
 
         initDawKnobs(document.getElementById("generatr-panel-tx-sweep"));
+        generatrInitSweepPitchNoteMode();
         generatrInitSweepPreviewCards();
       }
       generatrInitSweepPanelControls();
@@ -6240,11 +6638,13 @@
           loadGeneratrSidebarOptions();
         }
         updateGeneratrConfigEmptyState();
+        requestAnimationFrame(auditionrRefreshSidebarScrollbars);
       }
       if (kindSelect) {
         kindSelect.addEventListener("change", updateGeneratrKindVisibility);
       }
       updateGeneratrKindVisibility();
+      requestAnimationFrame(auditionrRefreshSidebarScrollbars);
 
       var generatrPpFilter = document.getElementById("generatr-pp-filter");
       if (generatrPpFilter) {
@@ -6266,6 +6666,7 @@
           var collapsed = sidebar.classList.contains("collapsed");
           sidebarToggleIcon.className = collapsed ? "fa-solid fa-chevron-left" : "fa-solid fa-chevron-right";
           sidebarToggle.title = collapsed ? "Show sidebar" : "Hide sidebar";
+          requestAnimationFrame(auditionrRefreshSidebarScrollbars);
         });
       }
 
