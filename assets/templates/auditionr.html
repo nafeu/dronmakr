@@ -1776,9 +1776,15 @@
       color: #000;
     }
 
-    .transition-sample .waveform-actions .button.processing-type-active {
+    .sweep-sample .waveform-actions .button.processing-type-active {
       background-color: var(--theme-c);
       border-bottom-color: var(--theme-c);
+      color: #000;
+    }
+
+    .wash-sample .waveform-actions .button.processing-type-active {
+      background-color: var(--theme-f);
+      border-bottom-color: var(--theme-f);
       color: #000;
     }
 
@@ -1885,7 +1891,7 @@
       opacity: 1;
     }
 
-    .waveform-wrapper:not(.drumpattern-sample):not(.transition-sample):not(.folysplitr-sample) .waveform-title-text {
+    .waveform-wrapper:not(.drumpattern-sample):not(.sweep-sample):not(.wash-sample):not(.folysplitr-sample) .waveform-title-text {
       color: var(--primary);
     }
 
@@ -1893,8 +1899,12 @@
       color: var(--theme-b);
     }
 
-    .transition-sample .waveform-title-text {
+    .sweep-sample .waveform-title-text {
       color: var(--theme-c);
+    }
+
+    .wash-sample .waveform-title-text {
+      color: var(--theme-f);
     }
 
     .folysplitr-sample .waveform-title-text {
@@ -1939,8 +1949,12 @@
       border-left-color: var(--theme-b);
     }
 
-    .transition-sample .waveform-actions .processing-actions-divider {
+    .sweep-sample .waveform-actions .processing-actions-divider {
       border-left-color: var(--theme-c);
+    }
+
+    .wash-sample .waveform-actions .processing-actions-divider {
+      border-left-color: var(--theme-f);
     }
 
     .folysplitr-sample .waveform-actions .processing-actions-divider {
@@ -1962,19 +1976,34 @@
       border-bottom-color: var(--theme-b);
     }
 
-    /* Transition sample: orange theme */
-    .transition-sample .waveform-actions .button {
+    /* Sweep sample: red theme */
+    .sweep-sample .waveform-actions .button {
       color: var(--theme-c);
     }
 
-    .transition-sample .waveform-actions .fixed-button {
+    .sweep-sample .waveform-actions .fixed-button {
       background-color: var(--theme-c);
       border-bottom-color: var(--theme-c);
       color: var(--secondary);
     }
 
-    .transition-sample .waveform-actions .button:hover {
+    .sweep-sample .waveform-actions .button:hover {
       border-bottom-color: var(--theme-c);
+    }
+
+    /* Wash sample: purple theme */
+    .wash-sample .waveform-actions .button {
+      color: var(--theme-f);
+    }
+
+    .wash-sample .waveform-actions .fixed-button {
+      background-color: var(--theme-f);
+      border-bottom-color: var(--theme-f);
+      color: var(--secondary);
+    }
+
+    .wash-sample .waveform-actions .button:hover {
+      border-bottom-color: var(--theme-f);
     }
 
     /* Folysplitr exports: sea-green theme */
@@ -2082,8 +2111,8 @@
               <div class="form-row form-row-full generatr-kind-row">
                 <label for="generatr-kind">Sample kind</label>
                 <select id="generatr-kind" name="kind">
-                  <option value="beat" selected>beat</option>
-                  <option value="drone">drone</option>
+                  <option value="drumpattern">drumpattern</option>
+                  <option value="drone" selected>drone</option>
                   <option value="reese">reese</option>
                   <option value="donk">donk</option>
                   <option value="sweep">sweep</option>
@@ -4921,19 +4950,40 @@
       return fallback;
     }
 
+    function auditionrSampleKind(displayName) {
+      var n = String(displayName || "").replace(/\.wav$/i, "").toLowerCase();
+      var isDrumpattern = n.startsWith("drumpattern___");
+      var isFolysplitr = n.startsWith("folysplitr___");
+      var isWash = n.startsWith("wash___")
+        || n.startsWith("transition_wash")
+        || n.indexOf("closh") >= 0
+        || n.indexOf("kickboom") >= 0
+        || n.indexOf("longcrash") >= 0;
+      var isSweep = !isWash && (
+        n.startsWith("sweep___")
+        || n.startsWith("transition___")
+        || n.startsWith("transition_sweep")
+        || n.startsWith("transition")
+      );
+      return { isDrumpattern: isDrumpattern, isFolysplitr: isFolysplitr, isWash: isWash, isSweep: isSweep };
+    }
+
     function createSingleWaveform(file, onReady) {
       var basename = auditionrBasename(file);
       var apiPath = auditionrExportsApiPath(file);
       var mediaUrl = auditionrExportsMediaUrl(file, false);
       var displayName = basename.replace(/\.wav$/i, "");
-      var isDrumpattern = displayName.startsWith("drumpattern___");
-      var isTransition = displayName.startsWith("transition");
-      var isFolysplitr = displayName.startsWith("folysplitr___");
+      var sampleKind = auditionrSampleKind(displayName);
+      var isDrumpattern = sampleKind.isDrumpattern;
+      var isSweep = sampleKind.isSweep;
+      var isWash = sampleKind.isWash;
+      var isFolysplitr = sampleKind.isFolysplitr;
 
       var wrapper = document.createElement("div");
       wrapper.className = "waveform-wrapper";
       if (isDrumpattern) wrapper.classList.add("drumpattern-sample");
-      if (isTransition) wrapper.classList.add("transition-sample");
+      if (isSweep) wrapper.classList.add("sweep-sample");
+      if (isWash) wrapper.classList.add("wash-sample");
       if (isFolysplitr) wrapper.classList.add("folysplitr-sample");
 
       var titleContainer = document.createElement("div");
@@ -5133,10 +5183,16 @@
       var container = document.getElementById("waveform-container");
       container.appendChild(wrapper);
       var themeEProgress = auditionrReadCssVar("--theme-e", "#2e8b57");
+      var themeFProgress = auditionrReadCssVar("--theme-f", "#0d9ea8");
+      var progressColor = "#ff9505";
+      if (isDrumpattern) progressColor = "#016fb9";
+      else if (isWash) progressColor = themeFProgress;
+      else if (isSweep) progressColor = "#ec4e20";
+      else if (isFolysplitr) progressColor = themeEProgress;
       var wsOpts = {
         container: "#" + waveformIdSafe,
         waveColor: "#353531",
-        progressColor: isDrumpattern ? "#016fb9" : (isTransition ? "#ec4e20" : (isFolysplitr ? themeEProgress : "#ff9505")),
+        progressColor: progressColor,
         backend: "WebAudio",
         height: 80,
         autoScroll: false,
@@ -5247,7 +5303,6 @@
       wavesurfer.on("play", function () {
         selectSampleForEdit(file, apiPath, {});
         updatePlayButton(true);
-        if (!isDrumpattern) enableWaveSurferLoop(wavesurfer);
       });
 
       wavesurfer.on("pause", function () {
@@ -5326,16 +5381,48 @@
       }
 
       function generatrKindToApi(kind) {
-        if (kind === "beat" || kind === "drone") {
-          return { type: kind, subcommand: "" };
+        if (kind === "drone") {
+          return { type: "drone", subcommand: "" };
+        }
+        if (kind === "drumpattern" || kind === "beat") {
+          return { type: "drumpattern", subcommand: "" };
         }
         if (kind === "reese" || kind === "donk") {
           return { type: "bass", subcommand: kind };
         }
-        if (["sweep", "wash"].indexOf(kind) >= 0) {
-          return { type: "transition", subcommand: kind };
+        if (kind === "sweep") {
+          return { type: "sweep", subcommand: "" };
         }
-        return { type: "beat", subcommand: "" };
+        if (kind === "wash") {
+          return { type: "wash", subcommand: "" };
+        }
+        return { type: "drone", subcommand: "" };
+      }
+
+      var BEATBUILDER_LS_KEY = "dronmakr-beatbuildr";
+      var BEATBUILDER_LS_VERSION = 1;
+
+      function readBeatbuildrDrumPathPreset() {
+        try {
+          var raw = localStorage.getItem(BEATBUILDER_LS_KEY);
+          if (!raw) return "";
+          var o = JSON.parse(raw);
+          if (!o || o.v !== BEATBUILDER_LS_VERSION) return "";
+          return (typeof o.drumPathPreset === "string") ? o.drumPathPreset.trim() : "";
+        } catch (e) {
+          return "";
+        }
+      }
+
+      function syncDrumpatternSampleLibraryFromBeatbuildr(fallbackPreset) {
+        if (!beatRandomizationConfigSelect) return;
+        var preset = readBeatbuildrDrumPathPreset();
+        if (!preset && fallbackPreset) preset = String(fallbackPreset).trim();
+        if (!preset) return;
+        var hasOption = Array.from(beatRandomizationConfigSelect.options).some(function (opt) {
+          return opt.value === preset;
+        });
+        if (hasOption) beatRandomizationConfigSelect.value = preset;
       }
 
       function generatrTrimOrNull(s) {
@@ -5348,7 +5435,7 @@
         var flags = parseAuditionrFeatureFlags();
         if (!kindSelect || generatrShowsExtendedKinds(flags)) return;
         var keep = {
-          beat: true,
+          drumpattern: true,
           drone: true,
           sweep: true,
           wash: true
@@ -5359,7 +5446,7 @@
         var stillValid = Array.from(kindSelect.options).some(function (o) {
           return o.value === kindSelect.value;
         });
-        if (!stillValid) kindSelect.value = "beat";
+        if (!stillValid) kindSelect.value = "drone";
       })();
       var droneRows = [
         document.getElementById("generatr-drone-chart-name-row"),
@@ -5519,9 +5606,7 @@
             activeOpt.value = "";
             activeOpt.textContent = "(active preset)";
             beatRandomizationConfigSelect.insertBefore(activeOpt, beatRandomizationConfigSelect.firstChild);
-            if (presetData.activePreset) {
-              beatRandomizationConfigSelect.value = presetData.activePreset;
-            }
+            syncDrumpatternSampleLibraryFromBeatbuildr(presetData.activePreset);
             setSelectOptions(dronePatternSelect, data.droneMidiPatterns || [], true);
             setSelectOptions(droneInstrumentSelect, data.droneInstruments || [], true);
             setSelectOptions(droneEffectSelect, data.droneEffects || [], true);
@@ -6616,26 +6701,26 @@
       }
 
       function updateGeneratrConfigEmptyState() {
-        var kind = kindSelect ? kindSelect.value : "beat";
-        var showBeatEmpty = (kind === "beat" || kind === "wash") && !generatrDrumPathsConfigured;
+        var kind = kindSelect ? kindSelect.value : "drone";
+        var showDrumpatternEmpty = (kind === "drumpattern" || kind === "wash") && !generatrDrumPathsConfigured;
         var showDroneEmpty = kind === "drone" && !generatrPluginPathsConfigured;
         if (generatrConfigEmptyBeat) {
-          generatrConfigEmptyBeat.classList.toggle("hidden", !showBeatEmpty);
+          generatrConfigEmptyBeat.classList.toggle("hidden", !showDrumpatternEmpty);
         }
         if (generatrConfigEmptyDrone) {
           generatrConfigEmptyDrone.classList.toggle("hidden", !showDroneEmpty);
         }
         if (form) {
-          form.classList.toggle("generatr-form-hidden", showBeatEmpty || showDroneEmpty);
+          form.classList.toggle("generatr-form-hidden", showDrumpatternEmpty || showDroneEmpty);
         }
       }
 
       function updateGeneratrKindVisibility() {
-        var kind = kindSelect ? kindSelect.value : "beat";
+        var kind = kindSelect ? kindSelect.value : "drone";
         var api = generatrKindToApi(kind);
 
         beatRows.forEach(function (row) {
-          if (row) row.classList.toggle("hidden", kind !== "beat");
+          if (row) row.classList.toggle("hidden", kind !== "drumpattern" && kind !== "beat");
         });
         droneRows.forEach(function (row) {
           if (row) row.classList.toggle("hidden", kind !== "drone");
@@ -6644,13 +6729,13 @@
         if (panelReese) panelReese.classList.toggle("hidden", kind !== "reese");
         if (panelDonk) panelDonk.classList.toggle("hidden", kind !== "donk");
 
-        var isTransition = api.type === "transition";
-        if (panelTxTiming) panelTxTiming.classList.toggle("hidden", !isTransition);
+        var isSweepOrWash = kind === "sweep" || kind === "wash";
+        if (panelTxTiming) panelTxTiming.classList.toggle("hidden", !isSweepOrWash);
 
         if (panelTxWash) panelTxWash.classList.toggle("hidden", kind !== "wash");
         if (panelTxSweep) panelTxSweep.classList.toggle("hidden", kind !== "sweep");
 
-        if (api.type === "transition") {
+        if (isSweepOrWash) {
           syncTransitionTimingDefaults(kind);
         }
 
@@ -6658,7 +6743,11 @@
           generatrPostProcessingRow.classList.remove("hidden");
         }
 
-        if (kind === "beat" || kind === "drone" || kind === "reese" || kind === "donk" || isTransition) {
+        if (kind === "drumpattern" || kind === "beat") {
+          syncDrumpatternSampleLibraryFromBeatbuildr();
+        }
+
+        if (kind === "drumpattern" || kind === "beat" || kind === "drone" || kind === "reese" || kind === "donk" || isSweepOrWash) {
           loadGeneratrSidebarOptions();
         }
         updateGeneratrConfigEmptyState();
@@ -6947,7 +7036,7 @@
 
       form.addEventListener("submit", function (e) {
         e.preventDefault();
-        var kind = kindSelect ? kindSelect.value : "beat";
+        var kind = kindSelect ? kindSelect.value : "drone";
         var api = generatrKindToApi(kind);
         var type = api.type;
         var body = { type: type };
@@ -6957,7 +7046,7 @@
           return generatrPostProcessQueue.map(function (x) { return x.command; });
         }
 
-        if (type === "beat") {
+        if (type === "drumpattern") {
           var tempoRaw = (beatTempoInput.value || "").trim();
           body.tempo = tempoRaw ? parseInt(tempoRaw, 10) : null;
           body.loops = parseInt(beatLoopsInput.value || "2", 10);
@@ -6998,7 +7087,7 @@
           body.iterations = Math.max(1, parseInt(document.getElementById("generatr-donk-iterations").value || "1", 10));
           body.sound = generatrTrimOrNull(document.getElementById("generatr-donk-sound").value);
           body.postProcessing = postCmds();
-        } else if (type === "transition") {
+        } else if (type === "sweep" || type === "wash") {
           body.tempo = parseInt(document.getElementById("generatr-tx-tempo").value || "120", 10);
           body.bars = parseInt(document.getElementById("generatr-tx-bars").value || "8", 10);
           body.iterations = Math.max(1, parseInt(document.getElementById("generatr-tx-iterations").value || "1", 10));

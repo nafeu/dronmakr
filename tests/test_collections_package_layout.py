@@ -47,4 +47,4 @@ def test_subfolder_counts_include_fallback_keys():
 
 
 def test_default_subfolder_key_collection_prefers_type():
-    assert _default_subfolder_key("random.wav", "collection", "transition") == "transition"
+    assert _default_subfolder_key("random.wav", "collection", "sweep") == "sweep"

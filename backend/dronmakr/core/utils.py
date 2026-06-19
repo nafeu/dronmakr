@@ -1138,17 +1138,36 @@ def allocate_dragged_saved_filename(source_basename: str, saved_dir: str) -> str
         counter += 1
 
 
+def _is_wash_sample_stem(name: str) -> bool:
+    """True for wash samples (new or legacy percussion-wash naming)."""
+    if name.startswith("wash___") or name.startswith("transition_wash"):
+        return True
+    return any(token in name for token in ("closh", "kickboom", "longcrash"))
+
+
+def _is_sweep_sample_stem(name: str) -> bool:
+    """True for sweep samples (new or legacy transition naming)."""
+    if _is_wash_sample_stem(name):
+        return False
+    return (
+        name.startswith("sweep___")
+        or name.startswith("transition___")
+        or name.startswith("transition_sweep")
+        or name.startswith("transition")
+    )
+
+
 def _infer_saved_sample_type(filename):
-    """Infer sample type from filename for collections display. Returns one of: drone, bass, closh, drumpattern, transition, folysplitr, other."""
+    """Infer sample type from filename for collections display."""
     name = filename.replace(".wav", "").lower()
     if "folysplitr" in name:
         return "folysplitr"
     if name.startswith("drumpattern___"):
         return "drumpattern"
-    if name.startswith("transition"):
-        return "transition"
-    if "closh" in name:
-        return "closh"
+    if _is_wash_sample_stem(name):
+        return "wash"
+    if _is_sweep_sample_stem(name):
+        return "sweep"
     if "bass" in name or "reese" in name or "donk" in name:
         return "bass"
     if "drone" in name:

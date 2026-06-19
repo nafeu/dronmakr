@@ -817,96 +817,132 @@ def _run_generate_bass(subcommand: str, payload: dict) -> list[str]:
     return paths
 
 
-def _run_generate_transition(subcommand: str, payload: dict) -> list[str]:
-    """`generate-transition` CLI parity from Auditionr JSON body."""
+def _wash_config_from_payload(payload: dict):
+    percussion = _optional_trimmed(payload, "percussion")
+    if percussion is None:
+        percussion = _optional_trimmed(payload, "percussionType")
+    library = (
+        _optional_trimmed(payload, "library")
+        or _optional_trimmed(payload, "sampleLibrary")
+        or ""
+    ).strip() or None
+    return parse_wash_config(
+        library=library,
+        percussion=percussion,
+        reverb_enabled=_optional_bool_field(payload, "reverbEnabled"),
+        reverb_wet_level=_optional_float_field(payload, "reverbWetLevel"),
+        reverb_length_sec=_optional_float_field(payload, "reverbLengthSec"),
+        reverb_decay_sec=_optional_float_field(payload, "reverbDecaySec"),
+        reverb_early_reflections=_optional_int_field(payload, "reverbEarlyReflections"),
+        reverb_highpass_hz=_optional_float_field(payload, "reverbHighpassHz"),
+        reverb_tail_diffusion=_optional_float_field(payload, "reverbTailDiffusion"),
+        delay_enabled=_optional_bool_field(payload, "delayEnabled"),
+        delay_division=_optional_trimmed(payload, "delayDivision"),
+        delay_feedback=_optional_float_field(payload, "delayFeedback"),
+        delay_mix=_optional_float_field(payload, "delayMix"),
+        paulstretch_enabled=_optional_bool_field(payload, "paulstretchEnabled"),
+        stretch=_optional_float_field(payload, "stretch"),
+        window_size=_optional_float_field(payload, "windowSize"),
+    )
+
+
+def _sweep_config_from_payload(payload: dict):
+    return parse_sweep_config(
+        voice=_optional_trimmed(payload, "voice"),
+        pitch_min=_optional_float_field(payload, "pitchMin"),
+        pitch_max=_optional_float_field(payload, "pitchMax"),
+        curve_shape=_optional_trimmed(payload, "curveShape"),
+        curve_peak_position=_optional_float_field(payload, "curvePeakPosition")
+        if payload.get("curvePeakPosition") is not None
+        else _optional_float_field(payload, "curvePeak"),
+        filter_enabled=_optional_bool_field(payload, "filterEnabled"),
+        filter_type=_optional_trimmed(payload, "filterType"),
+        filter_cutoff_low=_optional_int_field(payload, "filterCutoffLow"),
+        filter_cutoff_high=_optional_int_field(payload, "filterCutoffHigh"),
+        tremolo_enabled=_optional_bool_field(payload, "tremoloEnabled"),
+        tremolo_rate_min=_optional_float_field(payload, "tremoloRateMin"),
+        tremolo_rate_max=_optional_float_field(payload, "tremoloRateMax"),
+        tremolo_depth=_optional_float_field(payload, "tremoloDepth"),
+        phaser_enabled=_optional_bool_field(payload, "phaserEnabled"),
+        phaser_rate_min=_optional_float_field(payload, "phaserRateMin"),
+        phaser_rate_max=_optional_float_field(payload, "phaserRateMax"),
+        phaser_depth=_optional_float_field(payload, "phaserDepth"),
+        phaser_centre=_optional_float_field(payload, "phaserCentre"),
+        phaser_feedback=_optional_float_field(payload, "phaserFeedback"),
+        phaser_mix=_optional_float_field(payload, "phaserMix"),
+        chorus_enabled=_optional_bool_field(payload, "chorusEnabled"),
+        chorus_rate_min=_optional_float_field(payload, "chorusRateMin"),
+        chorus_rate_max=_optional_float_field(payload, "chorusRateMax"),
+        chorus_depth=_optional_float_field(payload, "chorusDepth"),
+        chorus_delay=_optional_float_field(payload, "chorusDelay"),
+        chorus_mix=_optional_float_field(payload, "chorusMix"),
+        flanger_enabled=_optional_bool_field(payload, "flangerEnabled"),
+        flanger_rate_min=_optional_float_field(payload, "flangerRateMin"),
+        flanger_rate_max=_optional_float_field(payload, "flangerRateMax"),
+        flanger_depth=_optional_float_field(payload, "flangerDepth"),
+        flanger_delay=_optional_float_field(payload, "flangerDelay"),
+        flanger_feedback=_optional_float_field(payload, "flangerFeedback"),
+        flanger_mix=_optional_float_field(payload, "flangerMix"),
+        gain_enabled=_optional_bool_field(payload, "gainEnabled"),
+        gain_min=_optional_float_field(payload, "gainMin"),
+        gain_max=_optional_float_field(payload, "gainMax"),
+    )
+
+
+def _run_generate_sweep(payload: dict) -> list[str]:
+    """Generate sweep samples from Auditionr JSON body."""
     post_spec = _normalize_post_processing_spec_from_payload(payload)
     tempo = max(1, _positive_int_field(payload, "tempo", 120))
     iterations = max(1, _positive_int_field(payload, "iterations", 1))
-
-    defaults_bars = {
-        "sweep": 8,
-        "wash": 8,
-    }
-    bars = max(1, _positive_int_field(payload, "bars", defaults_bars.get(subcommand, 4)))
-
-    def _wash_config_from_payload():
-        percussion = _optional_trimmed(payload, "percussion")
-        if percussion is None:
-            percussion = _optional_trimmed(payload, "percussionType")
-        library = (
-            _optional_trimmed(payload, "library")
-            or _optional_trimmed(payload, "sampleLibrary")
-            or ""
-        ).strip() or None
-        return parse_wash_config(
-            library=library,
-            percussion=percussion,
-            reverb_enabled=_optional_bool_field(payload, "reverbEnabled"),
-            reverb_wet_level=_optional_float_field(payload, "reverbWetLevel"),
-            reverb_length_sec=_optional_float_field(payload, "reverbLengthSec"),
-            reverb_decay_sec=_optional_float_field(payload, "reverbDecaySec"),
-            reverb_early_reflections=_optional_int_field(payload, "reverbEarlyReflections"),
-            reverb_highpass_hz=_optional_float_field(payload, "reverbHighpassHz"),
-            reverb_tail_diffusion=_optional_float_field(payload, "reverbTailDiffusion"),
-            delay_enabled=_optional_bool_field(payload, "delayEnabled"),
-            delay_division=_optional_trimmed(payload, "delayDivision"),
-            delay_feedback=_optional_float_field(payload, "delayFeedback"),
-            delay_mix=_optional_float_field(payload, "delayMix"),
-            paulstretch_enabled=_optional_bool_field(payload, "paulstretchEnabled"),
-            stretch=_optional_float_field(payload, "stretch"),
-            window_size=_optional_float_field(payload, "windowSize"),
-        )
-
-    def _sweep_config_from_payload():
-        return parse_sweep_config(
-            voice=_optional_trimmed(payload, "voice"),
-            pitch_min=_optional_float_field(payload, "pitchMin"),
-            pitch_max=_optional_float_field(payload, "pitchMax"),
-            curve_shape=_optional_trimmed(payload, "curveShape"),
-            curve_peak_position=_optional_float_field(payload, "curvePeakPosition")
-            if payload.get("curvePeakPosition") is not None
-            else _optional_float_field(payload, "curvePeak"),
-            filter_enabled=_optional_bool_field(payload, "filterEnabled"),
-            filter_type=_optional_trimmed(payload, "filterType"),
-            filter_cutoff_low=_optional_int_field(payload, "filterCutoffLow"),
-            filter_cutoff_high=_optional_int_field(payload, "filterCutoffHigh"),
-            tremolo_enabled=_optional_bool_field(payload, "tremoloEnabled"),
-            tremolo_rate_min=_optional_float_field(payload, "tremoloRateMin"),
-            tremolo_rate_max=_optional_float_field(payload, "tremoloRateMax"),
-            tremolo_depth=_optional_float_field(payload, "tremoloDepth"),
-            phaser_enabled=_optional_bool_field(payload, "phaserEnabled"),
-            phaser_rate_min=_optional_float_field(payload, "phaserRateMin"),
-            phaser_rate_max=_optional_float_field(payload, "phaserRateMax"),
-            phaser_depth=_optional_float_field(payload, "phaserDepth"),
-            phaser_centre=_optional_float_field(payload, "phaserCentre"),
-            phaser_feedback=_optional_float_field(payload, "phaserFeedback"),
-            phaser_mix=_optional_float_field(payload, "phaserMix"),
-            chorus_enabled=_optional_bool_field(payload, "chorusEnabled"),
-            chorus_rate_min=_optional_float_field(payload, "chorusRateMin"),
-            chorus_rate_max=_optional_float_field(payload, "chorusRateMax"),
-            chorus_depth=_optional_float_field(payload, "chorusDepth"),
-            chorus_delay=_optional_float_field(payload, "chorusDelay"),
-            chorus_mix=_optional_float_field(payload, "chorusMix"),
-            flanger_enabled=_optional_bool_field(payload, "flangerEnabled"),
-            flanger_rate_min=_optional_float_field(payload, "flangerRateMin"),
-            flanger_rate_max=_optional_float_field(payload, "flangerRateMax"),
-            flanger_depth=_optional_float_field(payload, "flangerDepth"),
-            flanger_delay=_optional_float_field(payload, "flangerDelay"),
-            flanger_feedback=_optional_float_field(payload, "flangerFeedback"),
-            flanger_mix=_optional_float_field(payload, "flangerMix"),
-            gain_enabled=_optional_bool_field(payload, "gainEnabled"),
-            gain_min=_optional_float_field(payload, "gainMin"),
-            gain_max=_optional_float_field(payload, "gainMax"),
-        )
-
+    bars = max(1, _positive_int_field(payload, "bars", 8))
     paths: list[str] = []
 
-    if subcommand == "sweep":
+    for _ in range(iterations):
+        config = _sweep_config_from_payload(payload)
+        beat_name = generate_beat_name()
+        name_parts = [
+            "sweep",
+            beat_name,
+            f"{tempo}bpm",
+            f"{bars}bars",
+            generate_id(),
+        ]
+        sample_name = format_name("___".join(name_parts))
+        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+        output_path, _ = generate_sweep_sample(
+            tempo=tempo, bars=bars, output=output_path, config=config
+        )
+        paths.append(output_path)
+        print(with_prompt(f"generated: {output_path}"))
+
+    _apply_drone_post_processing_to_wavs(paths, post_spec)
+    return paths
+
+
+def _run_generate_wash(payload: dict) -> list[str]:
+    """Generate wash samples from Auditionr JSON body."""
+    post_spec = _normalize_post_processing_spec_from_payload(payload)
+    tempo = max(1, _positive_int_field(payload, "tempo", 120))
+    iterations = max(1, _positive_int_field(payload, "iterations", 1))
+    bars = max(1, _positive_int_field(payload, "bars", 8))
+    config = _wash_config_from_payload(payload)
+    library = config.get("library")
+    original_preset_name = None
+    paths: list[str] = []
+
+    if library:
+        original_preset_name = get_active_drum_path_preset_name()
+        ok, result = set_active_drum_path_preset(library)
+        if not ok:
+            raise ValueError(result)
+        print(with_prompt(f"Using drum path preset: {result}"))
+    try:
         for _ in range(iterations):
-            config = _sweep_config_from_payload()
             beat_name = generate_beat_name()
+            perc_label = config.get("percussion") or "random"
             name_parts = [
-                "transition_sweep",
+                "wash",
+                str(perc_label),
                 beat_name,
                 f"{tempo}bpm",
                 f"{bars}bars",
@@ -914,51 +950,29 @@ def _run_generate_transition(subcommand: str, payload: dict) -> list[str]:
             ]
             sample_name = format_name("___".join(name_parts))
             output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
-            output_path, _ = generate_sweep_sample(
-                tempo=tempo, bars=bars, output=output_path, config=config
+            output_path, _ = generate_wash_sample(
+                tempo=tempo,
+                bars=bars,
+                output=output_path,
+                config=config,
             )
             paths.append(output_path)
             print(with_prompt(f"generated: {output_path}"))
-    elif subcommand == "wash":
-        config = _wash_config_from_payload()
-        library = config.get("library")
-        original_preset_name = None
-        if library:
-            original_preset_name = get_active_drum_path_preset_name()
-            ok, result = set_active_drum_path_preset(library)
-            if not ok:
-                raise ValueError(result)
-            print(with_prompt(f"Using drum path preset: {result}"))
-        try:
-            for _ in range(iterations):
-                beat_name = generate_beat_name()
-                perc_label = config.get("percussion") or "random"
-                name_parts = [
-                    "transition_wash",
-                    str(perc_label),
-                    beat_name,
-                    f"{tempo}bpm",
-                    f"{bars}bars",
-                    generate_id(),
-                ]
-                sample_name = format_name("___".join(name_parts))
-                output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
-                output_path, _ = generate_wash_sample(
-                    tempo=tempo,
-                    bars=bars,
-                    output=output_path,
-                    config=config,
-                )
-                paths.append(output_path)
-                print(with_prompt(f"generated: {output_path}"))
-        finally:
-            if original_preset_name is not None:
-                set_active_drum_path_preset(original_preset_name)
-    else:
-        raise ValueError(f"Unknown transition subcommand: {subcommand}")
+    finally:
+        if original_preset_name is not None:
+            set_active_drum_path_preset(original_preset_name)
 
     _apply_drone_post_processing_to_wavs(paths, post_spec)
     return paths
+
+
+def _run_generate_transition(subcommand: str, payload: dict) -> list[str]:
+    """Backward-compatible wrapper for legacy transition + subcommand API."""
+    if subcommand == "wash":
+        return _run_generate_wash(payload)
+    if subcommand == "sweep":
+        return _run_generate_sweep(payload)
+    raise ValueError(f"Unknown transition subcommand: {subcommand}")
 
 
 def _load_beat_patterns_for_generate() -> dict:
@@ -1169,36 +1183,61 @@ def _handle_api_generate_options():
     )
 
 
+def _normalize_generate_type(gen_type: str, subcommand: str) -> str:
+    """Map API type (+ optional legacy subcommand) to a supported generator type."""
+    g = (gen_type or "").strip().lower()
+    sub = (subcommand or "").strip().lower()
+    if g == "beat":
+        return "drumpattern"
+    if g == "transition":
+        if sub == "wash":
+            return "wash"
+        if sub == "sweep":
+            return "sweep"
+        raise ValueError("Transition requires subcommand: sweep or wash")
+    return g
+
+
 def _handle_api_generate():
     """
     POST /api/generatr/generate
-    Body: { "type": "drone" | "bass" | "transition" | "beat", "subcommand": optional }
+    Body: { "type": "drone" | "bass" | "sweep" | "wash" | "drumpattern", "subcommand": optional }
     Returns: { "paths": [...], "error": null } or { "paths": [], "error": "..." }
     """
     ensure_settings()
     data = request.get_json() or {}
-    gen_type = (data.get("type") or "").strip().lower()
+    gen_type_raw = (data.get("type") or "").strip().lower()
     subcommand = (data.get("subcommand") or "").strip().lower()
 
-    if not gen_type:
-        return jsonify({"paths": [], "error": "Missing type (drone, bass, transition, or beat)"}), 400
-    if gen_type not in ("drone", "bass", "transition", "beat"):
-        return jsonify({"paths": [], "error": f"Unknown type: {gen_type}"}), 400
-    if gen_type == "bass" and subcommand not in ("reese", "donk"):
-        return jsonify({"paths": [], "error": "Bass requires subcommand: reese or donk"}), 400
-    if gen_type == "transition" and subcommand not in ("sweep", "wash"):
+    if not gen_type_raw:
         return jsonify(
-            {"paths": [], "error": "Transition requires subcommand: sweep or wash"}
+            {
+                "paths": [],
+                "error": "Missing type (drone, bass, sweep, wash, or drumpattern)",
+            }
         ), 400
 
     try:
-        print(f"{RED}│{RESET} generate: {gen_type}" + (f" {subcommand}" if subcommand else ""))
+        gen_type = _normalize_generate_type(gen_type_raw, subcommand)
+    except ValueError as e:
+        return jsonify({"paths": [], "error": str(e)}), 400
+
+    supported = ("drone", "bass", "sweep", "wash", "drumpattern")
+    if gen_type not in supported:
+        return jsonify({"paths": [], "error": f"Unknown type: {gen_type_raw}"}), 400
+    if gen_type == "bass" and subcommand not in ("reese", "donk"):
+        return jsonify({"paths": [], "error": "Bass requires subcommand: reese or donk"}), 400
+
+    try:
+        print(f"{RED}│{RESET} generate: {gen_type}" + (f" {subcommand}" if subcommand and gen_type == "bass" else ""))
         if gen_type == "drone":
             paths = _run_generate_drone(data)
         elif gen_type == "bass":
             paths = _run_generate_bass(subcommand, data)
-        elif gen_type == "transition":
-            paths = _run_generate_transition(subcommand, data)
+        elif gen_type == "sweep":
+            paths = _run_generate_sweep(data)
+        elif gen_type == "wash":
+            paths = _run_generate_wash(data)
         else:
             paths = _run_generate_beat(data)
         print(f"{RED}■ generate completed{RESET}")

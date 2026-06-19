@@ -108,9 +108,12 @@
       border-color: var(--theme-b);
     }
 
-    .collection-card.type-transition,
-    .collection-card.type-closh {
+    .collection-card.type-sweep {
       border-color: var(--theme-c);
+    }
+
+    .collection-card.type-wash {
+      border-color: var(--theme-f);
     }
 
     .collection-card .card-header {
@@ -222,24 +225,24 @@
       background: rgba(1, 111, 185, 0.15);
     }
 
-    .collection-card.type-transition .card-name,
-    .collection-card.type-transition .card-duration {
+    .collection-card.type-sweep .card-name,
+    .collection-card.type-sweep .card-duration {
       color: var(--theme-c);
     }
 
-    .collection-card.type-transition .card-play:hover {
+    .collection-card.type-sweep .card-play:hover {
       border-color: var(--theme-c);
       background: rgba(236, 78, 32, 0.15);
     }
 
-    .collection-card.type-closh .card-name,
-    .collection-card.type-closh .card-duration {
-      color: var(--theme-c);
+    .collection-card.type-wash .card-name,
+    .collection-card.type-wash .card-duration {
+      color: var(--theme-f);
     }
 
-    .collection-card.type-closh .card-play:hover {
-      border-color: var(--theme-c);
-      background: rgba(236, 78, 32, 0.15);
+    .collection-card.type-wash .card-play:hover {
+      border-color: var(--theme-f);
+      background: rgba(13, 158, 168, 0.15);
     }
 
     .collection-card.type-folysplitr .card-name,
@@ -771,13 +774,11 @@
         <input type="text" id="filter-name" class="collections-filter-input" placeholder="Filter by sample name…" aria-label="Filter by name">
         <select id="filter-type" class="collections-filter-select" aria-label="Sample type">
           <option value="">All types</option>
-          <option value="drone">drone</option>
-          <option value="bass">bass</option>
-          <option value="closh">closh</option>
+          <option value="sweep">sweep</option>
+          <option value="wash">wash</option>
           <option value="drumpattern">drumpattern</option>
-          <option value="transition">transition</option>
+          <option value="drone">drone</option>
           <option value="folysplitr">folysplitr</option>
-          <option value="other">other</option>
         </select>
         <button type="button" id="select-all-packaging" class="collections-filter-btn collections-filter-btn--icon"
           title="Select all matching the current filters (all pages)" aria-label="Select all matching filters">
@@ -949,7 +950,8 @@
 
       function progressColorForType(type) {
         if (type === "drumpattern") return "#016fb9";
-        if (type === "transition" || type === "closh") return "#ec4e20";
+        if (type === "sweep" || type === "transition" || type === "closh") return "#ec4e20";
+        if (type === "wash") return "#0d9ea8";
         if (type === "folysplitr") return "#2e8b57";
         return "#ff9505";
       }
