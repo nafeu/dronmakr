@@ -13,12 +13,93 @@
   <style>
     {% include '_app_css_root.html' %}
 
-    main {
-      max-width: 64rem;
+    main.folysplitr-layout {
+      max-width: 76rem;
       margin: 0 auto;
       display: grid;
-      grid-template-columns: 1fr;
-      gap: 0.5rem;
+      grid-template-columns: minmax(0, 1fr) minmax(17rem, 22rem);
+      gap: 0.65rem;
+      padding-bottom: 4rem;
+      align-items: start;
+    }
+
+    .folysplitr-main-col {
+      display: grid;
+      gap: 0.65rem;
+      min-width: 0;
+    }
+
+    .folysplitr-recordings-card {
+      position: sticky;
+      top: calc(var(--toolbar-height) + 0.5rem);
+      max-height: calc(100vh - var(--toolbar-height) - 1.5rem);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .folysplitr-recordings-card .generatr-sweep-effect-body {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .folysplitr-recordings-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      overflow-y: auto;
+      max-height: 100%;
+      min-width: 0;
+    }
+
+    .folysplitr-recordings-list li {
+      min-width: 0;
+    }
+
+    .folysplitr-recording-item {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      text-align: left;
+      font: inherit;
+      cursor: pointer;
+      font-size: 0.72rem;
+      color: var(--theme-b);
+      padding: 0.38rem 0.45rem;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      background: transparent;
+      line-height: 1.35;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .folysplitr-recording-item:hover:not(.active) {
+      border-color: color-mix(in srgb, var(--theme-a) 55%, transparent);
+      background: color-mix(in srgb, var(--theme-a) 12%, transparent);
+    }
+
+    .folysplitr-recording-item.active {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.12);
+      color: var(--primary);
+    }
+
+    .folysplitr-recordings-empty {
+      font-size: 0.72rem;
+      color: var(--theme-b);
+      opacity: 0.75;
+      padding: 0.5rem 0.15rem;
+    }
+
+    .folysplitr-recordings-empty[hidden] {
+      display: none !important;
     }
 
     h1 {
@@ -33,38 +114,284 @@
       margin: 0;
     }
 
-    .panel {
-      border: 1px solid var(--theme-a);
-      border-radius: 8px;
-      padding: 1rem;
-      background: rgba(53, 53, 49, 0.35);
-      display: grid;
-      gap: 0.85rem;
+    .folysplitr-disabled {
+      opacity: 0.45;
+      pointer-events: none;
     }
 
-    .tabs {
+    .folysplitr-sample-preview {
+      margin-bottom: 0;
+    }
+
+    .folysplitr-sample-preview .splitr-waveform-wrap {
+      flex: 1 1 auto;
+      margin: 0;
+      min-height: 92px;
+      width: 100%;
+    }
+
+    .folysplitr-sample-preview #splitr-waveform {
+      min-height: 92px;
+      height: 92px;
+      width: 100%;
+    }
+
+    .waveform-viewport {
       display: flex;
-      gap: 0.5rem;
-      margin-bottom: 0.5rem;
+      align-items: stretch;
+      gap: 0.55rem;
+      min-height: 92px;
     }
 
-    .tab-btn.active {
-      border-color: var(--primary);
-      background: var(--primary);
-      color: var(--secondary);
+    .waveform-viewport-stack {
+      flex: 1 1 auto;
+      display: grid;
+      min-width: 0;
+      min-height: 92px;
     }
 
-    .tab-panel {
+    .waveform-viewport-stack > .waveform-view-pane {
+      grid-area: 1 / 1;
+      display: none;
+      min-height: 92px;
+      min-width: 0;
+      margin-bottom: 0;
+    }
+
+    .waveform-viewport[data-state="empty"] .waveform-view-empty {
+      display: flex;
+    }
+
+    .waveform-viewport[data-state="recording"] .waveform-view-recording {
+      display: flex;
+    }
+
+    .waveform-viewport[data-state="sample"] .waveform-view-sample {
+      display: flex;
+    }
+
+    .waveform-viewport[data-state="sample"] .meter-wrap {
       display: none;
     }
 
-    .tab-panel.active {
+    .waveform-view-empty {
+      align-items: center;
+      justify-content: center;
+      color: var(--theme-b);
+      border: 1px dashed var(--theme-a);
+      border-radius: 6px;
+      font-size: 0.8rem;
+      background: rgba(53, 53, 49, 0.15);
+    }
+
+    #splitr-min-gap-knob[hidden],
+    #splitr-beat-controls[hidden] {
+      display: none !important;
+    }
+
+    .waveform-wrapper:has(.waveform-viewport[data-state="empty"]) .waveform-header {
+      display: none;
+    }
+
+    .folysplitr-process-columns {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 0.65rem;
+      align-items: start;
+    }
+
+    .folysplitr-process-col-left,
+    .folysplitr-process-col-right {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      align-items: flex-start;
+      align-content: flex-start;
+      min-width: 0;
+    }
+
+    .folysplitr-process-col-right:empty {
+      display: none;
+    }
+
+    .splitr-knobs-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 0.45rem 0.55rem;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .folysplitr-split-card .daw-knob-select select {
+      min-width: 7.5rem;
+    }
+
+    .splitr-organize-section-label {
+      font-size: 0.65rem;
+      color: var(--theme-a);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin: 0.15rem 0 0 0;
       display: block;
+    }
+
+    .folysplitr-categorize-card .splitr-organize-form {
+      border-top: none;
+      padding-top: 0;
+      margin-bottom: 0;
+    }
+
+    @media (max-width: 960px) {
+      main.folysplitr-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .folysplitr-recordings-card {
+        position: static;
+        max-height: none;
+      }
+
+      .folysplitr-recordings-list {
+        max-height: 14rem;
+      }
+    }
+
+    #folysplitr-actions-chip.folysplitr-floating-chip {
+      position: fixed;
+      left: 12px;
+      bottom: 12px;
+      z-index: 1100;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.35rem 0.55rem;
+      border-radius: 999px;
+      border: 1px solid var(--theme-a);
+      background: rgba(0, 0, 0, 0.82);
+      color: var(--primary);
+      font-size: 0.72rem;
+      backdrop-filter: blur(3px);
+      box-sizing: border-box;
+      max-width: calc(100vw - 24px);
+    }
+
+    .folysplitr-chip-sep {
+      width: 1px;
+      align-self: stretch;
+      min-height: 1rem;
+      background: var(--theme-a);
+      opacity: 0.85;
+      flex-shrink: 0;
+    }
+
+    .folysplitr-chip-seg {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      white-space: nowrap;
+    }
+
+    .folysplitr-chip-seg i {
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+
+    .folysplitr-chip-stat {
+      opacity: 0.95;
+      user-select: none;
+    }
+
+    .folysplitr-chip-btn {
+      font: inherit;
+      color: inherit;
+      background: none;
+      border: none;
+      padding: 0;
+      margin: 0;
+      cursor: pointer;
+      opacity: 0.9;
+      transition: opacity 0.15s ease;
+    }
+
+    .folysplitr-chip-btn:hover:not(:disabled) {
+      opacity: 1;
+    }
+
+    .folysplitr-chip-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    /* Effect card style (matches auditionr sidebar effect cards) */
+    .generatr-sweep-effect {
+      border: 1px solid color-mix(in srgb, var(--theme-a) 55%, transparent);
+      border-radius: 5px;
+      padding: 0.4rem 0.5rem 0.65rem;
+      background: color-mix(in srgb, var(--theme-a) 18%, transparent);
+      min-width: 0;
+      max-width: 100%;
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
+      overflow: visible;
+    }
+
+    .generatr-sweep-effect:has(.nice-select.open) {
+      position: relative;
+      z-index: 30;
+    }
+
+    .generatr-sweep-effect-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.35rem;
+      margin: 0 0 0.3rem 0;
+      flex-shrink: 0;
+    }
+
+    .generatr-sweep-effect-title {
+      font-size: 0.74rem;
+      color: var(--primary);
+      font-weight: 600;
+      margin: 0;
+      letter-spacing: 0.01em;
+      line-height: 1.2;
+    }
+
+    .generatr-sweep-effect-body {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .folysplitr-recorder-card .recorder-toolbar {
+      margin-bottom: 0;
+    }
+
+    .waveform-viewport .splitr-waveform-wrap {
+      margin: 0;
+      width: 100%;
+    }
+
+    .waveform-viewport #waveform,
+    .waveform-viewport #splitr-waveform {
+      margin: 0;
+    }
+
+    .folysplitr-recorder-card .waveform-wrapper {
+      padding: 0;
+      margin-bottom: 0;
+    }
+
+    .folysplitr-recorder-card .preview-body {
+      margin-bottom: 0;
     }
 
     .panel-title {
       font-size: 0.88rem;
-      color: var(--primary);
+      color: var(--theme-a);
       letter-spacing: 0.02em;
       margin: 0;
     }
@@ -78,6 +405,17 @@
       background: var(--theme-a);
       color: var(--primary);
       padding: 0.5rem 0.7rem;
+    }
+
+    .device-picker select:not(.dron-control--native) {
+      min-width: 10rem;
+      max-width: 22rem;
+      width: 19rem;
+      height: 2.25rem;
+      padding: 0 0.55rem;
+      font-size: 0.8rem;
+      box-sizing: border-box;
+      line-height: 1.2;
     }
 
     select:not(.dron-control--native) {
@@ -138,9 +476,18 @@
     .recorder-toolbar {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      justify-content: space-between;
+      gap: 0.65rem;
       margin-bottom: 0.85rem;
       flex-wrap: wrap;
+    }
+
+    .recorder-toolbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      min-width: 0;
     }
 
     .icon-btn {
@@ -153,11 +500,29 @@
       line-height: 1;
     }
 
+    .folysplitr-card-disabled {
+      opacity: 0.45;
+      pointer-events: none;
+    }
+
+    .folysplitr-card-disabled * {
+      pointer-events: none;
+    }
+
+    .splitr-beat-controls {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 0.45rem 0.55rem;
+    }
+
     .device-picker {
       display: inline-flex;
       align-items: center;
-      gap: 0.65rem;
-      margin-left: 0.15rem;
+      gap: 0.5rem;
+      margin-left: auto;
+      flex: 0 1 auto;
+      min-width: 0;
     }
 
     .device-picker i {
@@ -166,10 +531,6 @@
       width: 0.9rem;
       text-align: center;
       flex: 0 0 auto;
-    }
-
-    .device-picker select {
-      min-width: 19rem;
     }
 
     .preview-body {
@@ -201,7 +562,6 @@
 
     .waveform-empty {
       min-height: 92px;
-      display: flex;
       align-items: center;
       justify-content: center;
       color: var(--theme-b);
@@ -222,7 +582,7 @@
 
     .waveform-title {
       font-size: 0.78rem;
-      color: var(--theme-b);
+      color: var(--theme-a);
       word-break: break-all;
     }
 
@@ -251,7 +611,8 @@
     }
 
     .splitr-compact button,
-    #splitr-actions button,
+    #splitr-actions-left button,
+    #splitr-actions-right button,
     #splitr-organize button,
     #splitr-select-tools button {
       font-size: 0.74rem;
@@ -333,7 +694,7 @@
 
     .splitr-organize-preview-label {
       font-size: 0.65rem;
-      color: var(--theme-b);
+      color: var(--theme-a);
       text-transform: uppercase;
       letter-spacing: 0.06em;
     }
@@ -394,7 +755,7 @@
       flex-wrap: wrap;
       gap: 0.45rem;
       align-items: center;
-      margin-bottom: 1rem;
+      margin-bottom: 0;
     }
 
     .splitr-threshold {
@@ -435,7 +796,7 @@
 
     .splitr-subtitle {
       font-size: 0.72rem;
-      color: var(--theme-b);
+      color: var(--theme-a);
       letter-spacing: 0.02em;
       margin-top: 0.2rem;
       margin-bottom: 0.35rem;
@@ -472,7 +833,7 @@
       justify-content: space-between;
       align-items: baseline;
       gap: 0.5rem;
-      color: var(--theme-b);
+      color: var(--theme-a);
     }
 
     .splitr-slider-wrap {
@@ -601,93 +962,179 @@
   {% include '_loading_overlay.html' %}
   {% include '_app_toolbar.html' %}
 
-  <main>
-    <div class="tabs">
-      <button id="tab-recorder" class="tab-btn active"><i class="fa-solid fa-microphone-lines"></i> record
-        audio</button>
-      <button id="tab-splitr" class="tab-btn"><i class="fa-solid fa-scissors"></i> split &amp; organize</button>
-    </div>
-
-    <section id="panel-recorder" class="panel tab-panel active">
-      <div class="recorder-toolbar">
-        <button id="play-btn" class="icon-btn" title="play"><i class="fa-solid fa-play"></i></button>
-        <button id="record-btn" class="record-btn" title="record"><i class="fa-solid fa-circle"></i></button>
-        <button id="stop-btn" class="icon-btn" title="stop"><i class="fa-solid fa-stop"></i></button>
-        <div class="device-picker">
-          <i class="fa-solid fa-microphone-lines" title="select input device"></i>
-          <select id="device-select">
-            <option value="">no input device selected</option>
-          </select>
-        </div>
+  <main class="folysplitr-layout">
+    <div class="folysplitr-main-col">
+    <div class="generatr-sweep-effect folysplitr-recorder-card">
+      <div class="generatr-sweep-effect-head">
+        <span class="generatr-sweep-effect-title">Record audio</span>
       </div>
-      <div id="status" class="status-text">Ready.</div>
-      <div id="waveform-shell" class="waveform-wrapper">
-        <div class="waveform-header">
-          <span id="waveform-title" class="waveform-title">recording preview</span>
-          <span id="waveform-duration" class="waveform-duration">--:--</span>
-        </div>
-        <div class="preview-body">
-          <div id="waveform"></div>
-          <div class="meter-wrap">
-            <canvas id="meter-canvas" width="16" height="92"></canvas>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section id="panel-splitr" class="panel tab-panel">
-      <div class="splitr-preview">
-        <div class="splitr-nav">
-          <button id="splitr-prev-btn"><i class="fa-solid fa-chevron-left"></i></button>
-          <span id="splitr-index" class="splitr-index">0 / 0</span>
-          <button id="splitr-next-btn"><i class="fa-solid fa-chevron-right"></i></button>
-          <button id="splitr-empty-trash-btn"><i class="fa-solid fa-trash-can"></i> empty trash (0)</button>
-          <button id="splitr-unarchive-btn"><i class="fa-solid fa-box-open"></i> unarchive samples</button>
-        </div>
-        <div id="splitr-shell" class="waveform-wrapper" style="display: none;">
-          <div class="waveform-header">
-            <span id="splitr-title" class="waveform-title"></span>
-            <span id="splitr-duration" class="waveform-duration">--:--</span>
-          </div>
-          <div class="splitr-waveform-wrap">
-            <div id="splitr-waveform"></div>
-            <div id="splitr-overlay" class="splitr-overlay"></div>
-          </div>
-          <div class="playback-controls splitr-compact">
-            <button id="splitr-play-btn" class="playback-btn" title="play/pause"><i
-                class="fa-solid fa-play"></i></button>
-            <button id="splitr-trash-btn" class="playback-btn" title="move to trash"><i
+      <div class="generatr-sweep-effect-body">
+        <div class="recorder-toolbar">
+          <div class="recorder-toolbar-actions">
+            <button id="play-btn" class="icon-btn" type="button" title="play"><i class="fa-solid fa-play"></i></button>
+            <button id="record-btn" class="record-btn" type="button" title="record"><i
+                class="fa-solid fa-circle"></i></button>
+            <button id="stop-btn" class="icon-btn" type="button" title="stop"><i class="fa-solid fa-stop"></i></button>
+            <button id="splitr-trash-btn" class="icon-btn" type="button" title="move to trash"><i
                 class="fa-solid fa-trash-can"></i></button>
-            <button id="splitr-archive-btn" class="playback-btn" title="move to archive"><i
+            <button id="splitr-archive-btn" class="icon-btn" type="button" title="move to archive"><i
                 class="fa-solid fa-box-archive"></i></button>
+            <button id="undo-btn" class="icon-btn" type="button" title="Undo last action"><i
+                class="fa-solid fa-rotate-left"></i></button>
+            <button id="duplicate-btn" class="icon-btn" type="button" title="Duplicate sample"><i
+                class="fa-solid fa-copy"></i></button>
           </div>
-          <div class="splitr-subtitle">split sample with markers</div>
-          <div id="splitr-select-tools" class="splitr-select-tools"></div>
-          <div class="splitr-subtitle">process audio</div>
-          <!-- Action types/presets load from /api/folysplitr/processing-actions (e.g. timestretch, paulstretch). -->
-          <div id="splitr-actions" class="splitr-actions"></div>
-          <div class="splitr-subtitle">categorize edited audio</div>
-          <div id="splitr-organize-form" class="splitr-organize-form">
-            <div class="splitr-collection-preview-row">
-              <div class="splitr-collection-input-wrap">
-                <label class="splitr-organize-field-label" for="splitr-collection-name">Collection name</label>
-                <input type="text" id="splitr-collection-name" placeholder="collection name" value="split"
-                  autocomplete="off" spellcheck="false" autocapitalize="none" autocorrect="off">
+          <div class="device-picker" id="device-picker-wrap">
+            <i class="fa-solid fa-microphone-lines" title="select input device"></i>
+            <select id="device-select">
+              <option value="">no input device selected</option>
+            </select>
+          </div>
+        </div>
+        <div id="status" class="status-text">Ready.</div>
+        <div id="waveform-shell" class="waveform-wrapper">
+          <div id="waveform-header" class="waveform-header">
+            <span id="waveform-title" class="waveform-title">recording preview</span>
+            <span id="waveform-duration" class="waveform-duration">--:--</span>
+          </div>
+          <div id="waveform-viewport" class="waveform-viewport" data-state="empty">
+            <div class="waveform-viewport-stack">
+              <div id="workflow-empty" class="waveform-view-pane waveform-view-empty">no recordings found</div>
+              <div id="waveform-view-recording" class="waveform-view-pane waveform-view-recording preview-body">
+                <div id="waveform"></div>
               </div>
-              <div class="splitr-organize-preview-inline">
-                <span class="splitr-organize-preview-label">Export name preview</span>
-                <p class="splitr-organize-preview-line" id="splitr-organize-preview" aria-live="polite" title="">—</p>
+              <div id="waveform-view-sample" class="waveform-view-pane waveform-view-sample preview-body folysplitr-sample-preview">
+                <div class="splitr-waveform-wrap folysplitr-sample-wave-wrap">
+                  <div id="splitr-waveform"></div>
+                  <div id="splitr-overlay" class="splitr-overlay"></div>
+                </div>
               </div>
             </div>
+            <div class="meter-wrap" id="meter-wrap">
+              <canvas id="meter-canvas" width="16" height="92"></canvas>
+            </div>
           </div>
-          <div class="splitr-subtitle">move into folder</div>
-          <div id="splitr-organize" class="splitr-organize"></div>
-          <div id="splitr-organize-feedback" class="splitr-organize-feedback" hidden aria-live="polite"></div>
         </div>
-        <div id="splitr-empty" class="empty-state">No recordings available yet. Record a sample first.</div>
       </div>
-    </section>
+    </div>
+
+    <div class="generatr-sweep-effect folysplitr-split-card folysplitr-workflow-card">
+      <div class="generatr-sweep-effect-head">
+        <span class="generatr-sweep-effect-title">Split sample</span>
+      </div>
+      <div class="generatr-sweep-effect-body">
+        <div id="splitr-select-tools" class="splitr-select-tools"></div>
+        <div class="splitr-knobs-row" id="splitr-knobs-row">
+          <div class="daw-knob" data-knob-unit="" data-knob-decimals="2">
+            <span class="daw-knob-label">Threshold</span>
+            <button type="button" class="daw-knob-dial" aria-label="Autodetect threshold">
+              <span class="daw-knob-ring" aria-hidden="true"></span>
+            </button>
+            <span class="daw-knob-readout" aria-hidden="true">0.35</span>
+            <input type="number" class="daw-knob-input" id="splitr-threshold-input" step="0.01" min="0.01" max="1"
+              value="0.35" tabindex="-1" aria-hidden="true">
+          </div>
+          <div class="daw-knob-select">
+            <span class="daw-knob-label">Mode</span>
+            <select id="splitr-mode-select" class="dron-control--native">
+              <option value="transient">transient hits</option>
+              <option value="level">level gate</option>
+              <option value="beat">beat grid</option>
+            </select>
+          </div>
+          <div class="daw-knob" id="splitr-min-gap-knob" data-knob-unit="ms" data-knob-decimals="0">
+            <span class="daw-knob-label">Min gap</span>
+            <button type="button" class="daw-knob-dial" aria-label="Minimum gap between markers">
+              <span class="daw-knob-ring" aria-hidden="true"></span>
+            </button>
+            <span class="daw-knob-readout" aria-hidden="true">60 ms</span>
+            <input type="number" class="daw-knob-input" id="splitr-min-gap-input" step="5" min="10" max="500"
+              value="60" tabindex="-1" aria-hidden="true">
+          </div>
+          <div id="splitr-beat-controls" class="splitr-beat-controls" hidden>
+            <div class="daw-knob-select">
+              <span class="daw-knob-label">Division</span>
+              <select id="splitr-beat-division" class="dron-control--native">
+                <option value="1">1/1</option>
+                <option value="2">1/2</option>
+                <option value="4">1/4</option>
+                <option value="8">1/8</option>
+                <option value="16">1/16</option>
+              </select>
+            </div>
+            <div class="daw-knob" id="splitr-tempo-knob" data-knob-unit="bpm" data-knob-decimals="0">
+              <span class="daw-knob-label">Tempo</span>
+              <button type="button" class="daw-knob-dial" aria-label="Beat grid tempo">
+                <span class="daw-knob-ring" aria-hidden="true"></span>
+              </button>
+              <span class="daw-knob-readout" aria-hidden="true">120 bpm</span>
+              <input type="number" class="daw-knob-input" id="splitr-tempo-input" step="1" min="40" max="260"
+                value="120" tabindex="-1" aria-hidden="true">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="generatr-sweep-effect folysplitr-process-card folysplitr-workflow-card">
+      <div class="generatr-sweep-effect-head">
+        <span class="generatr-sweep-effect-title">Process audio</span>
+      </div>
+      <div class="generatr-sweep-effect-body folysplitr-process-columns">
+        <div id="splitr-actions-left" class="folysplitr-process-col-left"></div>
+        <div id="splitr-actions-right" class="folysplitr-process-col-right"></div>
+      </div>
+    </div>
+
+    <div class="generatr-sweep-effect folysplitr-categorize-card folysplitr-workflow-card">
+      <div class="generatr-sweep-effect-head">
+        <span class="generatr-sweep-effect-title">Categorize</span>
+      </div>
+      <div class="generatr-sweep-effect-body">
+        <div id="splitr-organize-form" class="splitr-organize-form">
+          <div class="splitr-collection-preview-row">
+            <div class="splitr-collection-input-wrap">
+              <label class="splitr-organize-field-label" for="splitr-collection-name">Collection name</label>
+              <input type="text" id="splitr-collection-name" placeholder="collection name" value="split"
+                autocomplete="off" spellcheck="false" autocapitalize="none" autocorrect="off">
+            </div>
+            <div class="splitr-organize-preview-inline">
+              <span class="splitr-organize-preview-label">Export name preview</span>
+              <p class="splitr-organize-preview-line" id="splitr-organize-preview" aria-live="polite" title="">—</p>
+            </div>
+          </div>
+        </div>
+        <span class="splitr-organize-section-label">Move sample into folder</span>
+        <div id="splitr-organize" class="splitr-organize"></div>
+        <div id="splitr-organize-feedback" class="splitr-organize-feedback" hidden aria-live="polite"></div>
+      </div>
+    </div>
+    </div>
+
+    <div class="generatr-sweep-effect folysplitr-recordings-card">
+      <div class="generatr-sweep-effect-head">
+        <span class="generatr-sweep-effect-title">Recordings</span>
+      </div>
+      <div class="generatr-sweep-effect-body">
+        <ul id="folysplitr-recordings-list" class="folysplitr-recordings-list" aria-label="Recordings list"></ul>
+        <div id="folysplitr-recordings-empty" class="folysplitr-recordings-empty">No recordings yet.</div>
+      </div>
+    </div>
   </main>
+
+  <aside id="folysplitr-actions-chip" class="folysplitr-floating-chip" aria-label="Archive and trash">
+    <button type="button" class="folysplitr-chip-seg folysplitr-chip-btn" id="folysplitr-unarchive-btn"
+      title="Unarchive samples" aria-label="Unarchive samples">
+      <i class="fa-solid fa-box-open" aria-hidden="true"></i>
+      <span class="folysplitr-chip-stat" id="folysplitr-archive-count">0</span>
+    </button>
+    <span class="folysplitr-chip-sep" aria-hidden="true"></span>
+    <button type="button" class="folysplitr-chip-seg folysplitr-chip-btn" id="folysplitr-empty-trash-btn"
+      title="Empty trash" aria-label="Empty trash">
+      <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+      <span class="folysplitr-chip-stat" id="folysplitr-trash-count">0</span>
+    </button>
+  </aside>
   {% include '_app_version_chip.html' %}
   <script>
     var MAX_RECORDING_MS = 5 * 60 * 1000;
@@ -699,28 +1146,35 @@
     var meterCanvas = document.getElementById("meter-canvas");
     var meterCtx = meterCanvas.getContext("2d");
     var waveformShell = document.getElementById("waveform-shell");
+    var waveformHeader = document.getElementById("waveform-header");
+    var waveformViewport = document.getElementById("waveform-viewport");
     var waveformTitle = document.getElementById("waveform-title");
     var waveformDuration = document.getElementById("waveform-duration");
-    var tabRecorderBtn = document.getElementById("tab-recorder");
-    var tabSplitrBtn = document.getElementById("tab-splitr");
-    var panelRecorder = document.getElementById("panel-recorder");
-    var panelSplitr = document.getElementById("panel-splitr");
-    var splitrPrevBtn = document.getElementById("splitr-prev-btn");
-    var splitrNextBtn = document.getElementById("splitr-next-btn");
-    var splitrEmptyTrashBtn = document.getElementById("splitr-empty-trash-btn");
-    var splitrUnarchiveBtn = document.getElementById("splitr-unarchive-btn");
-    var splitrPlayBtn = document.getElementById("splitr-play-btn");
+    var meterWrap = document.getElementById("meter-wrap");
+    var devicePickerWrap = document.getElementById("device-picker-wrap");
+    var workflowEmpty = document.getElementById("workflow-empty");
+    var recordingsListEl = document.getElementById("folysplitr-recordings-list");
+    var recordingsEmptyEl = document.getElementById("folysplitr-recordings-empty");
+    var undoBtn = document.getElementById("undo-btn");
+    var duplicateBtn = document.getElementById("duplicate-btn");
+    var folysplitrEmptyTrashBtn = document.getElementById("folysplitr-empty-trash-btn");
+    var folysplitrUnarchiveBtn = document.getElementById("folysplitr-unarchive-btn");
+    var folysplitrTrashCountEl = document.getElementById("folysplitr-trash-count");
+    var folysplitrArchiveCountEl = document.getElementById("folysplitr-archive-count");
     var splitrTrashBtn = document.getElementById("splitr-trash-btn");
     var splitrArchiveBtn = document.getElementById("splitr-archive-btn");
-    var splitrIndexEl = document.getElementById("splitr-index");
-    var splitrShell = document.getElementById("splitr-shell");
-    var splitrEmpty = document.getElementById("splitr-empty");
-    var splitrTitle = document.getElementById("splitr-title");
-    var splitrDuration = document.getElementById("splitr-duration");
-    var splitrActionsEl = document.getElementById("splitr-actions");
+    var splitrActionsLeftEl = document.getElementById("splitr-actions-left");
+    var splitrActionsRightEl = document.getElementById("splitr-actions-right");
     var splitrOrganizeEl = document.getElementById("splitr-organize");
     var splitrSelectToolsEl = document.getElementById("splitr-select-tools");
     var splitrOverlayEl = document.getElementById("splitr-overlay");
+    var splitrModeSelect = document.getElementById("splitr-mode-select");
+    var splitrThresholdInput = document.getElementById("splitr-threshold-input");
+    var splitrMinGapInput = document.getElementById("splitr-min-gap-input");
+    var splitrMinGapKnob = document.getElementById("splitr-min-gap-knob");
+    var splitrBeatControls = document.getElementById("splitr-beat-controls");
+    var splitrBeatDivisionSelect = document.getElementById("splitr-beat-division");
+    var splitrTempoInput = document.getElementById("splitr-tempo-input");
 
     var monitorStream = null;
     var audioContext = null;
@@ -737,7 +1191,6 @@
     var liveWaveCtx = null;
     var liveWaveAnimId = null;
 
-    var waveSurfer = null;
     var lastRecordingUrl = null;
     var recordingsList = [];
     var splitrIndex = 0;
@@ -757,13 +1210,155 @@
     var splitrAutoTempoBpm = 120;
     var splitrMarkerHistory = [];
     var splitrTrashCount = 0;
+    var splitrArchiveCount = 0;
 
-    function showTab(tabName) {
-      var recorderActive = tabName === "recorder";
-      tabRecorderBtn.classList.toggle("active", recorderActive);
-      tabSplitrBtn.classList.toggle("active", !recorderActive);
-      panelRecorder.classList.toggle("active", recorderActive);
-      panelSplitr.classList.toggle("active", !recorderActive);
+    function isRecordingActive() {
+      return !!(mediaRecorder && mediaRecorder.state === "recording");
+    }
+
+    function setWaveformViewState(state) {
+      if (!waveformViewport) return;
+      waveformViewport.setAttribute("data-state", state);
+      if (waveformHeader) waveformHeader.style.display = state === "empty" ? "none" : "";
+    }
+
+    function updateSplitKnobsVisibility() {
+      var beatMode = splitrAutoMode === "beat";
+      if (splitrMinGapKnob) splitrMinGapKnob.hidden = beatMode;
+      if (splitrBeatControls) splitrBeatControls.hidden = !beatMode;
+    }
+
+    function bindSplitControlInputs() {
+      if (splitrThresholdInput) {
+        splitrThresholdInput.addEventListener("change", function () {
+          var v = Number(splitrThresholdInput.value);
+          if (!Number.isFinite(v)) return;
+          splitrAutoThreshold = Math.max(0.01, Math.min(1, v));
+          splitrThresholdInput.value = String(splitrAutoThreshold);
+        });
+      }
+      if (splitrMinGapInput) {
+        splitrMinGapInput.addEventListener("change", function () {
+          var vGap = Number(splitrMinGapInput.value);
+          if (!Number.isFinite(vGap)) return;
+          splitrAutoMinGapMs = Math.max(10, Math.min(500, vGap));
+          splitrMinGapInput.value = String(splitrAutoMinGapMs);
+        });
+      }
+      if (splitrModeSelect) {
+        splitrModeSelect.value = splitrAutoMode;
+        splitrModeSelect.addEventListener("change", function () {
+          splitrAutoMode = splitrModeSelect.value || "transient";
+          updateSplitKnobsVisibility();
+        });
+      }
+      if (splitrBeatDivisionSelect) {
+        splitrBeatDivisionSelect.value = String(splitrAutoBeatDivision);
+        splitrBeatDivisionSelect.addEventListener("change", function () {
+          splitrAutoBeatDivision = parseInt(splitrBeatDivisionSelect.value || "4", 10);
+        });
+      }
+      if (splitrTempoInput) {
+        splitrTempoInput.value = String(splitrAutoTempoBpm);
+        splitrTempoInput.addEventListener("change", function () {
+          var t = Number(splitrTempoInput.value);
+          if (!Number.isFinite(t)) return;
+          splitrAutoTempoBpm = Math.max(40, Math.min(260, t));
+          splitrTempoInput.value = String(splitrAutoTempoBpm);
+        });
+      }
+      updateSplitKnobsVisibility();
+    }
+
+    function initFolysplitrKnobs(root) {
+      if (!root) return;
+      root.querySelectorAll(".daw-knob").forEach(function (knob) {
+        if (knob.dataset.dawKnobBound === "1") return;
+        knob.dataset.dawKnobBound = "1";
+        var input = knob.querySelector(".daw-knob-input");
+        var dial = knob.querySelector(".daw-knob-dial");
+        var readout = knob.querySelector(".daw-knob-readout");
+        if (!input || !dial || !readout) return;
+        var min = parseFloat(input.min || "0");
+        var max = parseFloat(input.max || "1");
+        var step = parseFloat(input.step || "0.01");
+        if (!isFinite(step) || step <= 0) step = 0.01;
+        var unit = (knob.dataset.knobUnit || "").trim();
+        var decimals = parseInt(knob.dataset.knobDecimals || "2", 10);
+        if (!isFinite(decimals) || decimals < 0) decimals = 2;
+        var drag = { active: false, startY: 0, startVal: 0, pointerId: null };
+
+        function snapValue(raw) {
+          var v = Math.max(min, Math.min(max, raw));
+          var steps = Math.round((v - min) / step);
+          return Math.max(min, Math.min(max, min + steps * step));
+        }
+
+        function formatReadout(v) {
+          var text = Number(v).toFixed(decimals);
+          return unit ? text + " " + unit : text;
+        }
+
+        function updateVisual(v) {
+          var ratio = (max - min) > 0 ? (v - min) / (max - min) : 0;
+          ratio = Math.max(0, Math.min(1, ratio));
+          dial.style.setProperty("--knob-ratio", String(ratio));
+          readout.textContent = formatReadout(v);
+        }
+
+        function setValue(raw, opts) {
+          var v = snapValue(raw);
+          input.value = String(v);
+          updateVisual(v);
+          if (!opts || !opts.silent) {
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+            input.dispatchEvent(new Event("change", { bubbles: true }));
+          }
+        }
+
+        setValue(parseFloat(input.value || String(min)), { silent: true });
+
+        dial.addEventListener("pointerdown", function (e) {
+          if (e.button !== undefined && e.button !== 0) return;
+          drag.active = true;
+          drag.startY = e.clientY;
+          drag.startVal = parseFloat(input.value || String(min));
+          drag.pointerId = e.pointerId;
+          dial.setPointerCapture(e.pointerId);
+          e.preventDefault();
+        });
+
+        dial.addEventListener("pointermove", function (e) {
+          if (!drag.active || e.pointerId !== drag.pointerId) return;
+          var span = max - min;
+          var pxPerFull = Math.max(80, Math.min(220, span * 120));
+          var delta = (drag.startY - e.clientY) * (span / pxPerFull);
+          setValue(drag.startVal + delta);
+        });
+
+        function endDrag(e) {
+          if (drag.pointerId != null && dial.hasPointerCapture(drag.pointerId)) {
+            dial.releasePointerCapture(drag.pointerId);
+          }
+          drag.active = false;
+          drag.pointerId = null;
+        }
+
+        dial.addEventListener("pointerup", endDrag);
+        dial.addEventListener("pointercancel", endDrag);
+
+        dial.addEventListener("wheel", function (e) {
+          e.preventDefault();
+          var dir = e.deltaY < 0 ? 1 : -1;
+          var mult = e.shiftKey ? 10 : (e.altKey ? 0.1 : 1);
+          setValue(parseFloat(input.value || String(min)) + dir * mult * step);
+        }, { passive: false });
+      });
+    }
+
+    function syncWaveformDuration(seconds) {
+      if (typeof seconds !== "number" || !isFinite(seconds)) return;
+      waveformDuration.innerText = formatTime(seconds);
     }
 
     function setStatus(text, isError) {
@@ -1170,25 +1765,27 @@
       splitrSelectToolsEl.innerHTML = "";
       function addBtn(iconHtml, title, onClick, active) {
         var btn = document.createElement("button");
+        btn.type = "button";
         btn.innerHTML = iconHtml + " " + title;
         btn.title = title;
         if (active) btn.classList.add("splitr-btn-active");
+        if (!recordingsList.length) btn.disabled = true;
         btn.addEventListener("click", onClick);
         splitrSelectToolsEl.appendChild(btn);
         return btn;
       }
-      addBtn('<i class="fa-solid fa-location-crosshairs"></i>', "Place Markers", function () {
+      addBtn('<i class="fa-solid fa-location-crosshairs"></i>', "Place", function () {
         splitrPlacementMode = !splitrPlacementMode;
         renderSplitSelectionControls();
       }, splitrPlacementMode);
-      var addMarkerBtn = addBtn('<i class="fa-solid fa-plus"></i>', "Insert Marker At Playhead", function () {
+      var addMarkerBtn = addBtn('<i class="fa-solid fa-plus"></i>', "Insert", function () {
         pushMarkerHistory();
         splitrMarkers.push(splitrSelectedSeconds);
         splitrMarkers = sanitizeMarkers(splitrMarkers, splitrDurationSeconds);
         renderSplitOverlay();
       });
       addMarkerBtn.disabled = splitrPlacementMode;
-      addBtn('<i class="fa-solid fa-minus"></i>', "Remove Marker", function () {
+      addBtn('<i class="fa-solid fa-minus"></i>', "Remove", function () {
         pushMarkerHistory();
         var bestIdx = -1;
         var bestDist = Infinity;
@@ -1204,16 +1801,17 @@
         splitrMarkers = sanitizeMarkers(splitrMarkers, splitrDurationSeconds);
         renderSplitOverlay();
       });
-      addBtn('<i class="fa-solid fa-eraser"></i>', "Clear All Markers", function () {
+      addBtn('<i class="fa-solid fa-eraser"></i>', "Clear all", function () {
         pushMarkerHistory();
         splitrMarkers = defaultMarkersFromDuration(splitrDurationSeconds);
         renderSplitOverlay();
       });
-      addBtn('<i class="fa-solid fa-rotate-left"></i>', "Undo Last Action", async function () {
+      addBtn('<i class="fa-solid fa-wand-magic-sparkles"></i>', "Autodetect markers", async function () {
         try {
-          await undoLastSplitrAction();
+          await autodetectMarkers();
+          setStatus("Markers autodetected.");
         } catch (e) {
-          setStatus(e.message || "Undo failed.", true);
+          setStatus(e.message || "Autodetect failed.", true);
         }
       });
       var splitBtn = addBtn('<i class="fa-solid fa-scissors"></i>', "Split", async function () {
@@ -1225,75 +1823,38 @@
         }
       });
       splitBtn.id = "split-action-btn";
-      splitBtn.disabled = shouldDisableSplitAction();
-      var divider = document.createElement("div");
-      divider.className = "splitr-actions-divider";
-      splitrSelectToolsEl.appendChild(divider);
-      var thresholdWrap = document.createElement("label");
-      thresholdWrap.className = "splitr-threshold";
-      thresholdWrap.innerHTML = 'threshold <input id="splitr-threshold-input" type="number" min="0.01" max="1" step="0.01" value="' + splitrAutoThreshold + '">';
-      splitrSelectToolsEl.appendChild(thresholdWrap);
-      var thresholdInput = document.getElementById("splitr-threshold-input");
-      thresholdInput.addEventListener("change", function () {
-        var v = Number(thresholdInput.value);
-        if (!Number.isFinite(v)) return;
-        splitrAutoThreshold = Math.max(0.01, Math.min(1, v));
-        thresholdInput.value = String(splitrAutoThreshold);
-      });
-      var modeWrap = document.createElement("label");
-      modeWrap.className = "splitr-threshold";
-      modeWrap.innerHTML = 'mode <select id="splitr-mode-select"><option value="transient">transient hits</option><option value="level">level gate</option><option value="beat">beat grid</option></select>';
-      splitrSelectToolsEl.appendChild(modeWrap);
-      var modeSelect = document.getElementById("splitr-mode-select");
-      modeSelect.value = splitrAutoMode;
-      modeSelect.addEventListener("change", function () {
-        splitrAutoMode = modeSelect.value || "transient";
-        renderSplitSelectionControls();
-      });
-      if (splitrAutoMode === "beat") {
-        var beatWrap = document.createElement("label");
-        beatWrap.className = "splitr-threshold";
-        beatWrap.innerHTML = 'division <select id="splitr-beat-division"><option value="1">1/1</option><option value="2">1/2</option><option value="4">1/4</option><option value="8">1/8</option><option value="16">1/16</option></select>';
-        splitrSelectToolsEl.appendChild(beatWrap);
-        var beatDivisionSelect = document.getElementById("splitr-beat-division");
-        beatDivisionSelect.value = String(splitrAutoBeatDivision);
-        beatDivisionSelect.addEventListener("change", function () {
-          splitrAutoBeatDivision = parseInt(beatDivisionSelect.value || "4", 10);
-        });
-        var tempoWrap = document.createElement("label");
-        tempoWrap.className = "splitr-threshold";
-        tempoWrap.innerHTML = 'tempo <input id="splitr-tempo-input" type="number" min="40" max="260" step="1" value="' + splitrAutoTempoBpm + '">';
-        splitrSelectToolsEl.appendChild(tempoWrap);
-        var tempoInput = document.getElementById("splitr-tempo-input");
-        tempoInput.addEventListener("change", function () {
-          var t = Number(tempoInput.value);
-          if (!Number.isFinite(t)) return;
-          splitrAutoTempoBpm = Math.max(40, Math.min(260, t));
-          tempoInput.value = String(splitrAutoTempoBpm);
-        });
-      } else {
-        var gapWrap = document.createElement("label");
-        gapWrap.className = "splitr-threshold";
-        gapWrap.innerHTML = 'min gap <input id="splitr-min-gap-input" type="number" min="10" max="500" step="5" value="' + splitrAutoMinGapMs + '">';
-        splitrSelectToolsEl.appendChild(gapWrap);
-        var minGapInput = document.getElementById("splitr-min-gap-input");
-        minGapInput.addEventListener("change", function () {
-          var vGap = Number(minGapInput.value);
-          if (!Number.isFinite(vGap)) return;
-          splitrAutoMinGapMs = Math.max(10, Math.min(500, vGap));
-          minGapInput.value = String(splitrAutoMinGapMs);
-        });
-      }
-      addBtn('<i class="fa-solid fa-wand-magic-sparkles"></i>', "Autodetect Markers", async function () {
-        try {
-          await autodetectMarkers();
-          setStatus("Markers autodetected.");
-        } catch (e) {
-          setStatus(e.message || "Autodetect failed.", true);
-        }
-      });
+      splitBtn.disabled = shouldDisableSplitAction() || !recordingsList.length;
       renderSplitOverlay();
       updateSplitActionButtonState();
+    }
+
+    function renderRecordingsList() {
+      if (!recordingsListEl) return;
+      recordingsListEl.innerHTML = "";
+      if (!recordingsList.length) {
+        if (recordingsEmptyEl) recordingsEmptyEl.hidden = false;
+        return;
+      }
+      if (recordingsEmptyEl) recordingsEmptyEl.hidden = true;
+      recordingsList.forEach(function (item, idx) {
+        var li = document.createElement("li");
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "folysplitr-recording-item" + (idx === splitrIndex ? " active" : "");
+        btn.textContent = item.filename || item.path || ("recording " + (idx + 1));
+        btn.title = item.filename || item.path || "";
+        btn.addEventListener("click", function () {
+          if (splitrIndex === idx) return;
+          splitrIndex = idx;
+          renderSplitrCurrent();
+        });
+        li.appendChild(btn);
+        recordingsListEl.appendChild(li);
+      });
+      var activeItem = recordingsListEl.querySelector(".folysplitr-recording-item.active");
+      if (activeItem && activeItem.scrollIntoView) {
+        activeItem.scrollIntoView({ block: "nearest" });
+      }
     }
 
     function restrictSplitrCollectionNameInputValue(raw) {
@@ -1417,37 +1978,36 @@
         if (splitrIndex < 0) splitrIndex = 0;
       }
       renderSplitrCurrent();
-      await refreshTrashCount();
+      await refreshFolderCounts();
     }
 
-    function renderTrashButtonLabel(loading, deletedCount) {
-      if (!splitrEmptyTrashBtn) return;
+    function renderFolderChipCounts() {
+      if (folysplitrTrashCountEl) folysplitrTrashCountEl.textContent = String(splitrTrashCount);
+      if (folysplitrArchiveCountEl) folysplitrArchiveCountEl.textContent = String(splitrArchiveCount);
+    }
+
+    function renderTrashButtonLabel(loading) {
+      if (!folysplitrEmptyTrashBtn) return;
       if (loading) {
-        splitrEmptyTrashBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> emptying...';
-        splitrEmptyTrashBtn.disabled = true;
+        folysplitrEmptyTrashBtn.disabled = true;
         return;
       }
-      var suffix = " (" + splitrTrashCount + ")";
-      if (typeof deletedCount === "number") {
-        splitrEmptyTrashBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i> emptied ' + deletedCount + suffix;
-        splitrEmptyTrashBtn.disabled = false;
-        setTimeout(function () {
-          splitrEmptyTrashBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i> empty trash' + suffix;
-        }, 1100);
-        return;
-      }
-      splitrEmptyTrashBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i> empty trash' + suffix;
-      splitrEmptyTrashBtn.disabled = false;
+      folysplitrEmptyTrashBtn.disabled = splitrTrashCount <= 0;
     }
 
-    async function refreshTrashCount() {
+    async function refreshFolderCounts() {
       try {
-        var res = await fetch("/api/folysplitr/trash/count");
-        var payload = await res.json();
-        if (!res.ok || !payload.ok) throw new Error(payload.error || "Could not load trash count");
-        splitrTrashCount = Number(payload.count) || 0;
+        var trashRes = await fetch("/api/folysplitr/trash/count");
+        var archiveRes = await fetch("/api/folysplitr/archive/count");
+        var trashPayload = await trashRes.json();
+        var archivePayload = await archiveRes.json();
+        if (trashRes.ok && trashPayload.ok) splitrTrashCount = Number(trashPayload.count) || 0;
+        if (archiveRes.ok && archivePayload.ok) splitrArchiveCount = Number(archivePayload.count) || 0;
+        renderFolderChipCounts();
         renderTrashButtonLabel(false);
+        if (folysplitrUnarchiveBtn) folysplitrUnarchiveBtn.disabled = splitrArchiveCount <= 0;
       } catch (e) {
+        renderFolderChipCounts();
         renderTrashButtonLabel(false);
       }
     }
@@ -1483,7 +2043,9 @@
     }
 
     function renderSplitrActions() {
-      splitrActionsEl.innerHTML = "";
+      if (!splitrActionsLeftEl || !splitrActionsRightEl) return;
+      splitrActionsLeftEl.innerHTML = "";
+      splitrActionsRightEl.innerHTML = "";
       var processingTypes = [{ key: "cut", label: "Cut" }].concat(
         (processingCatalog.types || [])
           .map(function (type) {
@@ -1494,23 +2056,25 @@
           })
       );
 
-      function addActionButton(label, onClick) {
+      function addLeftButton(label, onClick) {
         var btn = document.createElement("button");
+        btn.type = "button";
         btn.textContent = label;
         btn.addEventListener("click", onClick);
-        splitrActionsEl.appendChild(btn);
+        splitrActionsLeftEl.appendChild(btn);
         return btn;
       }
 
-      addActionButton("Duplicate", async function () {
-        try {
-          await splitrDuplicate();
-          setStatus("Sample duplicated.");
-        } catch (e) {
-          setStatus(e.message || "Duplicate failed.", true);
-        }
-      });
-      addActionButton("Reverse", async function () {
+      function addRightButton(label, onClick) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.textContent = label;
+        btn.addEventListener("click", onClick);
+        splitrActionsRightEl.appendChild(btn);
+        return btn;
+      }
+
+      addLeftButton("Reverse", async function () {
         try {
           await splitrProcess("reverse_sample");
           setStatus("Applied reverse.");
@@ -1518,7 +2082,7 @@
           setStatus(e.message || "Reverse failed.", true);
         }
       });
-      addActionButton("Normalize", async function () {
+      addLeftButton("Normalize", async function () {
         try {
           await splitrProcess("normalize_sample");
           setStatus("Applied normalize.");
@@ -1529,11 +2093,11 @@
 
       var divider = document.createElement("div");
       divider.className = "splitr-actions-divider";
-      splitrActionsEl.appendChild(divider);
+      splitrActionsLeftEl.appendChild(divider);
 
       var typeButtons = {};
       processingTypes.forEach(function (type) {
-        var btn = addActionButton(type.label, function () {
+        var btn = addLeftButton(type.label, function () {
           if (splitrActiveProcessingType === type.key) {
             splitrActiveProcessingType = null;
           } else {
@@ -1549,12 +2113,9 @@
       });
 
       if (!splitrActiveProcessingType) return;
-      var detailDivider = document.createElement("div");
-      detailDivider.className = "splitr-actions-divider";
-      splitrActionsEl.appendChild(detailDivider);
 
       if (splitrActiveProcessingType === "cut") {
-        addActionButton("Start At " + formatTime(splitrSelectedSeconds), async function () {
+        addRightButton("Start At " + formatTime(splitrSelectedSeconds), async function () {
           try {
             await splitrProcess("trim_sample_start", { seconds: splitrSelectedSeconds });
             setStatus("Trimmed start.");
@@ -1562,7 +2123,7 @@
             setStatus(e.message || "Trim failed.", true);
           }
         });
-        addActionButton("End At " + formatTime(splitrSelectedSeconds), async function () {
+        addRightButton("End At " + formatTime(splitrSelectedSeconds), async function () {
           try {
             await splitrProcess("trim_sample_end", { seconds: splitrSelectedSeconds });
             setStatus("Trimmed end.");
@@ -1574,15 +2135,15 @@
       }
 
       var paramControls = renderSplitrParamControls(splitrActiveProcessingType);
-      if (paramControls) splitrActionsEl.appendChild(paramControls);
+      if (paramControls) splitrActionsRightEl.appendChild(paramControls);
 
       (processingCatalog.actions || [])
         .filter(function (action) { return action.type === splitrActiveProcessingType; })
         .forEach(function (action) {
-          addActionButton(action.label, async function () {
+          addRightButton(action.label, async function () {
             try {
               var specStr = action.spec || action.token;
-              var paramWrap = splitrActionsEl.querySelector('[data-splitr-param-type="' + splitrActiveProcessingType + '"]');
+              var paramWrap = splitrActionsRightEl.querySelector('[data-splitr-param-type="' + splitrActiveProcessingType + '"]');
               if (paramWrap && specStr && specStr.indexOf("[") !== -1) {
                 var bracketParams = {};
                 var re = /\[([^\]=]+)\s*=\s*([^\]]*)\]/g;
@@ -1723,6 +2284,8 @@
 
     function setRecordingUi(isRecording) {
       playBtn.disabled = !!isRecording;
+      if (devicePickerWrap) devicePickerWrap.classList.toggle("folysplitr-disabled", !!isRecording);
+      if (deviceSelect) deviceSelect.disabled = !!isRecording || !deviceSelect.options.length;
       recordBtn.classList.toggle("recording", isRecording);
       stopBtn.disabled = false;
       if (isRecording) {
@@ -1732,6 +2295,7 @@
         recordBtn.innerHTML = '<i class="fa-solid fa-circle"></i>';
         recordBtn.title = "record";
       }
+      updateWorkflowCardsState();
     }
 
     function updateTimerFromMs(ms) {
@@ -1834,9 +2398,10 @@
         return;
       }
       clearRecorderEmptyState();
-      if (waveSurfer) {
-        try { waveSurfer.destroy(); } catch (e) { }
-        waveSurfer = null;
+      setWaveformViewState("recording");
+      if (splitrWaveSurfer) {
+        try { splitrWaveSurfer.destroy(); } catch (e) { }
+        splitrWaveSurfer = null;
       }
 
       var mimeType = pickRecorderMimeType();
@@ -1889,10 +2454,10 @@
     }
 
     function stopPlayback() {
-      if (!waveSurfer) return;
-      try { waveSurfer.pause(); } catch (e) { }
-      if (waveSurfer.getDuration && waveSurfer.getDuration() > 0) {
-        try { waveSurfer.seekTo(0); } catch (e) { }
+      if (!splitrWaveSurfer) return;
+      try { splitrWaveSurfer.pause(); } catch (e) { }
+      if (splitrWaveSurfer.getDuration && splitrWaveSurfer.getDuration() > 0) {
+        try { splitrWaveSurfer.seekTo(0); } catch (e) { }
       }
       isPlaybackActive = false;
       playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
@@ -1914,6 +2479,8 @@
 
       if (!blob || !blob.size) {
         setStatus("No audio captured.", true);
+        if (recordingsList.length) renderSplitrCurrent();
+        else showRecorderEmptyState();
         return;
       }
 
@@ -1933,121 +2500,21 @@
           throw new Error(payload.error || "Save failed");
         }
         lastRecordingUrl = payload.url;
-        loadWaveform(payload.url, payload.filename);
         await refreshRecordingsList();
         splitrIndex = 0;
         renderSplitrCurrent();
         setStatus("Recording saved.");
       } catch (err) {
         setStatus("Failed to save recording: " + err.message, true);
+        if (recordingsList.length) renderSplitrCurrent();
+        else showRecorderEmptyState();
       }
     }
 
-    function loadWaveform(url, title) {
-      stopLiveWaveAnimation();
-      if (waveSurfer) {
-        try { waveSurfer.destroy(); } catch (e) { }
-        waveSurfer = null;
-      }
-      var waveformContainer = document.getElementById("waveform");
-      if (waveformContainer) waveformContainer.innerHTML = "";
-      waveformShell.style.display = "block";
-      waveformTitle.style.display = "";
-      waveformTitle.innerText = title || url;
-      waveformDuration.innerText = "--:--";
-      playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
-
-      waveSurfer = WaveSurfer.create({
-        container: "#waveform",
-        waveColor: "#353531",
-        progressColor: "#016fb9",
-        cursorColor: "#ff9505",
-        height: 92,
-        backend: "MediaElement",
-      });
-      waveSurfer.load(url);
-
-      waveSurfer.on("ready", function () {
-        waveformDuration.innerText = formatTime(waveSurfer.getDuration());
-      });
-      waveSurfer.on("play", function () {
-        isPlaybackActive = true;
-        playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
-        recordBtn.disabled = true;
-      });
-      waveSurfer.on("pause", function () {
-        if (!waveSurfer.isPlaying()) {
-          isPlaybackActive = false;
-          playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
-          recordBtn.disabled = false;
-        }
-      });
-      waveSurfer.on("finish", function () {
-        isPlaybackActive = false;
-        playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
-        recordBtn.disabled = false;
-      });
-    }
-
-    function showRecorderEmptyState() {
-      stopLiveWaveAnimation();
-      if (waveSurfer) {
-        try { waveSurfer.destroy(); } catch (e) { }
-        waveSurfer = null;
-      }
-      var waveformContainer = document.getElementById("waveform");
-      if (waveformContainer) {
-        waveformContainer.innerHTML = '<div class="waveform-empty">no recordings found</div>';
-      }
-      waveformShell.style.display = "block";
-      waveformTitle.style.display = "none";
-      waveformDuration.innerText = "--:--";
-      playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
-      playBtn.disabled = true;
-      isPlaybackActive = false;
-      recordBtn.disabled = false;
-    }
-
-    function clearRecorderEmptyState() {
-      waveformTitle.style.display = "";
-      playBtn.disabled = false;
-    }
-
-    async function refreshRecordingsList() {
-      var res = await fetch("/api/folysplitr/recordings");
-      var payload = await res.json();
-      if (!res.ok || !payload.ok || !payload.files) {
-        throw new Error(payload.error || "Failed to load recordings");
-      }
-      recordingsList = payload.files;
-      return recordingsList;
-    }
-
-    function renderSplitrCurrent() {
-      var total = recordingsList.length;
-      if (splitrIndex >= total) splitrIndex = Math.max(0, total - 1);
-      splitrIndexEl.innerText = total ? ((splitrIndex + 1) + " / " + total) : "0 / 0";
-      splitrPrevBtn.disabled = total <= 1;
-      splitrNextBtn.disabled = total <= 1;
-      splitrPlayBtn.disabled = total === 0;
-
-      if (!total) {
-        splitrShell.style.display = "none";
-        splitrEmpty.style.display = "block";
-        if (splitrWaveSurfer) {
-          try { splitrWaveSurfer.destroy(); } catch (e) { }
-          splitrWaveSurfer = null;
-        }
-        return;
-      }
-
-      var item = recordingsList[splitrIndex];
-      splitrEmpty.style.display = "none";
-      splitrShell.style.display = "block";
-      splitrTitle.innerText = item.filename || item.url;
-      splitrDuration.innerText = "--:--";
-      splitrPlayBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
-
+    function loadSampleWaveform() {
+      var item = getActiveSplitrItem();
+      if (!item) return;
+      setWaveformViewState("sample");
       if (splitrWaveSurfer) {
         try { splitrWaveSurfer.destroy(); } catch (e) { }
         splitrWaveSurfer = null;
@@ -2057,16 +2524,17 @@
         waveColor: "#353531",
         progressColor: "#ec4e20",
         cursorColor: "#ff9505",
-        height: 88,
+        height: 92,
         backend: "MediaElement"
       });
       splitrWaveSurfer.load(item.url);
       splitrWaveSurfer.on("ready", function () {
-        splitrDuration.innerText = formatTime(splitrWaveSurfer.getDuration());
         splitrDurationSeconds = splitrWaveSurfer.getDuration() || 0;
+        syncWaveformDuration(splitrDurationSeconds);
         splitrMarkers = defaultMarkersFromDuration(splitrDurationSeconds);
         splitrMarkerHistory = [];
         renderSplitOverlay();
+        updateSplitActionButtonState();
       });
       splitrWaveSurfer.on("seeking", function (currentTime) {
         splitrSelectedSeconds = currentTime || 0;
@@ -2085,39 +2553,106 @@
         updateSplitActionButtonState();
       });
       splitrWaveSurfer.on("play", function () {
-        splitrPlayBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+        isPlaybackActive = true;
+        playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+        recordBtn.disabled = true;
       });
       splitrWaveSurfer.on("pause", function () {
         if (!splitrWaveSurfer.isPlaying()) {
-          splitrPlayBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+          isPlaybackActive = false;
+          playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+          recordBtn.disabled = false;
         }
       });
       splitrWaveSurfer.on("finish", function () {
-        splitrPlayBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+        isPlaybackActive = false;
+        playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+        recordBtn.disabled = false;
       });
-      renderSplitSelectionControls();
-      renderSplitOverlay();
     }
 
-    function goToSplitrDelta(delta) {
-      if (!recordingsList.length) return;
-      splitrIndex = (splitrIndex + delta + recordingsList.length) % recordingsList.length;
-      renderSplitrCurrent();
+    function updateWorkflowControlsState(hasSamples) {
+      var disabled = !hasSamples;
+      if (undoBtn) undoBtn.disabled = disabled;
+      if (duplicateBtn) duplicateBtn.disabled = disabled;
+      if (splitrTrashBtn) splitrTrashBtn.disabled = disabled;
+      if (splitrArchiveBtn) splitrArchiveBtn.disabled = disabled;
+      if (playBtn) playBtn.disabled = disabled;
+      updateWorkflowCardsState();
+    }
+
+    function updateWorkflowCardsState() {
+      var workflowEnabled = recordingsList.length > 0 && !isRecordingActive();
+      document.querySelectorAll(".folysplitr-workflow-card").forEach(function (card) {
+        card.classList.toggle("folysplitr-card-disabled", !workflowEnabled);
+      });
+    }
+
+    function showRecorderEmptyState() {
+      stopLiveWaveAnimation();
+      if (splitrWaveSurfer) {
+        try { splitrWaveSurfer.destroy(); } catch (e) { }
+        splitrWaveSurfer = null;
+      }
+      setWaveformViewState("empty");
+      waveformShell.style.display = "block";
+      waveformTitle.style.display = "none";
+      waveformDuration.innerText = "--:--";
+      playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+      isPlaybackActive = false;
+      recordBtn.disabled = false;
+      splitrDurationSeconds = 0;
+      updateWorkflowControlsState(false);
+      renderSplitSelectionControls();
+      renderRecordingsList();
+    }
+
+    function clearRecorderEmptyState() {
+      waveformTitle.style.display = "";
+      updateWorkflowControlsState(true);
+    }
+
+    async function refreshRecordingsList() {
+      var res = await fetch("/api/folysplitr/recordings");
+      var payload = await res.json();
+      if (!res.ok || !payload.ok || !payload.files) {
+        throw new Error(payload.error || "Failed to load recordings");
+      }
+      recordingsList = payload.files;
+      return recordingsList;
+    }
+
+    function renderSplitrCurrent() {
+      var total = recordingsList.length;
+      if (splitrIndex >= total) splitrIndex = Math.max(0, total - 1);
+      renderRecordingsList();
+
+      if (!total) {
+        showRecorderEmptyState();
+        return;
+      }
+
+      var item = recordingsList[splitrIndex];
+      clearRecorderEmptyState();
+      waveformShell.style.display = "block";
+      waveformTitle.innerText = item.filename || item.url;
+      waveformDuration.innerText = "--:--";
+      playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+
+      loadSampleWaveform();
+      renderSplitSelectionControls();
+      renderSplitOverlay();
     }
 
     async function loadLatestRecording() {
       try {
         await refreshRecordingsList();
-        if (!recordingsList.length) {
-          showRecorderEmptyState();
-          return;
-        }
-        var latest = recordingsList[0];
-        lastRecordingUrl = latest.url;
-        clearRecorderEmptyState();
-        loadWaveform(latest.url, latest.filename);
+        splitrIndex = 0;
         renderSplitrCurrent();
-        setStatus("Recordings loaded.");
+        if (recordingsList.length) {
+          lastRecordingUrl = recordingsList[0].url;
+          setStatus("Recordings loaded.");
+        }
       } catch (e) {
         setStatus("Could not load previous recordings.", true);
       }
@@ -2147,16 +2682,16 @@
       }
     });
     playBtn.addEventListener("click", function () {
-      if (mediaRecorder && mediaRecorder.state === "recording") return;
-      if (!waveSurfer) return;
-      if (waveSurfer.isPlaying()) {
-        waveSurfer.pause();
+      if (isRecordingActive()) return;
+      if (!splitrWaveSurfer) return;
+      if (splitrWaveSurfer.isPlaying()) {
+        splitrWaveSurfer.pause();
       } else {
-        waveSurfer.play();
+        splitrWaveSurfer.play();
       }
     });
     stopBtn.addEventListener("click", function () {
-      if (mediaRecorder && mediaRecorder.state === "recording") {
+      if (isRecordingActive()) {
         stopRecording();
       } else {
         stopPlayback();
@@ -2170,33 +2705,35 @@
         setStatus("Failed to switch input device: " + err.message, true);
       }
     });
-    tabRecorderBtn.addEventListener("click", function () {
-      showTab("recorder");
+    undoBtn.addEventListener("click", async function () {
+      try {
+        await undoLastSplitrAction();
+      } catch (e) {
+        setStatus(e.message || "Undo failed.", true);
+      }
     });
-    tabSplitrBtn.addEventListener("click", function () {
-      showTab("splitr");
+    duplicateBtn.addEventListener("click", async function () {
+      try {
+        await splitrDuplicate();
+        setStatus("Sample duplicated.");
+      } catch (e) {
+        setStatus(e.message || "Duplicate failed.", true);
+      }
     });
-    splitrPrevBtn.addEventListener("click", function () {
-      goToSplitrDelta(-1);
-    });
-    splitrNextBtn.addEventListener("click", function () {
-      goToSplitrDelta(1);
-    });
-    splitrEmptyTrashBtn.addEventListener("click", async function () {
+    folysplitrEmptyTrashBtn.addEventListener("click", async function () {
       try {
         renderTrashButtonLabel(true);
         var res = await fetch("/api/folysplitr/trash/empty", { method: "POST" });
         var payload = await res.json();
         if (!res.ok || !payload.ok) throw new Error(payload.error || "Empty trash failed");
-        splitrTrashCount = Math.max(0, splitrTrashCount - (Number(payload.removed) || 0));
-        renderTrashButtonLabel(false, Number(payload.removed) || 0);
         setStatus("Trash emptied: " + (Number(payload.removed) || 0) + " removed.");
+        await refreshFolderCounts();
       } catch (e) {
         renderTrashButtonLabel(false);
         setStatus(e.message || "Empty trash failed.", true);
       }
     });
-    splitrUnarchiveBtn.addEventListener("click", async function () {
+    folysplitrUnarchiveBtn.addEventListener("click", async function () {
       try {
         var res = await fetch("/api/folysplitr/archive/unarchive", { method: "POST" });
         var payload = await res.json();
@@ -2204,18 +2741,10 @@
         await refreshRecordingsList();
         if (splitrIndex >= recordingsList.length) splitrIndex = Math.max(0, recordingsList.length - 1);
         renderSplitrCurrent();
-        await refreshTrashCount();
+        await refreshFolderCounts();
         setStatus("Archived samples restored to queue.");
       } catch (e) {
         setStatus(e.message || "Unarchive failed.", true);
-      }
-    });
-    splitrPlayBtn.addEventListener("click", function () {
-      if (!splitrWaveSurfer) return;
-      if (splitrWaveSurfer.isPlaying()) {
-        splitrWaveSurfer.pause();
-      } else {
-        splitrWaveSurfer.play();
       }
     });
     splitrTrashBtn.addEventListener("click", async function () {
@@ -2237,6 +2766,11 @@
       playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
       stopBtn.innerHTML = '<i class="fa-solid fa-stop"></i>';
       drawMeter(0, true);
+      bindSplitControlInputs();
+      initFolysplitrKnobs(document.getElementById("splitr-knobs-row"));
+      if (window.dronmakrUi && typeof window.dronmakrUi.refreshSelects === "function") {
+        window.dronmakrUi.refreshSelects(document.getElementById("splitr-knobs-row"));
+      }
       try {
         await startMonitorForDevice("");
         await refreshDevices();
@@ -2251,7 +2785,7 @@
       }
       await loadSplitrConfig();
       await loadLatestRecording();
-      await refreshTrashCount();
+      await refreshFolderCounts();
     }
 
     document.addEventListener("DOMContentLoaded", function () {
@@ -2268,9 +2802,6 @@
       stopMeter();
       stopCurrentStream();
       stopLiveWaveAnimation();
-      if (waveSurfer) {
-        try { waveSurfer.destroy(); } catch (e) { }
-      }
       if (splitrWaveSurfer) {
         try { splitrWaveSurfer.destroy(); } catch (e) { }
       }
