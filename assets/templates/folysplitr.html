@@ -189,15 +189,24 @@
       display: none !important;
     }
 
-    .waveform-wrapper:has(.waveform-viewport[data-state="empty"]) .waveform-header {
-      display: none;
+    .waveform-wrapper:has(.waveform-viewport[data-state="empty"]) .waveform-header .waveform-title {
+      color: transparent;
+      user-select: none;
     }
 
-    .folysplitr-process-columns {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      gap: 0.65rem;
-      align-items: start;
+    .folysplitr-process-col-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      min-width: 0;
+    }
+
+    .folysplitr-process-col-label {
+      font-size: 0.65rem;
+      color: var(--theme-a);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin: 0;
     }
 
     .folysplitr-process-col-left,
@@ -208,10 +217,6 @@
       align-items: flex-start;
       align-content: flex-start;
       min-width: 0;
-    }
-
-    .folysplitr-process-col-right:empty {
-      display: none;
     }
 
     .splitr-knobs-row {
@@ -364,6 +369,13 @@
       display: flex;
       flex-direction: column;
       gap: 0.4rem;
+    }
+
+    .generatr-sweep-effect-body.folysplitr-process-columns {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 0.65rem 1rem;
+      align-items: start;
     }
 
     .folysplitr-recorder-card .recorder-toolbar {
@@ -672,6 +684,13 @@
       gap: 0.75rem 1rem;
     }
 
+    .splitr-collection-input-wrap,
+    .splitr-organize-preview-inline {
+      display: flex;
+      flex-direction: column;
+      gap: var(--dron-field-gap);
+    }
+
     .splitr-collection-input-wrap {
       flex: 1 1 11rem;
       min-width: 8rem;
@@ -687,9 +706,6 @@
     .splitr-organize-preview-inline {
       flex: 1 1 12rem;
       min-width: 10rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.2rem;
     }
 
     .splitr-organize-preview-label {
@@ -701,17 +717,20 @@
 
     .splitr-organize-preview-line {
       margin: 0;
-      padding: 0.4rem 0.5rem;
+      padding: 0 var(--dron-control-pad-x);
       font-family: inherit;
-      font-size: 0.72rem;
+      font-size: var(--dron-control-font);
       color: var(--theme-b);
-      background: #0a0a0a;
-      border: 1px solid var(--theme-a);
-      border-radius: 4px;
+      background: var(--dron-control-bg);
+      border: 1px solid var(--dron-control-border);
+      border-radius: var(--dron-control-radius);
+      height: var(--dron-control-h);
+      min-height: var(--dron-control-h);
+      line-height: calc(var(--dron-control-h) - 2px);
+      box-sizing: border-box;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      line-height: 1.35;
     }
 
     .splitr-organize-feedback {
@@ -805,6 +824,29 @@
     .splitr-btn-active {
       border-color: var(--primary);
       background: var(--primary);
+      color: var(--secondary);
+    }
+
+    #splitr-actions-right button.splitr-action-core:hover:not(:disabled) {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.15);
+    }
+
+    #splitr-actions-right button.splitr-action-category {
+      background: #0a0a0a;
+      border-color: var(--theme-a);
+      color: var(--theme-b);
+    }
+
+    #splitr-actions-right button.splitr-action-category:hover:not(:disabled) {
+      background: rgba(1, 111, 185, 0.22);
+      border-color: var(--theme-b);
+      color: var(--primary);
+    }
+
+    #splitr-actions-right button.splitr-action-category.splitr-btn-active {
+      background: var(--theme-b);
+      border-color: var(--theme-b);
       color: var(--secondary);
     }
 
@@ -1081,8 +1123,14 @@
         <span class="generatr-sweep-effect-title">Process audio</span>
       </div>
       <div class="generatr-sweep-effect-body folysplitr-process-columns">
-        <div id="splitr-actions-left" class="folysplitr-process-col-left"></div>
-        <div id="splitr-actions-right" class="folysplitr-process-col-right"></div>
+        <div class="folysplitr-process-col-wrap">
+          <span class="folysplitr-process-col-label">Categories</span>
+          <div id="splitr-actions-left" class="folysplitr-process-col-left"></div>
+        </div>
+        <div class="folysplitr-process-col-wrap">
+          <span class="folysplitr-process-col-label">Actions</span>
+          <div id="splitr-actions-right" class="folysplitr-process-col-right"></div>
+        </div>
       </div>
     </div>
 
@@ -1138,6 +1186,7 @@
   {% include '_app_version_chip.html' %}
   <script>
     var MAX_RECORDING_MS = 5 * 60 * 1000;
+    var FOLYSPLITR_INPUT_DEVICE_KEY = "folysplitr-input-device-id";
     var deviceSelect = document.getElementById("device-select");
     var recordBtn = document.getElementById("record-btn");
     var stopBtn = document.getElementById("stop-btn");
@@ -1219,7 +1268,14 @@
     function setWaveformViewState(state) {
       if (!waveformViewport) return;
       waveformViewport.setAttribute("data-state", state);
-      if (waveformHeader) waveformHeader.style.display = state === "empty" ? "none" : "";
+      if (waveformHeader) waveformHeader.style.display = "";
+      if (state === "empty") {
+        if (waveformTitle) {
+          waveformTitle.style.display = "";
+          waveformTitle.textContent = "\u00a0";
+        }
+        if (waveformDuration) waveformDuration.textContent = "--:--";
+      }
     }
 
     function updateSplitKnobsVisibility() {
@@ -2046,15 +2102,13 @@
       if (!splitrActionsLeftEl || !splitrActionsRightEl) return;
       splitrActionsLeftEl.innerHTML = "";
       splitrActionsRightEl.innerHTML = "";
-      var processingTypes = [{ key: "cut", label: "Cut" }].concat(
-        (processingCatalog.types || [])
+      var processingTypes = (processingCatalog.types || [])
           .map(function (type) {
             return { key: type.key, label: type.label };
           })
           .filter(function (type) {
             return type.key !== "normalize" && type.key !== "cut";
-          })
-      );
+          });
 
       function addLeftButton(label, onClick) {
         var btn = document.createElement("button");
@@ -2065,35 +2119,16 @@
         return btn;
       }
 
-      function addRightButton(label, onClick) {
+      function addRightButton(label, onClick, opts) {
+        opts = opts || {};
         var btn = document.createElement("button");
         btn.type = "button";
         btn.textContent = label;
+        btn.classList.add(opts.category ? "splitr-action-category" : "splitr-action-core");
         btn.addEventListener("click", onClick);
         splitrActionsRightEl.appendChild(btn);
         return btn;
       }
-
-      addLeftButton("Reverse", async function () {
-        try {
-          await splitrProcess("reverse_sample");
-          setStatus("Applied reverse.");
-        } catch (e) {
-          setStatus(e.message || "Reverse failed.", true);
-        }
-      });
-      addLeftButton("Normalize", async function () {
-        try {
-          await splitrProcess("normalize_sample");
-          setStatus("Applied normalize.");
-        } catch (e) {
-          setStatus(e.message || "Normalize failed.", true);
-        }
-      });
-
-      var divider = document.createElement("div");
-      divider.className = "splitr-actions-divider";
-      splitrActionsLeftEl.appendChild(divider);
 
       var typeButtons = {};
       processingTypes.forEach(function (type) {
@@ -2112,27 +2147,40 @@
         btn.classList.toggle("splitr-btn-active", type.key === splitrActiveProcessingType);
       });
 
-      if (!splitrActiveProcessingType) return;
+      addRightButton("Reverse", async function () {
+        try {
+          await splitrProcess("reverse_sample");
+          setStatus("Applied reverse.");
+        } catch (e) {
+          setStatus(e.message || "Reverse failed.", true);
+        }
+      });
+      addRightButton("Normalize", async function () {
+        try {
+          await splitrProcess("normalize_sample");
+          setStatus("Applied normalize.");
+        } catch (e) {
+          setStatus(e.message || "Normalize failed.", true);
+        }
+      });
+      addRightButton("Start At " + formatTime(splitrSelectedSeconds), async function () {
+        try {
+          await splitrProcess("trim_sample_start", { seconds: splitrSelectedSeconds });
+          setStatus("Trimmed start.");
+        } catch (e) {
+          setStatus(e.message || "Trim failed.", true);
+        }
+      });
+      addRightButton("End At " + formatTime(splitrSelectedSeconds), async function () {
+        try {
+          await splitrProcess("trim_sample_end", { seconds: splitrSelectedSeconds });
+          setStatus("Trimmed end.");
+        } catch (e) {
+          setStatus(e.message || "Trim failed.", true);
+        }
+      });
 
-      if (splitrActiveProcessingType === "cut") {
-        addRightButton("Start At " + formatTime(splitrSelectedSeconds), async function () {
-          try {
-            await splitrProcess("trim_sample_start", { seconds: splitrSelectedSeconds });
-            setStatus("Trimmed start.");
-          } catch (e) {
-            setStatus(e.message || "Trim failed.", true);
-          }
-        });
-        addRightButton("End At " + formatTime(splitrSelectedSeconds), async function () {
-          try {
-            await splitrProcess("trim_sample_end", { seconds: splitrSelectedSeconds });
-            setStatus("Trimmed end.");
-          } catch (e) {
-            setStatus(e.message || "Trim failed.", true);
-          }
-        });
-        return;
-      }
+      if (!splitrActiveProcessingType) return;
 
       var paramControls = renderSplitrParamControls(splitrActiveProcessingType);
       if (paramControls) splitrActionsRightEl.appendChild(paramControls);
@@ -2164,7 +2212,7 @@
             } catch (e) {
               setStatus(e.message || "Process failed.", true);
             }
-          });
+          }, { category: true });
         });
     }
 
@@ -2248,7 +2296,12 @@
       stopMeter();
       stopCurrentStream();
       var constraints = { audio: deviceId ? { deviceId: { exact: deviceId } } : true };
-      monitorStream = await navigator.mediaDevices.getUserMedia(constraints);
+      try {
+        monitorStream = await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (err) {
+        if (!deviceId) throw err;
+        monitorStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      }
 
       audioContext = new (window.AudioContext || window.webkitAudioContext)();
       var source = audioContext.createMediaStreamSource(monitorStream);
@@ -2258,6 +2311,72 @@
       meterData = new Float32Array(analyser.fftSize);
       source.connect(analyser);
       meterLoop();
+    }
+
+    function readSavedInputDeviceId() {
+      try {
+        return localStorage.getItem(FOLYSPLITR_INPUT_DEVICE_KEY) || "";
+      } catch (e) {
+        return "";
+      }
+    }
+
+    function saveInputDeviceId(deviceId) {
+      try {
+        if (deviceId) localStorage.setItem(FOLYSPLITR_INPUT_DEVICE_KEY, deviceId);
+        else localStorage.removeItem(FOLYSPLITR_INPUT_DEVICE_KEY);
+      } catch (e) { }
+    }
+
+    function findInputDeviceOption(deviceId) {
+      if (!deviceId || !deviceSelect) return null;
+      for (var i = 0; i < deviceSelect.options.length; i++) {
+        if (deviceSelect.options[i].value === deviceId) return deviceSelect.options[i];
+      }
+      return null;
+    }
+
+    function getActiveInputDeviceId() {
+      if (!monitorStream) return "";
+      var track = monitorStream.getAudioTracks()[0];
+      if (!track || !track.getSettings) return "";
+      return track.getSettings().deviceId || "";
+    }
+
+    function resolveInputDeviceId() {
+      var savedId = readSavedInputDeviceId();
+      if (savedId && findInputDeviceOption(savedId)) return savedId;
+      if (deviceSelect && deviceSelect.options.length) return deviceSelect.options[0].value;
+      return "";
+    }
+
+    function syncInputDeviceSelect(deviceId) {
+      if (!deviceSelect || !deviceId || !findInputDeviceOption(deviceId)) return;
+      deviceSelect.value = deviceId;
+    }
+
+    async function initInputDeviceMonitor() {
+      await refreshDevices();
+      var savedId = readSavedInputDeviceId();
+      await startMonitorForDevice(savedId);
+      await refreshDevices();
+
+      var deviceId = resolveInputDeviceId();
+      var activeId = getActiveInputDeviceId();
+      if (deviceId && deviceId !== activeId) {
+        await startMonitorForDevice(deviceId);
+        activeId = getActiveInputDeviceId();
+      }
+
+      if (deviceId && deviceId !== activeId) {
+        deviceId = deviceSelect && deviceSelect.options.length ? deviceSelect.options[0].value : "";
+        if (deviceId && deviceId !== activeId) {
+          await startMonitorForDevice(deviceId);
+        }
+      }
+
+      syncInputDeviceSelect(deviceId);
+      if (deviceSelect && deviceSelect.value) saveInputDeviceId(deviceSelect.value);
     }
 
     async function refreshDevices() {
@@ -2538,7 +2657,7 @@
       });
       splitrWaveSurfer.on("seeking", function (currentTime) {
         splitrSelectedSeconds = currentTime || 0;
-        if (splitrActiveProcessingType === "cut") renderSplitrActions();
+        renderSplitrActions();
         renderSplitOverlay();
         updateSplitActionButtonState();
       });
@@ -2549,6 +2668,8 @@
           splitrMarkers.push(splitrSelectedSeconds);
           splitrMarkers = sanitizeMarkers(splitrMarkers, splitrDurationSeconds);
           renderSplitOverlay();
+        } else {
+          renderSplitrActions();
         }
         updateSplitActionButtonState();
       });
@@ -2596,7 +2717,8 @@
       }
       setWaveformViewState("empty");
       waveformShell.style.display = "block";
-      waveformTitle.style.display = "none";
+      waveformTitle.style.display = "";
+      waveformTitle.textContent = "\u00a0";
       waveformDuration.innerText = "--:--";
       playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
       isPlaybackActive = false;
@@ -2700,6 +2822,7 @@
     deviceSelect.addEventListener("change", async function () {
       try {
         await startMonitorForDevice(deviceSelect.value);
+        saveInputDeviceId(deviceSelect.value);
         setStatus("Input device switched.");
       } catch (err) {
         setStatus("Failed to switch input device: " + err.message, true);
@@ -2772,13 +2895,7 @@
         window.dronmakrUi.refreshSelects(document.getElementById("splitr-knobs-row"));
       }
       try {
-        await startMonitorForDevice("");
-        await refreshDevices();
-        if (deviceSelect.options.length > 0 && monitorStream) {
-          var selectedTrack = monitorStream.getAudioTracks()[0];
-          var selectedSetting = selectedTrack && selectedTrack.getSettings ? selectedTrack.getSettings().deviceId : "";
-          if (selectedSetting) deviceSelect.value = selectedSetting;
-        }
+        await initInputDeviceMonitor();
         setStatus("Microphone ready.");
       } catch (err) {
         setStatus("Microphone access denied or unavailable: " + err.message, true);
