@@ -7057,7 +7057,58 @@
         return !!generatrDroneCustomNotes[generatrDroneNoteId(pitch, octave)];
       }
 
+      function generatrDronePitchOctaveToMidi(pitch, octave) {
+        var semi = GENERATR_DRONE_PITCH_ORDER.indexOf(pitch);
+        if (semi < 0) return 60;
+        return (octave + 1) * 12 + semi;
+      }
+
+      function generatrDronePreviewNote(pitch, octave) {
+        resumeAuditionrAudioContext().then(function () {
+          try {
+            var ctx = getAudioContext();
+            var midi = generatrDronePitchOctaveToMidi(pitch, octave);
+            var freq = 440 * Math.pow(2, (midi - 69) / 12);
+            if (!isFinite(freq) || freq <= 0) return;
+
+            var t0 = ctx.currentTime;
+            var attack = 0.004;
+            var decay = 0.16;
+            var sustain = 0.058;
+            var release = 0.14;
+            var peak = 0.11;
+            var hold = 0.24;
+            var tRelease = t0 + attack + decay + hold;
+
+            var osc = ctx.createOscillator();
+            osc.type = "square";
+            osc.frequency.setValueAtTime(freq, t0);
+
+            var gain = ctx.createGain();
+            gain.gain.setValueAtTime(0.0001, t0);
+            gain.gain.exponentialRampToValueAtTime(Math.max(peak, 0.0002), t0 + attack);
+            gain.gain.exponentialRampToValueAtTime(Math.max(sustain, 0.0002), t0 + attack + decay);
+            gain.gain.exponentialRampToValueAtTime(0.0001, tRelease + release);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.start(t0);
+            osc.stop(tRelease + release + 0.02);
+            osc.onended = function () {
+              try {
+                osc.disconnect();
+                gain.disconnect();
+              } catch (disconnectErr) { /* ignore */ }
+            };
+          } catch (previewErr) {
+            /* optional UI feedback */
+          }
+        }).catch(function () { /* ignore */ });
+      }
+
       function generatrDroneToggleNote(pitch, octave) {
+        generatrDronePreviewNote(pitch, octave);
         var noteId = generatrDroneNoteId(pitch, octave);
         if (generatrDroneCustomNotes[noteId]) delete generatrDroneCustomNotes[noteId];
         else generatrDroneCustomNotes[noteId] = true;
