@@ -143,7 +143,9 @@ def generate_drone_sample(
         else:
             raise ValueError(f"No instrument found with the name '{instrument}'")
 
-    if effect:
+    if (effect or "").strip().lower() == "none":
+        effect_preset = None
+    elif effect:
         effect_preset = next((p for p in fx_presets if p.get("name") == effect), None)
         if effect_preset is None:
             avail = sorted({p.get("name", "") for p in fx_presets if isinstance(p.get("name"), str)})
@@ -174,6 +176,13 @@ def generate_drone_sample(
             with_prompt(
                 f"selected {GREEN}{instrument_preset['name']}{RESET} sound processed with "
                 f"{GREEN}{effect_preset['name']}{RESET}"
+            )
+        )
+    elif (effect or "").strip().lower() == "none":
+        print(
+            with_prompt(
+                f"selected {GREEN}{instrument_preset['name']}{RESET} only "
+                f"(FX chain: {GREEN}none{RESET})"
             )
         )
     else:

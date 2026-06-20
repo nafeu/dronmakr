@@ -685,6 +685,35 @@ def _apply_drone_post_processing_to_wavs(
         print(f"{BLUE}│{RESET}")
 
 
+def _parse_drone_custom_notes(raw) -> list[str] | None:
+    """Validate Auditionr custom-note payloads for ``generate_drone_midi(notes=...)``."""
+    import pretty_midi
+
+    if raw is None:
+        return None
+    if isinstance(raw, str):
+        items = [part.strip() for part in raw.split(",") if part.strip()]
+    elif isinstance(raw, list):
+        items = [str(part).strip() for part in raw if str(part).strip()]
+    else:
+        return None
+    if not items:
+        return None
+
+    validated: list[str] = []
+    seen: set[str] = set()
+    for item in items:
+        try:
+            pretty_midi.note_name_to_number(item)
+        except Exception as exc:
+            raise ValueError(f"Invalid custom note '{item}'") from exc
+        if item in seen:
+            continue
+        seen.add(item)
+        validated.append(item)
+    return validated or None
+
+
 def _run_generate_drone(payload: dict) -> list[str]:
     """`generate-drone` CLI parity (omits UI for --shift-octave-down, --shift-root-note, --dry-run, --log-server, --play)."""
     from dronmakr.core.utils import resolve_presets_index_path
@@ -724,27 +753,39 @@ def _run_generate_drone(payload: dict) -> list[str]:
     else:
         post_processing_spec = (post_processing or "").strip() or None
 
+    musical_style_mode = (payload.get("musicalStyleMode") or "custom").strip().lower()
+    custom_notes = None
+    if musical_style_mode == "custom":
+        custom_notes = _parse_drone_custom_notes(payload.get("customNotes"))
+
     filters = {}
-    if tags_raw:
-        filters["tags"] = [t.strip() for t in tags_raw.split(",") if t.strip()]
-    if roots_raw:
-        filters["roots"] = [r.strip() for r in roots_raw.split(",") if r.strip()]
-    if chart_type:
-        filters["type"] = chart_type
-    if chart_name:
-        filters["name"] = chart_name
+    if musical_style_mode == "chart":
+        if tags_raw:
+            filters["tags"] = [t.strip() for t in tags_raw.split(",") if t.strip()]
+        if roots_raw:
+            filters["roots"] = [r.strip() for r in roots_raw.split(",") if r.strip()]
+        if chart_type:
+            filters["type"] = chart_type
+        if chart_name:
+            filters["name"] = chart_name
 
     results: list[str] = []
     for _ in range(iterations):
-        midi_file, selected_chart, render_duration_sec = generate_drone_midi(
-            pattern=pattern,
-            shift_octave_down=None,
-            shift_root_note=None,
-            filters=filters,
-            num_bars=length_bars,
-            padded_silence_bars=padded_silence_bars,
-        )
-        base_sample_name = f"{generate_drone_name()}_-_{selected_chart}_-_{generate_id()}"
+        midi_kwargs = {
+            "pattern": pattern,
+            "shift_octave_down": None,
+            "shift_root_note": None,
+            "num_bars": length_bars,
+            "padded_silence_bars": padded_silence_bars,
+        }
+        if custom_notes:
+            midi_kwargs["notes"] = custom_notes
+        else:
+            midi_kwargs["filters"] = filters
+
+        midi_file, selected_chart, render_duration_sec = generate_drone_midi(**midi_kwargs)
+        chart_label = "custom" if custom_notes else selected_chart
+        base_sample_name = f"{generate_drone_name()}_-_{chart_label}_-_{generate_id()}"
         sample_name = format_name(f"drone___{base_sample_name}")
         output_path = f"{EXPORTS_DIR}/{sample_name}"
         generated_sample = generate_drone_sample(

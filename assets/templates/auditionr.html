@@ -1041,40 +1041,214 @@
       display: none !important;
     }
 
-    /* Drone picker: combo input + search affordance */
-    .generatr-input-with-picker {
-      display: flex;
-      gap: 0.35rem;
-      align-items: stretch;
-      min-width: 0;
-      width: 100%;
+    /* Drone musical style card + catalog picker inputs */
+    .generatr-drone-musical-style-card .generatr-sweep-effect-head {
+      flex-wrap: wrap;
     }
 
-    .generatr-input-with-picker > input[type="text"] {
-      flex: 1;
-      width: auto;
-      min-width: 0;
-    }
-
-    .generatr-chord-picker-btn {
-      flex: 0 0 auto;
+    .generatr-drone-style-mode {
       display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 2.15rem;
-      padding: 0;
-      cursor: pointer;
+      gap: 0.2rem;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    .generatr-drone-style-mode-btn {
+      margin: 0;
+      padding: 0.18rem 0.55rem;
       font-family: inherit;
-      font-size: 0.88rem;
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.28);
+      font-size: 0.68rem;
+      line-height: 1.2;
       border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      background: rgba(255, 255, 255, 0.06);
+      color: color-mix(in srgb, var(--primary) 72%, transparent);
+      cursor: pointer;
+    }
+
+    .generatr-drone-style-mode-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
       color: var(--primary);
     }
 
-    .generatr-chord-picker-btn:hover {
-      background: rgba(255, 255, 255, 0.2);
-      border-color: rgba(255, 255, 255, 0.45);
+    .generatr-drone-style-mode-btn.is-active {
+      background: color-mix(in srgb, var(--theme-a) 55%, transparent);
+      border-color: rgba(255, 255, 255, 0.35);
+      color: var(--primary);
+    }
+
+    .generatr-drone-style-panel.hidden {
+      display: none !important;
+    }
+
+    .generatr-drone-piano-layout {
+      display: flex;
+      align-items: stretch;
+      gap: 0.45rem;
+      max-width: 88%;
+    }
+
+    .generatr-drone-octave-nav {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.22rem;
+      flex: 0 0 auto;
+      min-width: 1.85rem;
+    }
+
+    .generatr-drone-octave-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.55rem;
+      height: 1.55rem;
+      margin: 0;
+      padding: 0;
+      border-radius: var(--dron-control-radius);
+      border: 1px solid var(--dron-control-border);
+      background: var(--dron-control-bg);
+      color: var(--primary);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.68rem;
+    }
+
+    .generatr-drone-octave-btn:hover:not(:disabled) {
+      border-color: color-mix(in srgb, var(--primary) 55%, var(--dron-control-border));
+      color: var(--primary);
+    }
+
+    .generatr-drone-octave-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .generatr-drone-octave-display {
+      min-width: 1.35rem;
+      text-align: center;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: color-mix(in srgb, var(--primary) 80%, var(--theme-d));
+      font-variant-numeric: tabular-nums;
+      line-height: 1.2;
+    }
+
+    .generatr-drone-piano-roll {
+      position: relative;
+      flex: 1 1 auto;
+      min-width: 0;
+      height: 4.35rem;
+      border: 1px solid var(--dron-control-border);
+      border-radius: var(--dron-control-radius);
+      overflow: hidden;
+      user-select: none;
+      background: var(--dron-control-bg);
+    }
+
+    .generatr-drone-piano-whites {
+      display: flex;
+      width: 100%;
+      height: 100%;
+    }
+
+    .generatr-drone-piano-key {
+      margin: 0;
+      padding: 0 0.08rem 0.28rem;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.56rem;
+      line-height: 1;
+      box-sizing: border-box;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      min-width: 0;
+      transition: color 0.12s ease, background-color 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .generatr-drone-piano-key--white {
+      flex: 1 1 0;
+      height: 100%;
+      border-radius: 0;
+      color: color-mix(in srgb, var(--theme-d) 62%, transparent);
+      background: var(--dron-control-bg);
+    }
+
+    .generatr-drone-piano-key--black {
+      position: absolute;
+      top: 0;
+      height: 62%;
+      z-index: 2;
+      border-radius: 0 0 2px 2px;
+      color: color-mix(in srgb, var(--theme-d) 52%, transparent);
+      background: color-mix(in srgb, var(--theme-a) 82%, var(--dron-control-bg));
+    }
+
+    .generatr-drone-piano-key--white:hover:not(.is-enabled) {
+      color: color-mix(in srgb, var(--primary) 70%, var(--theme-d));
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 28%, transparent);
+    }
+
+    .generatr-drone-piano-key--black:hover:not(.is-enabled) {
+      color: color-mix(in srgb, var(--primary) 65%, var(--theme-d));
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 32%, transparent);
+    }
+
+    .generatr-drone-piano-key.is-enabled {
+      color: var(--primary);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 45%, transparent);
+    }
+
+    .generatr-drone-piano-key--white.is-enabled {
+      background: color-mix(in srgb, var(--primary) 12%, var(--dron-control-bg));
+    }
+
+    .generatr-drone-piano-key--black.is-enabled {
+      background: color-mix(in srgb, var(--primary) 18%, var(--theme-a));
+    }
+
+    .generatr-drone-piano-key:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: -1px;
+      z-index: 3;
+    }
+
+    .generatr-drone-musical-style-body {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.55rem 0.65rem;
+    }
+
+    .generatr-drone-musical-style-field {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      gap: var(--dron-field-gap);
+      min-width: 0;
+    }
+
+    .generatr-drone-musical-style-field > label {
+      font-size: var(--dron-label-size);
+      line-height: var(--dron-label-line);
+      color: var(--theme-a);
+      text-align: left;
+      align-self: flex-start;
+      margin: 0;
+      min-width: 0;
+    }
+
+    .generatr-form .form-row input[type="text"].generatr-picker-input,
+    .generatr-form .form-row input[type="text"].generatr-picker-input:hover {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .generatr-picker-input:focus {
+      outline: none;
+      border-color: var(--primary);
     }
 
     /* Chord/catalog search modal */
@@ -2731,33 +2905,49 @@
                   </div>
                 </div>
               </div>
-              <div class="form-row hidden" id="generatr-drone-chart-name-row">
-                <label for="generatr-drone-chart-name">Chart name</label>
-                <div class="generatr-input-with-picker">
-                  <input type="text" id="generatr-drone-chart-name" placeholder="comma-separated substrings from catalog">
-                  <button type="button" class="generatr-chord-picker-btn" data-picker-kind="chartNames" aria-label="Search chart names" title="Browse chart names"><i class="fa-solid fa-magnifying-glass"></i></button>
-                </div>
-              </div>
-              <div class="form-row hidden" id="generatr-drone-chart-type-row">
-                <label for="generatr-drone-chart-type">Chart type</label>
-                <select id="generatr-drone-chart-type" name="drone_chart_type">
-                  <option value="">(any)</option>
-                  <option value="chord">chord</option>
-                  <option value="scale">scale</option>
-                </select>
-              </div>
-              <div class="form-row hidden" id="generatr-drone-tags-row">
-                <label for="generatr-drone-tags">Tags</label>
-                <div class="generatr-input-with-picker">
-                  <input type="text" id="generatr-drone-tags" placeholder="comma-separated">
-                  <button type="button" class="generatr-chord-picker-btn" data-picker-kind="tags" aria-label="Search tags" title="Browse tags"><i class="fa-solid fa-magnifying-glass"></i></button>
-                </div>
-              </div>
-              <div class="form-row hidden" id="generatr-drone-roots-row">
-                <label for="generatr-drone-roots">Roots</label>
-                <div class="generatr-input-with-picker">
-                  <input type="text" id="generatr-drone-roots" placeholder="comma-separated">
-                  <button type="button" class="generatr-chord-picker-btn" data-picker-kind="roots" aria-label="Search roots" title="Browse roots"><i class="fa-solid fa-magnifying-glass"></i></button>
+              <div class="form-row form-row-full hidden" id="generatr-drone-musical-style-row">
+                <div class="generatr-sweep-effect generatr-drone-musical-style-card">
+                  <div class="generatr-sweep-effect-head">
+                    <span class="generatr-sweep-effect-title">Musical Style</span>
+                    <div class="generatr-drone-style-mode" role="tablist" aria-label="Musical style mode">
+                      <button type="button" class="generatr-drone-style-mode-btn is-active" role="tab" aria-selected="true" data-drone-style-mode="custom" id="generatr-drone-style-mode-custom">Custom</button>
+                      <button type="button" class="generatr-drone-style-mode-btn" role="tab" aria-selected="false" data-drone-style-mode="chart" id="generatr-drone-style-mode-chart">Chart</button>
+                    </div>
+                  </div>
+                  <div class="generatr-sweep-effect-body">
+                    <div id="generatr-drone-style-custom" class="generatr-drone-style-panel" role="tabpanel" aria-labelledby="generatr-drone-style-mode-custom">
+                      <div class="generatr-drone-piano-layout">
+                        <div class="generatr-drone-piano-roll" id="generatr-drone-piano-roll" role="group" aria-label="Select notes for custom musical style"></div>
+                        <div class="generatr-drone-octave-nav">
+                          <button type="button" class="generatr-drone-octave-btn" id="generatr-drone-octave-up" aria-label="Next octave"><i class="fa-solid fa-chevron-up" aria-hidden="true"></i></button>
+                          <span class="generatr-drone-octave-display" id="generatr-drone-octave-display" aria-live="polite">3</span>
+                          <button type="button" class="generatr-drone-octave-btn" id="generatr-drone-octave-down" aria-label="Previous octave"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></button>
+                        </div>
+                      </div>
+                    </div>
+                    <div id="generatr-drone-style-chart" class="generatr-drone-style-panel hidden generatr-drone-musical-style-body" role="tabpanel" aria-labelledby="generatr-drone-style-mode-chart" hidden>
+                      <div class="generatr-drone-musical-style-field">
+                        <label for="generatr-drone-chart-name">Chart name</label>
+                        <input type="text" id="generatr-drone-chart-name" class="generatr-picker-input" data-picker-kind="chartNames" readonly placeholder="(any)" aria-haspopup="dialog" title="Browse chart names">
+                      </div>
+                      <div class="generatr-drone-musical-style-field">
+                        <label for="generatr-drone-chart-type">Chart type</label>
+                        <select id="generatr-drone-chart-type" name="drone_chart_type">
+                          <option value="">(any)</option>
+                          <option value="chord">chord</option>
+                          <option value="scale">scale</option>
+                        </select>
+                      </div>
+                      <div class="generatr-drone-musical-style-field">
+                        <label for="generatr-drone-tags">Tags</label>
+                        <input type="text" id="generatr-drone-tags" class="generatr-picker-input" data-picker-kind="tags" readonly placeholder="(any)" aria-haspopup="dialog" title="Browse tags">
+                      </div>
+                      <div class="generatr-drone-musical-style-field">
+                        <label for="generatr-drone-roots">Roots</label>
+                        <input type="text" id="generatr-drone-roots" class="generatr-picker-input" data-picker-kind="roots" readonly placeholder="(any)" aria-haspopup="dialog" title="Browse roots">
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div class="form-row hidden" id="generatr-drone-pattern-row">
@@ -2787,13 +2977,13 @@
                         <span class="daw-knob-readout" aria-hidden="true">16 bars</span>
                         <input type="number" class="daw-knob-input" id="generatr-drone-length" step="1" min="1" max="64" value="16" tabindex="-1" aria-hidden="true">
                       </div>
-                      <div class="daw-knob" data-knob-choices="1,2,4,8,16,32,64" data-knob-unit="bars" data-knob-decimals="0">
+                      <div class="daw-knob" data-knob-choices="0,1,2,4,8,16,32,64" data-knob-unit="bars" data-knob-decimals="0">
                         <span class="daw-knob-label">Silence</span>
                         <button type="button" class="daw-knob-dial" aria-label="Trailing silence after MIDI pattern for export">
                           <span class="daw-knob-ring" aria-hidden="true"></span>
                         </button>
-                        <span class="daw-knob-readout" aria-hidden="true">1 bars</span>
-                        <input type="number" class="daw-knob-input" id="generatr-drone-padded-silence" step="1" min="1" max="64" value="1" tabindex="-1" aria-hidden="true">
+                        <span class="daw-knob-readout" aria-hidden="true">0 bars</span>
+                        <input type="number" class="daw-knob-input" id="generatr-drone-padded-silence" step="1" min="0" max="64" value="0" tabindex="-1" aria-hidden="true">
                       </div>
                       <div class="daw-knob" data-knob-unit="" data-knob-decimals="0">
                         <span class="daw-knob-label">Iters</span>
@@ -5449,10 +5639,7 @@
         if (!stillValid) kindSelect.value = "drone";
       })();
       var droneRows = [
-        document.getElementById("generatr-drone-chart-name-row"),
-        document.getElementById("generatr-drone-chart-type-row"),
-        document.getElementById("generatr-drone-tags-row"),
-        document.getElementById("generatr-drone-roots-row"),
+        document.getElementById("generatr-drone-musical-style-row"),
         document.getElementById("generatr-drone-pattern-row"),
         document.getElementById("generatr-drone-instrument-row"),
         document.getElementById("generatr-drone-effect-row"),
@@ -5494,6 +5681,14 @@
       var droneInstrumentSelect = document.getElementById("generatr-drone-instrument");
       var droneEffectSelect = document.getElementById("generatr-drone-effect");
       var droneIterationsInput = document.getElementById("generatr-drone-iterations");
+      var droneStyleModeCustomBtn = document.getElementById("generatr-drone-style-mode-custom");
+      var droneStyleModeChartBtn = document.getElementById("generatr-drone-style-mode-chart");
+      var droneStyleCustomPanel = document.getElementById("generatr-drone-style-custom");
+      var droneStyleChartPanel = document.getElementById("generatr-drone-style-chart");
+      var dronePianoRollEl = document.getElementById("generatr-drone-piano-roll");
+      var droneOctaveDisplay = document.getElementById("generatr-drone-octave-display");
+      var droneOctaveUpBtn = document.getElementById("generatr-drone-octave-up");
+      var droneOctaveDownBtn = document.getElementById("generatr-drone-octave-down");
       var form = document.getElementById("generatr-form");
       var btnGenerate = document.getElementById("generatr-btn");
       var busyOverlay = document.getElementById("generatr-busy-overlay");
@@ -5610,6 +5805,19 @@
             setSelectOptions(dronePatternSelect, data.droneMidiPatterns || [], true);
             setSelectOptions(droneInstrumentSelect, data.droneInstruments || [], true);
             setSelectOptions(droneEffectSelect, data.droneEffects || [], true);
+            if (droneEffectSelect) {
+              var droneFxNoneOpt = document.createElement("option");
+              droneFxNoneOpt.value = "none";
+              droneFxNoneOpt.textContent = "none";
+              var droneFxRandomOpt = droneEffectSelect.querySelector('option[value=""]');
+              if (droneFxRandomOpt && droneFxRandomOpt.nextSibling) {
+                droneEffectSelect.insertBefore(droneFxNoneOpt, droneFxRandomOpt.nextSibling);
+              } else if (droneFxRandomOpt) {
+                droneEffectSelect.appendChild(droneFxNoneOpt);
+              } else {
+                droneEffectSelect.insertBefore(droneFxNoneOpt, droneEffectSelect.firstChild);
+              }
+            }
             mergeProcessingCatalog(data.processingActions || {});
             generatrChordPicklists.roots = Array.isArray(data.droneChordScaleRoots) ? data.droneChordScaleRoots : [];
             generatrChordPicklists.tags = Array.isArray(data.droneChordScaleTags) ? data.droneChordScaleTags : [];
@@ -6801,7 +7009,176 @@
         }
       } catch (errTab) { /* ignore */ }
 
-      /* ── Drone: chord/scale catalog pickers — tags / roots / chart names ── */
+      /* ── Drone: custom piano roll + chart/catalog pickers ── */
+      var GENERATR_DRONE_STYLE_MODE = "custom";
+      var GENERATR_DRONE_OCTAVE_MIN = -1;
+      var GENERATR_DRONE_OCTAVE_MAX = 5;
+      var GENERATR_DRONE_OCTAVE_DEFAULT = 3;
+      var GENERATR_DRONE_PIANO_WHITES = ["C", "D", "E", "F", "G", "A", "B"];
+      var GENERATR_DRONE_PIANO_BLACKS = [
+        { pitch: "C#", afterWhite: 0 },
+        { pitch: "D#", afterWhite: 1 },
+        { pitch: "F#", afterWhite: 3 },
+        { pitch: "G#", afterWhite: 4 },
+        { pitch: "A#", afterWhite: 5 }
+      ];
+      var GENERATR_DRONE_PITCH_ORDER = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+      var generatrDroneCustomNotes = Object.create(null);
+      var generatrDronePianoOctave = GENERATR_DRONE_OCTAVE_DEFAULT;
+      var generatrDronePianoBuilt = false;
+
+      function generatrDroneNoteId(pitch, octave) {
+        return String(pitch) + String(octave);
+      }
+
+      function generatrDroneParseNoteId(noteId) {
+        var m = /^(.+?)(-?\d+)$/.exec(String(noteId || ""));
+        if (!m) return { pitch: "", octave: 0 };
+        return { pitch: m[1], octave: parseInt(m[2], 10) };
+      }
+
+      function generatrDronePitchSortIndex(pitch) {
+        var idx = GENERATR_DRONE_PITCH_ORDER.indexOf(pitch);
+        return idx >= 0 ? idx : 99;
+      }
+
+      function generatrDroneGetSelectedCustomNotes() {
+        return Object.keys(generatrDroneCustomNotes)
+          .filter(function (noteId) { return generatrDroneCustomNotes[noteId]; })
+          .sort(function (a, b) {
+            var pa = generatrDroneParseNoteId(a);
+            var pb = generatrDroneParseNoteId(b);
+            if (pa.octave !== pb.octave) return pa.octave - pb.octave;
+            return generatrDronePitchSortIndex(pa.pitch) - generatrDronePitchSortIndex(pb.pitch);
+          });
+      }
+
+      function generatrDroneIsNoteEnabled(pitch, octave) {
+        return !!generatrDroneCustomNotes[generatrDroneNoteId(pitch, octave)];
+      }
+
+      function generatrDroneToggleNote(pitch, octave) {
+        var noteId = generatrDroneNoteId(pitch, octave);
+        if (generatrDroneCustomNotes[noteId]) delete generatrDroneCustomNotes[noteId];
+        else generatrDroneCustomNotes[noteId] = true;
+        generatrDroneSyncPianoRollKeyStates();
+      }
+
+      function generatrDroneSyncPianoRollKeyStates() {
+        if (!dronePianoRollEl) return;
+        dronePianoRollEl.querySelectorAll(".generatr-drone-piano-key[data-pitch]").forEach(function (btn) {
+          var pitch = btn.getAttribute("data-pitch") || "";
+          var enabled = generatrDroneIsNoteEnabled(pitch, generatrDronePianoOctave);
+          btn.classList.toggle("is-enabled", enabled);
+          btn.setAttribute("aria-pressed", enabled ? "true" : "false");
+        });
+      }
+
+      function generatrDroneSyncOctaveNav() {
+        if (droneOctaveDisplay) droneOctaveDisplay.textContent = String(generatrDronePianoOctave);
+        if (droneOctaveUpBtn) droneOctaveUpBtn.disabled = generatrDronePianoOctave >= GENERATR_DRONE_OCTAVE_MAX;
+        if (droneOctaveDownBtn) droneOctaveDownBtn.disabled = generatrDronePianoOctave <= GENERATR_DRONE_OCTAVE_MIN;
+        generatrDroneSyncPianoRollKeyStates();
+      }
+
+      function generatrDronePitchLabel(pitch) {
+        return String(pitch || "").replace("#", "♯");
+      }
+
+      function generatrDroneBuildPianoRoll() {
+        if (!dronePianoRollEl || generatrDronePianoBuilt) return;
+        generatrDronePianoBuilt = true;
+        dronePianoRollEl.innerHTML = "";
+
+        var whitesWrap = document.createElement("div");
+        whitesWrap.className = "generatr-drone-piano-whites";
+        GENERATR_DRONE_PIANO_WHITES.forEach(function (pitch) {
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "generatr-drone-piano-key generatr-drone-piano-key--white";
+          btn.setAttribute("data-pitch", pitch);
+          btn.setAttribute("aria-pressed", "false");
+          btn.setAttribute("aria-label", pitch);
+          btn.textContent = pitch;
+          btn.addEventListener("click", function () {
+            generatrDroneToggleNote(pitch, generatrDronePianoOctave);
+          });
+          whitesWrap.appendChild(btn);
+        });
+        dronePianoRollEl.appendChild(whitesWrap);
+
+        var whiteWidthPct = 100 / GENERATR_DRONE_PIANO_WHITES.length;
+        var blackWidthPct = whiteWidthPct * 0.58;
+        GENERATR_DRONE_PIANO_BLACKS.forEach(function (blackKey) {
+          var pitch = blackKey.pitch;
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "generatr-drone-piano-key generatr-drone-piano-key--black";
+          btn.setAttribute("data-pitch", pitch);
+          btn.setAttribute("aria-pressed", "false");
+          btn.setAttribute("aria-label", pitch);
+          btn.textContent = generatrDronePitchLabel(pitch);
+          btn.style.width = blackWidthPct + "%";
+          btn.style.left = ((blackKey.afterWhite + 1) * whiteWidthPct - blackWidthPct / 2) + "%";
+          btn.addEventListener("click", function () {
+            generatrDroneToggleNote(pitch, generatrDronePianoOctave);
+          });
+          dronePianoRollEl.appendChild(btn);
+        });
+
+        generatrDroneSyncOctaveNav();
+      }
+
+      function generatrDroneSetStyleMode(mode) {
+        var nextMode = mode === "chart" ? "chart" : "custom";
+        GENERATR_DRONE_STYLE_MODE = nextMode;
+        var isCustom = nextMode === "custom";
+        if (droneStyleModeCustomBtn) {
+          droneStyleModeCustomBtn.classList.toggle("is-active", isCustom);
+          droneStyleModeCustomBtn.setAttribute("aria-selected", isCustom ? "true" : "false");
+        }
+        if (droneStyleModeChartBtn) {
+          droneStyleModeChartBtn.classList.toggle("is-active", !isCustom);
+          droneStyleModeChartBtn.setAttribute("aria-selected", !isCustom ? "true" : "false");
+        }
+        if (droneStyleCustomPanel) {
+          droneStyleCustomPanel.classList.toggle("hidden", !isCustom);
+          droneStyleCustomPanel.hidden = !isCustom;
+        }
+        if (droneStyleChartPanel) {
+          droneStyleChartPanel.classList.toggle("hidden", isCustom);
+          droneStyleChartPanel.hidden = isCustom;
+        }
+        if (isCustom) generatrDroneBuildPianoRoll();
+        requestAnimationFrame(auditionrRefreshSidebarScrollbars);
+      }
+
+      if (droneStyleModeCustomBtn) {
+        droneStyleModeCustomBtn.addEventListener("click", function () {
+          generatrDroneSetStyleMode("custom");
+        });
+      }
+      if (droneStyleModeChartBtn) {
+        droneStyleModeChartBtn.addEventListener("click", function () {
+          generatrDroneSetStyleMode("chart");
+        });
+      }
+      if (droneOctaveUpBtn) {
+        droneOctaveUpBtn.addEventListener("click", function () {
+          if (generatrDronePianoOctave >= GENERATR_DRONE_OCTAVE_MAX) return;
+          generatrDronePianoOctave += 1;
+          generatrDroneSyncOctaveNav();
+        });
+      }
+      if (droneOctaveDownBtn) {
+        droneOctaveDownBtn.addEventListener("click", function () {
+          if (generatrDronePianoOctave <= GENERATR_DRONE_OCTAVE_MIN) return;
+          generatrDronePianoOctave -= 1;
+          generatrDroneSyncOctaveNav();
+        });
+      }
+      generatrDroneBuildPianoRoll();
+
       var generatrChordPickerState = {
         kind: "",
         targetInput: null,
@@ -7018,19 +7395,28 @@
         });
       }
 
+      function generatrOpenPickerFromInput(inp) {
+        if (!inp) return;
+        var kind = inp.getAttribute("data-picker-kind") || "";
+        if (!GENERATR_CHORD_PICKER_KIND_LABELS[kind]) return;
+        Promise.resolve(loadGeneratrSidebarOptions()).then(function () {
+          openGeneratrChordPicker(kind, inp);
+        });
+      }
+
       if (generateTabPanel) {
         generateTabPanel.addEventListener("click", function (ev) {
-          var btn = ev.target.closest(".generatr-chord-picker-btn");
-          if (!btn) return;
-          var kind = btn.getAttribute("data-picker-kind") || "";
-          if (!GENERATR_CHORD_PICKER_KIND_LABELS[kind]) return;
-          var wrap = btn.closest(".generatr-input-with-picker");
-          var inp = wrap && wrap.querySelector("input");
+          var inp = ev.target.closest(".generatr-picker-input[data-picker-kind]");
           if (!inp) return;
           ev.preventDefault();
-          Promise.resolve(loadGeneratrSidebarOptions()).then(function () {
-            openGeneratrChordPicker(kind, inp);
-          });
+          generatrOpenPickerFromInput(inp);
+        });
+        generateTabPanel.addEventListener("keydown", function (ev) {
+          var inp = ev.target.closest(".generatr-picker-input[data-picker-kind]");
+          if (!inp) return;
+          if (ev.key !== "Enter" && ev.key !== " ") return;
+          ev.preventDefault();
+          generatrOpenPickerFromInput(inp);
         });
       }
 
@@ -7060,13 +7446,19 @@
           ).map(function (el) { return el.value; });
           body.postProcessing = postCmds();
         } else if (type === "drone") {
-          body.chartName = (droneChartNameInput.value || "").trim();
-          body.chartType = (droneChartTypeSelect.value || "").trim();
-          body.tags = (droneTagsInput.value || "").trim();
-          body.roots = (droneRootsInput.value || "").trim();
+          body.musicalStyleMode = GENERATR_DRONE_STYLE_MODE;
+          if (GENERATR_DRONE_STYLE_MODE === "custom") {
+            var customNotes = generatrDroneGetSelectedCustomNotes();
+            if (customNotes.length > 0) body.customNotes = customNotes;
+          } else {
+            body.chartName = (droneChartNameInput.value || "").trim();
+            body.chartType = (droneChartTypeSelect.value || "").trim();
+            body.tags = (droneTagsInput.value || "").trim();
+            body.roots = (droneRootsInput.value || "").trim();
+          }
           body.pattern = (dronePatternSelect.value || "").trim();
           body.lengthBars = parseInt(droneLengthInput.value || "16", 10);
-          body.paddedSilenceBars = parseInt(dronePaddedSilenceInput.value || "1", 10);
+          body.paddedSilenceBars = parseInt(dronePaddedSilenceInput.value || "0", 10);
           body.instrument = (droneInstrumentSelect.value || "").trim();
           body.effect = (droneEffectSelect.value || "").trim();
           body.iterations = Math.max(1, Math.min(50, parseInt(droneIterationsInput.value || "1", 10) || 1));

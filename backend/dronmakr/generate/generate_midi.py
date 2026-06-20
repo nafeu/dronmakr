@@ -2,6 +2,7 @@ import os
 import random
 import sys
 import json
+import re
 import pretty_midi
 from typing import List, Tuple
 
@@ -146,9 +147,9 @@ SUPPORTED_PATTERNS = [item[0] for item in SUPPORTED_PATTERNS_INFO]
 
 # Drone MIDI: fixed bar counts for CLI + Auditionr Generate Samples.
 DRONE_MIDI_LENGTH_BARS_ALLOWED = frozenset({1, 2, 4, 8, 16, 32, 64})
-DRONE_MIDI_PADDING_BARS_ALLOWED = frozenset({1, 2, 4, 8, 16, 32, 64})
+DRONE_MIDI_PADDING_BARS_ALLOWED = frozenset({0, 1, 2, 4, 8, 16, 32, 64})
 DEFAULT_DRONE_MIDI_LENGTH_BARS = 16
-DEFAULT_DRONE_MIDI_PADDING_BARS = 1
+DEFAULT_DRONE_MIDI_PADDING_BARS = 0
 DRONE_MIDI_TEMPO_BPM = 120
 DRONE_MIDI_BEATS_PER_BAR = 4
 
@@ -189,7 +190,7 @@ def coerce_drone_midi_length_bars(value, *, default: int = DEFAULT_DRONE_MIDI_LE
 def coerce_drone_midi_padding_bars(
     value, *, default: int = DEFAULT_DRONE_MIDI_PADDING_BARS
 ) -> int:
-    """Parse UI/API ``paddedSilenceBars`` (1, 2, 4, 8, 16, 32, or 64)."""
+    """Parse UI/API ``paddedSilenceBars`` (0, 1, 2, 4, 8, 16, 32, or 64)."""
     if value is None or value == "":
         return default
     try:
@@ -378,6 +379,19 @@ def filter_chords(chords, filters):
     return [chord for chord in chords if matches_criteria(chord)]
 
 
+_NOTE_OCTAVE_RE = re.compile(r"^(.+?)(-?\d+)$")
+
+
+def _note_pitch_from_note_str(note_str: str) -> str:
+    text = str(note_str or "").strip()
+    match = _NOTE_OCTAVE_RE.match(text)
+    return match.group(1) if match else text
+
+
+def _note_str_to_midi_number(note_str: str) -> int:
+    return pretty_midi.note_name_to_number(str(note_str or "").strip())
+
+
 def generate_drone_midi(
     pattern,  # Pattern of playback
     output_name="",
@@ -435,7 +449,7 @@ def generate_drone_midi(
 
     if notes:
         chord = notes
-        root = notes[0][:-1]
+        root = _note_pitch_from_note_str(notes[0])
         chord_name = "custom"
         track_name = format_name(f"custom_notes_{pattern}")
         print(with_prompt(f"writing custom notes as {YELLOW}{pattern}{RESET}"))
@@ -500,8 +514,11 @@ def generate_drone_midi(
     # Process chord notes
     midi_notes = []
     for note_str in chord:
-        note_name, octave = note_str[:-1], int(note_str[-1])  # Extract note and octave
-        midi_number = pretty_midi.note_name_to_number(note_name + str(octave))
+        if notes:
+            midi_number = _note_str_to_midi_number(note_str)
+        else:
+            note_name, octave = note_str[:-1], int(note_str[-1])  # Extract note and octave
+            midi_number = pretty_midi.note_name_to_number(note_name + str(octave))
         midi_notes.append(midi_number)
 
     # Drop the root note one octave down
