@@ -90,6 +90,8 @@ def generate_drone_sample(
     instrument=None,
     effect=None,
     render_duration_sec: float | None = None,
+    instrument_selection: dict | None = None,
+    fx_slots: list | None = None,
 ):
     presets_path = presets_path or resolve_presets_index_path()
     if not presets_path:
@@ -107,6 +109,8 @@ def generate_drone_sample(
         instrument,
         effect,
         render_duration_sec,
+        instrument_selection,
+        fx_slots,
     )
     if delegated is not None:
         return delegated
@@ -127,13 +131,30 @@ def generate_drone_sample(
         p for p in presets if isinstance(p, dict) and p.get("type") in ("effect", "effect_chain")
     ]
 
-    if not instruments:
+    if not instruments and not (
+        isinstance(instrument_selection, dict) and instrument_selection.get("kind") == "plugin"
+    ):
         raise ValueError(
             f"No instrument presets in {presets_path}. Save at least one synth/instrument preset "
-            "from Patchcraftr (saved as type “instrument”)."
+            "from Patchcraftr (saved as type “instrument”), or pick an installed instrument plug-in."
         )
 
-    if not instrument:
+    instrument_preset = None
+    if isinstance(instrument_selection, dict) and instrument_selection.get("kind") == "plugin":
+        plugin_path = (instrument_selection.get("pluginPath") or instrument_selection.get("plugin_path") or "").strip()
+        if not plugin_path:
+            raise ValueError("Instrument plug-in selection is missing pluginPath.")
+        instrument_preset = {
+            "plugin_path": plugin_path,
+            "preset_path": (
+                instrument_selection.get("presetPath")
+                or instrument_selection.get("preset_path")
+                or ""
+            ),
+            "name": (instrument_selection.get("label") or instrument_selection.get("name") or "ad-hoc"),
+            "plugin_name": instrument_selection.get("pluginName") or instrument_selection.get("plugin_name") or "",
+        }
+    elif not instrument:
         instrument_preset = random.choice(instruments)
     else:
         for preset in instruments:
@@ -143,7 +164,31 @@ def generate_drone_sample(
         else:
             raise ValueError(f"No instrument found with the name '{instrument}'")
 
-    if (effect or "").strip().lower() == "none":
+    slots: list[dict] = []
+    effect_preset = None
+    if fx_slots is not None:
+        for slot in fx_slots:
+            if not slot:
+                continue
+            if isinstance(slot, dict) and slot.get("kind") == "patch":
+                patch_name = (slot.get("name") or "").strip()
+                patch = next((p for p in fx_presets if p.get("name") == patch_name), None)
+                if patch is None:
+                    raise ValueError(f"No saved effect preset named '{patch_name}'.")
+                slots.extend(effect_slot_entries(patch))
+            elif isinstance(slot, dict):
+                plugin_path = (slot.get("pluginPath") or slot.get("plugin_path") or "").strip()
+                if not plugin_path:
+                    continue
+                slots.append(
+                    {
+                        "plugin_path": plugin_path,
+                        "preset_path": slot.get("presetPath") or slot.get("preset_path") or "",
+                        "name": slot.get("label") or slot.get("name") or "fx",
+                        "plugin_name": slot.get("pluginName") or slot.get("plugin_name") or "",
+                    }
+                )
+    elif (effect or "").strip().lower() == "none":
         effect_preset = None
     elif effect:
         effect_preset = next((p for p in fx_presets if p.get("name") == effect), None)
@@ -162,11 +207,9 @@ def generate_drone_sample(
     elif fx_presets:
         effect_preset = random.choice(fx_presets)
     else:
-        # Instrument-only rigs (common right after authoring a first synth preset).
         effect_preset = None
 
-    slots: list[dict] = []
-    if effect_preset is not None:
+    if fx_slots is None and effect_preset is not None:
         slots = effect_slot_entries(effect_preset)
         if not slots:
             raise ValueError(f"Effect preset '{effect_preset.get('name', '')}' has no processors to load.")
@@ -183,6 +226,20 @@ def generate_drone_sample(
             with_prompt(
                 f"selected {GREEN}{instrument_preset['name']}{RESET} only "
                 f"(FX chain: {GREEN}none{RESET})"
+            )
+        )
+    elif fx_slots is not None and not slots:
+        print(
+            with_prompt(
+                f"selected {GREEN}{instrument_preset['name']}{RESET} only "
+                f"(FX chain: {GREEN}empty{RESET})"
+            )
+        )
+    elif fx_slots is not None and slots:
+        print(
+            with_prompt(
+                f"selected {GREEN}{instrument_preset['name']}{RESET} with "
+                f"{GREEN}{len(slots)}{RESET} FX slot(s)"
             )
         )
     else:
@@ -208,7 +265,10 @@ def generate_drone_sample(
 
     fx_specs = []
     if slots:
-        print(with_prompt(f"loading effect {GREEN}{effect_preset['name']}{RESET}"))
+        if effect_preset is not None:
+            print(with_prompt(f"loading effect {GREEN}{effect_preset['name']}{RESET}"))
+        elif fx_slots is not None:
+            print(with_prompt(f"loading {GREEN}{len(slots)}{RESET} FX plug-in step(s)"))
         for eff in slots:
             if eff.get("plugin_name"):
                 print(

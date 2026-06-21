@@ -112,6 +112,8 @@ def delegate_generate_drone_sample_if_needed(
     instrument: str | None,
     effect: str | None,
     render_duration_sec: float | None = None,
+    instrument_selection: dict | None = None,
+    fx_slots: list | None = None,
 ) -> str | None:
     if not _should_delegate_to_worker():
         return None
@@ -124,9 +126,33 @@ def delegate_generate_drone_sample_if_needed(
             "instrument": instrument,
             "effect": effect,
             "render_duration_sec": render_duration_sec,
+            "instrument_selection": instrument_selection,
+            "fx_slots": fx_slots,
         },
     )
     return str(data["output_path"])
+
+
+def delegate_open_drone_plugin_editor_if_needed(
+    plugin_path: str,
+    role: str,
+) -> dict | None:
+    if not _should_delegate_to_worker():
+        return None
+    data = invoke_audio_worker(
+        "open_drone_plugin_editor",
+        {"plugin_path": plugin_path, "role": role},
+    )
+    return dict(data.get("result") or {})
+
+
+def delegate_scan_plugin_classifications_if_needed(*, force: bool = False) -> None:
+    if not _should_delegate_to_worker():
+        from dronmakr.presets.preset_authoring import scan_plugin_classifications
+
+        scan_plugin_classifications(force=force)
+        return
+    invoke_audio_worker("scan_plugin_classifications", {"force": force})
 
 
 def delegate_apply_effect_if_needed(
@@ -166,8 +192,23 @@ def run_stdio_worker() -> None:
                 instrument=params.get("instrument"),
                 effect=params.get("effect"),
                 render_duration_sec=params.get("render_duration_sec"),
+                instrument_selection=params.get("instrument_selection"),
+                fx_slots=params.get("fx_slots"),
             )
             result = {"ok": True, "output_path": out}
+        elif task == "open_drone_plugin_editor":
+            from dronmakr.apps.generatr_plugins import open_drone_plugin_editor_capture
+
+            capture = open_drone_plugin_editor_capture(
+                params["plugin_path"],
+                params.get("role") or "instrument",
+            )
+            result = {"ok": True, "result": capture}
+        elif task == "scan_plugin_classifications":
+            from dronmakr.presets.preset_authoring import scan_plugin_classifications
+
+            scan_plugin_classifications(force=bool(params.get("force")))
+            result = {"ok": True}
         elif task == "apply_effect":
             from dronmakr.generate.generate_sample import apply_effect
 

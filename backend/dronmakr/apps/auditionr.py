@@ -714,6 +714,88 @@ def _parse_drone_custom_notes(raw) -> list[str] | None:
     return validated or None
 
 
+def _parse_drone_instrument_selection(payload: dict) -> tuple[str | None, dict | None]:
+    """Return legacy instrument name and optional inline plug-in selection."""
+    raw = payload.get("instrumentSelection")
+    if not isinstance(raw, dict):
+        return (payload.get("instrument") or "").strip() or None, None
+    kind = (raw.get("kind") or "").strip().lower()
+    if kind == "patch":
+        name = (raw.get("name") or "").strip()
+        return name or None, None
+    if kind == "plugin":
+        plugin_path = (raw.get("pluginPath") or raw.get("plugin_path") or "").strip()
+        if not plugin_path:
+            raise ValueError("Instrument plug-in selection is missing pluginPath.")
+        return None, {
+            "kind": "plugin",
+            "pluginPath": plugin_path,
+            "presetPath": raw.get("presetPath") or raw.get("preset_path") or "",
+            "label": raw.get("label") or raw.get("name") or "",
+            "pluginName": raw.get("pluginName") or raw.get("plugin_name") or "",
+        }
+    return (payload.get("instrument") or "").strip() or None, None
+
+
+def _parse_drone_fx_state(payload: dict) -> tuple[list | None, str]:
+    """Return FX slots and mode: ``disabled``, ``random``, or ``explicit``."""
+    if payload.get("fxEnabled") is False:
+        return None, "disabled"
+
+    if "fxSlots" not in payload:
+        return None, "random"
+
+    slots = _parse_drone_fx_slots(payload)
+    if slots is None:
+        return None, "random"
+    if any(slots):
+        return slots, "explicit"
+    return None, "random"
+
+
+def _parse_drone_fx_slots(payload: dict) -> list | None:
+    """Return FX slot list when the UI sends explicit slots; otherwise None (legacy effect field)."""
+    if "fxSlots" not in payload:
+        return None
+    raw_slots = payload.get("fxSlots")
+    if not isinstance(raw_slots, list):
+        return None
+    slots: list = []
+    for raw in raw_slots[:5]:
+        if not raw:
+            slots.append(None)
+            continue
+        if not isinstance(raw, dict):
+            slots.append(None)
+            continue
+        kind = (raw.get("kind") or "").strip().lower()
+        if kind == "patch":
+            name = (raw.get("name") or "").strip()
+            if name:
+                slots.append({"kind": "patch", "name": name})
+            else:
+                slots.append(None)
+        elif kind == "plugin":
+            plugin_path = (raw.get("pluginPath") or raw.get("plugin_path") or "").strip()
+            if not plugin_path:
+                slots.append(None)
+            else:
+                slots.append(
+                    {
+                        "kind": "plugin",
+                        "pluginPath": plugin_path,
+                        "presetPath": raw.get("presetPath") or raw.get("preset_path") or "",
+                        "label": raw.get("label") or raw.get("name") or "",
+                        "pluginName": raw.get("pluginName") or raw.get("plugin_name") or "",
+                    }
+                )
+        else:
+            slots.append(None)
+    while len(slots) < 5:
+        slots.append(None)
+    return slots
+
+
 def _run_generate_drone(payload: dict) -> list[str]:
     """`generate-drone` CLI parity (omits UI for --shift-octave-down, --shift-root-note, --dry-run, --log-server, --play)."""
     from dronmakr.core.utils import resolve_presets_index_path
@@ -725,8 +807,14 @@ def _run_generate_drone(payload: dict) -> list[str]:
         )
 
     chart_name = (payload.get("chartName") or "").strip() or None
-    instrument = (payload.get("instrument") or "").strip() or None
+    instrument, instrument_selection = _parse_drone_instrument_selection(payload)
     effect = (payload.get("effect") or "").strip() or None
+    fx_slots, fx_mode = _parse_drone_fx_state(payload)
+    if fx_mode == "disabled":
+        effect = "none"
+        fx_slots = None
+    elif fx_mode == "random":
+        fx_slots = None
     tags_raw = (payload.get("tags") or "").strip() or None
     roots_raw = (payload.get("roots") or "").strip() or None
     chart_type = (payload.get("chartType") or "").strip().lower() or None
@@ -795,6 +883,8 @@ def _run_generate_drone(payload: dict) -> list[str]:
             instrument=instrument,
             effect=effect,
             render_duration_sec=render_duration_sec,
+            instrument_selection=instrument_selection,
+            fx_slots=fx_slots,
         )
         results.append(midi_file)
         results.append(generated_sample)
@@ -1203,6 +1293,65 @@ def _run_generate_beat(payload: dict):
     return paths
 
 
+def _handle_drone_plugin_list_editor():
+    if request.method == "GET":
+        role = (request.args.get("role") or "instrument").strip().lower()
+        if role not in ("instrument", "effect"):
+            return jsonify({"error": "role must be instrument or effect"}), 400
+        try:
+            from dronmakr.apps.generatr_plugins import get_drone_plugin_list_editor_payload
+
+            return jsonify(get_drone_plugin_list_editor_payload(role))
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    data = request.get_json() or {}
+    role = (data.get("role") or "instrument").strip().lower()
+    if role not in ("instrument", "effect"):
+        return jsonify({"error": "role must be instrument or effect"}), 400
+    allowed = data.get("allowedLabels") or data.get("allowed") or []
+    if not isinstance(allowed, list):
+        return jsonify({"error": "allowedLabels must be a list"}), 400
+    try:
+        from dronmakr.apps.generatr_plugins import save_drone_plugin_list_editor
+
+        return jsonify(save_drone_plugin_list_editor(role, allowed))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+def _handle_drone_plugin_picker():
+    role = (request.args.get("role") or "instrument").strip().lower()
+    if role not in ("instrument", "effect"):
+        return jsonify({"error": "role must be instrument or effect"}), 400
+    try:
+        from dronmakr.apps.generatr_plugins import get_drone_picker_payload
+
+        return jsonify(get_drone_picker_payload(role))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+def _handle_drone_plugin_editor():
+    data = request.get_json() or {}
+    plugin_path = (data.get("pluginPath") or data.get("plugin_path") or "").strip()
+    role = (data.get("role") or "instrument").strip().lower()
+    if not plugin_path:
+        return jsonify({"error": "pluginPath is required"}), 400
+    if role not in ("instrument", "effect"):
+        return jsonify({"error": "role must be instrument or effect"}), 400
+    try:
+        from dronmakr.audio.audio_worker import delegate_open_drone_plugin_editor_if_needed
+        from dronmakr.apps.generatr_plugins import open_drone_plugin_editor_capture
+
+        result = delegate_open_drone_plugin_editor_if_needed(plugin_path, role)
+        if result is None:
+            result = open_drone_plugin_editor_capture(plugin_path, role)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 def _handle_api_generate_options():
     ensure_settings()
     preset_index = get_presets()
@@ -1378,6 +1527,24 @@ def register_auditionr(app, socketio):
     )
     app.add_url_rule(
         "/undo-status", "auditionr_undo_status", undo_status, methods=["POST"]
+    )
+    app.add_url_rule(
+        "/api/generatr/drone-plugin-list",
+        "auditionr_api_drone_plugin_list",
+        _handle_drone_plugin_list_editor,
+        methods=["GET", "POST"],
+    )
+    app.add_url_rule(
+        "/api/generatr/drone-plugin-picker",
+        "auditionr_api_drone_plugin_picker",
+        _handle_drone_plugin_picker,
+        methods=["GET"],
+    )
+    app.add_url_rule(
+        "/api/generatr/drone-plugin-editor",
+        "auditionr_api_drone_plugin_editor",
+        _handle_drone_plugin_editor,
+        methods=["POST"],
     )
     app.add_url_rule(
         "/api/generatr/generate",
