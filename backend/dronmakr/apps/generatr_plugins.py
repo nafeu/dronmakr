@@ -18,8 +18,8 @@ from dronmakr.presets.preset_authoring import (
     format_plugin_name,
     list_installed_plugin_entries,
     plugin_settings_tuple,
+    read_plugin_scan_progress,
     save_allowed_plugins_for_role,
-    scan_plugin_classifications,
 )
 
 
@@ -27,12 +27,6 @@ def generatr_session_dir() -> str:
     path = os.path.join(TEMP_DIR, "generatr-plugin-sessions")
     os.makedirs(path, exist_ok=True)
     return path
-
-
-def _ensure_plugin_classifications_scanned(*, force: bool = False) -> None:
-    from dronmakr.audio.audio_worker import delegate_scan_plugin_classifications_if_needed
-
-    delegate_scan_plugin_classifications_if_needed(force=force)
 
 
 def _load_presets_list() -> list[dict]:
@@ -64,8 +58,24 @@ def _plugin_path_exists(plugin_path: str) -> bool:
 
 
 def _role_plugins(role: str, *, respect_ignore: bool) -> list[dict]:
-    _ensure_plugin_classifications_scanned()
     return list_installed_plugin_entries(role=role, respect_ignore=respect_ignore)
+
+
+def get_drone_plugin_scan_status() -> dict:
+    progress = read_plugin_scan_progress()
+    progress["scanning"] = progress.get("status") == "running"
+    return progress
+
+
+def start_drone_plugin_scan(*, force: bool = False) -> dict:
+    from dronmakr.audio.audio_worker import spawn_background_plugin_scan
+
+    progress = read_plugin_scan_progress()
+    if progress.get("status") == "running":
+        return {**progress, "scanning": True, "started": False}
+
+    spawn_background_plugin_scan(force=force)
+    return {**get_drone_plugin_scan_status(), "started": True}
 
 
 def get_drone_picker_payload(role: str) -> dict:
@@ -91,6 +101,7 @@ def get_drone_picker_payload(role: str) -> dict:
         "patches": [_patch_summary(p) for p in patches if p.get("name")],
         "plugins": plugins,
         "pluginPathsConfigured": bool(plugins) or bool(list_installed_plugin_entries(respect_ignore=False)),
+        "scan": get_drone_plugin_scan_status(),
     }
 
 
@@ -99,18 +110,19 @@ def get_drone_plugin_list_editor_payload(role: str) -> dict:
     role = (role or "instrument").strip().lower()
     detected = _role_plugins(role, respect_ignore=False)
     allowed = _role_plugins(role, respect_ignore=True)
+    scan = get_drone_plugin_scan_status()
     return {
         "role": role,
         "allowed": [{"label": entry["label"], "path": entry["path"]} for entry in allowed],
         "detected": [{"label": entry["label"], "path": entry["path"]} for entry in detected],
+        "scan": scan,
     }
 
 
 def save_drone_plugin_list_editor(role: str, allowed_labels: list[str]) -> dict:
     """Persist allowed plug-ins for a role via ``IGNORE_PLUGINS``."""
-    role = (role or "").strip().lower()
+    role = (role or "instrument").strip().lower()
     ignore_plugins = save_allowed_plugins_for_role(role, allowed_labels)
-    scan_plugin_classifications(force=True)
     return {
         "role": role,
         "ignorePlugins": ignore_plugins,

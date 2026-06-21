@@ -155,6 +155,34 @@ def delegate_scan_plugin_classifications_if_needed(*, force: bool = False) -> No
     invoke_audio_worker("scan_plugin_classifications", {"force": force})
 
 
+def spawn_background_plugin_scan(*, force: bool = False) -> None:
+    """Start plug-in verification scan without blocking the HTTP/UI thread."""
+    import subprocess
+
+    from dronmakr.presets.preset_authoring import read_plugin_scan_progress, write_plugin_scan_progress
+
+    if read_plugin_scan_progress().get("status") == "running":
+        return
+
+    write_plugin_scan_progress(status="running", done=0, total=0, label="Starting…")
+    cmd = _worker_argv()
+    env = os.environ.copy()
+    env.pop(_ASYNC_THREADING_ENV, None)
+    env[_WORKER_CHILD_ENV] = "1"
+    payload = json.dumps({"task": "scan_plugin_classifications", "params": {"force": force}}, ensure_ascii=False)
+    proc = subprocess.Popen(
+        cmd,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        env=env,
+        cwd=str(_backend_root()),
+    )
+    assert proc.stdin is not None
+    proc.stdin.write(payload.encode("utf-8"))
+    proc.stdin.close()
+
+
 def delegate_apply_effect_if_needed(
     input_path: str,
     effect_chain: str,

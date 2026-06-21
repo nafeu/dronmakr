@@ -1293,6 +1293,26 @@ def _run_generate_beat(payload: dict):
     return paths
 
 
+def _handle_drone_plugin_scan_status():
+    try:
+        from dronmakr.apps.generatr_plugins import get_drone_plugin_scan_status
+
+        return jsonify(get_drone_plugin_scan_status())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+def _handle_drone_plugin_scan_start():
+    data = request.get_json(silent=True) or {}
+    force = bool(data.get("force"))
+    try:
+        from dronmakr.apps.generatr_plugins import start_drone_plugin_scan
+
+        return jsonify(start_drone_plugin_scan(force=force))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 def _handle_drone_plugin_list_editor():
     if request.method == "GET":
         role = (request.args.get("role") or "instrument").strip().lower()
@@ -1527,6 +1547,18 @@ def register_auditionr(app, socketio):
     )
     app.add_url_rule(
         "/undo-status", "auditionr_undo_status", undo_status, methods=["POST"]
+    )
+    app.add_url_rule(
+        "/api/generatr/drone-plugin-scan",
+        "auditionr_api_drone_plugin_scan",
+        _handle_drone_plugin_scan_start,
+        methods=["POST"],
+    )
+    app.add_url_rule(
+        "/api/generatr/drone-plugin-scan-status",
+        "auditionr_api_drone_plugin_scan_status",
+        _handle_drone_plugin_scan_status,
+        methods=["GET"],
     )
     app.add_url_rule(
         "/api/generatr/drone-plugin-list",
