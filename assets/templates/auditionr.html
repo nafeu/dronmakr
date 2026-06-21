@@ -167,7 +167,6 @@
       flex-direction: column;
       transition: width 0.2s ease, min-width 0.2s ease, flex-basis 0.2s ease, max-width 0.2s ease;
       overflow: hidden;
-      border-left: 1px solid var(--theme-a);
       box-sizing: border-box;
     }
 
@@ -873,7 +872,6 @@
     .auditionr-sidebar-footer {
       flex-shrink: 0;
       padding: 0.75rem 1rem 3rem 2rem;
-      border-top: 1px solid var(--theme-a);
       background: var(--secondary);
       box-sizing: border-box;
     }
@@ -1083,9 +1081,55 @@
 
     .generatr-drone-piano-layout {
       display: flex;
+      flex-direction: column;
       align-items: stretch;
       gap: 0.45rem;
-      max-width: 88%;
+      overflow: visible;
+      width: 100%;
+      margin-top: 5px;
+    }
+
+    .generatr-drone-piano-unit {
+      display: flex;
+      align-items: stretch;
+      width: 100%;
+      min-width: 0;
+      border-radius: var(--dron-control-radius);
+      overflow: hidden;
+      background: var(--dron-control-bg);
+    }
+
+    .generatr-drone-preview-wave {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 0.22rem;
+    }
+
+    .generatr-drone-preview-wave-btn {
+      margin: 0;
+      padding: 0.16rem 0.45rem;
+      font-family: inherit;
+      font-size: 0.62rem;
+      line-height: 1.2;
+      border: none;
+      border-radius: var(--dron-control-radius);
+      background: rgba(255, 255, 255, 0.06);
+      color: color-mix(in srgb, var(--primary) 70%, transparent);
+      cursor: pointer;
+    }
+
+    .generatr-drone-preview-wave-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: var(--primary);
+    }
+
+    .generatr-drone-preview-wave-btn.is-active {
+      background: color-mix(in srgb, var(--theme-a) 55%, transparent);
+      color: var(--primary);
+    }
+
+    .generatr-drone-style-panel#generatr-drone-style-custom {
+      overflow: visible;
     }
 
     .generatr-drone-octave-nav {
@@ -1095,7 +1139,9 @@
       justify-content: center;
       gap: 0.22rem;
       flex: 0 0 auto;
-      min-width: 1.85rem;
+      align-self: stretch;
+      border-left: 1px solid color-mix(in srgb, var(--theme-a) 70%, transparent);
+      background: var(--dron-control-bg);
     }
 
     .generatr-drone-octave-btn {
@@ -1106,8 +1152,8 @@
       height: 1.55rem;
       margin: 0;
       padding: 0;
+      border: none;
       border-radius: var(--dron-control-radius);
-      border: 1px solid var(--dron-control-border);
       background: var(--dron-control-bg);
       color: var(--primary);
       cursor: pointer;
@@ -1116,8 +1162,8 @@
     }
 
     .generatr-drone-octave-btn:hover:not(:disabled) {
-      border-color: color-mix(in srgb, var(--primary) 55%, var(--dron-control-border));
       color: var(--primary);
+      background: rgba(255, 255, 255, 0.12);
     }
 
     .generatr-drone-octave-btn:disabled {
@@ -1126,25 +1172,35 @@
     }
 
     .generatr-drone-octave-display {
-      min-width: 1.35rem;
+      min-width: 2.1rem;
       text-align: center;
       font-size: 0.72rem;
       font-weight: 600;
       color: color-mix(in srgb, var(--primary) 80%, var(--theme-d));
       font-variant-numeric: tabular-nums;
       line-height: 1.2;
+      white-space: nowrap;
     }
 
     .generatr-drone-piano-roll {
-      position: relative;
+      --drone-piano-roll-h: 4.35rem;
+      --drone-piano-black-key-ratio: 0.625;
+      display: flex;
       flex: 1 1 auto;
       min-width: 0;
-      height: 4.35rem;
-      border: 1px solid var(--dron-control-border);
-      border-radius: var(--dron-control-radius);
+      width: auto;
+      height: var(--drone-piano-roll-h);
+      border-radius: 0;
       overflow: hidden;
       user-select: none;
-      background: var(--dron-control-bg);
+      background: transparent;
+    }
+
+    .generatr-drone-piano-octave-block {
+      position: relative;
+      flex: 1 1 0;
+      min-width: 0;
+      height: 100%;
     }
 
     .generatr-drone-piano-whites {
@@ -1153,24 +1209,33 @@
       height: 100%;
     }
 
+    .generatr-drone-piano-octave-block .generatr-drone-piano-blacks {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      pointer-events: none;
+    }
+
     .generatr-drone-piano-key {
       margin: 0;
-      padding: 0 0.08rem 0.28rem;
+      padding: 0 0.06rem 0.28rem;
       border: none;
       cursor: pointer;
       font-family: inherit;
-      font-size: 0.56rem;
-      line-height: 1;
+      font-size: 0.52rem;
+      line-height: 1.05;
       box-sizing: border-box;
       display: flex;
       align-items: flex-end;
       justify-content: center;
-      min-width: 0;
-      transition: color 0.12s ease, background-color 0.12s ease, box-shadow 0.12s ease;
+      text-align: center;
+      white-space: nowrap;
     }
 
     .generatr-drone-piano-key--white {
       flex: 1 1 0;
+      min-width: 0;
+      width: auto;
       height: 100%;
       border-radius: 0;
       color: color-mix(in srgb, var(--theme-d) 62%, transparent);
@@ -1180,40 +1245,45 @@
     .generatr-drone-piano-key--black {
       position: absolute;
       top: 0;
-      height: 62%;
-      z-index: 2;
-      border-radius: 0 0 2px 2px;
-      color: color-mix(in srgb, var(--theme-d) 52%, transparent);
-      background: color-mix(in srgb, var(--theme-a) 82%, var(--dron-control-bg));
+      width: calc(100% / 7 * var(--drone-piano-black-key-ratio));
+      left: calc(
+        (var(--drone-black-after-white) + 1) * (100% / 7) -
+        (100% / 7 * var(--drone-piano-black-key-ratio) / 2)
+      );
+      height: calc(var(--drone-piano-roll-h) * 0.62);
+      pointer-events: auto;
+      z-index: 1;
+      border-radius: 0 0 3px 3px;
+      color: color-mix(in srgb, var(--theme-d) 78%, transparent);
+      background: var(--theme-a);
+      font-size: 0.48rem;
+      padding: 0 0.04rem 0.22rem;
     }
 
     .generatr-drone-piano-key--white:hover:not(.is-enabled) {
       color: color-mix(in srgb, var(--primary) 70%, var(--theme-d));
-      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 28%, transparent);
     }
 
     .generatr-drone-piano-key--black:hover:not(.is-enabled) {
       color: color-mix(in srgb, var(--primary) 65%, var(--theme-d));
-      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 32%, transparent);
     }
 
     .generatr-drone-piano-key.is-enabled {
-      color: var(--primary);
-      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 45%, transparent);
+      color: var(--secondary);
     }
 
     .generatr-drone-piano-key--white.is-enabled {
-      background: color-mix(in srgb, var(--primary) 12%, var(--dron-control-bg));
+      background: var(--primary);
     }
 
     .generatr-drone-piano-key--black.is-enabled {
-      background: color-mix(in srgb, var(--primary) 18%, var(--theme-a));
+      background: var(--primary);
     }
 
     .generatr-drone-piano-key:focus-visible {
       outline: 2px solid var(--primary);
       outline-offset: -1px;
-      z-index: 3;
+      z-index: 4;
     }
 
     .generatr-drone-musical-style-body {
@@ -2917,11 +2987,19 @@
                   <div class="generatr-sweep-effect-body">
                     <div id="generatr-drone-style-custom" class="generatr-drone-style-panel" role="tabpanel" aria-labelledby="generatr-drone-style-mode-custom">
                       <div class="generatr-drone-piano-layout">
-                        <div class="generatr-drone-piano-roll" id="generatr-drone-piano-roll" role="group" aria-label="Select notes for custom musical style"></div>
-                        <div class="generatr-drone-octave-nav">
-                          <button type="button" class="generatr-drone-octave-btn" id="generatr-drone-octave-up" aria-label="Next octave"><i class="fa-solid fa-chevron-up" aria-hidden="true"></i></button>
-                          <span class="generatr-drone-octave-display" id="generatr-drone-octave-display" aria-live="polite">3</span>
-                          <button type="button" class="generatr-drone-octave-btn" id="generatr-drone-octave-down" aria-label="Previous octave"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></button>
+                        <div class="generatr-drone-piano-unit">
+                          <div class="generatr-drone-piano-roll" id="generatr-drone-piano-roll" role="group" aria-label="Select notes for custom musical style"></div>
+                          <div class="generatr-drone-octave-nav">
+                            <button type="button" class="generatr-drone-octave-btn" id="generatr-drone-octave-up" aria-label="Next octave range"><i class="fa-solid fa-chevron-up" aria-hidden="true"></i></button>
+                            <span class="generatr-drone-octave-display" id="generatr-drone-octave-display" aria-live="polite">3-4</span>
+                            <button type="button" class="generatr-drone-octave-btn" id="generatr-drone-octave-down" aria-label="Previous octave range"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></button>
+                          </div>
+                        </div>
+                        <div class="generatr-drone-preview-wave" id="generatr-drone-preview-wave" role="group" aria-label="Preview sound">
+                          <button type="button" class="generatr-drone-preview-wave-btn is-active" data-preview-wave="square">square</button>
+                          <button type="button" class="generatr-drone-preview-wave-btn" data-preview-wave="sine">sine</button>
+                          <button type="button" class="generatr-drone-preview-wave-btn" data-preview-wave="tri">tri</button>
+                          <button type="button" class="generatr-drone-preview-wave-btn" data-preview-wave="mute">mute</button>
                         </div>
                       </div>
                     </div>
@@ -7014,6 +7092,10 @@
       var GENERATR_DRONE_OCTAVE_MIN = -1;
       var GENERATR_DRONE_OCTAVE_MAX = 5;
       var GENERATR_DRONE_OCTAVE_DEFAULT = 3;
+      var GENERATR_DRONE_PIANO_OCTAVE_SPAN = 2;
+      var GENERATR_DRONE_OCTAVE_VIEW_MAX = GENERATR_DRONE_OCTAVE_MAX - (GENERATR_DRONE_PIANO_OCTAVE_SPAN - 1);
+      var GENERATR_DRONE_PREVIEW_WAVE = "square";
+      var GENERATR_DRONE_PREVIEW_MUTED = false;
       var GENERATR_DRONE_PIANO_WHITES = ["C", "D", "E", "F", "G", "A", "B"];
       var GENERATR_DRONE_PIANO_BLACKS = [
         { pitch: "C#", afterWhite: 0 },
@@ -7063,7 +7145,36 @@
         return (octave + 1) * 12 + semi;
       }
 
+      function generatrDronePreviewOscType() {
+        if (GENERATR_DRONE_PREVIEW_WAVE === "tri") return "triangle";
+        return GENERATR_DRONE_PREVIEW_WAVE;
+      }
+
+      function generatrDroneSyncPreviewWaveButtons() {
+        var wrap = document.getElementById("generatr-drone-preview-wave");
+        if (!wrap) return;
+        wrap.querySelectorAll(".generatr-drone-preview-wave-btn").forEach(function (btn) {
+          var wave = btn.getAttribute("data-preview-wave") || "";
+          var active = GENERATR_DRONE_PREVIEW_MUTED
+            ? wave === "mute"
+            : wave !== "mute" && wave === (GENERATR_DRONE_PREVIEW_WAVE === "triangle" ? "tri" : GENERATR_DRONE_PREVIEW_WAVE);
+          btn.classList.toggle("is-active", active);
+          btn.setAttribute("aria-pressed", active ? "true" : "false");
+        });
+      }
+
+      function generatrDroneSetPreviewWave(wave) {
+        if (wave === "mute") {
+          GENERATR_DRONE_PREVIEW_MUTED = true;
+        } else {
+          GENERATR_DRONE_PREVIEW_MUTED = false;
+          GENERATR_DRONE_PREVIEW_WAVE = wave === "tri" ? "triangle" : wave;
+        }
+        generatrDroneSyncPreviewWaveButtons();
+      }
+
       function generatrDronePreviewNote(pitch, octave) {
+        if (GENERATR_DRONE_PREVIEW_MUTED) return;
         resumeAuditionrAudioContext().then(function () {
           try {
             var ctx = getAudioContext();
@@ -7073,15 +7184,15 @@
 
             var t0 = ctx.currentTime;
             var attack = 0.004;
-            var decay = 0.16;
-            var sustain = 0.058;
-            var release = 0.14;
+            var decay = 0.32;
+            var sustain = 0.08;
+            var release = 0.55;
             var peak = 0.11;
-            var hold = 0.24;
+            var hold = 1.35;
             var tRelease = t0 + attack + decay + hold;
 
             var osc = ctx.createOscillator();
-            osc.type = "square";
+            osc.type = generatrDronePreviewOscType();
             osc.frequency.setValueAtTime(freq, t0);
 
             var gain = ctx.createGain();
@@ -7119,27 +7230,50 @@
         if (!dronePianoRollEl) return;
         dronePianoRollEl.querySelectorAll(".generatr-drone-piano-key[data-pitch]").forEach(function (btn) {
           var pitch = btn.getAttribute("data-pitch") || "";
-          var enabled = generatrDroneIsNoteEnabled(pitch, generatrDronePianoOctave);
+          var octave = parseInt(btn.getAttribute("data-octave"), 10);
+          if (isNaN(octave)) octave = generatrDronePianoOctave;
+          var enabled = generatrDroneIsNoteEnabled(pitch, octave);
           btn.classList.toggle("is-enabled", enabled);
           btn.setAttribute("aria-pressed", enabled ? "true" : "false");
         });
       }
 
+      function generatrDroneOctaveRangeLabel() {
+        return generatrDronePianoOctave + "-" + (generatrDronePianoOctave + GENERATR_DRONE_PIANO_OCTAVE_SPAN - 1);
+      }
+
       function generatrDroneSyncOctaveNav() {
-        if (droneOctaveDisplay) droneOctaveDisplay.textContent = String(generatrDronePianoOctave);
-        if (droneOctaveUpBtn) droneOctaveUpBtn.disabled = generatrDronePianoOctave >= GENERATR_DRONE_OCTAVE_MAX;
+        if (droneOctaveDisplay) droneOctaveDisplay.textContent = generatrDroneOctaveRangeLabel();
+        if (droneOctaveUpBtn) droneOctaveUpBtn.disabled = generatrDronePianoOctave >= GENERATR_DRONE_OCTAVE_VIEW_MAX;
         if (droneOctaveDownBtn) droneOctaveDownBtn.disabled = generatrDronePianoOctave <= GENERATR_DRONE_OCTAVE_MIN;
         generatrDroneSyncPianoRollKeyStates();
+      }
+
+      function generatrDroneShiftOctaveView(delta) {
+        var next = generatrDronePianoOctave + delta;
+        if (next < GENERATR_DRONE_OCTAVE_MIN || next > GENERATR_DRONE_OCTAVE_VIEW_MAX) return;
+        generatrDronePianoOctave = next;
+        generatrDroneBuildPianoRoll(true);
       }
 
       function generatrDronePitchLabel(pitch) {
         return String(pitch || "").replace("#", "♯");
       }
 
-      function generatrDroneBuildPianoRoll() {
-        if (!dronePianoRollEl || generatrDronePianoBuilt) return;
-        generatrDronePianoBuilt = true;
-        dronePianoRollEl.innerHTML = "";
+      function generatrDroneKeyPrintLabel(pitch, octave) {
+        return generatrDronePitchLabel(pitch) + String(octave);
+      }
+
+      function generatrDroneBindKeyClick(btn, pitch, octave) {
+        btn.addEventListener("click", function () {
+          generatrDroneToggleNote(pitch, octave);
+        });
+      }
+
+      function generatrDroneBuildOctaveBlock(octave) {
+        var block = document.createElement("div");
+        block.className = "generatr-drone-piano-octave-block";
+        block.setAttribute("data-octave", String(octave));
 
         var whitesWrap = document.createElement("div");
         whitesWrap.className = "generatr-drone-piano-whites";
@@ -7148,34 +7282,47 @@
           btn.type = "button";
           btn.className = "generatr-drone-piano-key generatr-drone-piano-key--white";
           btn.setAttribute("data-pitch", pitch);
+          btn.setAttribute("data-octave", String(octave));
           btn.setAttribute("aria-pressed", "false");
-          btn.setAttribute("aria-label", pitch);
-          btn.textContent = pitch;
-          btn.addEventListener("click", function () {
-            generatrDroneToggleNote(pitch, generatrDronePianoOctave);
-          });
+          btn.setAttribute("aria-label", generatrDroneKeyPrintLabel(pitch, octave));
+          btn.textContent = generatrDroneKeyPrintLabel(pitch, octave);
+          generatrDroneBindKeyClick(btn, pitch, octave);
           whitesWrap.appendChild(btn);
         });
-        dronePianoRollEl.appendChild(whitesWrap);
 
-        var whiteWidthPct = 100 / GENERATR_DRONE_PIANO_WHITES.length;
-        var blackWidthPct = whiteWidthPct * 0.58;
+        var blacksWrap = document.createElement("div");
+        blacksWrap.className = "generatr-drone-piano-blacks";
         GENERATR_DRONE_PIANO_BLACKS.forEach(function (blackKey) {
           var pitch = blackKey.pitch;
           var btn = document.createElement("button");
           btn.type = "button";
           btn.className = "generatr-drone-piano-key generatr-drone-piano-key--black";
           btn.setAttribute("data-pitch", pitch);
+          btn.setAttribute("data-octave", String(octave));
           btn.setAttribute("aria-pressed", "false");
-          btn.setAttribute("aria-label", pitch);
-          btn.textContent = generatrDronePitchLabel(pitch);
-          btn.style.width = blackWidthPct + "%";
-          btn.style.left = ((blackKey.afterWhite + 1) * whiteWidthPct - blackWidthPct / 2) + "%";
-          btn.addEventListener("click", function () {
-            generatrDroneToggleNote(pitch, generatrDronePianoOctave);
-          });
-          dronePianoRollEl.appendChild(btn);
+          btn.setAttribute("aria-label", generatrDroneKeyPrintLabel(pitch, octave));
+          btn.style.setProperty("--drone-black-after-white", String(blackKey.afterWhite));
+          btn.textContent = generatrDroneKeyPrintLabel(pitch, octave);
+          generatrDroneBindKeyClick(btn, pitch, octave);
+          blacksWrap.appendChild(btn);
         });
+
+        block.appendChild(whitesWrap);
+        block.appendChild(blacksWrap);
+        return block;
+      }
+
+      function generatrDroneBuildPianoRoll(forceRebuild) {
+        if (!dronePianoRollEl) return;
+        if (generatrDronePianoBuilt && !forceRebuild) return;
+        generatrDronePianoBuilt = true;
+        dronePianoRollEl.innerHTML = "";
+
+        for (var octOffset = 0; octOffset < GENERATR_DRONE_PIANO_OCTAVE_SPAN; octOffset++) {
+          dronePianoRollEl.appendChild(
+            generatrDroneBuildOctaveBlock(generatrDronePianoOctave + octOffset)
+          );
+        }
 
         generatrDroneSyncOctaveNav();
       }
@@ -7216,19 +7363,26 @@
       }
       if (droneOctaveUpBtn) {
         droneOctaveUpBtn.addEventListener("click", function () {
-          if (generatrDronePianoOctave >= GENERATR_DRONE_OCTAVE_MAX) return;
-          generatrDronePianoOctave += 1;
-          generatrDroneSyncOctaveNav();
+          generatrDroneShiftOctaveView(1);
         });
       }
       if (droneOctaveDownBtn) {
         droneOctaveDownBtn.addEventListener("click", function () {
-          if (generatrDronePianoOctave <= GENERATR_DRONE_OCTAVE_MIN) return;
-          generatrDronePianoOctave -= 1;
-          generatrDroneSyncOctaveNav();
+          generatrDroneShiftOctaveView(-1);
+        });
+      }
+      var dronePreviewWaveWrap = document.getElementById("generatr-drone-preview-wave");
+      if (dronePreviewWaveWrap) {
+        dronePreviewWaveWrap.addEventListener("click", function (ev) {
+          var btn = ev.target.closest(".generatr-drone-preview-wave-btn");
+          if (!btn) return;
+          var wave = btn.getAttribute("data-preview-wave") || "";
+          if (!wave) return;
+          generatrDroneSetPreviewWave(wave);
         });
       }
       generatrDroneBuildPianoRoll();
+      generatrDroneSyncPreviewWaveButtons();
 
       var generatrChordPickerState = {
         kind: "",
