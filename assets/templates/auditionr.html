@@ -1174,6 +1174,28 @@
       background: rgba(255, 255, 255, 0.08);
     }
 
+    button.generatr-drone-plugin-save-btn {
+      margin: 0;
+      padding: 0.18rem 0.38rem;
+      border: none;
+      border-radius: 4px;
+      background: transparent;
+      color: color-mix(in srgb, var(--theme-a) 78%, transparent);
+      cursor: pointer;
+      font-size: 0.82rem;
+      line-height: 1;
+    }
+
+    button.generatr-drone-plugin-save-btn:hover:not(:disabled) {
+      color: var(--primary);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    button.generatr-drone-plugin-save-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
     .generatr-drone-plugin-card-hint {
       margin: 0 0 0.35rem;
       font-size: 0.68rem;
@@ -1267,7 +1289,30 @@
       pointer-events: none;
     }
 
-    button.generatr-drone-plugin-slot.is-filled:hover .generatr-drone-plugin-slot-clear {
+    .generatr-drone-plugin-slot-swap {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 1rem;
+      height: 1rem;
+      padding: 0;
+      border: none;
+      border-radius: 3px;
+      background: rgba(0, 0, 0, 0.45);
+      color: var(--theme-a);
+      font-size: 0.58rem;
+      line-height: 1rem;
+      text-align: center;
+      cursor: pointer;
+      opacity: 0;
+      pointer-events: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    button.generatr-drone-plugin-slot.is-filled:hover .generatr-drone-plugin-slot-clear,
+    button.generatr-drone-plugin-slot.is-filled:hover .generatr-drone-plugin-slot-swap {
       opacity: 1;
       pointer-events: auto;
     }
@@ -1527,8 +1572,135 @@
     .generatr-drone-plugin-list-actions {
       display: flex;
       justify-content: flex-end;
+      align-items: center;
       gap: 0.45rem;
       flex-shrink: 0;
+    }
+
+    .generatr-drone-plugin-list-actions-spacer {
+      flex: 1 1 auto;
+    }
+
+    button.generatr-drone-plugin-list-rescan {
+      font-family: inherit;
+      font-size: 0.78rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--primary);
+      cursor: pointer;
+    }
+
+    button.generatr-drone-plugin-list-rescan:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    button.generatr-drone-plugin-list-rescan:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    #generatr-drone-save-preset-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 10075;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      box-sizing: border-box;
+      background: rgba(0, 0, 0, 0.45);
+      overflow: hidden;
+    }
+
+    #generatr-drone-save-preset-modal.hidden {
+      display: none !important;
+    }
+
+    #generatr-drone-save-preset-modal .generatr-drone-save-preset-dialog {
+      width: min(94vw, 420px);
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      padding: 0.85rem 1rem;
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--secondary) 96%, transparent);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--primary);
+      box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    #generatr-drone-save-preset-modal h3.generatr-drone-save-preset-title {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--theme-a);
+    }
+
+    .generatr-drone-save-preset-hint {
+      margin: 0;
+      font-size: 0.72rem;
+      color: color-mix(in srgb, var(--theme-a) 70%, transparent);
+      line-height: 1.35;
+    }
+
+    .generatr-drone-save-preset-field label {
+      display: block;
+      margin-bottom: 0.25rem;
+      font-size: 0.72rem;
+      color: color-mix(in srgb, var(--theme-a) 78%, transparent);
+    }
+
+    .generatr-drone-save-preset-field input {
+      width: 100%;
+      box-sizing: border-box;
+      font-family: inherit;
+      font-size: 0.82rem;
+      padding: 0.42rem 0.5rem;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      background: rgba(0, 0, 0, 0.22);
+      color: var(--primary);
+    }
+
+    .generatr-drone-save-preset-status {
+      margin: 0;
+      min-height: 1rem;
+      font-size: 0.72rem;
+      color: color-mix(in srgb, var(--theme-a) 78%, transparent);
+      line-height: 1.35;
+    }
+
+    .generatr-drone-save-preset-status.is-error {
+      color: #ffb4b4;
+    }
+
+    .generatr-drone-save-preset-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.45rem;
+      margin-top: 0.15rem;
+    }
+
+    .generatr-drone-save-preset-actions button {
+      font-family: inherit;
+      font-size: 0.78rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--primary);
+      cursor: pointer;
+    }
+
+    .generatr-drone-save-preset-actions button:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .generatr-drone-save-preset-actions button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
     }
 
     .generatr-drone-plugin-list-actions button {
@@ -3452,6 +3624,9 @@
                     <div class="generatr-sweep-effect-head">
                       <span class="generatr-sweep-effect-title">Instrument</span>
                       <div class="generatr-drone-plugin-card-tools">
+                        <button type="button" class="generatr-drone-plugin-save-btn" data-save-preset-role="instrument" aria-label="Save instrument patch" title="Save instrument patch">
+                          <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+                        </button>
                         <button type="button" class="generatr-drone-plugin-list-btn" data-plugin-list-role="instrument" aria-label="Edit instrument plug-in list" title="Edit instrument plug-in list">
                           <i class="fa-solid fa-gear" aria-hidden="true"></i>
                         </button>
@@ -3470,6 +3645,9 @@
                     <div class="generatr-sweep-effect-head">
                       <span class="generatr-sweep-effect-title">Effect / FX chain</span>
                       <div class="generatr-drone-plugin-card-tools">
+                        <button type="button" class="generatr-drone-plugin-save-btn" data-save-preset-role="effect" aria-label="Save FX patch or chain" title="Save FX patch or chain">
+                          <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+                        </button>
                         <button type="button" class="generatr-drone-plugin-list-btn" data-plugin-list-role="effect" aria-label="Edit FX plug-in list" title="Edit FX plug-in list">
                           <i class="fa-solid fa-gear" aria-hidden="true"></i>
                         </button>
@@ -3623,6 +3801,8 @@
         </div>
       </div>
       <div class="generatr-drone-plugin-list-actions">
+        <span class="generatr-drone-plugin-list-actions-spacer"></span>
+        <button type="button" class="generatr-drone-plugin-list-rescan" id="generatr-drone-plugin-list-rescan">Rescan plug-ins</button>
         <button type="button" id="generatr-drone-plugin-list-cancel">Cancel</button>
         <button type="button" id="generatr-drone-plugin-list-save">Save</button>
       </div>
@@ -3657,6 +3837,21 @@
         <button type="button" class="generatr-chord-picker-cancel" id="generatr-chord-picker-cancel">Cancel</button>
         <button type="button" class="generatr-chord-picker-clear" id="generatr-chord-picker-clear">Clear selection</button>
         <button type="button" class="generatr-chord-picker-use" id="generatr-chord-picker-use">Confirm</button>
+      </div>
+    </div>
+  </div>
+  <div id="generatr-drone-save-preset-modal" class="generatr-modal hidden" role="dialog" aria-modal="true" aria-labelledby="generatr-drone-save-preset-title" aria-hidden="true">
+    <div class="generatr-drone-save-preset-dialog">
+      <h3 class="generatr-drone-save-preset-title" id="generatr-drone-save-preset-title">Save patch</h3>
+      <p class="generatr-drone-save-preset-hint" id="generatr-drone-save-preset-hint"></p>
+      <div class="generatr-drone-save-preset-field">
+        <label for="generatr-drone-save-preset-name">Preset name</label>
+        <input type="text" id="generatr-drone-save-preset-name" autocomplete="off" placeholder="My patch">
+      </div>
+      <p class="generatr-drone-save-preset-status" id="generatr-drone-save-preset-status" aria-live="polite"></p>
+      <div class="generatr-drone-save-preset-actions">
+        <button type="button" id="generatr-drone-save-preset-cancel">Cancel</button>
+        <button type="button" id="generatr-drone-save-preset-confirm">Save</button>
       </div>
     </div>
   </div>
@@ -6262,14 +6457,24 @@
       var dronePluginListDetected = document.getElementById("generatr-drone-plugin-list-detected");
       var dronePluginListCancel = document.getElementById("generatr-drone-plugin-list-cancel");
       var dronePluginListSave = document.getElementById("generatr-drone-plugin-list-save");
+      var dronePluginListRescan = document.getElementById("generatr-drone-plugin-list-rescan");
       var dronePluginListStatus = document.getElementById("generatr-drone-plugin-list-status");
+      var droneSavePresetModal = document.getElementById("generatr-drone-save-preset-modal");
+      var droneSavePresetTitle = document.getElementById("generatr-drone-save-preset-title");
+      var droneSavePresetHint = document.getElementById("generatr-drone-save-preset-hint");
+      var droneSavePresetNameInput = document.getElementById("generatr-drone-save-preset-name");
+      var droneSavePresetStatus = document.getElementById("generatr-drone-save-preset-status");
+      var droneSavePresetCancel = document.getElementById("generatr-drone-save-preset-cancel");
+      var droneSavePresetConfirm = document.getElementById("generatr-drone-save-preset-confirm");
       var generatrDronePluginScanPollTimer = null;
+      var generatrDroneInitialPluginScanTriggered = false;
       var GENERATR_DRONE_FX_SLOT_COUNT = 5;
       var generatrDroneInstrumentSelection = null;
       var generatrDroneFxSlots = [null, null, null, null, null];
       var generatrDronePluginPickerContext = null;
       var generatrDronePluginPickerData = null;
       var generatrDronePluginListState = { role: null, allowed: [], detected: [] };
+      var generatrDroneSavePresetState = { role: null };
       var droneIterationsInput = document.getElementById("generatr-drone-iterations");
       var droneStyleModeCustomBtn = document.getElementById("generatr-drone-style-mode-custom");
       var droneStyleModeChartBtn = document.getElementById("generatr-drone-style-mode-chart");
@@ -6401,11 +6606,6 @@
             generatrPluginPathsConfigured = data.pluginPathsConfigured !== false;
             generatrSidebarOptionsLoaded = true;
             updateGeneratrConfigEmptyState();
-            fetch("/api/generatr/drone-plugin-scan", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ force: false })
-            }).catch(function () { /* optional background verify */ });
           })
           .catch(function (err) {
             console.error("Failed to load generate options:", err);
@@ -6439,12 +6639,19 @@
         var label = document.createElement("span");
         label.className = "generatr-drone-plugin-slot-label";
         label.textContent = generatrDroneSelectionLabel(sel);
+        var swapBtn = document.createElement("span");
+        swapBtn.className = "generatr-drone-plugin-slot-swap";
+        swapBtn.setAttribute("role", "button");
+        swapBtn.setAttribute("tabindex", "0");
+        swapBtn.setAttribute("aria-label", "Swap plug-in");
+        swapBtn.innerHTML = "<i class=\"fa-solid fa-right-left\" aria-hidden=\"true\"></i>";
         var clearBtn = document.createElement("span");
         clearBtn.className = "generatr-drone-plugin-slot-clear";
         clearBtn.setAttribute("role", "button");
         clearBtn.setAttribute("tabindex", "0");
         clearBtn.setAttribute("aria-label", "Clear slot");
         clearBtn.textContent = "×";
+        btn.appendChild(swapBtn);
         btn.appendChild(kind);
         btn.appendChild(label);
         btn.appendChild(clearBtn);
@@ -6458,6 +6665,123 @@
             generatrDroneRenderPluginSlot(btn, generatrDroneFxSlots[idx] || null);
           });
         }
+        generatrDroneUpdateSavePresetButtons();
+      }
+
+      function generatrDroneFilledFxSlotCount() {
+        return generatrDroneFxSlots.filter(function (slot) { return !!slot; }).length;
+      }
+
+      function generatrDroneUpdateSavePresetButtons() {
+        document.querySelectorAll(".generatr-drone-plugin-save-btn[data-save-preset-role]").forEach(function (btn) {
+          var role = btn.getAttribute("data-save-preset-role") || "instrument";
+          var canSave = role === "instrument"
+            ? !!generatrDroneInstrumentSelection
+            : generatrDroneFilledFxSlotCount() > 0;
+          btn.disabled = !canSave;
+        });
+      }
+
+      function generatrDroneCloseSavePresetModal() {
+        if (!droneSavePresetModal) return;
+        droneSavePresetModal.classList.add("hidden");
+        droneSavePresetModal.setAttribute("aria-hidden", "true");
+        generatrDroneSavePresetState.role = null;
+        if (droneSavePresetStatus) {
+          droneSavePresetStatus.textContent = "";
+          droneSavePresetStatus.className = "generatr-drone-save-preset-status";
+        }
+      }
+
+      function generatrDroneOpenSavePresetModal(role) {
+        if (!droneSavePresetModal) return;
+        role = role || "instrument";
+        if (role === "instrument" && !generatrDroneInstrumentSelection) {
+          generatrShowError("Choose an instrument plug-in or saved patch before saving.");
+          return;
+        }
+        var fxCount = generatrDroneFilledFxSlotCount();
+        if (role === "effect" && fxCount < 1) {
+          generatrShowError("Add at least one FX slot before saving.");
+          return;
+        }
+        generatrDroneSavePresetState.role = role;
+        if (droneSavePresetTitle) {
+          droneSavePresetTitle.textContent = role === "effect" ? "Save FX patch" : "Save instrument patch";
+        }
+        if (droneSavePresetHint) {
+          if (role === "instrument") {
+            droneSavePresetHint.textContent = "Saves the current instrument plug-in state to your patch library.";
+          } else if (fxCount === 1) {
+            droneSavePresetHint.textContent = "Saves as a single effect preset — reusable in any FX chain slot.";
+          } else {
+            droneSavePresetHint.textContent = "Saves as an FX chain preset with " + fxCount + " step(s).";
+          }
+        }
+        if (droneSavePresetNameInput) {
+          droneSavePresetNameInput.value = "";
+        }
+        if (droneSavePresetStatus) {
+          droneSavePresetStatus.textContent = "";
+          droneSavePresetStatus.className = "generatr-drone-save-preset-status";
+        }
+        if (droneSavePresetConfirm) droneSavePresetConfirm.disabled = false;
+        droneSavePresetModal.classList.remove("hidden");
+        droneSavePresetModal.setAttribute("aria-hidden", "false");
+        if (droneSavePresetNameInput) {
+          droneSavePresetNameInput.focus();
+          droneSavePresetNameInput.select();
+        }
+      }
+
+      function generatrDroneSubmitSavePreset() {
+        var role = generatrDroneSavePresetState.role;
+        if (!role) return;
+        var name = droneSavePresetNameInput ? String(droneSavePresetNameInput.value || "").trim() : "";
+        if (!name) {
+          if (droneSavePresetStatus) {
+            droneSavePresetStatus.textContent = "Enter a preset name.";
+            droneSavePresetStatus.className = "generatr-drone-save-preset-status is-error";
+          }
+          if (droneSavePresetNameInput) droneSavePresetNameInput.focus();
+          return;
+        }
+        var body = { role: role, name: name };
+        if (role === "instrument") {
+          body.instrumentSelection = generatrDroneInstrumentSelection;
+        } else {
+          body.fxSlots = generatrDroneFxSlots.slice(0, GENERATR_DRONE_FX_SLOT_COUNT);
+        }
+        if (droneSavePresetConfirm) droneSavePresetConfirm.disabled = true;
+        if (droneSavePresetStatus) {
+          droneSavePresetStatus.textContent = "Saving…";
+          droneSavePresetStatus.className = "generatr-drone-save-preset-status";
+        }
+        fetch("/api/generatr/drone-save-preset", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        })
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            if (data.error) {
+              if (droneSavePresetStatus) {
+                droneSavePresetStatus.textContent = data.error;
+                droneSavePresetStatus.className = "generatr-drone-save-preset-status is-error";
+              }
+              return;
+            }
+            generatrDroneCloseSavePresetModal();
+          })
+          .catch(function (err) {
+            if (droneSavePresetStatus) {
+              droneSavePresetStatus.textContent = err.message || "Failed to save preset";
+              droneSavePresetStatus.className = "generatr-drone-save-preset-status is-error";
+            }
+          })
+          .finally(function () {
+            if (droneSavePresetConfirm) droneSavePresetConfirm.disabled = false;
+          });
       }
 
       function generatrDroneClosePluginPicker() {
@@ -6489,7 +6813,7 @@
           var emptyPatch = document.createElement("p");
           emptyPatch.className = "generatr-drone-plugin-picker-meta";
           emptyPatch.style.padding = "0.35rem";
-          emptyPatch.textContent = "No saved patches yet — author presets in Patchcraftr.";
+          emptyPatch.textContent = "No saved patches yet — use the save icon on a filled slot to create one.";
           dronePluginPickerPatches.appendChild(emptyPatch);
         } else {
           patches.forEach(function (patch) {
@@ -6530,7 +6854,7 @@
             btn.setAttribute("data-search", (plugin.label || "") + " " + (plugin.path || ""));
             btn.textContent = plugin.label || plugin.path || "plug-in";
             btn.addEventListener("click", function () {
-              generatrDroneOpenPluginEditor(plugin.path);
+              generatrDroneOpenPluginEditor(plugin.path, generatrDronePluginPickerContext.role);
             });
             dronePluginPickerPlugins.appendChild(btn);
           });
@@ -6538,15 +6862,22 @@
         generatrDroneFilterPickerItems(dronePluginPickerFilter ? dronePluginPickerFilter.value : "");
       }
 
+      function generatrDronePatchSelectionFromPicker(patch, patchType) {
+        return {
+          kind: "patch",
+          name: patch.name,
+          patchType: patchType || patch.type || "instrument",
+          pluginPath: patch.pluginPath || patch.plugin_path || "",
+          presetPath: patch.presetPath || patch.preset_path || "",
+          label: patch.name || patch.pluginName || "patch"
+        };
+      }
+
       function generatrDroneApplyPatchSelection(patch) {
         if (!generatrDronePluginPickerContext || !patch) return;
         var ctx = generatrDronePluginPickerContext;
         if (ctx.role === "instrument") {
-          generatrDroneInstrumentSelection = {
-            kind: "patch",
-            name: patch.name,
-            patchType: patch.type || "instrument"
-          };
+          generatrDroneInstrumentSelection = generatrDronePatchSelectionFromPicker(patch, "instrument");
         } else if (patch.type === "effect_chain" && Array.isArray(patch.effects)) {
           generatrDroneFxSlots = [null, null, null, null, null];
           patch.effects.slice(0, GENERATR_DRONE_FX_SLOT_COUNT).forEach(function (step, idx) {
@@ -6559,11 +6890,7 @@
             };
           });
         } else {
-          generatrDroneFxSlots[ctx.fxSlotIndex] = {
-            kind: "patch",
-            name: patch.name,
-            patchType: patch.type || "effect"
-          };
+          generatrDroneFxSlots[ctx.fxSlotIndex] = generatrDronePatchSelectionFromPicker(patch, patch.type || "effect");
         }
         generatrDroneClosePluginPicker();
         generatrDroneRefreshPluginCards();
@@ -6572,6 +6899,12 @@
       function generatrDroneApplyPluginSelection(capture) {
         if (!generatrDronePluginPickerContext || !capture) return;
         var ctx = generatrDronePluginPickerContext;
+        generatrDroneSetPluginSelection(ctx.role, ctx.fxSlotIndex, capture);
+        generatrDroneClosePluginPicker();
+        generatrDroneRefreshPluginCards();
+      }
+
+      function generatrDroneSetPluginSelection(role, fxSlotIndex, capture) {
         var sel = {
           kind: "plugin",
           pluginPath: capture.pluginPath || capture.plugin_path || "",
@@ -6579,19 +6912,101 @@
           label: capture.label || capture.name || "plug-in",
           pluginName: capture.pluginName || capture.plugin_name || ""
         };
-        if (ctx.role === "instrument") {
+        if (role === "instrument") {
           generatrDroneInstrumentSelection = sel;
         } else {
-          generatrDroneFxSlots[ctx.fxSlotIndex] = sel;
+          generatrDroneFxSlots[fxSlotIndex] = sel;
         }
-        generatrDroneClosePluginPicker();
-        generatrDroneRefreshPluginCards();
       }
 
-      function generatrDroneOpenPluginEditor(pluginPath) {
-        if (!generatrDronePluginPickerContext || !pluginPath) return;
-        var role = generatrDronePluginPickerContext.role;
-        if (dronePluginPickerModal) {
+      function generatrDroneReopenSlotEditor(sel, role, fxSlotIndex) {
+        function openEditor(pluginPath, presetPath) {
+          if (!pluginPath) {
+            generatrDroneOpenPluginPickerForSlot(role, fxSlotIndex);
+            return;
+          }
+          generatrDroneOpenPluginEditor(pluginPath, role, {
+            presetPath: presetPath || "",
+            onCapture: function (data) {
+              generatrDroneSetPluginSelection(role, fxSlotIndex, data);
+              generatrDroneRefreshPluginCards();
+            }
+          });
+        }
+
+        if (!sel) {
+          generatrDroneOpenPluginPickerForSlot(role, fxSlotIndex);
+          return;
+        }
+        if (sel.kind === "plugin" && sel.pluginPath) {
+          openEditor(sel.pluginPath, sel.presetPath || "");
+          return;
+        }
+        if (sel.kind === "patch") {
+          if (sel.pluginPath) {
+            openEditor(sel.pluginPath, sel.presetPath || "");
+            return;
+          }
+          if (!sel.name) {
+            generatrDroneOpenPluginPickerForSlot(role, fxSlotIndex);
+            return;
+          }
+          fetch("/api/generatr/drone-patch?name=" + encodeURIComponent(sel.name))
+            .then(function (res) { return res.json(); })
+            .then(function (patch) {
+              if (patch.error) {
+                generatrShowError(patch.error);
+                return;
+              }
+              openEditor(
+                patch.pluginPath || patch.plugin_path || "",
+                patch.presetPath || patch.preset_path || ""
+              );
+            })
+            .catch(function (err) {
+              generatrShowError(err.message || "Failed to load patch");
+            });
+          return;
+        }
+        generatrDroneOpenPluginPickerForSlot(role, fxSlotIndex);
+      }
+
+      function generatrDroneOpenPluginPickerForSlot(role, fxSlotIndex) {
+        var openPicker = function () {
+          generatrDroneOpenPluginPicker({ role: role, fxSlotIndex: fxSlotIndex });
+        };
+        if (role === "instrument") {
+          generatrDroneEnsureInitialPluginScan().finally(openPicker);
+        } else {
+          openPicker();
+        }
+      }
+
+      function generatrDroneHandlePluginSlotClick(ev, role, fxSlotIndex, getSelection, clearSelection) {
+        if (ev.target.closest(".generatr-drone-plugin-slot-clear")) {
+          ev.stopPropagation();
+          clearSelection();
+          return;
+        }
+        if (ev.target.closest(".generatr-drone-plugin-slot-swap")) {
+          ev.stopPropagation();
+          generatrDroneOpenPluginPickerForSlot(role, fxSlotIndex);
+          return;
+        }
+        var sel = getSelection();
+        if (sel && (sel.kind === "plugin" || sel.kind === "patch")) {
+          generatrDroneReopenSlotEditor(sel, role, fxSlotIndex);
+          return;
+        }
+        generatrDroneOpenPluginPickerForSlot(role, fxSlotIndex);
+      }
+
+      function generatrDroneOpenPluginEditor(pluginPath, role, options) {
+        options = options || {};
+        role = role || (generatrDronePluginPickerContext && generatrDronePluginPickerContext.role) || "instrument";
+        if (!pluginPath) return;
+        var fromPicker = !!generatrDronePluginPickerContext && typeof options.onCapture !== "function";
+        if (fromPicker && dronePluginPickerModal) {
           dronePluginPickerModal.querySelectorAll(".generatr-drone-plugin-picker-choice").forEach(function (btn) {
             btn.disabled = true;
           });
@@ -6599,24 +7014,32 @@
         fetch("/api/generatr/drone-plugin-editor", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pluginPath: pluginPath, role: role })
+          body: JSON.stringify({
+            pluginPath: pluginPath,
+            role: role,
+            presetPath: options.presetPath || ""
+          })
         })
           .then(function (res) { return res.json(); })
           .then(function (data) {
             if (data.error) {
               generatrShowError(data.error);
-              if (dronePluginPickerModal) {
+              if (fromPicker && dronePluginPickerModal) {
                 dronePluginPickerModal.querySelectorAll(".generatr-drone-plugin-picker-choice").forEach(function (btn) {
                   btn.disabled = false;
                 });
               }
               return;
             }
+            if (typeof options.onCapture === "function") {
+              options.onCapture(data);
+              return;
+            }
             generatrDroneApplyPluginSelection(data);
           })
           .catch(function (err) {
             generatrShowError(err.message || "Failed to open plug-in editor");
-            if (dronePluginPickerModal) {
+            if (fromPicker && dronePluginPickerModal) {
               dronePluginPickerModal.querySelectorAll(".generatr-drone-plugin-picker-choice").forEach(function (btn) {
                 btn.disabled = false;
               });
@@ -6666,12 +7089,13 @@
 
       if (droneInstrumentSlot) {
         droneInstrumentSlot.addEventListener("click", function (ev) {
-          if (ev.target.closest(".generatr-drone-plugin-slot-clear")) {
-            ev.stopPropagation();
-            generatrDroneClearInstrumentSelection();
-            return;
-          }
-          generatrDroneOpenPluginPicker({ role: "instrument", fxSlotIndex: 0 });
+          generatrDroneHandlePluginSlotClick(
+            ev,
+            "instrument",
+            0,
+            function () { return generatrDroneInstrumentSelection; },
+            generatrDroneClearInstrumentSelection
+          );
         });
       }
 
@@ -6689,7 +7113,13 @@
           var slotBtn = ev.target.closest(".generatr-drone-plugin-slot[data-fx-slot]");
           if (!slotBtn) return;
           var idx = parseInt(slotBtn.getAttribute("data-fx-slot") || "0", 10);
-          generatrDroneOpenPluginPicker({ role: "effect", fxSlotIndex: idx });
+          generatrDroneHandlePluginSlotClick(
+            ev,
+            "effect",
+            idx,
+            function () { return generatrDroneFxSlots[idx] || null; },
+            function () { generatrDroneClearFxSlot(idx); }
+          );
         });
       }
 
@@ -6715,6 +7145,58 @@
         }
       }
 
+      function generatrDroneFormatScanCacheTime(iso) {
+        if (!iso) return "";
+        var dt = new Date(iso);
+        if (isNaN(dt.getTime())) return "";
+        return dt.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+      }
+
+      function generatrDroneSetPluginListRescanEnabled(enabled) {
+        if (dronePluginListRescan) dronePluginListRescan.disabled = !enabled;
+      }
+
+      function generatrDroneTriggerPluginScan(force, onRefresh) {
+        generatrDroneSetPluginListRescanEnabled(false);
+        return fetch("/api/generatr/drone-plugin-scan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ force: !!force })
+        })
+          .then(function (res) { return res.json(); })
+          .then(function (scanData) {
+            generatrDroneUpdatePluginListScanStatus(scanData || {});
+            if (scanData && (scanData.status === "running" || scanData.scanning)) {
+              generatrDroneStartPluginScanPolling(onRefresh);
+            } else {
+              generatrDroneSetPluginListRescanEnabled(true);
+              if (typeof onRefresh === "function") onRefresh(false);
+            }
+            return scanData;
+          })
+          .catch(function (err) {
+            generatrDroneSetPluginListRescanEnabled(true);
+            generatrShowError(err.message || "Failed to start plug-in scan");
+          });
+      }
+
+      function generatrDroneEnsureInitialPluginScan() {
+        return fetch("/api/generatr/drone-plugin-scan-status")
+          .then(function (res) { return res.json(); })
+          .then(function (status) {
+            if (status.cacheComplete || status.scanning || status.status === "running") {
+              generatrDroneInitialPluginScanTriggered = true;
+              return status;
+            }
+            if (generatrDroneInitialPluginScanTriggered) {
+              return status;
+            }
+            generatrDroneInitialPluginScanTriggered = true;
+            return generatrDroneTriggerPluginScan(false);
+          })
+          .catch(function () { /* first-load scan is best-effort */ });
+      }
+
       function generatrDroneStopPluginScanPolling() {
         if (generatrDronePluginScanPollTimer) {
           clearInterval(generatrDronePluginScanPollTimer);
@@ -6726,34 +7208,51 @@
         if (!dronePluginListStatus) return;
         scan = scan || {};
         var status = scan.status || "idle";
-        if (status === "running") {
+        var cache = scan.cache || {};
+        if (status === "running" || scan.scanning) {
           var done = parseInt(scan.done || "0", 10) || 0;
           var total = parseInt(scan.total || "0", 10) || 0;
           var label = (scan.label || "").trim();
           var progressText = total > 0
-            ? ("Verifying plug-ins with DawDreamer (" + done + " / " + total + ")" + (label ? " — " + label : "") + "…")
-            : "Starting plug-in verification…";
+            ? ("Scanning plug-ins (" + done + " / " + total + ")" + (label ? " — " + label : "") + "…")
+            : "Starting plug-in scan…";
           dronePluginListStatus.className = "generatr-drone-plugin-list-status is-scanning";
           dronePluginListStatus.innerHTML = "<i class=\"fa-solid fa-spinner fa-spin\" aria-hidden=\"true\"></i><span>" + progressText + "</span>";
+          generatrDroneSetPluginListRescanEnabled(false);
           return;
         }
+        generatrDroneSetPluginListRescanEnabled(true);
         dronePluginListStatus.className = "generatr-drone-plugin-list-status";
-        if (status === "done" && (parseInt(scan.total || "0", 10) || 0) > 0) {
-          dronePluginListStatus.textContent = "Plug-in verification complete.";
-        } else {
-          dronePluginListStatus.textContent = "Lists use fast name-based sorting; DawDreamer verifies in the background.";
+        var verified = parseInt(cache.verifiedCount || scan.verifiedCount || "0", 10) || 0;
+        var installed = parseInt(cache.installedCount || scan.installedCount || "0", 10) || 0;
+        var scannedAt = generatrDroneFormatScanCacheTime(cache.scannedAt || scan.scannedAt || "");
+        if (scan.cacheComplete && installed > 0) {
+          dronePluginListStatus.textContent = "Cached scan: " + verified + " / " + installed + " plug-ins"
+            + (scannedAt ? (" · " + scannedAt) : "") + ".";
+          return;
         }
+        if (installed > 0 && verified > 0) {
+          dronePluginListStatus.textContent = "Partial cache (" + verified + " / " + installed + "). Rescan to verify all plug-ins.";
+          return;
+        }
+        if (installed > 0) {
+          dronePluginListStatus.textContent = "No scan cache yet — open the instrument slot or choose Rescan.";
+          return;
+        }
+        dronePluginListStatus.textContent = "No plug-ins detected under your configured paths.";
       }
 
       function generatrDroneStartPluginScanPolling(onRefresh) {
         generatrDroneStopPluginScanPolling();
+        generatrDroneSetPluginListRescanEnabled(false);
         generatrDronePluginScanPollTimer = setInterval(function () {
           fetch("/api/generatr/drone-plugin-scan-status")
             .then(function (res) { return res.json(); })
             .then(function (scan) {
               generatrDroneUpdatePluginListScanStatus(scan);
-              if (scan && scan.status === "running") return;
+              if (scan && (scan.status === "running" || scan.scanning)) return;
               generatrDroneStopPluginScanPolling();
+              generatrDroneSetPluginListRescanEnabled(true);
               if (typeof onRefresh === "function") onRefresh(false);
             })
             .catch(function () { /* ignore transient poll errors */ });
@@ -6876,26 +7375,10 @@
             generatrDronePluginListState.detected = Array.isArray(data.detected) ? data.detected.slice() : [];
             generatrDroneRenderPluginListEditor();
             generatrDroneUpdatePluginListScanStatus(data.scan || {});
-            if (data.scan && data.scan.status === "running") {
+            if (data.scan && (data.scan.status === "running" || data.scan.scanning)) {
               generatrDroneStartPluginScanPolling(function () {
                 generatrDroneReloadPluginListEditor(generatrDronePluginListState.role, false);
               });
-            } else {
-              fetch("/api/generatr/drone-plugin-scan", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ force: false })
-              })
-                .then(function (res) { return res.json(); })
-                .then(function (scanData) {
-                  generatrDroneUpdatePluginListScanStatus(scanData || {});
-                  if (scanData && scanData.status === "running") {
-                    generatrDroneStartPluginScanPolling(function () {
-                      generatrDroneReloadPluginListEditor(generatrDronePluginListState.role, false);
-                    });
-                  }
-                })
-                .catch(function () { /* optional */ });
             }
           })
           .catch(function (err) {
@@ -6934,9 +7417,50 @@
         btn.addEventListener("click", function (ev) {
           ev.stopPropagation();
           var role = btn.getAttribute("data-plugin-list-role") || "instrument";
-          generatrDroneOpenPluginListEditor(role);
+          if (role === "instrument") {
+            generatrDroneEnsureInitialPluginScan().finally(function () {
+              generatrDroneOpenPluginListEditor(role);
+            });
+          } else {
+            generatrDroneOpenPluginListEditor(role);
+          }
         });
       });
+
+      document.querySelectorAll(".generatr-drone-plugin-save-btn[data-save-preset-role]").forEach(function (btn) {
+        btn.addEventListener("click", function (ev) {
+          ev.stopPropagation();
+          generatrDroneOpenSavePresetModal(btn.getAttribute("data-save-preset-role") || "instrument");
+        });
+      });
+
+      if (droneSavePresetCancel) {
+        droneSavePresetCancel.addEventListener("click", generatrDroneCloseSavePresetModal);
+      }
+      if (droneSavePresetConfirm) {
+        droneSavePresetConfirm.addEventListener("click", generatrDroneSubmitSavePreset);
+      }
+      if (droneSavePresetNameInput) {
+        droneSavePresetNameInput.addEventListener("keydown", function (ev) {
+          if (ev.key === "Enter") {
+            ev.preventDefault();
+            generatrDroneSubmitSavePreset();
+          }
+        });
+      }
+      if (droneSavePresetModal) {
+        droneSavePresetModal.addEventListener("click", function (ev) {
+          if (ev.target === droneSavePresetModal) generatrDroneCloseSavePresetModal();
+        });
+      }
+
+      if (dronePluginListRescan) {
+        dronePluginListRescan.addEventListener("click", function () {
+          generatrDroneTriggerPluginScan(true, function () {
+            generatrDroneReloadPluginListEditor(generatrDronePluginListState.role, false);
+          });
+        });
+      }
 
       if (dronePluginListCancel) {
         dronePluginListCancel.addEventListener("click", generatrDroneClosePluginListEditor);

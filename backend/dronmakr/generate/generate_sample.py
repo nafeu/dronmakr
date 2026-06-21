@@ -135,8 +135,9 @@ def generate_drone_sample(
         isinstance(instrument_selection, dict) and instrument_selection.get("kind") == "plugin"
     ):
         raise ValueError(
-            f"No instrument presets in {presets_path}. Save at least one synth/instrument preset "
-            "from Patchcraftr (saved as type “instrument”), or pick an installed instrument plug-in."
+            f"No instrument presets in {presets_path}. "
+            "Save at least one synth/instrument preset using the save icon in Generate Samples, "
+            "or pick an installed instrument plug-in."
         )
 
     instrument_preset = None
@@ -196,7 +197,7 @@ def generate_drone_sample(
             avail = sorted({p.get("name", "") for p in fx_presets if isinstance(p.get("name"), str)})
             hint = ""
             if not fx_presets:
-                hint = " There are no saved effect or effect_chain presets yet — save FX from Patchcraftr."
+                hint = " There are no saved effect or effect_chain presets yet — save FX using the save icon in Generate Samples."
             elif avail:
                 hint = f" Available effect names (sample): {', '.join(avail[:12])}"
                 if len(avail) > 12:

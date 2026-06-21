@@ -1293,6 +1293,20 @@ def _run_generate_beat(payload: dict):
     return paths
 
 
+def _handle_drone_patch_detail():
+    name = (request.args.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "name is required"}), 400
+    try:
+        from dronmakr.apps.generatr_plugins import get_drone_patch_detail
+
+        return jsonify(get_drone_patch_detail(name))
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 def _handle_drone_plugin_scan_status():
     try:
         from dronmakr.apps.generatr_plugins import get_drone_plugin_scan_status
@@ -1355,6 +1369,7 @@ def _handle_drone_plugin_picker():
 def _handle_drone_plugin_editor():
     data = request.get_json() or {}
     plugin_path = (data.get("pluginPath") or data.get("plugin_path") or "").strip()
+    preset_path = (data.get("presetPath") or data.get("preset_path") or "").strip() or None
     role = (data.get("role") or "instrument").strip().lower()
     if not plugin_path:
         return jsonify({"error": "pluginPath is required"}), 400
@@ -1364,10 +1379,34 @@ def _handle_drone_plugin_editor():
         from dronmakr.audio.audio_worker import delegate_open_drone_plugin_editor_if_needed
         from dronmakr.apps.generatr_plugins import open_drone_plugin_editor_capture
 
-        result = delegate_open_drone_plugin_editor_if_needed(plugin_path, role)
+        result = delegate_open_drone_plugin_editor_if_needed(plugin_path, role, preset_path)
         if result is None:
-            result = open_drone_plugin_editor_capture(plugin_path, role)
+            result = open_drone_plugin_editor_capture(plugin_path, role, preset_path)
         return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+def _handle_drone_save_preset():
+    data = request.get_json() or {}
+    role = (data.get("role") or "instrument").strip().lower()
+    name = (data.get("name") or "").strip()
+    if role not in ("instrument", "effect"):
+        return jsonify({"error": "role must be instrument or effect"}), 400
+    if not name:
+        return jsonify({"error": "name is required"}), 400
+    try:
+        from dronmakr.apps.generatr_plugins import save_drone_preset
+
+        result = save_drone_preset(
+            role=role,
+            name=name,
+            instrument_selection=data.get("instrumentSelection"),
+            fx_slots=data.get("fxSlots"),
+        )
+        return jsonify(result)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -1567,6 +1606,12 @@ def register_auditionr(app, socketio):
         methods=["GET", "POST"],
     )
     app.add_url_rule(
+        "/api/generatr/drone-patch",
+        "auditionr_api_drone_patch_detail",
+        _handle_drone_patch_detail,
+        methods=["GET"],
+    )
+    app.add_url_rule(
         "/api/generatr/drone-plugin-picker",
         "auditionr_api_drone_plugin_picker",
         _handle_drone_plugin_picker,
@@ -1576,6 +1621,12 @@ def register_auditionr(app, socketio):
         "/api/generatr/drone-plugin-editor",
         "auditionr_api_drone_plugin_editor",
         _handle_drone_plugin_editor,
+        methods=["POST"],
+    )
+    app.add_url_rule(
+        "/api/generatr/drone-save-preset",
+        "auditionr_api_drone_save_preset",
+        _handle_drone_save_preset,
         methods=["POST"],
     )
     app.add_url_rule(

@@ -136,12 +136,17 @@ def delegate_generate_drone_sample_if_needed(
 def delegate_open_drone_plugin_editor_if_needed(
     plugin_path: str,
     role: str,
+    preset_path: str | None = None,
 ) -> dict | None:
     if not _should_delegate_to_worker():
         return None
     data = invoke_audio_worker(
         "open_drone_plugin_editor",
-        {"plugin_path": plugin_path, "role": role},
+        {
+            "plugin_path": plugin_path,
+            "role": role,
+            "preset_path": preset_path,
+        },
     )
     return dict(data.get("result") or {})
 
@@ -230,6 +235,7 @@ def run_stdio_worker() -> None:
             capture = open_drone_plugin_editor_capture(
                 params["plugin_path"],
                 params.get("role") or "instrument",
+                params.get("preset_path"),
             )
             result = {"ok": True, "result": capture}
         elif task == "scan_plugin_classifications":
