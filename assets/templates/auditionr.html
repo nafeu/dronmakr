@@ -1202,59 +1202,31 @@
       gap: 0.45rem;
     }
 
-    button.generatr-drone-midi-pattern-picker {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.5rem;
-      width: 100%;
-      margin: 0;
-      padding: 0.42rem 0.55rem;
-      border-radius: 5px;
-      border: 1px solid rgba(255, 255, 255, 0.22);
-      background: rgba(0, 0, 0, 0.18);
-      color: var(--primary);
-      font-family: inherit;
-      font-size: 0.8rem;
-      cursor: pointer;
-      text-align: left;
-    }
-
-    button.generatr-drone-midi-pattern-picker:hover {
-      border-color: rgba(255, 255, 255, 0.38);
-      background: rgba(255, 255, 255, 0.06);
-    }
-
-    .generatr-drone-midi-pattern-picker-label {
-      flex: 1 1 auto;
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .generatr-drone-midi-pattern-picker-caret {
-      flex-shrink: 0;
-      opacity: 0.65;
-      font-size: 0.68rem;
-    }
-
-    .generatr-drone-midi-preview-wrap {
+    .generatr-drone-midi-preview-host {
+      position: relative;
       width: 100%;
       border-radius: 6px;
-      border: 1px solid rgba(255, 255, 255, 0.14);
       background: rgba(0, 0, 0, 0.24);
       overflow: hidden;
       min-height: 3.25rem;
+      cursor: pointer;
     }
 
-    .generatr-drone-midi-preview-wrap.is-loading {
+    .generatr-drone-midi-preview-host:hover,
+    .generatr-drone-midi-preview-host:focus-visible {
+      border-color: rgba(255, 255, 255, 0.32);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .generatr-drone-midi-preview-host.is-loading {
       opacity: 0.55;
+      pointer-events: none;
     }
 
     .generatr-drone-midi-preview-inner {
       width: 100%;
       height: 3.25rem;
+      pointer-events: none;
     }
 
     .generatr-drone-midi-preview-inner svg {
@@ -1263,8 +1235,48 @@
       height: 100%;
     }
 
+    .generatr-drone-midi-preview-hover-actions {
+      position: absolute;
+      top: 0.32rem;
+      right: 0.32rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s ease;
+    }
+
+    .generatr-drone-midi-preview-host:hover .generatr-drone-midi-preview-hover-actions,
+    .generatr-drone-midi-preview-host:focus-within .generatr-drone-midi-preview-hover-actions {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    button.generatr-drone-midi-preview-refresh-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1.45rem;
+      height: 1.45rem;
+      margin: 0;
+      padding: 0;
+      border: none;
+      border-radius: 4px;
+      background: var(--secondary);
+      color: var(--theme-a);
+      font-size: 0.72rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    button.generatr-drone-midi-preview-refresh-btn:hover {
+      background: var(--primary);
+      color: var(--secondary);
+    }
+
     svg.generatr-drone-midi-preview-svg .generatr-drone-midi-preview-note {
-      fill: var(--theme-a);
+      fill: var(--primary);
     }
 
     svg.generatr-drone-midi-preview-svg .generatr-drone-midi-preview-grid {
@@ -1351,6 +1363,7 @@
       gap: 0.45rem;
       align-content: start;
       padding: 0.1rem;
+      padding-right: 1rem;
     }
 
     button.generatr-drone-midi-pattern-tile {
@@ -3897,19 +3910,18 @@
                 <div class="generatr-sweep-effect generatr-drone-pattern-card">
                   <div class="generatr-sweep-effect-head">
                     <span class="generatr-sweep-effect-title">MIDI Pattern</span>
-                    <div class="generatr-drone-plugin-card-tools">
-                      <button type="button" class="generatr-drone-plugin-save-btn" id="generatr-drone-midi-preview-refresh" aria-label="Regenerate MIDI preview" title="Regenerate preview">
-                        <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
-                      </button>
-                    </div>
                   </div>
                   <div class="generatr-sweep-effect-body generatr-drone-pattern-body">
-                    <button type="button" class="generatr-drone-midi-pattern-picker" id="generatr-drone-midi-pattern-picker" aria-haspopup="dialog">
-                      <span class="generatr-drone-midi-pattern-picker-label" id="generatr-drone-midi-pattern-label">Random pattern</span>
-                      <i class="fa-solid fa-chevron-down generatr-drone-midi-pattern-picker-caret" aria-hidden="true"></i>
-                    </button>
-                    <div class="generatr-drone-midi-preview-wrap" id="generatr-drone-midi-preview-wrap" aria-hidden="true">
+                    <div class="generatr-drone-midi-preview-host" id="generatr-drone-midi-preview-host" role="button" tabindex="0" aria-haspopup="dialog" aria-label="Choose MIDI pattern">
                       <div class="generatr-drone-midi-preview-inner" id="generatr-drone-midi-preview"></div>
+                      <div class="generatr-drone-midi-preview-hover-actions">
+                        <button type="button" class="generatr-drone-midi-preview-refresh-btn" id="generatr-drone-midi-preview-edit" aria-label="Choose MIDI pattern" title="Choose pattern">
+                          <i class="fa-solid fa-pen" aria-hidden="true"></i>
+                        </button>
+                        <button type="button" class="generatr-drone-midi-preview-refresh-btn" id="generatr-drone-midi-preview-refresh" aria-label="Regenerate MIDI preview" title="Regenerate preview">
+                          <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
+                        </button>
+                      </div>
                     </div>
                     <p class="generatr-drone-midi-preview-meta" id="generatr-drone-midi-preview-meta"></p>
                   </div>
@@ -6756,9 +6768,7 @@
       var droneChartTypeSelect = document.getElementById("generatr-drone-chart-type");
       var droneTagsInput = document.getElementById("generatr-drone-tags");
       var droneRootsInput = document.getElementById("generatr-drone-roots");
-      var droneMidiPatternPicker = document.getElementById("generatr-drone-midi-pattern-picker");
-      var droneMidiPatternLabel = document.getElementById("generatr-drone-midi-pattern-label");
-      var droneMidiPreviewWrap = document.getElementById("generatr-drone-midi-preview-wrap");
+      var droneMidiPreviewHost = document.getElementById("generatr-drone-midi-preview-host");
       var droneMidiPreviewEl = document.getElementById("generatr-drone-midi-preview");
       var droneMidiPreviewMeta = document.getElementById("generatr-drone-midi-preview-meta");
       var droneMidiPreviewRefreshBtn = document.getElementById("generatr-drone-midi-preview-refresh");
@@ -7043,8 +7053,11 @@
       }
 
       function generatrDroneUpdateMidiPatternLabel() {
-        if (droneMidiPatternLabel) {
-          droneMidiPatternLabel.textContent = generatrDronePatternDisplayName(generatrDroneMidiPatternId);
+        if (droneMidiPreviewHost) {
+          droneMidiPreviewHost.setAttribute(
+            "aria-label",
+            "MIDI pattern: " + generatrDronePatternDisplayName(generatrDroneMidiPatternId)
+          );
         }
       }
 
@@ -7070,10 +7083,8 @@
       function generatrDroneRefreshMidiPreview() {
         if (!droneMidiPreviewEl || !kindSelect || kindSelect.value !== "drone") return;
         var requestId = ++generatrDroneMidiPreviewRequestSeq;
-        if (droneMidiPreviewWrap) {
-          droneMidiPreviewWrap.classList.remove("hidden");
-          droneMidiPreviewWrap.classList.add("is-loading");
-          droneMidiPreviewWrap.setAttribute("aria-hidden", "false");
+        if (droneMidiPreviewHost) {
+          droneMidiPreviewHost.classList.add("is-loading");
         }
         if (droneMidiPreviewMeta) droneMidiPreviewMeta.textContent = "Generating preview…";
         fetch("/api/generatr/drone-midi-preview", {
@@ -7093,9 +7104,10 @@
             }
             if (droneMidiPreviewMeta) {
               var bits = [];
+              if (!generatrDroneMidiPatternId) bits.push("Random pattern");
               if (data.patternDisplayName) bits.push(data.patternDisplayName);
               if (data.chart) bits.push(data.chart);
-              droneMidiPreviewMeta.textContent = bits.length ? "Preview · " + bits.join(" · ") : "";
+              droneMidiPreviewMeta.textContent = bits.length ? bits.join(" · ") : "";
             }
           })
           .catch(function (err) {
@@ -7106,7 +7118,7 @@
           })
           .finally(function () {
             if (requestId !== generatrDroneMidiPreviewRequestSeq) return;
-            if (droneMidiPreviewWrap) droneMidiPreviewWrap.classList.remove("is-loading");
+            if (droneMidiPreviewHost) droneMidiPreviewHost.classList.remove("is-loading");
           });
       }
 
@@ -8048,9 +8060,17 @@
         });
       }
 
-      if (droneMidiPatternPicker) {
-        droneMidiPatternPicker.addEventListener("click", function () {
+      if (droneMidiPreviewHost) {
+        droneMidiPreviewHost.addEventListener("click", function (ev) {
+          if (ev.target.closest("#generatr-drone-midi-preview-refresh")) return;
           generatrDroneOpenMidiPatternModal();
+        });
+        droneMidiPreviewHost.addEventListener("keydown", function (ev) {
+          if (ev.target.closest("#generatr-drone-midi-preview-refresh")) return;
+          if (ev.key === "Enter" || ev.key === " ") {
+            ev.preventDefault();
+            generatrDroneOpenMidiPatternModal();
+          }
         });
       }
       if (droneMidiPreviewRefreshBtn) {
