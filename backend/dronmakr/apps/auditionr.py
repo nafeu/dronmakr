@@ -788,6 +788,22 @@ def _parse_drone_instrument_selection(payload: dict) -> tuple[str | None, dict |
             "label": raw.get("label") or raw.get("name") or "",
             "pluginName": raw.get("pluginName") or raw.get("plugin_name") or "",
         }
+    if kind == "faust":
+        faust_id = (raw.get("faustId") or raw.get("faust_id") or "").strip()
+        if not faust_id:
+            raise ValueError("Faust instrument selection is missing faustId.")
+        from dronmakr.audio.faust_library import faust_path_for_id, list_faust_instruments
+
+        label = (raw.get("label") or raw.get("name") or "").strip()
+        if not label:
+            match = next((entry for entry in list_faust_instruments() if entry["id"] == faust_id), None)
+            label = match["label"] if match else faust_id
+        return None, {
+            "kind": "faust",
+            "faustId": faust_id,
+            "pluginPath": faust_path_for_id(faust_id),
+            "label": label,
+        }
     return (payload.get("instrument") or "").strip() or None, None
 
 
@@ -862,13 +878,15 @@ def _resolve_drone_editor_instrument_spec(
         return edit_plugin_path, edit_preset_path or None
 
     _instrument, instrument_selection = _parse_drone_instrument_selection(payload)
-    if isinstance(instrument_selection, dict) and instrument_selection.get("kind") == "plugin":
+    if isinstance(instrument_selection, dict) and instrument_selection.get("kind") in ("plugin", "faust"):
         plugin_path = (
             instrument_selection.get("pluginPath")
             or instrument_selection.get("plugin_path")
             or ""
         ).strip()
         if plugin_path:
+            if instrument_selection.get("kind") == "faust":
+                return plugin_path, None
             preset_path = (
                 instrument_selection.get("presetPath")
                 or instrument_selection.get("preset_path")

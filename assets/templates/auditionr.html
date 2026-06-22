@@ -1698,8 +1698,8 @@
     }
 
     #generatr-drone-plugin-picker-modal .generatr-drone-plugin-picker-dialog {
-      width: min(96vw, 720px);
-      max-height: min(88vh, 640px);
+      width: min(96vw, 960px);
+      max-height: min(92vh, 820px);
       display: flex;
       flex-direction: column;
       gap: 0.55rem;
@@ -1725,6 +1725,10 @@
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 0.65rem;
+    }
+
+    .generatr-drone-plugin-picker-columns.has-library {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .generatr-drone-plugin-picker-col {
@@ -1758,13 +1762,47 @@
 
     .generatr-drone-plugin-picker-list {
       flex: 1 1 auto;
-      min-height: 160px;
-      max-height: 320px;
+      min-height: 200px;
+      max-height: 420px;
       overflow: auto;
       border-radius: 4px;
       border: 1px solid rgba(255, 255, 255, 0.14);
       background: rgba(0, 0, 0, 0.2);
       padding: 0.35rem;
+    }
+
+    .generatr-drone-plugin-picker-columns.has-library .generatr-drone-plugin-picker-list {
+      min-height: 280px;
+      max-height: 480px;
+    }
+
+    .generatr-drone-plugin-picker-category {
+      margin-bottom: 0.55rem;
+    }
+
+    .generatr-drone-plugin-picker-category:last-child {
+      margin-bottom: 0;
+    }
+
+    .generatr-drone-plugin-picker-category-title {
+      margin: 0 0 0.28rem;
+      padding: 0.12rem 0.35rem;
+      font-size: 0.66rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: color-mix(in srgb, var(--theme-a) 72%, transparent);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .generatr-drone-plugin-picker-category-items {
+      display: flex;
+      flex-direction: column;
+      gap: 0.18rem;
+    }
+
+    .generatr-drone-plugin-picker-category.is-empty {
+      display: none;
     }
 
     button.generatr-drone-plugin-picker-choice {
@@ -4204,11 +4242,15 @@
   <div id="generatr-drone-plugin-picker-modal" class="generatr-modal hidden" role="dialog" aria-modal="true" aria-labelledby="generatr-drone-plugin-picker-title" aria-hidden="true">
     <div class="generatr-drone-plugin-picker-dialog">
       <h3 class="generatr-drone-plugin-picker-title" id="generatr-drone-plugin-picker-title">Choose instrument</h3>
-      <input type="search" id="generatr-drone-plugin-picker-filter" placeholder="Search patches and plug-ins…" autocomplete="off">
-      <div class="generatr-drone-plugin-picker-columns">
+      <input type="search" id="generatr-drone-plugin-picker-filter" placeholder="Search patches, library, and plug-ins…" autocomplete="off">
+      <div class="generatr-drone-plugin-picker-columns" id="generatr-drone-plugin-picker-columns">
         <div class="generatr-drone-plugin-picker-col">
           <p class="generatr-drone-plugin-picker-col-title">Saved patches</p>
           <div class="generatr-drone-plugin-picker-list" id="generatr-drone-plugin-picker-patches" role="listbox" aria-label="Saved patches"></div>
+        </div>
+        <div class="generatr-drone-plugin-picker-col" id="generatr-drone-plugin-picker-library-col">
+          <p class="generatr-drone-plugin-picker-col-title">library</p>
+          <div class="generatr-drone-plugin-picker-list" id="generatr-drone-plugin-picker-library" role="listbox" aria-label="Built-in Faust instruments"></div>
         </div>
         <div class="generatr-drone-plugin-picker-col">
           <p class="generatr-drone-plugin-picker-col-title">VST3 / AU plug-ins</p>
@@ -6879,6 +6921,9 @@
       var dronePluginPickerTitle = document.getElementById("generatr-drone-plugin-picker-title");
       var dronePluginPickerFilter = document.getElementById("generatr-drone-plugin-picker-filter");
       var dronePluginPickerPatches = document.getElementById("generatr-drone-plugin-picker-patches");
+      var dronePluginPickerLibrary = document.getElementById("generatr-drone-plugin-picker-library");
+      var dronePluginPickerLibraryCol = document.getElementById("generatr-drone-plugin-picker-library-col");
+      var dronePluginPickerColumns = document.getElementById("generatr-drone-plugin-picker-columns");
       var dronePluginPickerPlugins = document.getElementById("generatr-drone-plugin-picker-plugins");
       var dronePluginPickerCancel = document.getElementById("generatr-drone-plugin-picker-cancel");
       var droneFxEnabledCheckbox = document.getElementById("generatr-drone-fx-enabled");
@@ -7403,6 +7448,7 @@
       function generatrDroneSelectionLabel(sel) {
         if (!sel) return "";
         if (sel.kind === "patch") return sel.name || "patch";
+        if (sel.kind === "faust") return sel.label || sel.faustId || "faust";
         return sel.label || sel.pluginPath || "plug-in";
       }
 
@@ -7420,7 +7466,9 @@
         }
         var kind = document.createElement("span");
         kind.className = "generatr-drone-plugin-slot-kind";
-        kind.textContent = sel.kind === "patch" ? (sel.patchType === "effect_chain" ? "chain" : "patch") : "plug-in";
+        kind.textContent = sel.kind === "patch"
+          ? (sel.patchType === "effect_chain" ? "chain" : "patch")
+          : (sel.kind === "faust" ? "faust" : "plug-in");
         var label = document.createElement("span");
         label.className = "generatr-drone-plugin-slot-label";
         label.textContent = generatrDroneSelectionLabel(sel);
@@ -7587,11 +7635,106 @@
             btn.hidden = q ? hay.indexOf(q) < 0 : false;
           });
         });
+        if (dronePluginPickerLibrary) {
+          dronePluginPickerLibrary.querySelectorAll(".generatr-drone-plugin-picker-category").forEach(function (groupEl) {
+            var visible = 0;
+            groupEl.querySelectorAll(".generatr-drone-plugin-picker-choice").forEach(function (btn) {
+              var hay = (btn.getAttribute("data-search") || btn.textContent || "").toLowerCase();
+              var categoryLabel = (groupEl.getAttribute("data-category-label") || "").toLowerCase();
+              var match = !q || hay.indexOf(q) >= 0 || categoryLabel.indexOf(q) >= 0;
+              btn.hidden = !match;
+              if (match) visible += 1;
+            });
+            groupEl.classList.toggle("is-empty", visible === 0);
+          });
+        }
+      }
+
+      function generatrDroneCreateFaustPickerChoice(entry, categoryLabel) {
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "generatr-drone-plugin-picker-choice";
+        btn.setAttribute("data-picker-kind", "faust");
+        btn.setAttribute(
+          "data-search",
+          (categoryLabel || "") + " " + (entry.label || "") + " " + (entry.description || "") + " faust " + (entry.id || "")
+        );
+        var title = document.createElement("span");
+        title.textContent = entry.label || entry.id || "instrument";
+        btn.appendChild(title);
+        if (entry.description) {
+          var meta = document.createElement("span");
+          meta.className = "generatr-drone-plugin-picker-meta";
+          meta.textContent = entry.description;
+          btn.appendChild(meta);
+        }
+        btn.addEventListener("click", function () {
+          generatrDroneApplyFaustSelection(entry);
+        });
+        return btn;
+      }
+
+      function generatrDroneRenderFaustLibraryColumn(data) {
+        if (!dronePluginPickerLibrary) return;
+        dronePluginPickerLibrary.innerHTML = "";
+        var categories = Array.isArray(data.libraryCategories) ? data.libraryCategories : [];
+        var flatLibrary = Array.isArray(data.library) ? data.library : [];
+        if (!categories.length && flatLibrary.length) {
+          categories = [{ id: "library", label: "library", instruments: flatLibrary }];
+        }
+        if (!categories.length) {
+          var emptyLib = document.createElement("p");
+          emptyLib.className = "generatr-drone-plugin-picker-meta";
+          emptyLib.style.padding = "0.35rem";
+          emptyLib.textContent = "No built-in instruments available.";
+          dronePluginPickerLibrary.appendChild(emptyLib);
+          return;
+        }
+        categories.forEach(function (category) {
+          var instruments = Array.isArray(category.instruments) ? category.instruments : [];
+          if (!instruments.length) return;
+          var group = document.createElement("section");
+          group.className = "generatr-drone-plugin-picker-category";
+          group.setAttribute("data-category-id", category.id || "");
+          group.setAttribute("data-category-label", category.label || "");
+          var heading = document.createElement("p");
+          heading.className = "generatr-drone-plugin-picker-category-title";
+          heading.textContent = category.label || category.id || "library";
+          group.appendChild(heading);
+          var items = document.createElement("div");
+          items.className = "generatr-drone-plugin-picker-category-items";
+          instruments.forEach(function (entry) {
+            items.appendChild(generatrDroneCreateFaustPickerChoice(entry, category.label || ""));
+          });
+          group.appendChild(items);
+          dronePluginPickerLibrary.appendChild(group);
+        });
+      }
+
+      function generatrDroneApplyFaustSelection(entry) {
+        if (!generatrDronePluginPickerContext || !entry) return;
+        if (generatrDronePluginPickerContext.role !== "instrument") return;
+        generatrDroneInstrumentSelection = {
+          kind: "faust",
+          faustId: entry.id || entry.faustId || "",
+          label: entry.label || entry.id || "faust",
+          pluginPath: "faust:" + (entry.id || entry.faustId || "")
+        };
+        generatrDroneClosePluginPicker();
+        generatrDroneRefreshPluginCards();
       }
 
       function generatrDroneRenderPluginPickerLists(data) {
         if (!dronePluginPickerPatches || !dronePluginPickerPlugins) return;
+        var showLibrary = !!(data && data.role === "instrument");
+        if (dronePluginPickerColumns) {
+          dronePluginPickerColumns.classList.toggle("has-library", showLibrary);
+        }
+        if (dronePluginPickerLibraryCol) {
+          dronePluginPickerLibraryCol.hidden = !showLibrary;
+        }
         dronePluginPickerPatches.innerHTML = "";
+        if (dronePluginPickerLibrary) dronePluginPickerLibrary.innerHTML = "";
         dronePluginPickerPlugins.innerHTML = "";
         var patches = Array.isArray(data.patches) ? data.patches : [];
         var plugins = Array.isArray(data.plugins) ? data.plugins : [];
@@ -7622,6 +7765,9 @@
             });
             dronePluginPickerPatches.appendChild(btn);
           });
+        }
+        if (showLibrary) {
+          generatrDroneRenderFaustLibraryColumn(data);
         }
         if (!plugins.length) {
           var emptyPlug = document.createElement("p");
@@ -7711,6 +7857,10 @@
             generatrDroneOpenPluginPickerForSlot(role, fxSlotIndex);
             return;
           }
+          if (String(pluginPath).indexOf("faust:") === 0) {
+            generatrDroneOpenPluginPickerForSlot(role, fxSlotIndex);
+            return;
+          }
           generatrDroneOpenPluginEditor(pluginPath, role, {
             presetPath: presetPath || "",
             fxSlotIndex: fxSlotIndex,
@@ -7722,6 +7872,10 @@
         }
 
         if (!sel) {
+          generatrDroneOpenPluginPickerForSlot(role, fxSlotIndex);
+          return;
+        }
+        if (sel.kind === "faust") {
           generatrDroneOpenPluginPickerForSlot(role, fxSlotIndex);
           return;
         }
@@ -7781,7 +7935,11 @@
           return;
         }
         var sel = getSelection();
-        if (sel && (sel.kind === "plugin" || sel.kind === "patch")) {
+        if (sel && (sel.kind === "plugin" || sel.kind === "patch" || sel.kind === "faust")) {
+          if (sel.kind === "faust") {
+            generatrDroneOpenPluginPickerForSlot(role, fxSlotIndex);
+            return;
+          }
           generatrDroneReopenSlotEditor(sel, role, fxSlotIndex);
           return;
         }
@@ -7852,6 +8010,7 @@
         dronePluginPickerModal.classList.remove("hidden");
         dronePluginPickerModal.setAttribute("aria-hidden", "false");
         if (dronePluginPickerPatches) dronePluginPickerPatches.innerHTML = "";
+        if (dronePluginPickerLibrary) dronePluginPickerLibrary.innerHTML = "";
         if (dronePluginPickerPlugins) {
           dronePluginPickerPlugins.innerHTML = "<p class=\"generatr-drone-plugin-picker-meta\" style=\"padding:0.35rem\">Loading plug-ins…</p>";
         }

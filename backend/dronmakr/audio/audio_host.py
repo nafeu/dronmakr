@@ -100,6 +100,15 @@ def load_plugin(engine: Any, plugin_path: str, *, name: str | None = None) -> An
         return engine.make_plugin_processor(proc_name, os.path.abspath(plugin_path))
 
 
+def load_instrument(engine: Any, instrument_path: str, *, name: str | None = None) -> Any:
+    """Load a VST3/AU plug-in or built-in Faust library instrument."""
+    from dronmakr.audio.faust_library import faust_id_from_path, is_faust_instrument_path, load_faust_instrument
+
+    if is_faust_instrument_path(instrument_path):
+        return load_faust_instrument(engine, faust_id_from_path(instrument_path), name=name)
+    return load_plugin(engine, instrument_path, name=name)
+
+
 def plugin_is_instrument(processor: Any) -> bool:
     try:
         return int(processor.get_num_input_channels()) == 0
@@ -595,7 +604,7 @@ def render_midi_chain_from_paths(
     last_out: np.ndarray | None = None
     for attempt in range(2):
         engine = create_engine(sample_rate, buffer_size)
-        inst = load_plugin(engine, instrument_path, name="instrument")
+        inst = load_instrument(engine, instrument_path, name="instrument")
         if instrument_state_path:
             apply_plugin_state(inst, instrument_state_path)
 
@@ -733,7 +742,7 @@ class DawDreamerGraphSession:
     def set_instrument(self, plugin_path: str, state_path: str | None = None) -> Any:
         with self._engine_lock:
             self.instrument_path = plugin_path
-            self.instrument = load_plugin(self.engine, plugin_path, name="instrument")
+            self.instrument = load_instrument(self.engine, plugin_path, name="instrument")
             if state_path:
                 apply_plugin_state(self.instrument, state_path)
             return self.instrument

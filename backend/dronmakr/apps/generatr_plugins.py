@@ -13,6 +13,7 @@ from typing import Any
 from dronmakr.audio.audio_host import (
     apply_plugin_state,
     create_engine,
+    load_instrument as load_instrument_on_engine,
     load_plugin as load_plugin_on_engine,
     open_plugin_editor,
     plugin_is_effect,
@@ -22,6 +23,7 @@ from dronmakr.audio.audio_host import (
 )
 from dronmakr.core.paths import get_managed_dir
 from dronmakr.core.utils import TEMP_DIR, generate_id, resolve_presets_index_path
+from dronmakr.audio.faust_library import list_faust_instruments, list_faust_library_categories
 from dronmakr.presets.preset_authoring import (
     format_plugin_name,
     get_plugin_scan_cache_info,
@@ -65,8 +67,12 @@ def _patch_summary(preset: dict) -> dict:
 
 
 def _plugin_path_exists(plugin_path: str) -> bool:
-    """True if a plug-in bundle or binary exists (VST3/AU bundles are directories on macOS)."""
+    """True if a plug-in bundle/binary or built-in Faust instrument exists."""
+    from dronmakr.audio.faust_library import faust_instrument_path_exists
+
     path = (plugin_path or "").strip()
+    if faust_instrument_path_exists(path):
+        return True
     return bool(path) and os.path.exists(path)
 
 
@@ -139,6 +145,8 @@ def get_drone_picker_payload(role: str) -> dict:
         "role": role,
         "patches": [_patch_summary(p) for p in patches if p.get("name")],
         "plugins": plugins,
+        "library": list_faust_instruments() if role == "instrument" else [],
+        "libraryCategories": list_faust_library_categories() if role == "instrument" else [],
         "pluginPathsConfigured": bool(plugins) or bool(list_installed_plugin_entries(respect_ignore=False)),
         "scan": get_drone_plugin_scan_status(),
     }
@@ -190,7 +198,7 @@ def _load_editor_preview_chain(
     instrument_state_path: str | None,
     fx_specs: list[tuple[str, str | None]],
 ):
-    instrument = load_plugin_on_engine(engine, instrument_path, name="instrument")
+    instrument = load_instrument_on_engine(engine, instrument_path, name="instrument")
     if instrument_state_path and os.path.isfile(instrument_state_path):
         apply_plugin_state(instrument, instrument_state_path)
     fx_processors: list[tuple[Any, str]] = []
@@ -333,6 +341,16 @@ def _resolve_drone_selection(selection: dict) -> tuple[str, str, str, str]:
         if not step_label:
             step_label = format_plugin_name(plugin_path)
         return plugin_path, plugin_name, preset_path, step_label
+    if kind == "faust":
+        from dronmakr.audio.faust_library import faust_path_for_id
+
+        faust_id = (selection.get("faustId") or selection.get("faust_id") or "").strip()
+        if not faust_id:
+            raise ValueError("Faust selection is missing faustId.")
+        plugin_path = faust_path_for_id(faust_id)
+        if not step_label:
+            step_label = (selection.get("label") or selection.get("name") or faust_id).strip()
+        return plugin_path, "Faust", "", step_label or faust_id
     if kind == "patch":
         plugin_path = (selection.get("pluginPath") or selection.get("plugin_path") or "").strip()
         preset_path = (selection.get("presetPath") or selection.get("preset_path") or "").strip()
@@ -397,7 +415,12 @@ def save_drone_preset(
         plugin_path, plugin_name, preset_source, _ = _resolve_drone_selection(instrument_selection)
         if not _plugin_path_exists(plugin_path):
             raise ValueError(f"Plug-in not found: {plugin_path}")
-        preset_path = _persist_preset_state(preset_source, preset_name)
+        from dronmakr.audio.faust_library import is_faust_instrument_path
+
+        if is_faust_instrument_path(plugin_path):
+            preset_path = ""
+        else:
+            preset_path = _persist_preset_state(preset_source, preset_name)
         preset_data = {
             "id": generate_id(),
             "name": preset_name,

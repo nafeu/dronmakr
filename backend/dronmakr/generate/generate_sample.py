@@ -132,7 +132,8 @@ def generate_drone_sample(
     ]
 
     if not instruments and not (
-        isinstance(instrument_selection, dict) and instrument_selection.get("kind") == "plugin"
+        isinstance(instrument_selection, dict)
+        and instrument_selection.get("kind") in ("plugin", "faust")
     ):
         raise ValueError(
             f"No instrument presets in {presets_path}. "
@@ -141,7 +142,19 @@ def generate_drone_sample(
         )
 
     instrument_preset = None
-    if isinstance(instrument_selection, dict) and instrument_selection.get("kind") == "plugin":
+    if isinstance(instrument_selection, dict) and instrument_selection.get("kind") == "faust":
+        faust_id = (instrument_selection.get("faustId") or instrument_selection.get("faust_id") or "").strip()
+        if not faust_id:
+            raise ValueError("Faust instrument selection is missing faustId.")
+        from dronmakr.audio.faust_library import faust_path_for_id
+
+        instrument_preset = {
+            "plugin_path": faust_path_for_id(faust_id),
+            "preset_path": "",
+            "name": (instrument_selection.get("label") or instrument_selection.get("name") or faust_id),
+            "plugin_name": "Faust",
+        }
+    elif isinstance(instrument_selection, dict) and instrument_selection.get("kind") == "plugin":
         plugin_path = (instrument_selection.get("pluginPath") or instrument_selection.get("plugin_path") or "").strip()
         if not plugin_path:
             raise ValueError("Instrument plug-in selection is missing pluginPath.")
