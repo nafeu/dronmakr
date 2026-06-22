@@ -79,7 +79,8 @@
 
 .dron-list-scroll.os-host,
 .generatr-pp-list-scroll.os-host,
-.dron-select-list-scroll.os-host {
+.dron-select-list-scroll.os-host,
+.generatr-drone-midi-pattern-grid-scroll.os-host {
   min-height: 0;
 }
 

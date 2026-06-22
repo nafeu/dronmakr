@@ -1,23 +1,20 @@
+import json
 import os
 import random
-import sys
-import json
 import re
-import pretty_midi
+import sys
+import tempfile
 from typing import List, Tuple
 
+import pretty_midi
+
 from dronmakr.core.utils import (
-    with_generate_drone_midi_prompt as with_prompt,
-    generate_id,
-    generate_drone_midi_header,
-    YELLOW,
-    RESET,
     format_name,
-    MIDI_DIR,
+    generate_id,
+    with_generate_drone_midi_prompt as with_prompt,
 )
 from dronmakr.core.bundle_paths import bundled_asset_path
 from dronmakr.core.paths import get_managed_file
-from dronmakr.tools.print_midi import print_midi
 
 CHORD_SCALE_LIST = str(bundled_asset_path("resources", "chord-scale-data.json"))
 BEAT_PATTERNS_FILE = get_managed_file("config", "beat-patterns.json")
@@ -204,9 +201,109 @@ def coerce_drone_midi_padding_bars(
     return n
 
 
+def format_pattern_display_name(pattern_id: str) -> str:
+    """Turn ``chaos_expand_up`` into ``Chaos Expand Up`` for UI labels."""
+    parts = [part for part in str(pattern_id or "").split("_") if part]
+    return " ".join(part.capitalize() for part in parts) if parts else ""
+
+
 def get_patterns():
-    """Return list of MIDI pattern names for drone generation (used by webui/auditionr)."""
+    """Return list of MIDI pattern ids for drone generation (used by webui/auditionr)."""
     return sorted(SUPPORTED_PATTERNS)
+
+
+def get_patterns_catalog(*, include_previews: bool = False) -> list[dict]:
+    """Pattern metadata for Auditionr MIDI pattern browser."""
+    entries = [
+        {
+            "id": pattern_id,
+            "displayName": format_pattern_display_name(pattern_id),
+            "description": description,
+        }
+        for pattern_id, description in SUPPORTED_PATTERNS_INFO
+    ]
+    if include_previews:
+        previews = get_pattern_selector_previews()
+        for entry in entries:
+            entry["preview"] = previews.get(
+                entry["id"],
+                {"durationSec": 1.0, "events": []},
+            )
+    return entries
+
+
+DRONE_PATTERN_SELECTOR_PREVIEW_NOTES = ["C4", "E4", "G4", "B4"]
+DRONE_PATTERN_SELECTOR_PREVIEW_BARS = 4
+_PATTERN_SELECTOR_PREVIEW_CACHE: dict[str, dict] | None = None
+
+
+def build_pattern_selector_preview(pattern_id: str) -> dict:
+    """Render a pattern thumbnail using a fixed C major 7 chord."""
+    pattern_id = (pattern_id or "").strip()
+    if pattern_id not in SUPPORTED_PATTERNS:
+        raise ValueError(f"Unsupported MIDI pattern '{pattern_id}'")
+
+    seed = sum((idx + 1) * ord(ch) for idx, ch in enumerate(pattern_id)) & 0xFFFFFFFF
+    state = random.getstate()
+    random.seed(seed)
+    try:
+        midi, _, _, _ = generate_drone_midi(
+            pattern=pattern_id,
+            notes=DRONE_PATTERN_SELECTOR_PREVIEW_NOTES,
+            num_bars=DRONE_PATTERN_SELECTOR_PREVIEW_BARS,
+            padded_silence_bars=0,
+            shift_octave_down=False,
+            shift_root_note=False,
+            quiet=True,
+        )
+    finally:
+        random.setstate(state)
+    return build_midi_preview_payload(midi)
+
+
+def get_pattern_selector_previews() -> dict[str, dict]:
+    """Cached Cmaj7-based previews for every supported pattern."""
+    global _PATTERN_SELECTOR_PREVIEW_CACHE
+    if _PATTERN_SELECTOR_PREVIEW_CACHE is None:
+        _PATTERN_SELECTOR_PREVIEW_CACHE = {
+            pattern_id: build_pattern_selector_preview(pattern_id)
+            for pattern_id in SUPPORTED_PATTERNS
+        }
+    return _PATTERN_SELECTOR_PREVIEW_CACHE
+
+
+def build_midi_preview_payload(midi: pretty_midi.PrettyMIDI) -> dict:
+    """Compact note timing data for minimal SVG previews in the web UI."""
+    notes: list[pretty_midi.Note] = []
+    for instrument in midi.instruments:
+        notes.extend(instrument.notes)
+    if not notes:
+        return {"durationSec": 1.0, "events": []}
+
+    duration = max(float(note.end) for note in notes)
+    if duration <= 0:
+        duration = 1.0
+    min_pitch = min(note.pitch for note in notes)
+    max_pitch = max(note.pitch for note in notes)
+    pitch_span = max(1, max_pitch - min_pitch)
+    events = [
+        {
+            "start": max(0.0, min(1.0, float(note.start) / duration)),
+            "end": max(0.0, min(1.0, float(note.end) / duration)),
+            "pitchNorm": (float(note.pitch) - min_pitch) / pitch_span,
+            "velocityNorm": max(0.0, min(1.0, float(note.velocity) / 127.0)),
+        }
+        for note in notes
+    ]
+    return {"durationSec": duration, "events": events}
+
+
+def write_drone_midi_temp(midi: pretty_midi.PrettyMIDI) -> str:
+    """Write in-memory drone MIDI to a temp file for audio rendering (caller deletes)."""
+    fd, path = tempfile.mkstemp(suffix=".mid", prefix="dronmakr_drone_")
+    os.close(fd)
+    midi.write(path)
+    return path
 
 
 DRUM_ROW_ORDER = [
@@ -408,9 +505,13 @@ def generate_drone_midi(
     notes=None,  # Add notes parameter
     iteration=None,
     iterations=None,
+    *,
+    quiet: bool = True,
 ):
-    """Generate MIDI for ``num_bars`` of musical content plus optional trailing silence."""
-    print(generate_drone_midi_header())
+    """Generate drone MIDI in memory.
+
+    Returns ``(pretty_midi.PrettyMIDI, chart_label, render_duration_sec, pattern_id)``.
+    """
 
     try:
         num_bars = int(num_bars)
@@ -444,52 +545,38 @@ def generate_drone_midi(
         output_name = "_" + output_name
 
     if pattern not in SUPPORTED_PATTERNS:
-        print(with_prompt(f"error: unsupported pattern '{pattern}'"))
-        sys.exit()
+        raise ValueError(f"Unsupported MIDI pattern '{pattern}'.")
 
     if notes:
         chord = notes
         root = _note_pitch_from_note_str(notes[0])
         chord_name = "custom"
         track_name = format_name(f"custom_notes_{pattern}")
-        print(with_prompt(f"writing custom notes as {YELLOW}{pattern}{RESET}"))
     else:
-        # Load chords from JSON file
-        with open(CHORD_SCALE_LIST, "r") as f:
+        with open(CHORD_SCALE_LIST, "r", encoding="utf-8") as f:
             chords = json.load(f)
 
         if not chords:
-            print(
-                with_prompt(f"error: no chords or scales found in '{CHORD_SCALE_LIST}'")
-            )
-            return
+            raise ValueError(f"No chords or scales found in '{CHORD_SCALE_LIST}'.")
 
         if filters:
             chords = filter_chords(chords, filters)
+        if not chords:
+            raise ValueError("No chords or scales matched the current musical style filters.")
 
-        # Randomly select a chord
         random_chord_choice = random.choice(chords)
         chord = random_chord_choice["notes"]
         root = random_chord_choice["root"]
         chord_name = random_chord_choice["name"]
         track_name = format_name(f"{root}_{chord_name}{output_name}_{pattern}")
 
-        print(
-            with_prompt(
-                f"writing {YELLOW}{root} {chord_name}{RESET} as {YELLOW}{pattern}{RESET}"
-            )
-        )
-
     description = next(
         (info[1] for info in SUPPORTED_PATTERNS_INFO if info[0] == pattern), None
     )
-    print(with_prompt(f"({description})"))
-
-    if shift_root_note and not notes:
-        print(with_prompt("shifting root one octave down"))
-
-    if shift_octave_down and not notes:
-        print(with_prompt("shifting all notes one octave down"))
+    if not quiet:
+        label = f"{root} {chord_name}" if not notes else "custom notes"
+        detail = f" — {description}" if description else ""
+        print(with_prompt(f"drone midi: {label} · {pattern}{detail}"))
 
     # Define tempo and timing
     bpm = 120
@@ -498,15 +585,6 @@ def generate_drone_midi(
     bar_length = beats_per_bar * seconds_per_beat
     total_duration = num_bars * bar_length  # Musical content length only
     file_end_duration = drone_midi_render_duration_sec(num_bars, padded_silence_bars, tempo_bpm=bpm)
-    if padded_silence_bars:
-        padding_duration = padded_silence_bars * bar_length
-        print(
-            with_prompt(
-                f"padded silence at end {YELLOW}{padded_silence_bars}{RESET} bars "
-                f"({padding_duration:.2f}s)"
-            )
-        )
-
     # Create a PrettyMIDI object (explicit tempo keeps DawDreamer/file timing aligned).
     midi = pretty_midi.PrettyMIDI(initial_tempo=bpm)
     instrument = pretty_midi.Instrument(program=0, name=track_name)
@@ -1372,31 +1450,31 @@ def generate_drone_midi(
     if swing:
         apply_swing_to_instrument(instrument, bpm, swing)
 
-    # Add instrument **without a name** to MIDI object
+    instrument.name = track_name
     midi.instruments.append(instrument)
 
-    # Write to a MIDI file
-    os.makedirs(MIDI_DIR, exist_ok=True)
-
-    output_path = f"{MIDI_DIR}/{track_name}_{generate_id()}.mid"
-    midi.write(output_path)
-
-    print(f"{YELLOW}│{RESET}")
-    print_midi(output_path, f"{YELLOW}│  {RESET}")
-
-    print(f"{YELLOW}│{RESET}")
-
-    return (output_path, f"{root} {chord_name}", file_end_duration)
+    chart_label = "custom" if notes else f"{root} {chord_name}"
+    return (midi, chart_label, file_end_duration, pattern)
 
 
 def main():
-    # Preserve simple legacy behavior if this module is run directly.
     args = sys.argv[1:]
-    if not args:
-        generate_drone_midi(pattern=None)
-        return
+    try:
+        midi, chart_label, duration, pattern = generate_drone_midi(
+            pattern=args[0] if args else None,
+            quiet=False,
+        )
+    except ValueError as exc:
+        print(with_prompt(f"error: {exc}"))
+        sys.exit(1)
 
-    generate_drone_midi(pattern=args[0])
+    print(
+        with_prompt(
+            f"generated {chart_label} with pattern {pattern} "
+            f"({duration:.1f}s render window, in memory)"
+        )
+    )
+    del midi
 
 
 if __name__ == "__main__":

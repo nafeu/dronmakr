@@ -1196,6 +1196,285 @@
       cursor: not-allowed;
     }
 
+    .generatr-drone-pattern-card .generatr-sweep-effect-body {
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+
+    button.generatr-drone-midi-pattern-picker {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      width: 100%;
+      margin: 0;
+      padding: 0.42rem 0.55rem;
+      border-radius: 5px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      background: rgba(0, 0, 0, 0.18);
+      color: var(--primary);
+      font-family: inherit;
+      font-size: 0.8rem;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    button.generatr-drone-midi-pattern-picker:hover {
+      border-color: rgba(255, 255, 255, 0.38);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .generatr-drone-midi-pattern-picker-label {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .generatr-drone-midi-pattern-picker-caret {
+      flex-shrink: 0;
+      opacity: 0.65;
+      font-size: 0.68rem;
+    }
+
+    .generatr-drone-midi-preview-wrap {
+      width: 100%;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(0, 0, 0, 0.24);
+      overflow: hidden;
+      min-height: 3.25rem;
+    }
+
+    .generatr-drone-midi-preview-wrap.is-loading {
+      opacity: 0.55;
+    }
+
+    .generatr-drone-midi-preview-inner {
+      width: 100%;
+      height: 3.25rem;
+    }
+
+    .generatr-drone-midi-preview-inner svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    svg.generatr-drone-midi-preview-svg .generatr-drone-midi-preview-note {
+      fill: var(--theme-a);
+    }
+
+    svg.generatr-drone-midi-preview-svg .generatr-drone-midi-preview-grid {
+      stroke: rgba(255, 255, 255, 0.1);
+      stroke-width: 1;
+      fill: none;
+    }
+
+    .generatr-drone-midi-preview-meta {
+      margin: 0;
+      font-size: 0.68rem;
+      line-height: 1.35;
+      color: color-mix(in srgb, var(--theme-a) 68%, transparent);
+    }
+
+    #generatr-drone-midi-pattern-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 10072;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      box-sizing: border-box;
+      background: rgba(0, 0, 0, 0.45);
+      overflow: hidden;
+    }
+
+    #generatr-drone-midi-pattern-modal.hidden {
+      display: none !important;
+    }
+
+    #generatr-drone-midi-pattern-modal .generatr-drone-midi-pattern-dialog {
+      width: min(96vw, 860px);
+      max-height: min(88vh, 680px);
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      padding: 0.85rem 1rem;
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--secondary) 96%, transparent);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--primary);
+      box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
+      min-height: 0;
+    }
+
+    #generatr-drone-midi-pattern-modal h3.generatr-drone-midi-pattern-title {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--theme-a);
+    }
+
+    #generatr-drone-midi-pattern-modal .generatr-drone-midi-pattern-search {
+      width: 100%;
+      box-sizing: border-box;
+      font-family: inherit;
+      font-size: 0.82rem;
+      padding: 0.42rem 0.5rem;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      background: rgba(0, 0, 0, 0.22);
+      color: var(--primary);
+    }
+
+    .generatr-drone-midi-pattern-layout {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.85fr);
+      gap: 0.65rem;
+    }
+
+    .generatr-drone-midi-pattern-grid-scroll {
+      min-height: 0;
+      max-height: min(52vh, 460px);
+      overflow: auto;
+    }
+
+    .generatr-drone-midi-pattern-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+      gap: 0.45rem;
+      align-content: start;
+      padding: 0.1rem;
+    }
+
+    button.generatr-drone-midi-pattern-tile {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      margin: 0;
+      padding: 0.45rem;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: rgba(0, 0, 0, 0.18);
+      color: inherit;
+      font-family: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    button.generatr-drone-midi-pattern-tile:hover {
+      border-color: rgba(255, 255, 255, 0.32);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    button.generatr-drone-midi-pattern-tile.is-selected {
+      border-color: color-mix(in srgb, var(--theme-a) 55%, transparent);
+      background: color-mix(in srgb, var(--theme-a) 16%, transparent);
+    }
+
+    .generatr-drone-midi-pattern-tile-thumb {
+      width: 100%;
+      height: 2.4rem;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(0, 0, 0, 0.28);
+      overflow: hidden;
+    }
+
+    .generatr-drone-midi-pattern-tile-thumb svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .generatr-drone-midi-pattern-tile-name {
+      font-size: 0.72rem;
+      line-height: 1.25;
+      font-weight: 600;
+      color: var(--primary);
+    }
+
+    .generatr-drone-midi-pattern-detail {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      padding: 0.55rem;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(0, 0, 0, 0.16);
+    }
+
+    .generatr-drone-midi-pattern-detail-name {
+      margin: 0;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--theme-a);
+    }
+
+    .generatr-drone-midi-pattern-detail-preview {
+      width: 100%;
+      height: 4.5rem;
+      border-radius: 5px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(0, 0, 0, 0.28);
+      overflow: hidden;
+    }
+
+    .generatr-drone-midi-pattern-detail-preview svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .generatr-drone-midi-pattern-detail-desc {
+      margin: 0;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: auto;
+      font-size: 0.74rem;
+      line-height: 1.4;
+      color: color-mix(in srgb, var(--theme-a) 75%, transparent);
+    }
+
+    .generatr-drone-midi-pattern-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.45rem;
+      flex-shrink: 0;
+    }
+
+    .generatr-drone-midi-pattern-actions button {
+      font-family: inherit;
+      font-size: 0.78rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--primary);
+      cursor: pointer;
+    }
+
+    .generatr-drone-midi-pattern-actions button:hover {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    @media (max-width: 720px) {
+      .generatr-drone-midi-pattern-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .generatr-drone-midi-pattern-detail {
+        min-height: 8rem;
+      }
+    }
+
     .generatr-drone-plugin-card-hint {
       margin: 0 0 0.35rem;
       font-size: 0.68rem;
@@ -3614,9 +3893,27 @@
                   </div>
                 </div>
               </div>
-              <div class="form-row hidden" id="generatr-drone-pattern-row">
-                <label for="generatr-drone-pattern">MIDI pattern</label>
-                <select id="generatr-drone-pattern"></select>
+              <div class="form-row form-row-full hidden" id="generatr-drone-pattern-row">
+                <div class="generatr-sweep-effect generatr-drone-pattern-card">
+                  <div class="generatr-sweep-effect-head">
+                    <span class="generatr-sweep-effect-title">MIDI Pattern</span>
+                    <div class="generatr-drone-plugin-card-tools">
+                      <button type="button" class="generatr-drone-plugin-save-btn" id="generatr-drone-midi-preview-refresh" aria-label="Regenerate MIDI preview" title="Regenerate preview">
+                        <i class="fa-solid fa-rotate-right" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="generatr-sweep-effect-body generatr-drone-pattern-body">
+                    <button type="button" class="generatr-drone-midi-pattern-picker" id="generatr-drone-midi-pattern-picker" aria-haspopup="dialog">
+                      <span class="generatr-drone-midi-pattern-picker-label" id="generatr-drone-midi-pattern-label">Random pattern</span>
+                      <i class="fa-solid fa-chevron-down generatr-drone-midi-pattern-picker-caret" aria-hidden="true"></i>
+                    </button>
+                    <div class="generatr-drone-midi-preview-wrap" id="generatr-drone-midi-preview-wrap" aria-hidden="true">
+                      <div class="generatr-drone-midi-preview-inner" id="generatr-drone-midi-preview"></div>
+                    </div>
+                    <p class="generatr-drone-midi-preview-meta" id="generatr-drone-midi-preview-meta"></p>
+                  </div>
+                </div>
               </div>
               <div class="form-row form-row-full hidden" id="generatr-drone-plugin-cards-row">
                 <div class="generatr-drone-plugin-cards-row">
@@ -3837,6 +4134,27 @@
         <button type="button" class="generatr-chord-picker-cancel" id="generatr-chord-picker-cancel">Cancel</button>
         <button type="button" class="generatr-chord-picker-clear" id="generatr-chord-picker-clear">Clear selection</button>
         <button type="button" class="generatr-chord-picker-use" id="generatr-chord-picker-use">Confirm</button>
+      </div>
+    </div>
+  </div>
+  <div id="generatr-drone-midi-pattern-modal" class="generatr-modal hidden" role="dialog" aria-modal="true" aria-labelledby="generatr-drone-midi-pattern-title" aria-hidden="true">
+    <div class="generatr-drone-midi-pattern-dialog">
+      <h3 class="generatr-drone-midi-pattern-title" id="generatr-drone-midi-pattern-title">MIDI patterns</h3>
+      <input type="search" class="generatr-drone-midi-pattern-search" id="generatr-drone-midi-pattern-search" placeholder="Search patterns…" autocomplete="off">
+      <div class="generatr-drone-midi-pattern-layout">
+        <div class="generatr-drone-midi-pattern-grid-scroll dron-list-scroll">
+          <div class="generatr-drone-midi-pattern-grid" id="generatr-drone-midi-pattern-grid" role="listbox" aria-label="MIDI patterns"></div>
+        </div>
+        <aside class="generatr-drone-midi-pattern-detail" aria-live="polite">
+          <p class="generatr-drone-midi-pattern-detail-name" id="generatr-drone-midi-pattern-detail-name">Select a pattern</p>
+          <div class="generatr-drone-midi-pattern-detail-preview" id="generatr-drone-midi-pattern-detail-preview"></div>
+          <p class="generatr-drone-midi-pattern-detail-desc" id="generatr-drone-midi-pattern-detail-desc">Browse rhythmic playback styles for drone generation. Leave unselected to pick a random pattern each time.</p>
+        </aside>
+      </div>
+      <div class="generatr-drone-midi-pattern-actions">
+        <button type="button" id="generatr-drone-midi-pattern-random">Use random</button>
+        <button type="button" id="generatr-drone-midi-pattern-cancel">Cancel</button>
+        <button type="button" id="generatr-drone-midi-pattern-confirm">Confirm</button>
       </div>
     </div>
   </div>
@@ -6438,7 +6756,26 @@
       var droneChartTypeSelect = document.getElementById("generatr-drone-chart-type");
       var droneTagsInput = document.getElementById("generatr-drone-tags");
       var droneRootsInput = document.getElementById("generatr-drone-roots");
-      var dronePatternSelect = document.getElementById("generatr-drone-pattern");
+      var droneMidiPatternPicker = document.getElementById("generatr-drone-midi-pattern-picker");
+      var droneMidiPatternLabel = document.getElementById("generatr-drone-midi-pattern-label");
+      var droneMidiPreviewWrap = document.getElementById("generatr-drone-midi-preview-wrap");
+      var droneMidiPreviewEl = document.getElementById("generatr-drone-midi-preview");
+      var droneMidiPreviewMeta = document.getElementById("generatr-drone-midi-preview-meta");
+      var droneMidiPreviewRefreshBtn = document.getElementById("generatr-drone-midi-preview-refresh");
+      var droneMidiPatternModal = document.getElementById("generatr-drone-midi-pattern-modal");
+      var droneMidiPatternSearch = document.getElementById("generatr-drone-midi-pattern-search");
+      var droneMidiPatternGrid = document.getElementById("generatr-drone-midi-pattern-grid");
+      var droneMidiPatternDetailName = document.getElementById("generatr-drone-midi-pattern-detail-name");
+      var droneMidiPatternDetailPreview = document.getElementById("generatr-drone-midi-pattern-detail-preview");
+      var droneMidiPatternDetailDesc = document.getElementById("generatr-drone-midi-pattern-detail-desc");
+      var droneMidiPatternCancel = document.getElementById("generatr-drone-midi-pattern-cancel");
+      var droneMidiPatternConfirm = document.getElementById("generatr-drone-midi-pattern-confirm");
+      var droneMidiPatternRandomBtn = document.getElementById("generatr-drone-midi-pattern-random");
+      var generatrDroneMidiPatternCatalog = [];
+      var generatrDroneMidiPatternId = "";
+      var generatrDroneMidiPatternPendingId = null;
+      var generatrDroneMidiPatternPreviewsLoaded = false;
+      var generatrDroneMidiPreviewRequestSeq = 0;
       var droneLengthInput = document.getElementById("generatr-drone-length");
       var dronePaddedSilenceInput = document.getElementById("generatr-drone-padded-silence");
       var droneInstrumentSlot = document.getElementById("generatr-drone-instrument-slot");
@@ -6597,7 +6934,10 @@
             activeOpt.textContent = "(active preset)";
             beatRandomizationConfigSelect.insertBefore(activeOpt, beatRandomizationConfigSelect.firstChild);
             syncDrumpatternSampleLibraryFromBeatbuildr(presetData.activePreset);
-            setSelectOptions(dronePatternSelect, data.droneMidiPatterns || [], true);
+            generatrDroneMidiPatternCatalog = Array.isArray(data.droneMidiPatternCatalog)
+              ? data.droneMidiPatternCatalog.slice()
+              : [];
+            generatrDroneUpdateMidiPatternLabel();
             mergeProcessingCatalog(data.processingActions || {});
             generatrChordPicklists.roots = Array.isArray(data.droneChordScaleRoots) ? data.droneChordScaleRoots : [];
             generatrChordPicklists.tags = Array.isArray(data.droneChordScaleTags) ? data.droneChordScaleTags : [];
@@ -6613,6 +6953,260 @@
             generatrPluginPathsConfigured = true;
             updateGeneratrConfigEmptyState();
           });
+      }
+
+      function generatrDronePatternCatalogEntry(patternId) {
+        if (!patternId) return null;
+        return generatrDroneMidiPatternCatalog.find(function (entry) {
+          return entry.id === patternId;
+        }) || null;
+      }
+
+      function generatrDronePatternDisplayName(patternId) {
+        if (!patternId) return "Random pattern";
+        var entry = generatrDronePatternCatalogEntry(patternId);
+        if (entry && entry.displayName) return entry.displayName;
+        return String(patternId || "").split("_").filter(Boolean).map(function (part) {
+          return part.charAt(0).toUpperCase() + part.slice(1);
+        }).join(" ");
+      }
+
+      function generatrDronePatternDescription(patternId) {
+        var entry = generatrDronePatternCatalogEntry(patternId);
+        return (entry && entry.description) || "";
+      }
+
+      function generatrDronePatternPreview(patternId) {
+        var entry = generatrDronePatternCatalogEntry(patternId);
+        return (entry && entry.preview) ? entry.preview : { events: [] };
+      }
+
+      function generatrDroneEnsurePatternPreviews() {
+        if (generatrDroneMidiPatternPreviewsLoaded) {
+          return Promise.resolve(generatrDroneMidiPatternCatalog);
+        }
+        return fetch("/api/generatr/drone-midi-patterns?previews=1")
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            if (data.error) throw new Error(data.error);
+            var remote = Array.isArray(data.patterns) ? data.patterns : [];
+            var byId = {};
+            remote.forEach(function (entry) {
+              if (entry && entry.id) byId[entry.id] = entry;
+            });
+            if (generatrDroneMidiPatternCatalog.length) {
+              generatrDroneMidiPatternCatalog = generatrDroneMidiPatternCatalog.map(function (entry) {
+                var remoteEntry = byId[entry.id];
+                if (!remoteEntry) return entry;
+                return {
+                  id: entry.id,
+                  displayName: remoteEntry.displayName || entry.displayName,
+                  description: remoteEntry.description || entry.description,
+                  preview: remoteEntry.preview || entry.preview
+                };
+              });
+            } else {
+              generatrDroneMidiPatternCatalog = remote;
+            }
+            generatrDroneMidiPatternPreviewsLoaded = true;
+            return generatrDroneMidiPatternCatalog;
+          });
+      }
+
+      function generatrDroneRenderMidiPreviewSvg(preview, opts) {
+        opts = opts || {};
+        var events = preview && preview.events ? preview.events : (Array.isArray(preview) ? preview : []);
+        var w = opts.width || 480;
+        var h = opts.height || 52;
+        var pad = 4;
+        var innerW = w - pad * 2;
+        var innerH = h - pad * 2;
+        var gridLines = "";
+        var g;
+        for (g = 1; g < 4; g++) {
+          var gy = pad + (innerH * g / 4);
+          gridLines += '<line class="generatr-drone-midi-preview-grid" x1="' + pad + '" y1="' + gy + '" x2="' + (w - pad) + '" y2="' + gy + '"/>';
+        }
+        for (g = 1; g < 8; g++) {
+          var vx = pad + (innerW * g / 8);
+          gridLines += '<line class="generatr-drone-midi-preview-grid" x1="' + vx + '" y1="' + pad + '" x2="' + vx + '" y2="' + (h - pad) + '"/>';
+        }
+        var rects = events.map(function (ev) {
+          var x = pad + ev.start * innerW;
+          var rw = Math.max(2, (ev.end - ev.start) * innerW);
+          var barH = Math.max(2.5, 2 + ev.velocityNorm * 4);
+          var y = pad + (1 - ev.pitchNorm) * (innerH - barH);
+          return '<rect class="generatr-drone-midi-preview-note" x="' + x.toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + rw.toFixed(2) + '" height="' + barH.toFixed(2) + '" rx="1.2"/>';
+        }).join("");
+        var cls = opts.className || "generatr-drone-midi-preview-svg";
+        return '<svg class="' + cls + '" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" aria-hidden="true">' + gridLines + rects + "</svg>";
+      }
+
+      function generatrDroneUpdateMidiPatternLabel() {
+        if (droneMidiPatternLabel) {
+          droneMidiPatternLabel.textContent = generatrDronePatternDisplayName(generatrDroneMidiPatternId);
+        }
+      }
+
+      function generatrDroneMidiPreviewPayload() {
+        var payload = {
+          musicalStyleMode: GENERATR_DRONE_STYLE_MODE,
+          pattern: generatrDroneMidiPatternId || "",
+          lengthBars: parseInt(droneLengthInput.value || "16", 10),
+          paddedSilenceBars: parseInt(dronePaddedSilenceInput.value || "0", 10)
+        };
+        if (GENERATR_DRONE_STYLE_MODE === "custom") {
+          var customNotes = generatrDroneGetSelectedCustomNotes();
+          if (customNotes.length > 0) payload.customNotes = customNotes;
+        } else {
+          payload.chartName = (droneChartNameInput.value || "").trim();
+          payload.chartType = (droneChartTypeSelect.value || "").trim();
+          payload.tags = (droneTagsInput.value || "").trim();
+          payload.roots = (droneRootsInput.value || "").trim();
+        }
+        return payload;
+      }
+
+      function generatrDroneRefreshMidiPreview() {
+        if (!droneMidiPreviewEl || !kindSelect || kindSelect.value !== "drone") return;
+        var requestId = ++generatrDroneMidiPreviewRequestSeq;
+        if (droneMidiPreviewWrap) {
+          droneMidiPreviewWrap.classList.remove("hidden");
+          droneMidiPreviewWrap.classList.add("is-loading");
+          droneMidiPreviewWrap.setAttribute("aria-hidden", "false");
+        }
+        if (droneMidiPreviewMeta) droneMidiPreviewMeta.textContent = "Generating preview…";
+        fetch("/api/generatr/drone-midi-preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(generatrDroneMidiPreviewPayload())
+        })
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            if (requestId !== generatrDroneMidiPreviewRequestSeq) return;
+            if (data.error) {
+              if (droneMidiPreviewMeta) droneMidiPreviewMeta.textContent = data.error;
+              return;
+            }
+            if (droneMidiPreviewEl) {
+              droneMidiPreviewEl.innerHTML = generatrDroneRenderMidiPreviewSvg(data.preview || { events: [] });
+            }
+            if (droneMidiPreviewMeta) {
+              var bits = [];
+              if (data.patternDisplayName) bits.push(data.patternDisplayName);
+              if (data.chart) bits.push(data.chart);
+              droneMidiPreviewMeta.textContent = bits.length ? "Preview · " + bits.join(" · ") : "";
+            }
+          })
+          .catch(function (err) {
+            if (requestId !== generatrDroneMidiPreviewRequestSeq) return;
+            if (droneMidiPreviewMeta) {
+              droneMidiPreviewMeta.textContent = err.message || "Failed to load MIDI preview";
+            }
+          })
+          .finally(function () {
+            if (requestId !== generatrDroneMidiPreviewRequestSeq) return;
+            if (droneMidiPreviewWrap) droneMidiPreviewWrap.classList.remove("is-loading");
+          });
+      }
+
+      function generatrDroneRenderMidiPatternDetail(patternId) {
+        var isRandom = !patternId;
+        if (droneMidiPatternDetailName) {
+          droneMidiPatternDetailName.textContent = isRandom
+            ? "Random pattern"
+            : generatrDronePatternDisplayName(patternId);
+        }
+        if (droneMidiPatternDetailDesc) {
+          droneMidiPatternDetailDesc.textContent = isRandom
+            ? "A different supported pattern is chosen each time you generate or refresh the preview."
+            : (generatrDronePatternDescription(patternId) || "No description available.");
+        }
+        if (droneMidiPatternDetailPreview) {
+          if (isRandom) {
+            droneMidiPatternDetailPreview.innerHTML = "";
+          } else {
+            droneMidiPatternDetailPreview.innerHTML = generatrDroneRenderMidiPreviewSvg(
+              generatrDronePatternPreview(patternId),
+              { width: 360, height: 72 }
+            );
+          }
+        }
+      }
+
+      function generatrDroneRefreshMidiPatternScrollbars() {
+        if (!window.dronmakrUi || typeof window.dronmakrUi.refreshScrollbars !== "function") return;
+        window.dronmakrUi.refreshScrollbars(droneMidiPatternModal || document);
+      }
+
+      function generatrDroneRenderMidiPatternGrid(filterQuery) {
+        if (!droneMidiPatternGrid) return;
+        var q = String(filterQuery || "").trim().toLowerCase();
+        droneMidiPatternGrid.innerHTML = "";
+        generatrDroneMidiPatternCatalog.forEach(function (entry) {
+          var hay = ((entry.displayName || "") + " " + (entry.id || "") + " " + (entry.description || "")).toLowerCase();
+          if (q && hay.indexOf(q) < 0) return;
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "generatr-drone-midi-pattern-tile";
+          btn.setAttribute("data-pattern-id", entry.id || "");
+          btn.setAttribute("role", "option");
+          if (generatrDroneMidiPatternPendingId === entry.id) btn.classList.add("is-selected");
+          var thumb = document.createElement("div");
+          thumb.className = "generatr-drone-midi-pattern-tile-thumb";
+          thumb.innerHTML = generatrDroneRenderMidiPreviewSvg(
+            entry.preview || generatrDronePatternPreview(entry.id),
+            { width: 152, height: 38 }
+          );
+          var name = document.createElement("span");
+          name.className = "generatr-drone-midi-pattern-tile-name";
+          name.textContent = entry.displayName || entry.id;
+          btn.appendChild(thumb);
+          btn.appendChild(name);
+          btn.addEventListener("click", function () {
+            generatrDroneMidiPatternPendingId = entry.id;
+            generatrDroneRenderMidiPatternGrid(droneMidiPatternSearch ? droneMidiPatternSearch.value : "");
+            generatrDroneRenderMidiPatternDetail(entry.id);
+          });
+          droneMidiPatternGrid.appendChild(btn);
+        });
+        requestAnimationFrame(generatrDroneRefreshMidiPatternScrollbars);
+      }
+
+      function generatrDroneCloseMidiPatternModal() {
+        if (!droneMidiPatternModal) return;
+        droneMidiPatternModal.classList.add("hidden");
+        droneMidiPatternModal.setAttribute("aria-hidden", "true");
+      }
+
+      function generatrDroneOpenMidiPatternModal() {
+        if (!droneMidiPatternModal) return;
+        generatrDroneMidiPatternPendingId = generatrDroneMidiPatternId || null;
+        if (droneMidiPatternSearch) droneMidiPatternSearch.value = "";
+        droneMidiPatternModal.classList.remove("hidden");
+        droneMidiPatternModal.setAttribute("aria-hidden", "false");
+        requestAnimationFrame(generatrDroneRefreshMidiPatternScrollbars);
+        if (droneMidiPatternGrid) {
+          droneMidiPatternGrid.innerHTML = "<p class=\"generatr-drone-midi-pattern-detail-desc\" style=\"padding:0.35rem\">Generating pattern previews…</p>";
+        }
+        generatrDroneEnsurePatternPreviews()
+          .then(function () {
+            generatrDroneRenderMidiPatternGrid("");
+            generatrDroneRenderMidiPatternDetail(generatrDroneMidiPatternPendingId || "");
+            requestAnimationFrame(generatrDroneRefreshMidiPatternScrollbars);
+            if (droneMidiPatternSearch) droneMidiPatternSearch.focus();
+          })
+          .catch(function (err) {
+            generatrShowError(err.message || "Failed to load pattern previews");
+            generatrDroneCloseMidiPatternModal();
+          });
+      }
+
+      function generatrDroneConfirmMidiPatternModal() {
+        generatrDroneMidiPatternId = generatrDroneMidiPatternPendingId || "";
+        generatrDroneUpdateMidiPatternLabel();
+        generatrDroneCloseMidiPatternModal();
+        generatrDroneRefreshMidiPreview();
       }
 
       function generatrDroneSelectionLabel(sel) {
@@ -7451,6 +8045,41 @@
       if (droneSavePresetModal) {
         droneSavePresetModal.addEventListener("click", function (ev) {
           if (ev.target === droneSavePresetModal) generatrDroneCloseSavePresetModal();
+        });
+      }
+
+      if (droneMidiPatternPicker) {
+        droneMidiPatternPicker.addEventListener("click", function () {
+          generatrDroneOpenMidiPatternModal();
+        });
+      }
+      if (droneMidiPreviewRefreshBtn) {
+        droneMidiPreviewRefreshBtn.addEventListener("click", function (ev) {
+          ev.stopPropagation();
+          generatrDroneRefreshMidiPreview();
+        });
+      }
+      if (droneMidiPatternSearch) {
+        droneMidiPatternSearch.addEventListener("input", function () {
+          generatrDroneRenderMidiPatternGrid(droneMidiPatternSearch.value);
+        });
+      }
+      if (droneMidiPatternCancel) {
+        droneMidiPatternCancel.addEventListener("click", generatrDroneCloseMidiPatternModal);
+      }
+      if (droneMidiPatternConfirm) {
+        droneMidiPatternConfirm.addEventListener("click", generatrDroneConfirmMidiPatternModal);
+      }
+      if (droneMidiPatternRandomBtn) {
+        droneMidiPatternRandomBtn.addEventListener("click", function () {
+          generatrDroneMidiPatternPendingId = null;
+          generatrDroneRenderMidiPatternGrid(droneMidiPatternSearch ? droneMidiPatternSearch.value : "");
+          generatrDroneRenderMidiPatternDetail("");
+        });
+      }
+      if (droneMidiPatternModal) {
+        droneMidiPatternModal.addEventListener("click", function (ev) {
+          if (ev.target === droneMidiPatternModal) generatrDroneCloseMidiPatternModal();
         });
       }
 
@@ -8601,7 +9230,9 @@
         }
 
         if (kind === "drumpattern" || kind === "beat" || kind === "drone" || kind === "reese" || kind === "donk" || isSweepOrWash) {
-          loadGeneratrSidebarOptions();
+          loadGeneratrSidebarOptions().finally(function () {
+            if (kind === "drone") generatrDroneRefreshMidiPreview();
+          });
         }
         updateGeneratrConfigEmptyState();
         requestAnimationFrame(auditionrRefreshSidebarScrollbars);
@@ -8641,7 +9272,9 @@
       if (tabGen) {
         tabGen.addEventListener("click", function () {
           openAuditionrSidebarTab("generate");
-          loadGeneratrSidebarOptions();
+          loadGeneratrSidebarOptions().finally(function () {
+            if (kindSelect && kindSelect.value === "drone") generatrDroneRefreshMidiPreview();
+          });
         });
       }
       if (tabEdit) {
@@ -9228,7 +9861,7 @@
             body.tags = (droneTagsInput.value || "").trim();
             body.roots = (droneRootsInput.value || "").trim();
           }
-          body.pattern = (dronePatternSelect.value || "").trim();
+          body.pattern = generatrDroneMidiPatternId || "";
           body.lengthBars = parseInt(droneLengthInput.value || "16", 10);
           body.paddedSilenceBars = parseInt(dronePaddedSilenceInput.value || "0", 10);
           if (generatrDroneInstrumentSelection) {

@@ -51,6 +51,10 @@ from dronmakr.generate.generate_midi import (
     generate_drone_midi,
     get_pattern_config,
     get_patterns,
+    get_patterns_catalog,
+    build_midi_preview_payload,
+    format_pattern_display_name,
+    write_drone_midi_temp,
 )
 from dronmakr.processing.processing_actions import (
     append_post_processing_shortcut,
@@ -714,6 +718,52 @@ def _parse_drone_custom_notes(raw) -> list[str] | None:
     return validated or None
 
 
+def _build_drone_midi_kwargs_from_payload(payload: dict, *, preview: bool = False) -> dict:
+    """Shared MIDI generation kwargs for drone export and live preview."""
+    musical_style_mode = (payload.get("musicalStyleMode") or "custom").strip().lower()
+    pattern_raw = (payload.get("pattern") or "").strip()
+    pattern = pattern_raw or None
+    if pattern:
+        allowed = set(get_patterns())
+        if pattern not in allowed:
+            raise ValueError(f"Unknown MIDI pattern '{pattern}'")
+
+    length_bars = coerce_drone_midi_length_bars(payload.get("lengthBars"))
+    padded_silence_bars = coerce_drone_midi_padding_bars(payload.get("paddedSilenceBars"))
+
+    midi_kwargs = {
+        "pattern": pattern,
+        "shift_octave_down": None,
+        "shift_root_note": None,
+        "num_bars": length_bars,
+        "padded_silence_bars": 0 if preview else padded_silence_bars,
+    }
+
+    if musical_style_mode == "custom":
+        custom_notes = _parse_drone_custom_notes(payload.get("customNotes"))
+        if custom_notes:
+            midi_kwargs["notes"] = custom_notes
+        else:
+            midi_kwargs["filters"] = {}
+    else:
+        filters: dict = {}
+        tags_raw = (payload.get("tags") or "").strip()
+        roots_raw = (payload.get("roots") or "").strip()
+        if tags_raw:
+            filters["tags"] = [t.strip() for t in tags_raw.split(",") if t.strip()]
+        if roots_raw:
+            filters["roots"] = [r.strip() for r in roots_raw.split(",") if r.strip()]
+        chart_type = (payload.get("chartType") or "").strip().lower()
+        if chart_type:
+            filters["type"] = chart_type
+        chart_name = (payload.get("chartName") or "").strip()
+        if chart_name:
+            filters["name"] = chart_name
+        midi_kwargs["filters"] = filters
+
+    return midi_kwargs
+
+
 def _parse_drone_instrument_selection(payload: dict) -> tuple[str | None, dict | None]:
     """Return legacy instrument name and optional inline plug-in selection."""
     raw = payload.get("instrumentSelection")
@@ -815,18 +865,6 @@ def _run_generate_drone(payload: dict) -> list[str]:
         fx_slots = None
     elif fx_mode == "random":
         fx_slots = None
-    tags_raw = (payload.get("tags") or "").strip() or None
-    roots_raw = (payload.get("roots") or "").strip() or None
-    chart_type = (payload.get("chartType") or "").strip().lower() or None
-    pattern_raw = (payload.get("pattern") or "").strip()
-    pattern = pattern_raw or None
-    if pattern:
-        allowed = set(get_patterns())
-        if pattern not in allowed:
-            raise ValueError(f"Unknown MIDI pattern '{pattern}'")
-
-    length_bars = coerce_drone_midi_length_bars(payload.get("lengthBars"))
-    padded_silence_bars = coerce_drone_midi_padding_bars(payload.get("paddedSilenceBars"))
 
     try:
         iterations = max(1, min(50, int(payload.get("iterations", 1))))
@@ -846,47 +884,34 @@ def _run_generate_drone(payload: dict) -> list[str]:
     if musical_style_mode == "custom":
         custom_notes = _parse_drone_custom_notes(payload.get("customNotes"))
 
-    filters = {}
-    if musical_style_mode == "chart":
-        if tags_raw:
-            filters["tags"] = [t.strip() for t in tags_raw.split(",") if t.strip()]
-        if roots_raw:
-            filters["roots"] = [r.strip() for r in roots_raw.split(",") if r.strip()]
-        if chart_type:
-            filters["type"] = chart_type
-        if chart_name:
-            filters["name"] = chart_name
-
     results: list[str] = []
     for _ in range(iterations):
-        midi_kwargs = {
-            "pattern": pattern,
-            "shift_octave_down": None,
-            "shift_root_note": None,
-            "num_bars": length_bars,
-            "padded_silence_bars": padded_silence_bars,
-        }
-        if custom_notes:
-            midi_kwargs["notes"] = custom_notes
-        else:
-            midi_kwargs["filters"] = filters
-
-        midi_file, selected_chart, render_duration_sec = generate_drone_midi(**midi_kwargs)
+        midi_kwargs = _build_drone_midi_kwargs_from_payload(payload, preview=False)
+        midi_obj, selected_chart, render_duration_sec, _pattern_used = generate_drone_midi(
+            **midi_kwargs,
+            quiet=True,
+        )
         chart_label = "custom" if custom_notes else selected_chart
         base_sample_name = f"{generate_drone_name()}_-_{chart_label}_-_{generate_id()}"
         sample_name = format_name(f"drone___{base_sample_name}")
         output_path = f"{EXPORTS_DIR}/{sample_name}"
-        generated_sample = generate_drone_sample(
-            input_path=midi_file,
-            output_path=f"{output_path}.wav",
-            presets_path=presets_path,
-            instrument=instrument,
-            effect=effect,
-            render_duration_sec=render_duration_sec,
-            instrument_selection=instrument_selection,
-            fx_slots=fx_slots,
-        )
-        results.append(midi_file)
+        midi_temp = write_drone_midi_temp(midi_obj)
+        try:
+            generated_sample = generate_drone_sample(
+                input_path=midi_temp,
+                output_path=f"{output_path}.wav",
+                presets_path=presets_path,
+                instrument=instrument,
+                effect=effect,
+                render_duration_sec=render_duration_sec,
+                instrument_selection=instrument_selection,
+                fx_slots=fx_slots,
+            )
+        finally:
+            try:
+                os.remove(midi_temp)
+            except OSError:
+                pass
         results.append(generated_sample)
 
     wav_files = [f for f in results if f.endswith(".wav")]
@@ -1387,6 +1412,47 @@ def _handle_drone_plugin_editor():
         return jsonify({"error": str(e)}), 500
 
 
+def _handle_drone_midi_patterns():
+    include_previews = (request.args.get("previews") or "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    return jsonify({"patterns": get_patterns_catalog(include_previews=include_previews)})
+
+
+def _handle_drone_midi_preview():
+    data = request.get_json() or {}
+    try:
+        midi_kwargs = _build_drone_midi_kwargs_from_payload(data, preview=True)
+        midi_obj, chart_label, render_duration_sec, pattern_id = generate_drone_midi(
+            **midi_kwargs,
+            quiet=True,
+        )
+        description = next(
+            (
+                item["description"]
+                for item in get_patterns_catalog()
+                if item["id"] == pattern_id
+            ),
+            "",
+        )
+        return jsonify(
+            {
+                "preview": build_midi_preview_payload(midi_obj),
+                "pattern": pattern_id,
+                "patternDisplayName": format_pattern_display_name(pattern_id),
+                "description": description,
+                "chart": chart_label,
+                "renderDurationSec": render_duration_sec,
+            }
+        )
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 def _handle_drone_save_preset():
     data = request.get_json() or {}
     role = (data.get("role") or "instrument").strip().lower()
@@ -1420,7 +1486,7 @@ def _handle_api_generate_options():
             "patterns": sorted(_load_beat_patterns_for_generate().keys()),
             "kits": sorted(_load_drum_kits_for_generate().keys()),
             "processingActions": get_processing_actions_payload(),
-            "droneMidiPatterns": get_patterns(),
+            "droneMidiPatternCatalog": get_patterns_catalog(),
             "droneInstruments": preset_index.get("instruments", []),
             "droneEffects": preset_index.get("effects", []),
             "droneChordScaleRoots": pick["roots"],
@@ -1621,6 +1687,18 @@ def register_auditionr(app, socketio):
         "/api/generatr/drone-plugin-editor",
         "auditionr_api_drone_plugin_editor",
         _handle_drone_plugin_editor,
+        methods=["POST"],
+    )
+    app.add_url_rule(
+        "/api/generatr/drone-midi-patterns",
+        "auditionr_api_drone_midi_patterns",
+        _handle_drone_midi_patterns,
+        methods=["GET"],
+    )
+    app.add_url_rule(
+        "/api/generatr/drone-midi-preview",
+        "auditionr_api_drone_midi_preview",
+        _handle_drone_midi_preview,
         methods=["POST"],
     )
     app.add_url_rule(
