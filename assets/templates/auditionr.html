@@ -1533,14 +1533,16 @@
     }
 
     .generatr-drone-plugin-card-hint {
-      margin: 0 0 0.35rem;
+      margin: 0.35rem 0 0;
+      min-height: 0.85rem;
       font-size: 0.68rem;
       line-height: 1.25;
       color: color-mix(in srgb, var(--theme-a) 68%, transparent);
     }
 
     .generatr-drone-plugin-card-hint[hidden] {
-      display: none !important;
+      display: block !important;
+      visibility: hidden;
     }
 
     .generatr-drone-plugin-slots {
@@ -3991,12 +3993,12 @@
                       </div>
                     </div>
                     <div class="generatr-sweep-effect-body" id="generatr-drone-instrument-body">
-                      <p class="generatr-drone-plugin-card-hint" id="generatr-drone-instrument-hint" hidden>using random instrument</p>
                       <div class="generatr-drone-plugin-slots">
                         <button type="button" class="generatr-drone-plugin-slot" id="generatr-drone-instrument-slot" data-slot-kind="instrument" aria-label="Choose instrument">
                           <span class="generatr-drone-plugin-slot-plus" aria-hidden="true">+</span>
                         </button>
                       </div>
+                      <p class="generatr-drone-plugin-card-hint" id="generatr-drone-instrument-hint" hidden>using random instrument</p>
                     </div>
                   </div>
                   <div class="generatr-sweep-effect generatr-drone-fx-card">
@@ -4015,7 +4017,6 @@
                       </div>
                     </div>
                     <div class="generatr-sweep-effect-body" id="generatr-drone-fx-body">
-                      <p class="generatr-drone-plugin-card-hint" id="generatr-drone-fx-hint" hidden>using random plugin chain</p>
                       <div class="generatr-drone-plugin-slots" id="generatr-drone-fx-slots">
                         <button type="button" class="generatr-drone-plugin-slot" data-slot-kind="fx" data-fx-slot="0" aria-label="FX slot 1"><span class="generatr-drone-plugin-slot-plus" aria-hidden="true">+</span></button>
                         <button type="button" class="generatr-drone-plugin-slot" data-slot-kind="fx" data-fx-slot="1" aria-label="FX slot 2"><span class="generatr-drone-plugin-slot-plus" aria-hidden="true">+</span></button>
@@ -4023,6 +4024,7 @@
                         <button type="button" class="generatr-drone-plugin-slot" data-slot-kind="fx" data-fx-slot="3" aria-label="FX slot 4"><span class="generatr-drone-plugin-slot-plus" aria-hidden="true">+</span></button>
                         <button type="button" class="generatr-drone-plugin-slot" data-slot-kind="fx" data-fx-slot="4" aria-label="FX slot 5"><span class="generatr-drone-plugin-slot-plus" aria-hidden="true">+</span></button>
                       </div>
+                      <p class="generatr-drone-plugin-card-hint" id="generatr-drone-fx-hint" hidden>using random plugin chain</p>
                     </div>
                   </div>
                 </div>

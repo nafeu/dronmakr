@@ -343,12 +343,139 @@ def render_midi_graph(
     return out
 
 
+EDITOR_PREVIEW_LOOP_FADE_SEC = 0.045
+EDITOR_PREVIEW_REFRESH_SEC = 2.0
+EDITOR_PREVIEW_STREAM_BLOCKSIZE = 512
+
+
+class _EditorPreviewLoopPlayer:
+    """In-memory loop playback with crossfaded seam and live buffer swaps."""
+
+    def __init__(self, sample_rate: int, *, loop_fade_sec: float = EDITOR_PREVIEW_LOOP_FADE_SEC):
+        self.sample_rate = sample_rate
+        self._loop_fade = max(64, int(round(loop_fade_sec * sample_rate)))
+        self._buffer = np.zeros((0, 2), dtype=np.float32)
+        self._pos = 0
+        self._swap_remaining = 0
+        self._swap_from: np.ndarray | None = None
+        self._lock = threading.Lock()
+
+    @staticmethod
+    def _normalize_buffer(audio: np.ndarray) -> np.ndarray:
+        buf = daw_audio_to_samples_channels(audio)
+        if buf.ndim == 1:
+            buf = np.column_stack([buf, buf])
+        elif buf.shape[1] == 1:
+            buf = np.column_stack([buf[:, 0], buf[:, 0]])
+        return np.ascontiguousarray(buf, dtype=np.float32)
+
+    def set_buffer(self, audio: np.ndarray) -> None:
+        with self._lock:
+            self._buffer = self._normalize_buffer(audio)
+            self._pos = 0
+            self._swap_remaining = 0
+            self._swap_from = None
+
+    def crossfade_buffer(self, audio: np.ndarray) -> None:
+        new_buf = self._normalize_buffer(audio)
+        with self._lock:
+            if self._buffer.shape[0] == 0:
+                self._buffer = new_buf
+                self._pos = 0
+                return
+            self._swap_from = self._buffer
+            self._buffer = new_buf
+            self._swap_remaining = self._loop_fade
+            self._pos = self._pos % max(new_buf.shape[0], 1)
+
+    def _sample_at(self, buf: np.ndarray, index: int) -> np.ndarray:
+        buflen = buf.shape[0]
+        idx = index % buflen
+        fade = min(self._loop_fade, buflen // 4)
+        if fade <= 0 or idx >= fade:
+            return buf[idx]
+        t = idx / fade
+        tail_idx = buflen - fade + idx
+        return (1.0 - t) * buf[tail_idx] + t * buf[idx]
+
+    def callback(self, outdata, frames, _time_info, _status) -> None:
+        out = outdata[:, :2]
+        with self._lock:
+            buf = self._buffer
+            if buf.shape[0] == 0:
+                out.fill(0)
+                return
+
+            swap_from = self._swap_from
+            swap_left = self._swap_remaining
+            pos = self._pos
+            for i in range(frames):
+                sample = self._sample_at(buf, pos)
+                if swap_left > 0 and swap_from is not None and swap_from.shape[0] > 0:
+                    t = 1.0 - (swap_left / self._loop_fade)
+                    old = self._sample_at(swap_from, pos)
+                    sample = (1.0 - t) * old + t * sample
+                    swap_left -= 1
+                out[i] = sample
+                pos += 1
+            self._pos = pos % buf.shape[0]
+            self._swap_remaining = swap_left
+            if swap_left <= 0:
+                self._swap_from = None
+
+
 def _play_preview_wav_blocking(path: str) -> None:
     """Play a short preview clip (macOS ``afplay``)."""
     if sys.platform == "darwin" and os.path.isfile(path):
         import subprocess  # noqa: PLC0415
 
         subprocess.run(["afplay", path], check=False)
+
+
+def _run_afplay_preview_fallback(
+    *,
+    instrument: Any,
+    fx_processors: Sequence[Any],
+    midi_path: str,
+    duration_sec: float,
+    engine: Any,
+    engine_lock: threading.RLock,
+    stop: threading.Event,
+    sample_rate: int,
+) -> None:
+    """Legacy chunked preview when PortAudio playback is unavailable."""
+    while not stop.is_set():
+        wav_path = ""
+        try:
+            with engine_lock:
+                audio = render_midi_graph(
+                    instrument,
+                    fx_processors,
+                    midi_path,
+                    duration_sec=duration_sec,
+                    engine=engine,
+                )
+                fd, wav_path = tempfile.mkstemp(
+                    suffix=".wav", prefix="dronmakr_editor_preview_"
+                )
+                os.close(fd)
+                sf.write(wav_path, audio, sample_rate, subtype="PCM_16")
+        except Exception as exc:
+            _LOG.debug("Editor preview render failed: %s", exc)
+            if wav_path:
+                with contextlib.suppress(OSError):
+                    os.unlink(wav_path)
+            if stop.wait(0.5):
+                break
+            continue
+        try:
+            _play_preview_wav_blocking(wav_path)
+        finally:
+            if wav_path:
+                with contextlib.suppress(OSError):
+                    os.unlink(wav_path)
+        if stop.is_set():
+            break
 
 
 def run_live_preview_during_editor(
@@ -362,50 +489,93 @@ def run_live_preview_during_editor(
     open_editor_fn,
     sample_rate: int = SAMPLE_RATE,
 ) -> None:
-    """Re-render and play a looping MIDI preview while a plug-in editor is open."""
+    """Looping MIDI preview while a plug-in editor is open."""
     stop = threading.Event()
+    stream_active = threading.Event()
+    player = _EditorPreviewLoopPlayer(sample_rate)
 
-    def preview_loop() -> None:
-        while not stop.is_set():
-            wav_path = ""
+    def render_locked() -> np.ndarray:
+        with engine_lock:
+            return render_midi_graph(
+                instrument,
+                fx_processors,
+                midi_path,
+                duration_sec=duration_sec,
+                engine=engine,
+            )
+
+    def refresh_loop() -> None:
+        while not stop.wait(EDITOR_PREVIEW_REFRESH_SEC):
+            if stop.is_set() or not stream_active.is_set():
+                continue
+            if not engine_lock.acquire(blocking=False):
+                continue
             try:
-                with engine_lock:
-                    audio = render_midi_graph(
+                player.crossfade_buffer(
+                    render_midi_graph(
                         instrument,
                         fx_processors,
                         midi_path,
                         duration_sec=duration_sec,
                         engine=engine,
                     )
-                    fd, wav_path = tempfile.mkstemp(
-                        suffix=".wav", prefix="dronmakr_editor_preview_"
-                    )
-                    os.close(fd)
-                    sf.write(wav_path, audio, sample_rate, subtype="PCM_16")
+                )
             except Exception as exc:
-                _LOG.debug("Editor preview render failed: %s", exc)
-                if wav_path:
-                    with contextlib.suppress(OSError):
-                        os.unlink(wav_path)
-                if stop.wait(0.5):
-                    break
-                continue
-            try:
-                _play_preview_wav_blocking(wav_path)
+                _LOG.debug("Editor preview refresh failed: %s", exc)
             finally:
-                if wav_path:
-                    with contextlib.suppress(OSError):
-                        os.unlink(wav_path)
-            if stop.is_set():
-                break
+                engine_lock.release()
 
-    thread = threading.Thread(target=preview_loop, daemon=True)
-    thread.start()
+    def playback_loop() -> None:
+        stream = None
+        try:
+            player.set_buffer(render_locked())
+            import sounddevice as sd  # noqa: PLC0415
+
+            stream = sd.OutputStream(
+                samplerate=sample_rate,
+                channels=2,
+                dtype="float32",
+                blocksize=EDITOR_PREVIEW_STREAM_BLOCKSIZE,
+                callback=player.callback,
+            )
+            stream.start()
+            stream_active.set()
+            while not stop.wait(0.1):
+                pass
+        except Exception as exc:
+            _LOG.debug("Editor preview stream failed (%s); falling back to afplay", exc)
+            stream_active.clear()
+            _run_afplay_preview_fallback(
+                instrument=instrument,
+                fx_processors=fx_processors,
+                midi_path=midi_path,
+                duration_sec=duration_sec,
+                engine=engine,
+                engine_lock=engine_lock,
+                stop=stop,
+                sample_rate=sample_rate,
+            )
+        finally:
+            stream_active.clear()
+            if stream is not None:
+                with contextlib.suppress(Exception):
+                    stream.stop()
+                    stream.close()
+
+    refresh_thread = threading.Thread(
+        target=refresh_loop, daemon=True, name="dron-editor-preview-refresh"
+    )
+    playback_thread = threading.Thread(
+        target=playback_loop, daemon=True, name="dron-editor-preview-playback"
+    )
+    refresh_thread.start()
+    playback_thread.start()
     try:
         open_editor_fn()
     finally:
         stop.set()
-        thread.join(timeout=max(float(duration_sec) + 5.0, 8.0))
+        refresh_thread.join(timeout=2.0)
+        playback_thread.join(timeout=max(float(duration_sec) + 2.0, 4.0))
 
 
 def render_midi_chain_from_paths(

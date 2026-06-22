@@ -38,6 +38,7 @@ scipy==1.15.2
 simple-websocket==1.1.0
 six==1.17.0
 soundfile==0.13.1
+sounddevice==0.5.1
 soxr==0.5.0.post1
 threadpoolctl==3.5.0
 typing_extensions==4.12.2
