@@ -84,6 +84,11 @@
   min-height: 0;
 }
 
+.generatr-drone-plugin-picker-list.os-host {
+  overflow: hidden !important;
+  min-height: 0;
+}
+
 .dron-select-list-scroll.os-host {
   overflow: hidden !important;
 }

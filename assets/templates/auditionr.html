@@ -1771,6 +1771,30 @@
       padding: 0.35rem;
     }
 
+    .generatr-drone-plugin-picker-list-stack {
+      display: flex;
+      flex-direction: column;
+      flex-wrap: nowrap;
+      align-items: stretch;
+      gap: 0.18rem;
+      min-height: min-content;
+      padding-right: 16px;
+    }
+
+    .generatr-drone-plugin-picker-list-stack > .generatr-drone-plugin-picker-choice,
+    .generatr-drone-plugin-picker-list-stack > .generatr-drone-plugin-picker-meta,
+    .generatr-drone-plugin-picker-list-stack > .generatr-drone-plugin-picker-category {
+      flex: 0 0 auto;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    .generatr-drone-plugin-picker-list.os-host {
+      overflow: hidden !important;
+      min-height: 0;
+    }
+
     .generatr-drone-plugin-picker-columns.has-library .generatr-drone-plugin-picker-list {
       min-height: 280px;
       max-height: 480px;
@@ -1812,7 +1836,7 @@
       font-family: inherit;
       font-size: 0.8rem;
       padding: 0.35rem 0.42rem;
-      margin-bottom: 0.28rem;
+      margin-bottom: 0;
       border-radius: 3px;
       border: none;
       background: transparent;
@@ -4246,15 +4270,21 @@
       <div class="generatr-drone-plugin-picker-columns" id="generatr-drone-plugin-picker-columns">
         <div class="generatr-drone-plugin-picker-col">
           <p class="generatr-drone-plugin-picker-col-title">Saved patches</p>
-          <div class="generatr-drone-plugin-picker-list" id="generatr-drone-plugin-picker-patches" role="listbox" aria-label="Saved patches"></div>
+          <div class="generatr-drone-plugin-picker-list dron-list-scroll">
+            <div class="generatr-drone-plugin-picker-list-stack" id="generatr-drone-plugin-picker-patches" role="listbox" aria-label="Saved patches"></div>
+          </div>
         </div>
         <div class="generatr-drone-plugin-picker-col" id="generatr-drone-plugin-picker-library-col">
           <p class="generatr-drone-plugin-picker-col-title">library</p>
-          <div class="generatr-drone-plugin-picker-list" id="generatr-drone-plugin-picker-library" role="listbox" aria-label="Built-in Faust instruments"></div>
+          <div class="generatr-drone-plugin-picker-list dron-list-scroll">
+            <div class="generatr-drone-plugin-picker-list-stack" id="generatr-drone-plugin-picker-library" role="listbox" aria-label="Built-in Faust instruments"></div>
+          </div>
         </div>
         <div class="generatr-drone-plugin-picker-col">
           <p class="generatr-drone-plugin-picker-col-title">VST3 / AU plug-ins</p>
-          <div class="generatr-drone-plugin-picker-list" id="generatr-drone-plugin-picker-plugins" role="listbox" aria-label="Installed plug-ins"></div>
+          <div class="generatr-drone-plugin-picker-list dron-list-scroll">
+            <div class="generatr-drone-plugin-picker-list-stack" id="generatr-drone-plugin-picker-plugins" role="listbox" aria-label="Installed plug-ins"></div>
+          </div>
         </div>
       </div>
       <div class="generatr-drone-plugin-picker-actions">
@@ -4442,6 +4472,12 @@
       if (!window.dronmakrUi || typeof window.dronmakrUi.refreshScrollbars !== "function") return;
       var waveforms = document.getElementById("waveforms");
       window.dronmakrUi.refreshScrollbars(waveforms || document);
+    }
+
+    function generatrDroneRefreshPluginPickerScrollbars() {
+      if (!window.dronmakrUi || typeof window.dronmakrUi.refreshScrollbars !== "function") return;
+      var modal = document.getElementById("generatr-drone-plugin-picker-modal");
+      window.dronmakrUi.refreshScrollbars(modal || document);
     }
 
     function renderGeneratrPostProcessingLibraryFromCatalog() {
@@ -7648,6 +7684,7 @@
             groupEl.classList.toggle("is-empty", visible === 0);
           });
         }
+        requestAnimationFrame(generatrDroneRefreshPluginPickerScrollbars);
       }
 
       function generatrDroneCreateFaustPickerChoice(entry, categoryLabel) {
@@ -8014,6 +8051,7 @@
         if (dronePluginPickerPlugins) {
           dronePluginPickerPlugins.innerHTML = "<p class=\"generatr-drone-plugin-picker-meta\" style=\"padding:0.35rem\">Loading plug-ins…</p>";
         }
+        requestAnimationFrame(generatrDroneRefreshPluginPickerScrollbars);
         fetch("/api/generatr/drone-plugin-picker?role=" + encodeURIComponent(context.role))
           .then(function (res) { return res.json(); })
           .then(function (data) {
