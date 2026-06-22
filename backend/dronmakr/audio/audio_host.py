@@ -343,6 +343,71 @@ def render_midi_graph(
     return out
 
 
+def _play_preview_wav_blocking(path: str) -> None:
+    """Play a short preview clip (macOS ``afplay``)."""
+    if sys.platform == "darwin" and os.path.isfile(path):
+        import subprocess  # noqa: PLC0415
+
+        subprocess.run(["afplay", path], check=False)
+
+
+def run_live_preview_during_editor(
+    *,
+    instrument: Any,
+    fx_processors: Sequence[Any],
+    midi_path: str,
+    duration_sec: float,
+    engine: Any,
+    engine_lock: threading.RLock,
+    open_editor_fn,
+    sample_rate: int = SAMPLE_RATE,
+) -> None:
+    """Re-render and play a looping MIDI preview while a plug-in editor is open."""
+    stop = threading.Event()
+
+    def preview_loop() -> None:
+        while not stop.is_set():
+            wav_path = ""
+            try:
+                with engine_lock:
+                    audio = render_midi_graph(
+                        instrument,
+                        fx_processors,
+                        midi_path,
+                        duration_sec=duration_sec,
+                        engine=engine,
+                    )
+                    fd, wav_path = tempfile.mkstemp(
+                        suffix=".wav", prefix="dronmakr_editor_preview_"
+                    )
+                    os.close(fd)
+                    sf.write(wav_path, audio, sample_rate, subtype="PCM_16")
+            except Exception as exc:
+                _LOG.debug("Editor preview render failed: %s", exc)
+                if wav_path:
+                    with contextlib.suppress(OSError):
+                        os.unlink(wav_path)
+                if stop.wait(0.5):
+                    break
+                continue
+            try:
+                _play_preview_wav_blocking(wav_path)
+            finally:
+                if wav_path:
+                    with contextlib.suppress(OSError):
+                        os.unlink(wav_path)
+            if stop.is_set():
+                break
+
+    thread = threading.Thread(target=preview_loop, daemon=True)
+    thread.start()
+    try:
+        open_editor_fn()
+    finally:
+        stop.set()
+        thread.join(timeout=max(float(duration_sec) + 5.0, 8.0))
+
+
 def render_midi_chain_from_paths(
     instrument_path: str,
     instrument_state_path: str | None,

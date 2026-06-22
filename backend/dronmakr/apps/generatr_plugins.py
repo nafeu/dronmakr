@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import re
 import shutil
+import threading
+from typing import Any
 
 from dronmakr.audio.audio_host import (
     apply_plugin_state,
@@ -14,6 +17,7 @@ from dronmakr.audio.audio_host import (
     open_plugin_editor,
     plugin_is_effect,
     plugin_is_instrument,
+    run_live_preview_during_editor,
     save_plugin_state,
 )
 from dronmakr.core.paths import get_managed_dir
@@ -165,10 +169,46 @@ def save_drone_plugin_list_editor(role: str, allowed_labels: list[str]) -> dict:
     }
 
 
+def _resolve_edit_processor(
+    instrument,
+    fx_processors: list[tuple[Any, str]],
+    role: str,
+    plugin_path: str,
+):
+    plugin_path = os.path.abspath((plugin_path or "").strip())
+    if role == "instrument":
+        return instrument
+    for fx, path in fx_processors:
+        if os.path.abspath(path) == plugin_path:
+            return fx
+    raise ValueError(f"Edited FX plug-in is not loaded in the preview chain: {plugin_path}")
+
+
+def _load_editor_preview_chain(
+    engine,
+    instrument_path: str,
+    instrument_state_path: str | None,
+    fx_specs: list[tuple[str, str | None]],
+):
+    instrument = load_plugin_on_engine(engine, instrument_path, name="instrument")
+    if instrument_state_path and os.path.isfile(instrument_state_path):
+        apply_plugin_state(instrument, instrument_state_path)
+    fx_processors: list[tuple[Any, str]] = []
+    for idx, (path, state_path) in enumerate(fx_specs):
+        abs_path = os.path.abspath(path)
+        fx = load_plugin_on_engine(engine, abs_path, name=f"fx_{idx}")
+        if state_path and os.path.isfile(state_path):
+            apply_plugin_state(fx, state_path)
+        fx_processors.append((fx, abs_path))
+    return instrument, fx_processors
+
+
 def open_drone_plugin_editor_capture(
     plugin_path: str,
     role: str,
     preset_path: str | None = None,
+    *,
+    editor_preview: dict | None = None,
 ) -> dict:
     """Open DawDreamer plug-in editor; save state snapshot when the window closes."""
     plugin_path = os.path.abspath((plugin_path or "").strip())
@@ -176,34 +216,92 @@ def open_drone_plugin_editor_capture(
     if not _plugin_path_exists(plugin_path):
         raise FileNotFoundError(f"Plug-in not found: {plugin_path}")
 
-    engine = create_engine()
-    processor = load_plugin_on_engine(engine, plugin_path)
-
-    if role == "instrument" and not plugin_is_instrument(processor):
-        raise ValueError(
-            "Selected plug-in is not an instrument (it accepts audio input). "
-            "Choose a synth or instrument plug-in."
-        )
-    if role == "effect" and not plugin_is_effect(processor):
-        raise ValueError(
-            "Selected plug-in is an instrument (no audio input). Choose an FX plug-in."
-        )
-
     existing_preset = os.path.abspath((preset_path or "").strip()) if preset_path else ""
-    if existing_preset and os.path.isfile(existing_preset):
-        apply_plugin_state(processor, existing_preset)
+    preview_midi_path = ""
+    try:
+        if editor_preview:
+            instrument_path = (editor_preview.get("instrument_path") or "").strip()
+            if not instrument_path:
+                raise ValueError("Editor preview is missing instrument_path.")
+            instrument_state_path = (editor_preview.get("instrument_state_path") or "").strip() or None
+            fx_specs = [
+                (str(item[0]), str(item[1]) if item[1] else None)
+                for item in (editor_preview.get("fx_specs") or [])
+                if item and item[0]
+            ]
+            preview_midi_path = (editor_preview.get("midi_path") or "").strip()
+            preview_duration = float(editor_preview.get("duration_sec") or 0)
+            if not preview_midi_path or not os.path.isfile(preview_midi_path):
+                raise ValueError("Editor preview MIDI file is missing.")
+            if preview_duration <= 0:
+                raise ValueError("Editor preview duration must be positive.")
 
-    open_plugin_editor(processor)
+            engine = create_engine()
+            instrument, fx_processors = _load_editor_preview_chain(
+                engine,
+                instrument_path,
+                instrument_state_path,
+                fx_specs,
+            )
+            processor = _resolve_edit_processor(instrument, fx_processors, role, plugin_path)
+            if role == "instrument" and not plugin_is_instrument(processor):
+                raise ValueError(
+                    "Selected plug-in is not an instrument (it accepts audio input). "
+                    "Choose a synth or instrument plug-in."
+                )
+            if role == "effect" and not plugin_is_effect(processor):
+                raise ValueError(
+                    "Selected plug-in is an instrument (no audio input). Choose an FX plug-in."
+                )
+            if existing_preset and os.path.isfile(existing_preset):
+                apply_plugin_state(processor, existing_preset)
 
-    saved_preset_path = os.path.join(generatr_session_dir(), f"{generate_id()}.ddstate")
-    save_plugin_state(processor, saved_preset_path)
+            engine_lock = threading.RLock()
 
-    return {
-        "kind": "plugin",
-        "pluginPath": plugin_path,
-        "presetPath": saved_preset_path,
-        "label": format_plugin_name(plugin_path),
-    }
+            def open_editor() -> None:
+                open_plugin_editor(processor)
+
+            run_live_preview_during_editor(
+                instrument=instrument,
+                fx_processors=[fx for fx, _path in fx_processors],
+                midi_path=preview_midi_path,
+                duration_sec=preview_duration,
+                engine=engine,
+                engine_lock=engine_lock,
+                open_editor_fn=open_editor,
+            )
+        else:
+            engine = create_engine()
+            processor = load_plugin_on_engine(engine, plugin_path)
+
+            if role == "instrument" and not plugin_is_instrument(processor):
+                raise ValueError(
+                    "Selected plug-in is not an instrument (it accepts audio input). "
+                    "Choose a synth or instrument plug-in."
+                )
+            if role == "effect" and not plugin_is_effect(processor):
+                raise ValueError(
+                    "Selected plug-in is an instrument (no audio input). Choose an FX plug-in."
+                )
+
+            if existing_preset and os.path.isfile(existing_preset):
+                apply_plugin_state(processor, existing_preset)
+
+            open_plugin_editor(processor)
+
+        saved_preset_path = os.path.join(generatr_session_dir(), f"{generate_id()}.ddstate")
+        save_plugin_state(processor, saved_preset_path)
+
+        return {
+            "kind": "plugin",
+            "pluginPath": plugin_path,
+            "presetPath": saved_preset_path,
+            "label": format_plugin_name(plugin_path),
+        }
+    finally:
+        if preview_midi_path:
+            with contextlib.suppress(OSError):
+                os.remove(preview_midi_path)
 
 
 def _persist_preset_state(source_path: str, name_hint: str) -> str:

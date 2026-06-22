@@ -137,6 +137,8 @@ def delegate_open_drone_plugin_editor_if_needed(
     plugin_path: str,
     role: str,
     preset_path: str | None = None,
+    *,
+    editor_preview: dict | None = None,
 ) -> dict | None:
     if not _should_delegate_to_worker():
         return None
@@ -146,6 +148,7 @@ def delegate_open_drone_plugin_editor_if_needed(
             "plugin_path": plugin_path,
             "role": role,
             "preset_path": preset_path,
+            "editor_preview": editor_preview,
         },
     )
     return dict(data.get("result") or {})
@@ -236,6 +239,7 @@ def run_stdio_worker() -> None:
                 params["plugin_path"],
                 params.get("role") or "instrument",
                 params.get("preset_path"),
+                editor_preview=params.get("editor_preview"),
             )
             result = {"ok": True, "result": capture}
         elif task == "scan_plugin_classifications":

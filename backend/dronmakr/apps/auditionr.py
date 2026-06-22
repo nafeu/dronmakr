@@ -13,8 +13,9 @@ import json
 import random
 import fnmatch
 import time
+import tempfile
 
-from flask import request, jsonify, send_from_directory
+from flask import request, jsonify, send_from_directory, send_file
 from dronmakr.core.settings import (
     ensure_settings,
     get_active_drum_path_preset_name,
@@ -66,7 +67,7 @@ from dronmakr.processing.processing_actions import (
     read_post_processing_shortcuts_document,
     remove_post_processing_shortcut,
 )
-from dronmakr.generate.generate_sample import apply_effect, generate_drone_sample, generate_beat_sample, BEAT_EXPORT_PEAK_DB
+from dronmakr.generate.generate_sample import apply_effect, generate_drone_sample, generate_beat_sample, BEAT_EXPORT_PEAK_DB, effect_slot_entries
 from dronmakr.core.paths import get_managed_file, normalize_path_basename
 from dronmakr.generate.generate_transition import (
     generate_sweep_sample,
@@ -93,6 +94,8 @@ _socketio = None
 UNDO_DIR = os.path.join(TEMP_DIR, "auditionr_undo")
 PITCH_DIR = os.path.join(TEMP_DIR, "auditionr_pitch")
 PITCH_STATE_FILE = os.path.join(PITCH_DIR, "state.json")
+DRONE_AUDIO_PREVIEW_PATTERN = "quantized_straight_eighth"
+DRONE_AUDIO_PREVIEW_BARS = 2
 _MANAGED_AUDIO_ROOTS = [EXPORTS_DIR, ARCHIVE_DIR, SAVED_DIR, TRASH_DIR]
 
 
@@ -846,6 +849,158 @@ def _parse_drone_fx_slots(payload: dict) -> list | None:
     return slots
 
 
+def _resolve_drone_editor_instrument_spec(
+    payload: dict,
+    instruments: list[dict],
+    *,
+    edit_role: str,
+    edit_plugin_path: str,
+    edit_preset_path: str | None,
+) -> tuple[str, str | None]:
+    if edit_role == "instrument":
+        return edit_plugin_path, edit_preset_path or None
+
+    _instrument, instrument_selection = _parse_drone_instrument_selection(payload)
+    if isinstance(instrument_selection, dict) and instrument_selection.get("kind") == "plugin":
+        plugin_path = (
+            instrument_selection.get("pluginPath")
+            or instrument_selection.get("plugin_path")
+            or ""
+        ).strip()
+        if plugin_path:
+            preset_path = (
+                instrument_selection.get("presetPath")
+                or instrument_selection.get("preset_path")
+                or ""
+            ).strip()
+            return plugin_path, preset_path or None
+
+    if _instrument:
+        for preset in instruments:
+            if preset.get("name") == _instrument:
+                return preset["plugin_path"], preset.get("preset_path")
+
+    if instruments:
+        pick = random.choice(instruments)
+        return pick["plugin_path"], pick.get("preset_path")
+
+    raise ValueError(
+        "No instrument available for live preview — pick or save an instrument first."
+    )
+
+
+def _resolve_drone_editor_fx_specs(
+    payload: dict,
+    fx_presets: list[dict],
+    *,
+    edit_role: str,
+    edit_plugin_path: str,
+    edit_preset_path: str | None,
+    fx_slot_index: int | None,
+) -> list[tuple[str, str | None]]:
+    _effect = (payload.get("effect") or "").strip() or None
+    fx_slots, fx_mode = _parse_drone_fx_state(payload)
+    if fx_mode == "disabled":
+        return []
+
+    specs: list[tuple[str, str | None]] = []
+    if fx_slots is None:
+        if edit_role == "effect":
+            return [(edit_plugin_path, edit_preset_path or None)]
+        effect_preset = None
+        if _effect and _effect.lower() != "none":
+            effect_preset = next((p for p in fx_presets if p.get("name") == _effect), None)
+        elif fx_presets:
+            effect_preset = random.choice(fx_presets)
+        if effect_preset is not None:
+            for step in effect_slot_entries(effect_preset):
+                specs.append((step["plugin_path"], step.get("preset_path")))
+        return specs
+
+    for idx, slot in enumerate(fx_slots[:5]):
+        if edit_role == "effect" and fx_slot_index == idx:
+            specs.append((edit_plugin_path, edit_preset_path or None))
+            continue
+        if not slot:
+            continue
+        if slot.get("kind") == "patch":
+            patch_name = (slot.get("name") or "").strip()
+            patch = next((p for p in fx_presets if p.get("name") == patch_name), None)
+            if patch is None:
+                continue
+            for step in effect_slot_entries(patch):
+                specs.append((step["plugin_path"], step.get("preset_path")))
+            continue
+        if slot.get("kind") == "plugin":
+            plugin_path = (slot.get("pluginPath") or slot.get("plugin_path") or "").strip()
+            if plugin_path:
+                preset_path = slot.get("presetPath") or slot.get("preset_path") or ""
+                specs.append((plugin_path, preset_path or None))
+    return specs
+
+
+def _prepare_drone_editor_preview(
+    payload: dict,
+    *,
+    edit_plugin_path: str,
+    edit_role: str,
+    edit_preset_path: str | None,
+    fx_slot_index: int | None,
+) -> dict:
+    from dronmakr.core.utils import resolve_presets_index_path
+
+    presets_path = resolve_presets_index_path()
+    if not presets_path:
+        raise FileNotFoundError(
+            "config/presets.json does not exist — open Patchcraftr from the desktop tray (Launch patchcraftr)."
+        )
+
+    with open(presets_path, "r", encoding="utf-8") as f:
+        presets = json.load(f)
+    if not isinstance(presets, list):
+        raise ValueError(f"{presets_path} must contain a JSON array of preset objects.")
+
+    instruments = [p for p in presets if isinstance(p, dict) and p.get("type") == "instrument"]
+    fx_presets = [
+        p for p in presets if isinstance(p, dict) and p.get("type") in ("effect", "effect_chain")
+    ]
+
+    preview_payload = dict(payload)
+    preview_payload["pattern"] = DRONE_AUDIO_PREVIEW_PATTERN
+    preview_payload["lengthBars"] = DRONE_AUDIO_PREVIEW_BARS
+    midi_kwargs = _build_drone_midi_kwargs_from_payload(preview_payload, preview=True)
+    midi_kwargs["pattern"] = DRONE_AUDIO_PREVIEW_PATTERN
+    midi_obj, _chart_label, render_duration_sec, _pattern_used = generate_drone_midi(
+        **midi_kwargs,
+        quiet=True,
+    )
+    midi_temp = write_drone_midi_temp(midi_obj)
+
+    instrument_path, instrument_state_path = _resolve_drone_editor_instrument_spec(
+        preview_payload,
+        instruments,
+        edit_role=edit_role,
+        edit_plugin_path=edit_plugin_path,
+        edit_preset_path=edit_preset_path,
+    )
+    fx_specs = _resolve_drone_editor_fx_specs(
+        preview_payload,
+        fx_presets,
+        edit_role=edit_role,
+        edit_plugin_path=edit_plugin_path,
+        edit_preset_path=edit_preset_path,
+        fx_slot_index=fx_slot_index,
+    )
+
+    return {
+        "midi_path": midi_temp,
+        "duration_sec": render_duration_sec,
+        "instrument_path": instrument_path,
+        "instrument_state_path": instrument_state_path or "",
+        "fx_specs": [[path, state or ""] for path, state in fx_specs],
+    }
+
+
 def _run_generate_drone(payload: dict) -> list[str]:
     """`generate-drone` CLI parity (omits UI for --shift-octave-down, --shift-root-note, --dry-run, --log-server, --play)."""
     from dronmakr.core.utils import resolve_presets_index_path
@@ -918,6 +1073,58 @@ def _run_generate_drone(payload: dict) -> list[str]:
     _apply_drone_post_processing_to_wavs(wav_files, post_processing_spec)
 
     return results
+
+
+def _run_drone_audio_preview(payload: dict) -> tuple[str, float, str]:
+    """Render a short looping WAV preview of the current instrument + FX chain."""
+    from dronmakr.core.utils import resolve_presets_index_path
+
+    presets_path = resolve_presets_index_path()
+    if not presets_path:
+        raise FileNotFoundError(
+            "config/presets.json does not exist — open Patchcraftr from the desktop tray (Launch patchcraftr)."
+        )
+
+    preview_payload = dict(payload)
+    preview_payload["pattern"] = DRONE_AUDIO_PREVIEW_PATTERN
+    preview_payload["lengthBars"] = DRONE_AUDIO_PREVIEW_BARS
+
+    instrument, instrument_selection = _parse_drone_instrument_selection(preview_payload)
+    effect = (preview_payload.get("effect") or "").strip() or None
+    fx_slots, fx_mode = _parse_drone_fx_state(preview_payload)
+    if fx_mode == "disabled":
+        effect = "none"
+        fx_slots = None
+    elif fx_mode == "random":
+        fx_slots = None
+
+    midi_kwargs = _build_drone_midi_kwargs_from_payload(preview_payload, preview=True)
+    midi_kwargs["pattern"] = DRONE_AUDIO_PREVIEW_PATTERN
+    midi_obj, chart_label, render_duration_sec, _pattern_used = generate_drone_midi(
+        **midi_kwargs,
+        quiet=True,
+    )
+
+    midi_temp = write_drone_midi_temp(midi_obj)
+    fd, wav_temp = tempfile.mkstemp(suffix=".wav", prefix="dronmakr_drone_preview_")
+    os.close(fd)
+    try:
+        generate_drone_sample(
+            input_path=midi_temp,
+            output_path=wav_temp,
+            presets_path=presets_path,
+            instrument=instrument,
+            effect=effect,
+            render_duration_sec=render_duration_sec,
+            instrument_selection=instrument_selection,
+            fx_slots=fx_slots,
+        )
+        return wav_temp, render_duration_sec, chart_label
+    finally:
+        try:
+            os.remove(midi_temp)
+        except OSError:
+            pass
 
 
 def _run_generate_bass(subcommand: str, payload: dict) -> list[str]:
@@ -1400,16 +1607,52 @@ def _handle_drone_plugin_editor():
         return jsonify({"error": "pluginPath is required"}), 400
     if role not in ("instrument", "effect"):
         return jsonify({"error": "role must be instrument or effect"}), 400
+    fx_slot_index = data.get("fxSlotIndex")
+    if fx_slot_index is not None and fx_slot_index != "":
+        try:
+            fx_slot_index = int(fx_slot_index)
+        except (TypeError, ValueError):
+            return jsonify({"error": "fxSlotIndex must be an integer"}), 400
+    else:
+        fx_slot_index = None
+    editor_preview = None
     try:
         from dronmakr.audio.audio_worker import delegate_open_drone_plugin_editor_if_needed
         from dronmakr.apps.generatr_plugins import open_drone_plugin_editor_capture
 
-        result = delegate_open_drone_plugin_editor_if_needed(plugin_path, role, preset_path)
+        preview_context = data.get("previewContext")
+        if isinstance(preview_context, dict):
+            editor_preview = _prepare_drone_editor_preview(
+                preview_context,
+                edit_plugin_path=plugin_path,
+                edit_role=role,
+                edit_preset_path=preset_path,
+                fx_slot_index=fx_slot_index,
+            )
+
+        result = delegate_open_drone_plugin_editor_if_needed(
+            plugin_path,
+            role,
+            preset_path,
+            editor_preview=editor_preview,
+        )
         if result is None:
-            result = open_drone_plugin_editor_capture(plugin_path, role, preset_path)
+            result = open_drone_plugin_editor_capture(
+                plugin_path,
+                role,
+                preset_path,
+                editor_preview=editor_preview,
+            )
+            editor_preview = None
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    finally:
+        if editor_preview and editor_preview.get("midi_path"):
+            try:
+                os.remove(editor_preview["midi_path"])
+            except OSError:
+                pass
 
 
 def _handle_drone_midi_patterns():
@@ -1451,6 +1694,34 @@ def _handle_drone_midi_preview():
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+def _handle_drone_audio_preview():
+    data = request.get_json() or {}
+    wav_path = ""
+    try:
+        wav_path, render_duration_sec, chart_label = _run_drone_audio_preview(data)
+        response = send_file(
+            wav_path,
+            mimetype="audio/wav",
+            as_attachment=False,
+            download_name="drone-preview.wav",
+        )
+        response.headers["X-Drone-Preview-Duration"] = str(render_duration_sec)
+        response.headers["X-Drone-Preview-Chart"] = chart_label or ""
+        return response
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except FileNotFoundError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if wav_path:
+            try:
+                os.remove(wav_path)
+            except OSError:
+                pass
 
 
 def _handle_drone_save_preset():
@@ -1699,6 +1970,12 @@ def register_auditionr(app, socketio):
         "/api/generatr/drone-midi-preview",
         "auditionr_api_drone_midi_preview",
         _handle_drone_midi_preview,
+        methods=["POST"],
+    )
+    app.add_url_rule(
+        "/api/generatr/drone-audio-preview",
+        "auditionr_api_drone_audio_preview",
+        _handle_drone_audio_preview,
         methods=["POST"],
     )
     app.add_url_rule(

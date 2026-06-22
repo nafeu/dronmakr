@@ -7079,6 +7079,34 @@
         generatrDroneUpdateMidiPatternLabel();
       }
 
+      function generatrDroneBuildEditorPreviewContext() {
+        var body = {
+          musicalStyleMode: GENERATR_DRONE_STYLE_MODE,
+          pattern: "quantized_straight_eighth",
+          lengthBars: 2
+        };
+        if (GENERATR_DRONE_STYLE_MODE === "custom") {
+          var customNotes = generatrDroneGetSelectedCustomNotes();
+          if (customNotes.length > 0) body.customNotes = customNotes;
+        } else {
+          body.chartName = (droneChartNameInput.value || "").trim();
+          body.chartType = (droneChartTypeSelect.value || "").trim();
+          body.tags = (droneTagsInput.value || "").trim();
+          body.roots = (droneRootsInput.value || "").trim();
+        }
+        if (generatrDroneInstrumentSelection) {
+          body.instrumentSelection = generatrDroneInstrumentSelection;
+        }
+        body.fxEnabled = droneFxEnabledCheckbox ? droneFxEnabledCheckbox.checked : true;
+        if (body.fxEnabled) {
+          var hasFxSelection = generatrDroneFxSlots.some(function (slot) { return !!slot; });
+          if (hasFxSelection) {
+            body.fxSlots = generatrDroneFxSlots.slice(0, GENERATR_DRONE_FX_SLOT_COUNT);
+          }
+        }
+        return body;
+      }
+
       function generatrDroneEnsurePatternPreviews() {
         if (generatrDroneMidiPatternPreviewsLoaded) {
           return Promise.resolve(generatrDroneMidiPatternCatalog);
@@ -7648,6 +7676,7 @@
           }
           generatrDroneOpenPluginEditor(pluginPath, role, {
             presetPath: presetPath || "",
+            fxSlotIndex: fxSlotIndex,
             onCapture: function (data) {
               generatrDroneSetPluginSelection(role, fxSlotIndex, data);
               generatrDroneRefreshPluginCards();
@@ -7727,19 +7756,28 @@
         role = role || (generatrDronePluginPickerContext && generatrDronePluginPickerContext.role) || "instrument";
         if (!pluginPath) return;
         var fromPicker = !!generatrDronePluginPickerContext && typeof options.onCapture !== "function";
+        var fxSlotIndex = options.fxSlotIndex;
+        if (fxSlotIndex == null && generatrDronePluginPickerContext && generatrDronePluginPickerContext.role === "effect") {
+          fxSlotIndex = generatrDronePluginPickerContext.fxSlotIndex;
+        }
         if (fromPicker && dronePluginPickerModal) {
           dronePluginPickerModal.querySelectorAll(".generatr-drone-plugin-picker-choice").forEach(function (btn) {
             btn.disabled = true;
           });
         }
+        var editorBody = {
+          pluginPath: pluginPath,
+          role: role,
+          presetPath: options.presetPath || ""
+        };
+        if (generatrPluginPathsConfigured) {
+          editorBody.previewContext = generatrDroneBuildEditorPreviewContext();
+          if (fxSlotIndex != null) editorBody.fxSlotIndex = fxSlotIndex;
+        }
         fetch("/api/generatr/drone-plugin-editor", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            pluginPath: pluginPath,
-            role: role,
-            presetPath: options.presetPath || ""
-          })
+          body: JSON.stringify(editorBody)
         })
           .then(function (res) { return res.json(); })
           .then(function (data) {
@@ -9877,8 +9915,9 @@
 
       function closeGeneratrChordPickerApply() {
         if (!chordPickerModal || chordPickerModal.classList.contains("hidden")) return;
-        if (generatrChordPickerState.targetInput) {
-          generatrChordPickerState.targetInput.value = generatrChordPickerState.staged
+        var targetInput = generatrChordPickerState.targetInput;
+        if (targetInput) {
+          targetInput.value = generatrChordPickerState.staged
             .map(function (s) { return String(s).trim(); })
             .filter(Boolean)
             .join(", ");
