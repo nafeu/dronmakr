@@ -56,6 +56,7 @@ from dronmakr.generate.generate_midi import (
     build_midi_preview_payload,
     format_pattern_display_name,
     write_drone_midi_temp,
+    extract_drone_piano_notes_from_midi_bytes,
 )
 from dronmakr.processing.processing_actions import (
     append_post_processing_shortcut,
@@ -1664,6 +1665,26 @@ def _handle_drone_midi_patterns():
     return jsonify({"patterns": get_patterns_catalog(include_previews=include_previews)})
 
 
+def _read_drone_midi_import_bytes() -> bytes:
+    upload = request.files.get("file") if request.files else None
+    if upload and upload.filename:
+        data = upload.read()
+        if data:
+            return data
+    raise ValueError("Missing MIDI file upload")
+
+
+def _handle_drone_midi_import():
+    try:
+        data = _read_drone_midi_import_bytes()
+        notes = extract_drone_piano_notes_from_midi_bytes(data)
+        return jsonify({"notes": notes, "count": len(notes)})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 def _handle_drone_midi_preview():
     data = request.get_json() or {}
     try:
@@ -1965,6 +1986,12 @@ def register_auditionr(app, socketio):
         "auditionr_api_drone_midi_patterns",
         _handle_drone_midi_patterns,
         methods=["GET"],
+    )
+    app.add_url_rule(
+        "/api/generatr/drone-midi-import",
+        "auditionr_api_drone_midi_import",
+        _handle_drone_midi_import,
+        methods=["POST"],
     )
     app.add_url_rule(
         "/api/generatr/drone-midi-preview",

@@ -489,6 +489,64 @@ def _note_str_to_midi_number(note_str: str) -> int:
     return pretty_midi.note_name_to_number(str(note_str or "").strip())
 
 
+DRONE_PIANO_OCTAVE_MIN = -1
+DRONE_PIANO_OCTAVE_MAX = 5
+_DRONE_PIANO_PITCH_ORDER = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+
+
+def _note_octave_from_note_str(note_str: str) -> int:
+    match = _NOTE_OCTAVE_RE.match(str(note_str or "").strip())
+    if not match:
+        return 0
+    return int(match.group(2))
+
+
+def _drone_piano_pitch_sort_index(note_str: str) -> int:
+    pitch = _note_pitch_from_note_str(note_str)
+    try:
+        return _DRONE_PIANO_PITCH_ORDER.index(pitch)
+    except ValueError:
+        return 99
+
+
+def extract_drone_piano_notes_from_midi_bytes(data: bytes) -> list[str]:
+    """Unique pitch names from a MIDI file within drone piano-roll octaves (-1..5)."""
+    import io
+
+    if not data:
+        raise ValueError("MIDI data is empty")
+    try:
+        midi = pretty_midi.PrettyMIDI(io.BytesIO(data))
+    except Exception as exc:
+        raise ValueError("Could not read MIDI file") from exc
+
+    min_pitch = (DRONE_PIANO_OCTAVE_MIN + 1) * 12
+    max_pitch = (DRONE_PIANO_OCTAVE_MAX + 1) * 12 + 11
+    seen: set[str] = set()
+    notes: list[str] = []
+
+    for instrument in midi.instruments:
+        for note in instrument.notes:
+            pitch = int(note.pitch)
+            if pitch < min_pitch or pitch > max_pitch:
+                continue
+            name = pretty_midi.note_number_to_name(pitch)
+            try:
+                pretty_midi.note_name_to_number(name)
+            except Exception:
+                continue
+            if name in seen:
+                continue
+            seen.add(name)
+            notes.append(name)
+
+    if not notes:
+        raise ValueError("No notes found in MIDI within octaves -1 to 5")
+
+    notes.sort(key=lambda item: (_note_octave_from_note_str(item), _drone_piano_pitch_sort_index(item)))
+    return notes
+
+
 def generate_drone_midi(
     pattern,  # Pattern of playback
     output_name="",

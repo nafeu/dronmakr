@@ -1113,7 +1113,28 @@
       background: var(--dron-control-bg);
     }
 
-    .generatr-drone-preview-wave {
+    .generatr-drone-piano-controls {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 0.65rem;
+    }
+
+    .generatr-drone-piano-control-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.18rem;
+    }
+
+    .generatr-drone-piano-control-label {
+      font-size: 0.62rem;
+      line-height: 1.2;
+      color: color-mix(in srgb, var(--theme-a) 68%, transparent);
+      text-transform: lowercase;
+    }
+
+    .generatr-drone-piano-control-btns {
       display: inline-flex;
       flex-wrap: wrap;
       gap: 0.22rem;
@@ -3904,7 +3925,7 @@
                 </div>
               </div>
               <div class="form-row form-row-full hidden" id="generatr-drone-musical-style-row">
-                <div class="generatr-sweep-effect generatr-drone-musical-style-card">
+                <div class="generatr-sweep-effect generatr-drone-musical-style-card" id="generatr-drone-musical-style-card">
                   <div class="generatr-sweep-effect-head">
                     <span class="generatr-sweep-effect-title">Musical Style</span>
                     <div class="generatr-drone-style-mode" role="tablist" aria-label="Musical style mode">
@@ -3924,13 +3945,25 @@
                             <button type="button" class="generatr-drone-octave-btn" id="generatr-drone-octave-down" aria-label="Previous octave range"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></button>
                           </div>
                         </div>
-                        <div class="generatr-drone-preview-wave" id="generatr-drone-preview-wave" role="group" aria-label="Preview sound">
-                          <button type="button" class="generatr-drone-preview-wave-btn is-active" data-preview-wave="square">square</button>
-                          <button type="button" class="generatr-drone-preview-wave-btn" data-preview-wave="sine">sine</button>
-                          <button type="button" class="generatr-drone-preview-wave-btn" data-preview-wave="tri">tri</button>
-                          <button type="button" class="generatr-drone-preview-wave-btn" data-preview-wave="mute">mute</button>
+                        <div class="generatr-drone-piano-controls">
+                          <div class="generatr-drone-piano-control-section">
+                            <span class="generatr-drone-piano-control-label">preview</span>
+                            <div class="generatr-drone-piano-control-btns" id="generatr-drone-preview-wave" role="group" aria-label="Preview sound">
+                              <button type="button" class="generatr-drone-preview-wave-btn is-active" data-preview-wave="square">square</button>
+                              <button type="button" class="generatr-drone-preview-wave-btn" data-preview-wave="sine">sine</button>
+                              <button type="button" class="generatr-drone-preview-wave-btn" data-preview-wave="tri">tri</button>
+                              <button type="button" class="generatr-drone-preview-wave-btn" data-preview-wave="mute">mute</button>
+                            </div>
+                          </div>
+                          <div class="generatr-drone-piano-control-section">
+                            <span class="generatr-drone-piano-control-label">import scale</span>
+                            <div class="generatr-drone-piano-control-btns" role="group" aria-label="Import scale from MIDI">
+                              <button type="button" class="generatr-drone-preview-wave-btn" id="generatr-drone-upload-midi">upload midi</button>
+                            </div>
+                          </div>
                         </div>
                       </div>
+                      <input type="file" id="generatr-drone-midi-import-file" accept=".mid,.midi,audio/midi,audio/x-midi,application/x-midi" hidden>
                     </div>
                     <div id="generatr-drone-style-chart" class="generatr-drone-style-panel hidden generatr-drone-musical-style-body" role="tabpanel" aria-labelledby="generatr-drone-style-mode-chart" hidden>
                       <div class="generatr-drone-musical-style-field">
@@ -4012,7 +4045,7 @@
                           <i class="fa-solid fa-gear" aria-hidden="true"></i>
                         </button>
                         <div class="generatr-sweep-effect-enable">
-                          <input type="checkbox" id="generatr-drone-fx-enabled" checked aria-label="Enable FX chain" autocomplete="off">
+                          <input type="checkbox" id="generatr-drone-fx-enabled" aria-label="Enable FX chain" autocomplete="off">
                         </div>
                       </div>
                     </div>
@@ -6880,6 +6913,8 @@
       var droneStyleCustomPanel = document.getElementById("generatr-drone-style-custom");
       var droneStyleChartPanel = document.getElementById("generatr-drone-style-chart");
       var dronePianoRollEl = document.getElementById("generatr-drone-piano-roll");
+      var droneUploadMidiBtn = document.getElementById("generatr-drone-upload-midi");
+      var droneMidiImportFileInput = document.getElementById("generatr-drone-midi-import-file");
       var droneOctaveDisplay = document.getElementById("generatr-drone-octave-display");
       var droneOctaveUpBtn = document.getElementById("generatr-drone-octave-up");
       var droneOctaveDownBtn = document.getElementById("generatr-drone-octave-down");
@@ -7062,7 +7097,7 @@
           droneInstrumentHint.hidden = !!generatrDroneInstrumentSelection;
         }
         if (droneFxHint) {
-          var fxEnabled = droneFxEnabledCheckbox ? droneFxEnabledCheckbox.checked : true;
+          var fxEnabled = droneFxEnabledCheckbox ? droneFxEnabledCheckbox.checked : false;
           droneFxHint.hidden = !fxEnabled || generatrDroneFilledFxSlotCount() > 0;
         }
       }
@@ -7099,7 +7134,7 @@
         if (generatrDroneInstrumentSelection) {
           body.instrumentSelection = generatrDroneInstrumentSelection;
         }
-        body.fxEnabled = droneFxEnabledCheckbox ? droneFxEnabledCheckbox.checked : true;
+        body.fxEnabled = droneFxEnabledCheckbox ? droneFxEnabledCheckbox.checked : false;
         if (body.fxEnabled) {
           var hasFxSelection = generatrDroneFxSlots.some(function (slot) { return !!slot; });
           if (hasFxSelection) {
@@ -8273,7 +8308,7 @@
       }
 
       if (droneFxEnabledCheckbox) {
-        droneFxEnabledCheckbox.checked = true;
+        droneFxEnabledCheckbox.checked = false;
         droneFxEnabledCheckbox.addEventListener("change", generatrDroneSyncFxEnabledUi);
         generatrDroneSyncFxEnabledUi();
       }
@@ -9596,6 +9631,81 @@
         generatrDroneUpdateStyleRandomHint();
       }
 
+      function generatrDroneUploadMidiBlob(blob, filename) {
+        if (!blob) return Promise.reject(new Error("No MIDI data"));
+        var form = new FormData();
+        form.append("file", blob, filename || "import.mid");
+        return fetch("/api/generatr/drone-midi-import", {
+          method: "POST",
+          body: form
+        })
+          .then(function (res) { return res.json().then(function (data) { return { res: res, data: data }; }); })
+          .then(function (payload) {
+            if (!payload.res.ok || payload.data.error) {
+              throw new Error(payload.data.error || ("Import failed (" + payload.res.status + ")"));
+            }
+            return payload.data.notes || [];
+          });
+      }
+
+      function generatrDroneApplyImportedMidiNotes(notes) {
+        if (!Array.isArray(notes) || !notes.length) {
+          generatrShowError("No notes found in MIDI within octaves -1 to 5");
+          return;
+        }
+        generatrDroneSetStyleMode("custom");
+        generatrDroneCustomNotes = Object.create(null);
+        notes.forEach(function (noteName) {
+          var parsed = generatrDroneParseNoteId(noteName);
+          if (!parsed.pitch) return;
+          if (parsed.octave < GENERATR_DRONE_OCTAVE_MIN || parsed.octave > GENERATR_DRONE_OCTAVE_MAX) return;
+          generatrDroneCustomNotes[generatrDroneNoteId(parsed.pitch, parsed.octave)] = true;
+        });
+        var selected = generatrDroneGetSelectedCustomNotes();
+        if (!selected.length) {
+          generatrShowError("No notes in MIDI fit the piano roll range");
+          return;
+        }
+        var first = generatrDroneParseNoteId(selected[0]);
+        var targetOctave = Math.max(
+          GENERATR_DRONE_OCTAVE_MIN,
+          Math.min(GENERATR_DRONE_OCTAVE_VIEW_MAX, first.octave)
+        );
+        if (generatrDronePianoOctave !== targetOctave) {
+          generatrDronePianoOctave = targetOctave;
+          generatrDroneBuildPianoRoll(true);
+        } else {
+          generatrDroneSyncPianoRollKeyStates();
+        }
+        generatrDroneUpdateStyleRandomHint();
+        if (kindSelect && kindSelect.value === "drone") {
+          generatrDroneRefreshMidiPreview();
+        }
+      }
+
+      function generatrDroneImportMidiFile(file) {
+        if (!file) return;
+        generatrDroneUploadMidiBlob(file, file.name || "import.mid")
+          .then(function (notes) { generatrDroneApplyImportedMidiNotes(notes); })
+          .catch(function (err) { generatrShowError(err.message || "Failed to import MIDI"); });
+      }
+
+      function generatrDroneSetupMidiImportUi() {
+        if (droneUploadMidiBtn && droneMidiImportFileInput) {
+          droneUploadMidiBtn.addEventListener("click", function (ev) {
+            ev.stopPropagation();
+            droneMidiImportFileInput.click();
+          });
+        }
+        if (droneMidiImportFileInput) {
+          droneMidiImportFileInput.addEventListener("change", function () {
+            var file = droneMidiImportFileInput.files && droneMidiImportFileInput.files[0];
+            droneMidiImportFileInput.value = "";
+            if (file) generatrDroneImportMidiFile(file);
+          });
+        }
+      }
+
       function generatrDroneSyncPianoRollKeyStates() {
         if (!dronePianoRollEl) return;
         dronePianoRollEl.querySelectorAll(".generatr-drone-piano-key[data-pitch]").forEach(function (btn) {
@@ -9752,6 +9862,7 @@
           generatrDroneSetPreviewWave(wave);
         });
       }
+      generatrDroneSetupMidiImportUi();
       generatrDroneBuildPianoRoll();
       generatrDroneUpdateStyleRandomHint();
       generatrDroneSyncPreviewWaveButtons();
@@ -10040,7 +10151,7 @@
           if (generatrDroneInstrumentSelection) {
             body.instrumentSelection = generatrDroneInstrumentSelection;
           }
-          body.fxEnabled = droneFxEnabledCheckbox ? droneFxEnabledCheckbox.checked : true;
+          body.fxEnabled = droneFxEnabledCheckbox ? droneFxEnabledCheckbox.checked : false;
           if (body.fxEnabled) {
             var hasFxSelection = generatrDroneFxSlots.some(function (slot) { return !!slot; });
             if (hasFxSelection) {
