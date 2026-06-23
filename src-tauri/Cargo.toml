@@ -1,6 +1,6 @@
 [package]
 name = "dronmakr"
-version = "0.51.0"
+version = "0.54.0"
 description = "dronmakr desktop app"
 authors = ["Nafeu"]
 edition = "2021"
@@ -16,7 +16,6 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 tauri-plugin-shell = "2"
 tauri-plugin-opener = "2"
-tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 ureq = { version = "2.10", features = ["json"] }

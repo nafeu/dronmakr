@@ -412,15 +412,16 @@ def save_drone_preset(
     if role == "instrument":
         if not isinstance(instrument_selection, dict):
             raise ValueError("Choose an instrument plug-in or saved patch before saving.")
+        if instrument_selection.get("kind") == "faust":
+            raise ValueError("Built-in Faust instruments cannot be saved as patches.")
         plugin_path, plugin_name, preset_source, _ = _resolve_drone_selection(instrument_selection)
         if not _plugin_path_exists(plugin_path):
             raise ValueError(f"Plug-in not found: {plugin_path}")
         from dronmakr.audio.faust_library import is_faust_instrument_path
 
         if is_faust_instrument_path(plugin_path):
-            preset_path = ""
-        else:
-            preset_path = _persist_preset_state(preset_source, preset_name)
+            raise ValueError("Built-in Faust instruments cannot be saved as patches.")
+        preset_path = _persist_preset_state(preset_source, preset_name)
         preset_data = {
             "id": generate_id(),
             "name": preset_name,

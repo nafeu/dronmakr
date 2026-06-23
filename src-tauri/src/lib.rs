@@ -3,12 +3,8 @@ use std::sync::Mutex;
 use std::thread;
 use std::time::{Duration, Instant};
 
-#[cfg(not(debug_assertions))]
-use serde::Deserialize;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{AppHandle, Emitter, Manager, RunEvent, Url};
-#[cfg(not(debug_assertions))]
-use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_opener::OpenerExt;
 #[cfg(not(debug_assertions))]
 use tauri_plugin_shell::process::CommandEvent;
@@ -16,10 +12,6 @@ use tauri_plugin_shell::process::CommandEvent;
 use tauri_plugin_shell::ShellExt;
 
 const PREFERRED_PORTS: [u16; 4] = [3766, 3767, 3768, 3769];
-#[cfg(not(debug_assertions))]
-const GITHUB_RELEASES_API: &str = "https://api.github.com/repos/nafeu/dronmakr/releases/latest";
-#[cfg(not(debug_assertions))]
-const INSTALLED_VERSION: &str = env!("CARGO_PKG_VERSION");
 const DEV_PORT: u16 = 3766;
 
 struct BackendState {
@@ -93,121 +85,6 @@ fn spawn_backend_sidecar(
     Ok(child)
 }
 
-#[cfg(not(debug_assertions))]
-#[derive(Deserialize)]
-struct ReleaseAsset {
-    name: String,
-    browser_download_url: String,
-}
-
-#[cfg(not(debug_assertions))]
-#[derive(Deserialize)]
-struct ReleaseInfo {
-    tag_name: String,
-    html_url: String,
-    assets: Vec<ReleaseAsset>,
-}
-
-#[cfg(not(debug_assertions))]
-fn parse_version(value: &str) -> Vec<u32> {
-    value
-        .trim()
-        .trim_start_matches('v')
-        .split('.')
-        .filter_map(|part| part.parse().ok())
-        .collect()
-}
-
-#[cfg(not(debug_assertions))]
-fn is_newer_version(remote: &str, local: &str) -> bool {
-    let remote_parts = parse_version(remote);
-    let local_parts = parse_version(local);
-    let max_len = remote_parts.len().max(local_parts.len());
-    for i in 0..max_len {
-        let r = remote_parts.get(i).copied().unwrap_or(0);
-        let l = local_parts.get(i).copied().unwrap_or(0);
-        if r > l {
-            return true;
-        }
-        if r < l {
-            return false;
-        }
-    }
-    false
-}
-
-#[cfg(not(debug_assertions))]
-fn platform_asset_hint() -> &'static str {
-    if cfg!(target_os = "macos") {
-        if cfg!(target_arch = "aarch64") {
-            "macos-arm64"
-        } else {
-            "macos-x64"
-        }
-    } else if cfg!(target_os = "windows") {
-        "windows-x64"
-    } else {
-        "linux-x64"
-    }
-}
-
-#[cfg(not(debug_assertions))]
-fn fetch_update_url() -> Option<String> {
-    let agent = ureq::agent();
-    let resp = agent
-        .get(GITHUB_RELEASES_API)
-        .set("User-Agent", "dronmakr-desktop")
-        .timeout(Duration::from_secs(8))
-        .call()
-        .ok()?;
-    if resp.status() / 100 != 2 {
-        return None;
-    }
-    let release: ReleaseInfo = resp.into_json().ok()?;
-    if !is_newer_version(&release.tag_name, INSTALLED_VERSION) {
-        return None;
-    }
-    let hint = platform_asset_hint().to_lowercase();
-    let matching: Vec<&ReleaseAsset> = release
-        .assets
-        .iter()
-        .filter(|asset| {
-            asset.name.to_lowercase().contains(&hint) && !asset.browser_download_url.is_empty()
-        })
-        .collect();
-    if let Some(asset) = matching.first() {
-        return Some(asset.browser_download_url.clone());
-    }
-    Some(release.html_url)
-}
-
-#[cfg(not(debug_assertions))]
-fn maybe_prompt_for_update(app: AppHandle) {
-    thread::spawn(move || {
-        let Some(download_url) = fetch_update_url() else {
-            return;
-        };
-        let message = "A newer dronmakr release is available.\n\nDownload it and replace the existing app in your Applications folder (or equivalent install location) to update.";
-        let app_for_dialog = app.clone();
-        let _ = app.run_on_main_thread(move || {
-            app_for_dialog
-                .dialog()
-                .message(message)
-                .title("Update available")
-                .kind(MessageDialogKind::Info)
-                .buttons(MessageDialogButtons::OkCancelCustom(
-                    "Download".to_string(),
-                    "Not now".to_string(),
-                ))
-                .show(move |confirmed| {
-                    if confirmed {
-                        let _ = app_for_dialog.opener().open_url(download_url, None::<&str>);
-                    }
-                });
-        });
-    });
-}
-
 fn open_files_root(app: &AppHandle) {
     let app = app.clone();
     thread::spawn(move || {
@@ -269,7 +146,6 @@ pub fn run() {
         .plugin(tauri_plugin_macos_fps::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_drag::init())
         .manage(BackendState {
             port: backend_port,
@@ -311,8 +187,6 @@ pub fn run() {
                         let handle = handle.clone();
                         move || navigate_main(&handle, startup_port)
                     });
-                    #[cfg(not(debug_assertions))]
-                    maybe_prompt_for_update(handle.clone());
                 } else {
                     let _ = handle.emit(
                         "backend-error",

@@ -419,6 +419,23 @@ def api_health():
     return jsonify({"ok": True})
 
 
+@app.route("/api/update/check", methods=["GET"])
+def api_update_check():
+    """Report whether a newer GitHub release exists than this build."""
+    from dronmakr.core.updater import fetch_update_info_throttled
+
+    info = fetch_update_info_throttled()
+    if not info:
+        return jsonify({"available": False})
+    return jsonify(
+        {
+            "available": True,
+            "tag": info.tag,
+            "releaseUrl": info.release_url,
+        }
+    )
+
+
 # Register auditionr and beatbuildr routes and socket handlers on the unified app.
 register_auditionr(app, socketio)
 register_beatbuildr(app, socketio)

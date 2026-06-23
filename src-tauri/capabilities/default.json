@@ -6,7 +6,6 @@
   "permissions": [
     "core:default",
     "opener:default",
-    "dialog:default",
     "drag:default",
     "shell:default",
     {

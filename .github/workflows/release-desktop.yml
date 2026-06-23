@@ -108,12 +108,13 @@ jobs:
         run: |
           $v = .\venv\Scripts\python -c "import sys; sys.path.insert(0, 'backend'); from dronmakr.version import __version__; print(__version__)"
           New-Item -ItemType Directory -Path dist-artifacts -Force | Out-Null
-          $bundle = Get-ChildItem -Path "src-tauri/target/release/bundle" -Recurse -Filter "*.exe" | Where-Object { $_.Directory.Name -match "dronmakr" } | Select-Object -First 1
-          if ($null -eq $bundle) {
-            Compress-Archive -Path "src-tauri/target/release/dronmakr.exe" -DestinationPath "dist-artifacts/dronmakr-v$v-windows-x64.zip" -Force
-          } else {
-            Compress-Archive -Path $bundle.FullName -DestinationPath "dist-artifacts/dronmakr-v$v-windows-x64.zip" -Force
+          $bundleRoot = "src-tauri/target/release/bundle"
+          if (-not (Test-Path $bundleRoot)) {
+            throw "Tauri bundle directory missing at $bundleRoot"
           }
+          $zipPath = "dist-artifacts/dronmakr-v$v-windows-x64.zip"
+          if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
+          Compress-Archive -Path (Join-Path $bundleRoot "*") -DestinationPath $zipPath
 
       - uses: softprops/action-gh-release@v2
         with:
@@ -166,8 +167,10 @@ jobs:
         run: |
           source venv/bin/activate
           VERSION=$(PYTHONPATH=backend python -c "from dronmakr.version import __version__; print(__version__)")
+          BUNDLE_DIR="src-tauri/target/release/bundle"
+          test -d "$BUNDLE_DIR"
           mkdir -p dist-artifacts
-          tar -czf "dist-artifacts/dronmakr-v${VERSION}-linux-x64.tar.gz" -C src-tauri/target/release/bundle .
+          tar -czf "dist-artifacts/dronmakr-v${VERSION}-linux-x64.tar.gz" -C "$BUNDLE_DIR" .
 
       - uses: softprops/action-gh-release@v2
         with:

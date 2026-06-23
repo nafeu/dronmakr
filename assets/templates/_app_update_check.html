@@ -1,0 +1,40 @@
+<script>
+(function () {
+  var notice = document.getElementById("app-update-notice");
+  var link = document.getElementById("app-update-notice-link");
+  var dismiss = document.getElementById("app-update-notice-dismiss");
+  if (!notice || !link) return;
+
+  var storageKey = "dronmakr-dismissed-update-tag";
+
+  function showNotice(tag, releaseUrl) {
+    if (!tag || !releaseUrl) return;
+    try {
+      if (localStorage.getItem(storageKey) === tag) return;
+    } catch (e) {}
+    link.href = releaseUrl;
+    notice.classList.remove("is-hidden");
+  }
+
+  if (dismiss) {
+    dismiss.addEventListener("click", function () {
+      var tag = notice.getAttribute("data-update-tag") || "";
+      notice.classList.add("is-hidden");
+      if (tag) {
+        try {
+          localStorage.setItem(storageKey, tag);
+        } catch (e) {}
+      }
+    });
+  }
+
+  fetch("/api/update/check")
+    .then(function (res) { return res.ok ? res.json() : null; })
+    .then(function (data) {
+      if (!data || !data.available) return;
+      notice.setAttribute("data-update-tag", data.tag || "");
+      showNotice(data.tag, data.releaseUrl);
+    })
+    .catch(function () {});
+})();
+</script>

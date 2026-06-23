@@ -169,6 +169,56 @@
       color: var(--secondary);
     }
 
+    .toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+
+    .app-update-notice {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.72rem;
+      padding: 0.28rem 0.45rem;
+      border: 1px solid var(--theme-b);
+      border-radius: 4px;
+      background: rgba(1, 111, 185, 0.12);
+      max-width: min(46vw, 300px);
+    }
+
+    .app-update-notice.is-hidden {
+      display: none;
+    }
+
+    .app-update-notice a {
+      color: var(--theme-b);
+      text-decoration: none;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .app-update-notice a:hover {
+      text-decoration: underline;
+    }
+
+    .app-update-notice-dismiss {
+      background: none;
+      border: none;
+      color: var(--theme-b);
+      cursor: pointer;
+      padding: 0 0.15rem;
+      font-size: 1rem;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .app-update-notice-dismiss:hover {
+      color: var(--primary);
+    }
+
     @media (max-width: 760px) {
       .toolbar-nav-label {
         display: none;

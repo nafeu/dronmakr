@@ -965,6 +965,7 @@
     }
 
     #sidebar-panel-edit {
+      position: relative;
       flex: 1 1 auto;
       min-height: 0;
     }
@@ -4225,6 +4226,10 @@
           </div>
             </div>
             <div id="sidebar-panel-edit" class="sidebar-tab-panel hidden">
+              <div class="generatr-busy-overlay hidden" id="edit-samples-busy-overlay" role="status" aria-live="polite" aria-hidden="true" aria-busy="false">
+                <i class="fa-solid fa-spinner fa-spin generatr-busy-icon" aria-hidden="true"></i>
+                <span class="generatr-busy-text">Applying effect</span>
+              </div>
               <div class="generatr-card edit-samples-card dron-list-scroll">
                 <div id="edit-action-nav" class="edit-action-nav" aria-label="Processing actions"></div>
                 <div id="edit-action-detail" class="edit-action-detail"></div>
@@ -4268,16 +4273,16 @@
       <h3 class="generatr-drone-plugin-picker-title" id="generatr-drone-plugin-picker-title">Choose instrument</h3>
       <input type="search" id="generatr-drone-plugin-picker-filter" placeholder="Search patches, library, and plug-ins…" autocomplete="off">
       <div class="generatr-drone-plugin-picker-columns" id="generatr-drone-plugin-picker-columns">
+        <div class="generatr-drone-plugin-picker-col" id="generatr-drone-plugin-picker-library-col">
+          <p class="generatr-drone-plugin-picker-col-title">Library</p>
+          <div class="generatr-drone-plugin-picker-list dron-list-scroll">
+            <div class="generatr-drone-plugin-picker-list-stack" id="generatr-drone-plugin-picker-library" role="listbox" aria-label="Built-in Faust instruments"></div>
+          </div>
+        </div>
         <div class="generatr-drone-plugin-picker-col">
           <p class="generatr-drone-plugin-picker-col-title">Saved patches</p>
           <div class="generatr-drone-plugin-picker-list dron-list-scroll">
             <div class="generatr-drone-plugin-picker-list-stack" id="generatr-drone-plugin-picker-patches" role="listbox" aria-label="Saved patches"></div>
-          </div>
-        </div>
-        <div class="generatr-drone-plugin-picker-col" id="generatr-drone-plugin-picker-library-col">
-          <p class="generatr-drone-plugin-picker-col-title">library</p>
-          <div class="generatr-drone-plugin-picker-list dron-list-scroll">
-            <div class="generatr-drone-plugin-picker-list-stack" id="generatr-drone-plugin-picker-library" role="listbox" aria-label="Built-in Faust instruments"></div>
           </div>
         </div>
         <div class="generatr-drone-plugin-picker-col">
@@ -4359,6 +4364,9 @@
     var currentDisplayedFiles = [];
     var waveformInstances = {};
     var processingGuardMs = 120000;
+    var editSamplesBusy = false;
+    var editSamplesPendingPath = null;
+    var editSamplesBusyTimer = null;
     var db = 2;
     var lastEdited = "";
     var sharedAudioContext = null;
@@ -4875,11 +4883,44 @@
       });
     }
 
+    function updateEditSamplesBusyOverlay() {
+      var overlay = document.getElementById("edit-samples-busy-overlay");
+      if (!overlay) return;
+      overlay.classList.toggle("hidden", !editSamplesBusy);
+      overlay.setAttribute("aria-hidden", editSamplesBusy ? "false" : "true");
+      overlay.setAttribute("aria-busy", editSamplesBusy ? "true" : "false");
+    }
+
+    function beginEditSamplesBusy(apiPath) {
+      if (editSamplesBusy) return false;
+      editSamplesBusy = true;
+      editSamplesPendingPath = apiPath || null;
+      updateEditSamplesBusyOverlay();
+      if (editSamplesBusyTimer) clearTimeout(editSamplesBusyTimer);
+      editSamplesBusyTimer = setTimeout(function () {
+        endEditSamplesBusy();
+      }, processingGuardMs);
+      return true;
+    }
+
+    function endEditSamplesBusy() {
+      if (!editSamplesBusy) return;
+      editSamplesBusy = false;
+      editSamplesPendingPath = null;
+      if (editSamplesBusyTimer) {
+        clearTimeout(editSamplesBusyTimer);
+        editSamplesBusyTimer = null;
+      }
+      updateEditSamplesBusyOverlay();
+    }
+
     function applyEditProcessingSpec(spec) {
       if (!selectedEditApiPath) {
         window.alert("Select a sample first (click its name or use the waveform).");
         return;
       }
+      if (editSamplesBusy) return;
+      if (!beginEditSamplesBusy(selectedEditApiPath)) return;
       processSample({
         path: selectedEditApiPath,
         processing_spec: spec,
@@ -6138,6 +6179,12 @@
         inst.processingSafetyTimer = null;
       }
       if (inst.wrapper) inst.wrapper.classList.remove("waveform-processing");
+      if (editSamplesPendingPath) {
+        var pendingAbs = resolveDisplayedFileFromProcessPath(editSamplesPendingPath);
+        if (pendingAbs === absPath) {
+          endEditSamplesBusy();
+        }
+      }
       if (!opts.skipDurationRepair && inst.wavesurfer && inst.durationEl) {
         var d = auditionrWaveSurferDuration(inst.wavesurfer);
         if (typeof d === "number" && !isNaN(d) && d > 0) {
@@ -6182,11 +6229,13 @@
         .then(function (pack) {
           if (!pack.ok || (pack.data && pack.data.error)) {
             if (fileAbs) endWaveformProcessing(fileAbs);
+            endEditSamplesBusy();
           }
           console.log(pack.data);
         })
         .catch(function (error) {
           if (fileAbs) endWaveformProcessing(fileAbs);
+          endEditSamplesBusy();
           console.error("Error:", error);
         });
     }
@@ -7547,6 +7596,7 @@
           var role = btn.getAttribute("data-save-preset-role") || "instrument";
           var canSave = role === "instrument"
             ? !!generatrDroneInstrumentSelection
+              && generatrDroneInstrumentSelection.kind !== "faust"
             : generatrDroneFilledFxSlotCount() > 0;
           btn.disabled = !canSave;
         });
@@ -7568,6 +7618,10 @@
         role = role || "instrument";
         if (role === "instrument" && !generatrDroneInstrumentSelection) {
           generatrShowError("Choose an instrument plug-in or saved patch before saving.");
+          return;
+        }
+        if (role === "instrument" && generatrDroneInstrumentSelection.kind === "faust") {
+          generatrShowError("Built-in Faust instruments cannot be saved as patches.");
           return;
         }
         var fxCount = generatrDroneFilledFxSlotCount();

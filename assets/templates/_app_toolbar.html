@@ -30,9 +30,16 @@
       </a>
     </nav>
   </div>
-  <a href="{{ url_for('settings_page') }}"
-    class="toolbar-settings{% if active_path.startswith('/settings') %} active{% endif %}"
-    title="Settings" aria-label="Settings">
-    <i class="fa-solid fa-gear" aria-hidden="true"></i>
-  </a>
+  <div class="toolbar-right">
+    <div id="app-update-notice" class="app-update-notice is-hidden" role="status" aria-live="polite">
+      <a id="app-update-notice-link" href="https://github.com/nafeu/dronmakr/releases/latest" target="_blank" rel="noopener noreferrer">New version available, upgrade now</a>
+      <button type="button" id="app-update-notice-dismiss" class="app-update-notice-dismiss" aria-label="Dismiss update notice" title="Dismiss">&times;</button>
+    </div>
+    <a href="{{ url_for('settings_page') }}"
+      class="toolbar-settings{% if active_path.startswith('/settings') %} active{% endif %}"
+      title="Settings" aria-label="Settings">
+      <i class="fa-solid fa-gear" aria-hidden="true"></i>
+    </a>
+  </div>
 </header>
+{% include '_app_update_check.html' %}

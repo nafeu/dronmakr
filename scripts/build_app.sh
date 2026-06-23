@@ -4,7 +4,13 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+if [[ ! -d "venv" ]]; then
+  echo "venv/ not found. Create it first (python -m venv venv)." >&2
+  exit 1
+fi
+
 source "venv/bin/activate"
+npm ci
 npm run build
 
 VERSION="$(PYTHONPATH=backend python -c 'from dronmakr.version import __version__; print(__version__)')"
@@ -29,15 +35,13 @@ if [[ "$UNAME_S" == "darwin" ]]; then
   tar -czf "${ARTIFACT_DIR}/${ARCHIVE_NAME}" -C "$(dirname "$APP")" "$(basename "$APP")"
   APP_PATH="$APP" bash scripts/package_mac_dmg.sh
 elif [[ "$UNAME_S" == "linux" ]]; then
+  BUNDLE_DIR="src-tauri/target/release/bundle"
+  if [[ ! -d "$BUNDLE_DIR" ]]; then
+    echo "error: Tauri Linux bundle missing at $BUNDLE_DIR" >&2
+    exit 1
+  fi
   ARCHIVE_NAME="dronmakr-v${VERSION}-linux-${ARCH_LABEL}.tar.gz"
-  BUNDLE_DIR="src-tauri/target/release/bundle/appimage"
-  if compgen -G "${BUNDLE_DIR}/*.AppImage" > /dev/null; then
-    cp ${BUNDLE_DIR}/*.AppImage "${ARTIFACT_DIR}/"
-  fi
-  DEB_DIR="src-tauri/target/release/bundle/deb"
-  if compgen -G "${BUNDLE_DIR}/.." > /dev/null; then
-    tar -czf "${ARTIFACT_DIR}/${ARCHIVE_NAME}" -C "src-tauri/target/release/bundle" . || true
-  fi
+  tar -czf "${ARTIFACT_DIR}/${ARCHIVE_NAME}" -C "$BUNDLE_DIR" .
 else
   echo "Use build_app.ps1 on Windows" >&2
   exit 1

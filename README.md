@@ -46,7 +46,7 @@ Prebuilt apps are published on **[GitHub Releases](https://github.com/nafeu/dron
 
 **Requirements:** VST3 and/or AU plug-ins for drone generation. Configure paths in **Settings** after setup.
 
-**Updates:** When a newer release is available, the app prompts you to download it from GitHub. Replace the existing app in your Applications folder (or equivalent) to update.
+**Updates:** When a newer release is available, a notice appears in the top toolbar linking to GitHub Releases. Download and replace the existing app to update.
 
 ---
 
@@ -111,7 +111,7 @@ User-generated audio, presets, and config live under your **`dronmakr-files`** d
 
 **Where are generated files stored?**
 
-In your chosen **`dronmakr-files`** root (set on first launch). New audio goes to `exports/`; MIDI to `midi/`. Auditionr moves samples into `saved/` or `trash/` as you work.
+In your chosen **`dronmakr-files`** root (set on first launch). New audio goes to `exports/`. Auditionr moves samples into `saved/` or `trash/` as you work.
 
 **Where are error logs?**
 
@@ -148,7 +148,7 @@ Add its name to **`ASSERT_INSTRUMENT`** in **Settings** so it is treated as an i
 
 **Desktop updates**
 
-Packaged builds check **GitHub Releases** on startup and prompt you to download the latest release. Install it manually by replacing the app bundle.
+The app checks GitHub Releases in the background. When a newer version exists, a dismissible **New version available, upgrade now** link appears in the top toolbar (left of Settings) and opens the release page.
 
 **Maintainers: version bump & release**
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import platform
 import time
 from dataclasses import dataclass
 
@@ -15,8 +14,6 @@ GITHUB_RELEASES_LATEST_PAGE = "https://github.com/nafeu/dronmakr/releases/latest
 @dataclass
 class UpdateInfo:
     tag: str
-    notes: str
-    asset_name: str
     release_url: str
 
 
@@ -38,37 +35,8 @@ def _normalize_version(value: str) -> tuple[int, ...]:
     return tuple(parts)
 
 
-def _platform_asset_hint() -> str:
-    machine = platform.machine().lower()
-    system = platform.system().lower()
-    if "darwin" in system:
-        return "macos-arm64" if "arm" in machine else "macos-x64"
-    if "windows" in system:
-        return "windows-x64"
-    return "linux-x64"
-
-
-def _asset_download_priority(asset_name: str) -> int:
-    system = platform.system().lower()
-    n = asset_name.lower()
-    if "darwin" in system:
-        if n.endswith(".dmg"):
-            return 0
-        if n.endswith(".tar.gz") or n.endswith(".tgz"):
-            return 1
-        if n.endswith(".zip"):
-            return 2
-        return 10
-    if "windows" in system:
-        if n.endswith(".zip"):
-            return 0
-        return 10
-    if n.endswith(".tar.gz") or n.endswith(".tgz"):
-        return 0
-    return 10
-
-
 def check_for_update(timeout: int = 5) -> UpdateInfo | None:
+    """Return release metadata when GitHub has a newer semver than this build."""
     resp = requests.get(GITHUB_RELEASES_API, timeout=timeout)
     if resp.status_code != 200:
         return None
@@ -78,28 +46,8 @@ def check_for_update(timeout: int = 5) -> UpdateInfo | None:
         return None
     if _normalize_version(tag) <= _normalize_version(__version__):
         return None
-    hint = _platform_asset_hint()
-    assets = data.get("assets", []) if isinstance(data.get("assets"), list) else []
-    notes = str(data.get("body", ""))
     html_url = str(data.get("html_url", "")).strip() or release_page_url(tag)
-    matching: list[UpdateInfo] = []
-    for asset in assets:
-        name = str(asset.get("name", ""))
-        if hint in name.lower():
-            matching.append(
-                UpdateInfo(
-                    tag=tag,
-                    notes=notes,
-                    asset_name=name,
-                    release_url=html_url,
-                )
-            )
-    if not matching:
-        return UpdateInfo(tag=tag, notes=notes, asset_name="", release_url=html_url)
-    matching.sort(
-        key=lambda info: (_asset_download_priority(info.asset_name), info.asset_name)
-    )
-    return matching[0]
+    return UpdateInfo(tag=tag, release_url=html_url)
 
 
 _UPDATE_CHECK_MIN_INTERVAL_S = 3600.0

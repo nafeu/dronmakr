@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build a drag-to-Applications DMG from dist/dronmakr.app (after PyInstaller).
+# Build a drag-to-Applications DMG from the Tauri macOS .app bundle.
 # Writes dist-artifacts/dronmakr-v<version>-macos-<arch>.dmg
 
 set -euo pipefail
@@ -8,9 +8,6 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 APP="${APP:-src-tauri/target/release/bundle/macos/dronmakr.app}"
-if [[ ! -d "$APP" ]]; then
-  APP="dist/dronmakr.app"
-fi
 if [[ ! -d "$APP" ]]; then
   echo "error: ${APP} not found. Run the Tauri release build first." >&2
   exit 1

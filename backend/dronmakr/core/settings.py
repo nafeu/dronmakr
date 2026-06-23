@@ -65,7 +65,6 @@ DEFAULT_FILES_ROOT_DIRNAME = "dronmakr-files"
 FILES_ROOT_KEY = "FILES_ROOT"
 MANAGED_SUBDIRS = [
     "presets",
-    "midi",
     "exports",
     "archive",
     "saved",
