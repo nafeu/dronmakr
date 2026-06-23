@@ -136,7 +136,12 @@ def get_drone_picker_payload(role: str) -> dict:
     plugins: list[dict] = []
     if plugin_paths and plugin_paths != [""]:
         plugins = [
-            {"label": entry["label"], "path": entry["path"]}
+            {
+                "label": entry["label"],
+                "displayLabel": entry.get("displayLabel") or entry["label"],
+                "path": entry["path"],
+                "role": entry.get("role") or "",
+            }
             for entry in _role_plugins(role, respect_ignore=True)
             if _plugin_path_exists(entry["path"])
         ]
@@ -160,8 +165,24 @@ def get_drone_plugin_list_editor_payload(role: str) -> dict:
     scan = get_drone_plugin_scan_status()
     return {
         "role": role,
-        "allowed": [{"label": entry["label"], "path": entry["path"]} for entry in allowed],
-        "detected": [{"label": entry["label"], "path": entry["path"]} for entry in detected],
+        "allowed": [
+            {
+                "label": entry["label"],
+                "displayLabel": entry.get("displayLabel") or entry["label"],
+                "path": entry["path"],
+                "role": entry.get("role") or "",
+            }
+            for entry in allowed
+        ],
+        "detected": [
+            {
+                "label": entry["label"],
+                "displayLabel": entry.get("displayLabel") or entry["label"],
+                "path": entry["path"],
+                "role": entry.get("role") or "",
+            }
+            for entry in detected
+        ],
         "scan": scan,
     }
 

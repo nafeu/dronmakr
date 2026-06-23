@@ -264,18 +264,16 @@ def generate_drone_sample(
             )
         )
 
-    if instrument_preset.get("plugin_name"):
-        print(
-            with_prompt(
-                f"loading instrument {GREEN}{extract_plugin(instrument_preset['plugin_path'])}{RESET} as {GREEN}{instrument_preset['plugin_name']}{RESET}"
-            )
+    print(
+        with_prompt(
+            f"loading instrument {GREEN}{extract_plugin(instrument_preset['plugin_path'])}{RESET}"
+            + (f" as {GREEN}{instrument_preset['plugin_name']}{RESET}" if instrument_preset.get("plugin_name") else "")
         )
-    else:
-        print(
-            with_prompt(
-                f"loading instrument {GREEN}{extract_plugin(instrument_preset['plugin_path'])}{RESET}"
-            )
-        )
+    )
+
+    from dronmakr.presets.preset_authoring import assert_plugin_role_for_slot
+
+    assert_plugin_role_for_slot(instrument_preset["plugin_path"], "instrument")
 
     fx_specs = []
     if slots:
@@ -297,6 +295,7 @@ def generate_drone_sample(
                     )
                 )
             print(with_prompt(f"using effect step {GREEN}{eff['name']}{RESET}"))
+            assert_plugin_role_for_slot(eff["plugin_path"], "effect")
             fx_specs.append((eff["plugin_path"], eff["preset_path"]))
     else:
         print(with_prompt("Skipping effect plug-ins — none listed in presets.json."))

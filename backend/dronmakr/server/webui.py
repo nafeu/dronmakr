@@ -56,6 +56,7 @@ from dronmakr.core.utils import (
     get_latest_exports,
     get_presets,
     get_collections_files,
+    sanitize_export_wavs,
     trash_selected_saved_samples,
     validate_saved_paths_for_package,
 )
@@ -117,7 +118,14 @@ def handle_connect(auth=None):
             "processingActions": get_processing_actions_payload(),
         },
     )
-    socketio.emit("exports", {"files": get_latest_exports()})
+    quarantined = sanitize_export_wavs()
+    socketio.emit(
+        "exports",
+        {
+            "files": get_latest_exports(),
+            "quarantined": quarantined,
+        },
+    )
     socketio.emit("folder_counts", get_auditionr_folder_counts())
 
 

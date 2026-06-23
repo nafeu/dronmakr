@@ -41,6 +41,7 @@ def ensure_beat_patterns_file():
 
 
 SUPPORTED_PATTERNS_INFO = [
+    ("chord", "play all scale/chord notes together from start to finish of the phrase"),
     ("chaos", "random notes and timings given scale/chord"),
     (
         "chaos_expand_up",
@@ -667,7 +668,20 @@ def generate_drone_midi(
     # 🎵 **MIDI Note Generation Based on Pattern**
     time = 0.0
 
-    if pattern == "chaos":
+    if pattern == "chord":
+        # **Chord:** Hold every selected scale/chord tone for the full phrase.
+        velocity = (velocity_range[0] + velocity_range[1]) // 2
+        for note in midi_notes:
+            instrument.notes.append(
+                pretty_midi.Note(
+                    velocity=velocity,
+                    pitch=note,
+                    start=0.0,
+                    end=total_duration,
+                )
+            )
+
+    elif pattern == "chaos":
         # **chaos:** random notes and timings given scale
         while time < total_duration:
             note = random.choice(midi_notes)

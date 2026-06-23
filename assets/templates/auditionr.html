@@ -1861,6 +1861,206 @@
       margin-top: 0.1rem;
     }
 
+    .generatr-drone-plugin-picker-chips-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      align-items: center;
+      min-height: 1.85rem;
+    }
+
+    .generatr-drone-plugin-picker-chips-row.hidden {
+      display: none !important;
+    }
+
+    .generatr-drone-plugin-picker-chips-hint {
+      font-size: 0.68rem;
+      color: color-mix(in srgb, var(--primary) 55%, transparent);
+      font-style: italic;
+    }
+
+    .generatr-drone-plugin-picker-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0.18rem 0.45rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.06);
+      font-size: 0.68rem;
+      line-height: 1.2;
+      color: var(--primary);
+    }
+
+    button.generatr-drone-plugin-picker-chip-x {
+      background: transparent;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      padding: 0;
+      margin: 0;
+      opacity: 0.75;
+      line-height: 1;
+    }
+
+    button.generatr-drone-plugin-picker-chip-x:hover {
+      opacity: 1;
+    }
+
+    button.generatr-drone-plugin-picker-choice.is-selected {
+      border-color: var(--primary);
+      background: rgba(255, 149, 5, 0.16);
+    }
+
+    .generatr-drone-plugin-picker-category-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.35rem;
+      margin-bottom: 0.2rem;
+    }
+
+    .generatr-drone-plugin-picker-patches-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      margin-bottom: 0.2rem;
+    }
+
+    button.generatr-drone-plugin-picker-select-all {
+      flex-shrink: 0;
+      font-family: inherit;
+      font-size: 0.62rem;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.05);
+      color: color-mix(in srgb, var(--primary) 82%, transparent);
+      cursor: pointer;
+    }
+
+    button.generatr-drone-plugin-picker-select-all:hover {
+      border-color: var(--primary);
+    }
+
+    .generatr-drone-plugin-picker-actions button.is-primary {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: var(--secondary);
+    }
+
+    .generatr-drone-plugin-picker-actions button.hidden {
+      display: none !important;
+    }
+
+    .generatr-drone-instrument-picker {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+      width: 100%;
+      min-width: 0;
+      padding: 0.45rem 0.55rem;
+      border-radius: 4px;
+      border: 1px dashed rgba(255, 255, 255, 0.18);
+      background: rgba(0, 0, 0, 0.18);
+      color: var(--primary);
+      font-family: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .generatr-drone-instrument-picker.is-filled {
+      border-style: solid;
+      border-color: rgba(255, 255, 255, 0.22);
+    }
+
+    .generatr-drone-instrument-picker:focus-visible {
+      outline: 1px solid var(--primary);
+      outline-offset: 2px;
+    }
+
+    .generatr-drone-instrument-summary-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.18rem;
+      min-width: 0;
+    }
+
+    .generatr-drone-instrument-summary-line {
+      font-size: 0.74rem;
+      line-height: 1.25;
+      color: var(--primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .generatr-drone-instrument-summary-line.is-muted {
+      color: color-mix(in srgb, var(--theme-a) 78%, transparent);
+      font-style: italic;
+    }
+
+    .generatr-drone-instrument-empty-icon {
+      align-self: center;
+      font-size: 1.35rem;
+      line-height: 1;
+      color: color-mix(in srgb, var(--theme-a) 70%, transparent);
+    }
+
+    .generatr-drone-instrument-picker.is-filled .generatr-drone-instrument-empty-icon {
+      display: none;
+    }
+
+    button.generatr-drone-instrument-clear {
+      position: absolute;
+      top: 0.35rem;
+      right: 0.35rem;
+      width: 1.25rem;
+      height: 1.25rem;
+      padding: 0;
+      border: none;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--primary);
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    button.generatr-drone-instrument-clear.hidden {
+      display: none !important;
+    }
+
+    .generatr-drone-instrument-mode-row {
+      display: flex;
+      flex-direction: column;
+      gap: var(--dron-field-gap);
+      margin-top: 0.35rem;
+    }
+
+    .generatr-drone-instrument-mode-row.hidden {
+      display: none !important;
+    }
+
+    .generatr-drone-instrument-mode-row label {
+      font-size: var(--dron-label-size);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: color-mix(in srgb, var(--theme-a) 82%, transparent);
+    }
+
+    .generatr-drone-instrument-mode-row select {
+      width: 100%;
+      min-height: var(--dron-control-h-compact);
+      font-family: inherit;
+      font-size: var(--dron-control-font);
+      padding: 0 var(--dron-control-pad-x);
+      border-radius: var(--dron-control-radius);
+      border: 1px solid var(--dron-control-border);
+      background: var(--dron-control-bg);
+      color: var(--primary);
+    }
+
     .generatr-drone-plugin-picker-actions {
       display: flex;
       justify-content: flex-end;
@@ -4089,10 +4289,18 @@
                       </div>
                     </div>
                     <div class="generatr-sweep-effect-body" id="generatr-drone-instrument-body">
-                      <div class="generatr-drone-plugin-slots">
-                        <button type="button" class="generatr-drone-plugin-slot" id="generatr-drone-instrument-slot" data-slot-kind="instrument" aria-label="Choose instrument">
-                          <span class="generatr-drone-plugin-slot-plus" aria-hidden="true">+</span>
-                        </button>
+                      <button type="button" class="generatr-drone-instrument-picker" id="generatr-drone-instrument-slot" data-slot-kind="instrument" aria-label="Choose instrument">
+                        <span class="generatr-drone-plugin-slot-plus generatr-drone-instrument-empty-icon" aria-hidden="true">+</span>
+                        <div class="generatr-drone-instrument-summary-list" id="generatr-drone-instrument-summary-list"></div>
+                        <span class="generatr-drone-plugin-slot-clear generatr-drone-instrument-clear hidden" id="generatr-drone-instrument-clear" role="button" tabindex="-1" aria-label="Clear instrument selection">&times;</span>
+                      </button>
+                      <div class="generatr-drone-instrument-mode-row hidden" id="generatr-drone-instrument-mode-row">
+                        <label for="generatr-drone-instrument-mode">Selection mode</label>
+                        <select id="generatr-drone-instrument-mode" aria-label="Instrument selection mode">
+                          <option value="round_robin">Round robin</option>
+                          <option value="random" selected>Random</option>
+                          <option value="random_unique">Random unique</option>
+                        </select>
                       </div>
                       <p class="generatr-drone-plugin-card-hint" id="generatr-drone-instrument-hint" hidden>using random instrument</p>
                     </div>
@@ -4272,6 +4480,7 @@
     <div class="generatr-drone-plugin-picker-dialog">
       <h3 class="generatr-drone-plugin-picker-title" id="generatr-drone-plugin-picker-title">Choose instrument</h3>
       <input type="search" id="generatr-drone-plugin-picker-filter" placeholder="Search patches, library, and plug-ins…" autocomplete="off">
+      <div class="generatr-drone-plugin-picker-chips-row" id="generatr-drone-plugin-picker-chips" aria-live="polite"></div>
       <div class="generatr-drone-plugin-picker-columns" id="generatr-drone-plugin-picker-columns">
         <div class="generatr-drone-plugin-picker-col" id="generatr-drone-plugin-picker-library-col">
           <p class="generatr-drone-plugin-picker-col-title">Library</p>
@@ -4279,7 +4488,7 @@
             <div class="generatr-drone-plugin-picker-list-stack" id="generatr-drone-plugin-picker-library" role="listbox" aria-label="Built-in Faust instruments"></div>
           </div>
         </div>
-        <div class="generatr-drone-plugin-picker-col">
+        <div class="generatr-drone-plugin-picker-col" id="generatr-drone-plugin-picker-patches-col">
           <p class="generatr-drone-plugin-picker-col-title">Saved patches</p>
           <div class="generatr-drone-plugin-picker-list dron-list-scroll">
             <div class="generatr-drone-plugin-picker-list-stack" id="generatr-drone-plugin-picker-patches" role="listbox" aria-label="Saved patches"></div>
@@ -4294,6 +4503,7 @@
       </div>
       <div class="generatr-drone-plugin-picker-actions">
         <button type="button" id="generatr-drone-plugin-picker-cancel">Cancel</button>
+        <button type="button" class="is-primary hidden" id="generatr-drone-plugin-picker-confirm">Confirm selection</button>
       </div>
     </div>
   </div>
@@ -4362,6 +4572,8 @@
     var processingCatalog = { types: [], actions: [], paramSchemas: {}, presets: [] };
     var AUDITIONR_WAVEFORM_VISIBLE = 4;
     var currentDisplayedFiles = [];
+    var auditionrQuarantinePending = {};
+    var auditionrQuarantineNotified = {};
     var waveformInstances = {};
     var processingGuardMs = 120000;
     var editSamplesBusy = false;
@@ -6251,7 +6463,49 @@
         .catch(() => false);
     }
 
+    function auditionrQuarantineCorruptExport(apiPath, displayName, onDone) {
+      if (!apiPath) {
+        if (typeof onDone === "function") onDone();
+        return;
+      }
+      if (auditionrQuarantinePending[apiPath]) {
+        if (typeof onDone === "function") onDone();
+        return;
+      }
+      auditionrQuarantinePending[apiPath] = true;
+      fetch("/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: apiPath })
+      })
+        .then(function (response) { return response.json(); })
+        .then(function () {
+          if (!auditionrQuarantineNotified[apiPath]) {
+            auditionrQuarantineNotified[apiPath] = true;
+            var name = displayName || apiPath;
+            window.alert(
+              "Could not load \"" + name + "\". The file appears corrupted or incompatible and was moved to Trash."
+            );
+          }
+          if (typeof onDone === "function") onDone();
+        })
+        .catch(function () {
+          if (!auditionrQuarantineNotified[apiPath]) {
+            auditionrQuarantineNotified[apiPath] = true;
+            window.alert(
+              "Could not load \"" + (displayName || apiPath) + "\" and failed to move it to Trash."
+            );
+          }
+          if (typeof onDone === "function") onDone();
+        });
+    }
+
     socket.on("exports", function (data) {
+      if (data.quarantined && data.quarantined.length) {
+        window.alert(
+          "Removed " + data.quarantined.length + " corrupted export(s) to Trash:\n\n" + data.quarantined.join("\n")
+        );
+      }
       if (data.files) {
         applyExportsUpdate(data.files, data.updated_path || null, data.undo_available || null);
       }
@@ -6697,15 +6951,45 @@
       if (isFolysplitr) wsOpts.cursorColor = themeEProgress;
       var wavesurfer = WaveSurfer.create(wsOpts);
 
+      var waveformInst = {
+        wrapper: wrapper,
+        wavesurfer: wavesurfer,
+        durationEl: duration,
+        titleRowEl: titleRowEl,
+        undoButton: undoButton,
+        absPath: file,
+        apiPath: apiPath,
+        pendingProcessingReveal: false,
+        _quarantineHandled: false,
+        stopPlayback: null,
+        processingSafetyTimer: null
+      };
+
+      function finishWaveformLoad() {
+        if (typeof onReady === "function") onReady();
+      }
+
+      function handleCorruptWaveformLoad() {
+        if (waveformInst._quarantineHandled) {
+          finishWaveformLoad();
+          return;
+        }
+        waveformInst._quarantineHandled = true;
+        if (waveformInst.durationEl) {
+          waveformInst.durationEl.textContent = "corrupt — moved to trash";
+        }
+        auditionrQuarantineCorruptExport(apiPath, displayName, finishWaveformLoad);
+      }
+
       attachWaveformExternalDrag(waveformDiv, file, apiPath);
 
       wavesurfer.load(mediaUrl);
 
       wavesurfer.on("error", function () {
-        var pinnedErr = waveformInstances[file];
-        if (pinnedErr && pinnedErr.pendingProcessingReveal) {
+        if (waveformInst.pendingProcessingReveal) {
           endWaveformProcessing(file);
         }
+        handleCorruptWaveformLoad();
       });
 
       wavesurfer.on("seeking", function (currentTime) {
@@ -6751,6 +7035,7 @@
             .catch(function (e) {
               console.error("Drumpattern decode failed", e);
               playButton.classList.remove("disabled");
+              handleCorruptWaveformLoad();
             });
         }
         if (typeof onReady === "function") onReady();
@@ -6841,17 +7126,8 @@
         }
       });
 
-      return {
-        wrapper: wrapper,
-        absPath: file,
-        wavesurfer: wavesurfer,
-        durationEl: duration,
-        stopPlayback: stopPlayback,
-        undoButton: undoButton,
-        titleRowEl: titleRowEl,
-        pendingProcessingReveal: false,
-        processingSafetyTimer: null
-      };
+      waveformInst.stopPlayback = stopPlayback;
+      return waveformInst;
     }
 
     (function () {
@@ -7011,6 +7287,12 @@
       var dronePluginPickerColumns = document.getElementById("generatr-drone-plugin-picker-columns");
       var dronePluginPickerPlugins = document.getElementById("generatr-drone-plugin-picker-plugins");
       var dronePluginPickerCancel = document.getElementById("generatr-drone-plugin-picker-cancel");
+      var dronePluginPickerConfirm = document.getElementById("generatr-drone-plugin-picker-confirm");
+      var dronePluginPickerChips = document.getElementById("generatr-drone-plugin-picker-chips");
+      var droneInstrumentSummaryList = document.getElementById("generatr-drone-instrument-summary-list");
+      var droneInstrumentClearBtn = document.getElementById("generatr-drone-instrument-clear");
+      var droneInstrumentModeRow = document.getElementById("generatr-drone-instrument-mode-row");
+      var droneInstrumentModeSelect = document.getElementById("generatr-drone-instrument-mode");
       var droneFxEnabledCheckbox = document.getElementById("generatr-drone-fx-enabled");
       var droneFxBody = document.getElementById("generatr-drone-fx-body");
       var dronePluginListModal = document.getElementById("generatr-drone-plugin-list-modal");
@@ -7032,6 +7314,11 @@
       var generatrDroneInitialPluginScanTriggered = false;
       var GENERATR_DRONE_FX_SLOT_COUNT = 5;
       var generatrDroneInstrumentSelection = null;
+      var generatrDronePickerPendingItems = [];
+      var generatrDronePickerPendingGroups = [];
+      var generatrDronePickerMultiActive = false;
+      var generatrDronePickerOpenedWithSelection = false;
+      var generatrDronePickerUserEngaged = false;
       var generatrDroneFxSlots = [null, null, null, null, null];
       var generatrDronePluginPickerContext = null;
       var generatrDronePluginPickerData = null;
@@ -7537,6 +7824,205 @@
         return sel.label || sel.pluginPath || "plug-in";
       }
 
+      function generatrDroneInstrumentItemKey(item) {
+        if (!item) return "";
+        if (item.kind === "faust") return "faust:" + (item.faustId || item.faust_id || "");
+        if (item.kind === "patch") return "patch:" + (item.name || "");
+        if (item.kind === "plugin") return "plugin:" + (item.pluginPath || item.plugin_path || "");
+        return "";
+      }
+
+      function generatrDroneCloneInstrumentItem(item) {
+        if (!item) return null;
+        return JSON.parse(JSON.stringify(item));
+      }
+
+      function generatrDroneGetInstrumentPoolItems(sel) {
+        if (!sel) return [];
+        if (sel.kind === "pool") return Array.isArray(sel.items) ? sel.items.slice() : [];
+        return [sel];
+      }
+
+      function generatrDroneInstrumentPoolCount(sel) {
+        return generatrDroneGetInstrumentPoolItems(sel).length;
+      }
+
+      function generatrDroneAllGroupLabel(label) {
+        return "all " + String(label || "").trim().toLowerCase();
+      }
+
+      function generatrDroneComputeInstrumentGroups(items, pickerData) {
+        var groups = [];
+        var covered = {};
+        var data = pickerData || generatrDronePluginPickerData || {};
+        var categories = Array.isArray(data.libraryCategories) ? data.libraryCategories : [];
+        categories.forEach(function (category) {
+          var instruments = Array.isArray(category.instruments) ? category.instruments : [];
+          if (!instruments.length) return;
+          var keys = instruments.map(function (entry) {
+            return generatrDroneInstrumentItemKey({
+              kind: "faust",
+              faustId: entry.id || entry.faustId || ""
+            });
+          });
+          var allPresent = keys.every(function (key) {
+            return items.some(function (item) { return generatrDroneInstrumentItemKey(item) === key; });
+          });
+          if (!allPresent) return;
+          groups.push({
+            type: "category",
+            id: category.id || "",
+            label: category.label || category.id || "library",
+            keys: keys.slice()
+          });
+          keys.forEach(function (key) { covered[key] = true; });
+        });
+        var patches = Array.isArray(data.patches) ? data.patches : [];
+        if (patches.length) {
+          var patchKeys = patches.map(function (patch) {
+            return generatrDroneInstrumentItemKey(generatrDronePatchSelectionFromPicker(patch, "instrument"));
+          });
+          var allPatchesPresent = patchKeys.every(function (key) {
+            return items.some(function (item) { return generatrDroneInstrumentItemKey(item) === key; });
+          });
+          if (allPatchesPresent) {
+            groups.push({
+              type: "saved_patches",
+              label: "All saved patches",
+              keys: patchKeys.slice()
+            });
+            patchKeys.forEach(function (key) { covered[key] = true; });
+          }
+        }
+        return { groups: groups, covered: covered };
+      }
+
+      function generatrDroneInstrumentCategoryKeys(category) {
+        var instruments = Array.isArray(category.instruments) ? category.instruments : [];
+        return instruments.map(function (entry) {
+          return generatrDroneInstrumentItemKey({
+            kind: "faust",
+            faustId: entry.id || entry.faustId || ""
+          });
+        });
+      }
+
+      function generatrDroneInstrumentSavedPatchKeys(pickerData) {
+        var patches = Array.isArray(pickerData.patches) ? pickerData.patches : [];
+        return patches.map(function (patch) {
+          return generatrDroneInstrumentItemKey(generatrDronePatchSelectionFromPicker(patch, "instrument"));
+        });
+      }
+
+      function generatrDronePickerLibraryCategories(pickerData) {
+        var data = pickerData || generatrDronePluginPickerData || {};
+        var categories = Array.isArray(data.libraryCategories) ? data.libraryCategories : [];
+        if (!categories.length && Array.isArray(data.library) && data.library.length) {
+          return [{ id: "library", label: "library", instruments: data.library }];
+        }
+        return categories;
+      }
+
+      function generatrDroneResolveInstrumentGroupKeys(group, pickerData, pendingItems) {
+        if (!group) return [];
+        var data = pickerData || generatrDronePluginPickerData || {};
+        var keys = [];
+        if (group.type === "saved_patches") {
+          keys = generatrDroneInstrumentSavedPatchKeys(data);
+        } else if (group.type === "category") {
+          var categories = generatrDronePickerLibraryCategories(data);
+          var category = categories.find(function (c) {
+            return (c.id || "") === (group.id || "");
+          });
+          if (!category && group.label) {
+            var want = String(group.label || "").trim().toLowerCase();
+            category = categories.find(function (c) {
+              return String(c.label || c.id || "").trim().toLowerCase() === want;
+            });
+          }
+          if (category) keys = generatrDroneInstrumentCategoryKeys(category);
+        }
+        if (!keys.length && Array.isArray(group.keys)) {
+          keys = group.keys.slice();
+        }
+        if (pendingItems && pendingItems.length) {
+          var pendingKeySet = {};
+          pendingItems.forEach(function (item) {
+            var key = generatrDroneInstrumentItemKey(item);
+            if (key) pendingKeySet[key] = true;
+          });
+          keys = keys.filter(function (key) { return pendingKeySet[key]; });
+        }
+        return keys;
+      }
+
+      function generatrDroneInstrumentDisplayLines(sel) {
+        if (!sel) return [];
+        if (sel.kind !== "pool") {
+          return [generatrDroneSelectionLabel(sel)];
+        }
+        var items = generatrDroneGetInstrumentPoolItems(sel);
+        var computed = generatrDroneComputeInstrumentGroups(items, generatrDronePluginPickerData);
+        var groups = (Array.isArray(sel.groups) && sel.groups.length) ? sel.groups : computed.groups;
+        var covered = {};
+        groups.forEach(function (group) {
+          (group.keys || []).forEach(function (key) { covered[key] = true; });
+        });
+        var lines = groups.map(function (group) {
+          if (group.type === "saved_patches") return generatrDroneAllGroupLabel("saved patches");
+          return generatrDroneAllGroupLabel(group.label || group.id || "library");
+        });
+        items.forEach(function (item) {
+          var key = generatrDroneInstrumentItemKey(item);
+          if (covered[key]) return;
+          lines.push(generatrDroneSelectionLabel(item));
+        });
+        return lines;
+      }
+
+      function generatrDroneRenderInstrumentCard() {
+        if (!droneInstrumentSlot) return;
+        var sel = generatrDroneInstrumentSelection;
+        var count = generatrDroneInstrumentPoolCount(sel);
+        droneInstrumentSlot.classList.toggle("is-filled", !!sel);
+        if (droneInstrumentClearBtn) {
+          droneInstrumentClearBtn.classList.toggle("hidden", !sel);
+        }
+        if (droneInstrumentSummaryList) {
+          droneInstrumentSummaryList.innerHTML = "";
+          if (!sel) {
+            // empty state handled by plus icon
+          } else if (count <= 1) {
+            var single = document.createElement("div");
+            single.className = "generatr-drone-instrument-summary-line";
+            single.textContent = generatrDroneSelectionLabel(count ? generatrDroneGetInstrumentPoolItems(sel)[0] : sel);
+            droneInstrumentSummaryList.appendChild(single);
+          } else {
+            var lines = generatrDroneInstrumentDisplayLines(sel);
+            var visible = lines.slice(0, 5);
+            visible.forEach(function (text) {
+              var line = document.createElement("div");
+              line.className = "generatr-drone-instrument-summary-line";
+              line.textContent = text;
+              droneInstrumentSummaryList.appendChild(line);
+            });
+            if (lines.length > 5) {
+              var more = document.createElement("div");
+              more.className = "generatr-drone-instrument-summary-line is-muted";
+              more.textContent = "… +" + (lines.length - 5) + " more";
+              droneInstrumentSummaryList.appendChild(more);
+            }
+          }
+        }
+        if (droneInstrumentModeRow && droneInstrumentModeSelect) {
+          var showMode = sel && sel.kind === "pool" && count > 1;
+          droneInstrumentModeRow.classList.toggle("hidden", !showMode);
+          if (showMode) {
+            droneInstrumentModeSelect.value = sel.mode || "random";
+          }
+        }
+      }
+
       function generatrDroneRenderPluginSlot(btn, sel) {
         if (!btn) return;
         btn.classList.toggle("is-filled", !!sel);
@@ -7576,7 +8062,7 @@
       }
 
       function generatrDroneRefreshPluginCards() {
-        generatrDroneRenderPluginSlot(droneInstrumentSlot, generatrDroneInstrumentSelection);
+        generatrDroneRenderInstrumentCard();
         if (droneFxSlotsWrap) {
           droneFxSlotsWrap.querySelectorAll(".generatr-drone-plugin-slot[data-fx-slot]").forEach(function (btn) {
             var idx = parseInt(btn.getAttribute("data-fx-slot") || "0", 10);
@@ -7596,7 +8082,7 @@
           var role = btn.getAttribute("data-save-preset-role") || "instrument";
           var canSave = role === "instrument"
             ? !!generatrDroneInstrumentSelection
-              && generatrDroneInstrumentSelection.kind !== "faust"
+              && generatrDroneInstrumentSelection.kind === "plugin"
             : generatrDroneFilledFxSlotCount() > 0;
           btn.disabled = !canSave;
         });
@@ -7620,8 +8106,9 @@
           generatrShowError("Choose an instrument plug-in or saved patch before saving.");
           return;
         }
-        if (role === "instrument" && generatrDroneInstrumentSelection.kind === "faust") {
-          generatrShowError("Built-in Faust instruments cannot be saved as patches.");
+        if (role === "instrument" && generatrDroneInstrumentSelection
+            && generatrDroneInstrumentSelection.kind !== "plugin") {
+          generatrShowError("Only a single VST/AU plug-in selection can be saved as a patch.");
           return;
         }
         var fxCount = generatrDroneFilledFxSlotCount();
@@ -7714,6 +8201,207 @@
         dronePluginPickerModal.setAttribute("aria-hidden", "true");
         generatrDronePluginPickerContext = null;
         generatrDronePluginPickerData = null;
+        generatrDronePickerPendingItems = [];
+        generatrDronePickerPendingGroups = [];
+        generatrDronePickerMultiActive = false;
+        generatrDronePickerOpenedWithSelection = false;
+        generatrDronePickerUserEngaged = false;
+        if (dronePluginPickerChips) dronePluginPickerChips.innerHTML = "";
+        if (dronePluginPickerConfirm) dronePluginPickerConfirm.classList.add("hidden");
+      }
+
+      function generatrDronePickerInstrumentMultiEnabled() {
+        return !!(generatrDronePluginPickerContext
+          && generatrDronePluginPickerContext.role === "instrument");
+      }
+
+      function generatrDronePickerShouldShowConfirm() {
+        if (!generatrDronePickerInstrumentMultiEnabled()) return false;
+        if (generatrDronePickerPendingItems.length > 0) return true;
+        return generatrDronePickerOpenedWithSelection && generatrDronePickerUserEngaged;
+      }
+
+      function generatrDroneSeedPickerPendingFromSelection() {
+        generatrDronePickerPendingItems = [];
+        generatrDronePickerPendingGroups = [];
+        generatrDronePickerMultiActive = false;
+        generatrDronePickerOpenedWithSelection = false;
+        generatrDronePickerUserEngaged = false;
+        if (!generatrDronePickerInstrumentMultiEnabled()) return;
+        var sel = generatrDroneInstrumentSelection;
+        if (sel && sel.kind === "pool") {
+          generatrDronePickerPendingItems = generatrDroneGetInstrumentPoolItems(sel).map(generatrDroneCloneInstrumentItem);
+          generatrDronePickerPendingGroups = generatrDroneComputeInstrumentGroups(
+            generatrDronePickerPendingItems,
+            generatrDronePluginPickerData
+          ).groups;
+          generatrDronePickerMultiActive = generatrDronePickerPendingItems.length > 0;
+          generatrDronePickerOpenedWithSelection = generatrDronePickerPendingItems.length > 0;
+        }
+      }
+
+      function generatrDronePickerPendingHasKey(key) {
+        return generatrDronePickerPendingItems.some(function (item) {
+          return generatrDroneInstrumentItemKey(item) === key;
+        });
+      }
+
+      function generatrDroneTogglePickerPendingItem(item) {
+        if (!item) return;
+        var key = generatrDroneInstrumentItemKey(item);
+        if (!key) return;
+        var idx = generatrDronePickerPendingItems.findIndex(function (entry) {
+          return generatrDroneInstrumentItemKey(entry) === key;
+        });
+        if (idx >= 0) {
+          generatrDronePickerPendingItems.splice(idx, 1);
+        } else {
+          generatrDronePickerPendingItems.push(generatrDroneCloneInstrumentItem(item));
+        }
+        generatrDronePickerUserEngaged = true;
+        generatrDronePickerMultiActive = true;
+        generatrDronePickerPendingGroups = generatrDroneComputeInstrumentGroups(
+          generatrDronePickerPendingItems,
+          generatrDronePluginPickerData
+        ).groups;
+        generatrDroneUpdatePickerSelectionUi();
+      }
+
+      function generatrDroneSetPickerPendingItems(items) {
+        generatrDronePickerPendingItems = (items || []).map(generatrDroneCloneInstrumentItem);
+        generatrDronePickerUserEngaged = true;
+        generatrDronePickerMultiActive = generatrDronePickerPendingItems.length > 0;
+        generatrDronePickerPendingGroups = generatrDroneComputeInstrumentGroups(
+          generatrDronePickerPendingItems,
+          generatrDronePluginPickerData
+        ).groups;
+        generatrDroneUpdatePickerSelectionUi();
+      }
+
+      function generatrDronePickerSummaryChipEntries() {
+        var computed = generatrDroneComputeInstrumentGroups(
+          generatrDronePickerPendingItems,
+          generatrDronePluginPickerData
+        );
+        var groups = computed.groups;
+        var covered = computed.covered;
+        var entries = groups.map(function (group) {
+          var label = group.type === "saved_patches"
+            ? generatrDroneAllGroupLabel("saved patches")
+            : generatrDroneAllGroupLabel(group.label || group.id || "library");
+          return { kind: "group", group: group, label: label };
+        });
+        generatrDronePickerPendingItems.forEach(function (item) {
+          var key = generatrDroneInstrumentItemKey(item);
+          if (covered[key]) return;
+          entries.push({ kind: "item", key: key, label: generatrDroneSelectionLabel(item) });
+        });
+        return entries;
+      }
+
+      function generatrDroneRemovePickerChipEntry(entry) {
+        if (!entry) return;
+        if (entry.kind === "group" && entry.group) {
+          var keys = generatrDroneResolveInstrumentGroupKeys(
+            entry.group,
+            generatrDronePluginPickerData,
+            generatrDronePickerPendingItems
+          );
+          var keySet = {};
+          keys.forEach(function (key) { keySet[key] = true; });
+          generatrDronePickerPendingItems = generatrDronePickerPendingItems.filter(function (item) {
+            return !keySet[generatrDroneInstrumentItemKey(item)];
+          });
+        } else if (entry.kind === "item" && entry.key) {
+          generatrDronePickerPendingItems = generatrDronePickerPendingItems.filter(function (item) {
+            return generatrDroneInstrumentItemKey(item) !== entry.key;
+          });
+        }
+        generatrDronePickerUserEngaged = true;
+        generatrDronePickerMultiActive = generatrDronePickerPendingItems.length > 0;
+        generatrDronePickerPendingGroups = generatrDroneComputeInstrumentGroups(
+          generatrDronePickerPendingItems,
+          generatrDronePluginPickerData
+        ).groups;
+        generatrDroneUpdatePickerSelectionUi();
+      }
+
+      function generatrDroneUpdatePickerSelectionUi() {
+        var showConfirm = generatrDronePickerShouldShowConfirm();
+        if (dronePluginPickerConfirm) {
+          dronePluginPickerConfirm.classList.toggle("hidden", !showConfirm);
+          dronePluginPickerConfirm.disabled = false;
+          dronePluginPickerConfirm.textContent = generatrDronePickerPendingItems.length > 0
+            ? "Confirm selection"
+            : "Clear selection";
+        }
+        if (dronePluginPickerChips) {
+          var instrumentPicker = generatrDronePickerInstrumentMultiEnabled();
+          dronePluginPickerChips.classList.toggle("hidden", !instrumentPicker);
+          dronePluginPickerChips.innerHTML = "";
+          if (instrumentPicker) {
+            var chipEntries = generatrDronePickerSummaryChipEntries();
+            if (!chipEntries.length) {
+              var hint = document.createElement("span");
+              hint.className = "generatr-drone-plugin-picker-chips-hint";
+              hint.textContent = "No instruments selected";
+              dronePluginPickerChips.appendChild(hint);
+            } else {
+              chipEntries.forEach(function (entry) {
+                var chip = document.createElement("span");
+                chip.className = "generatr-drone-plugin-picker-chip";
+                chip.appendChild(document.createTextNode(entry.label));
+                chip.appendChild(document.createTextNode(" "));
+                var x = document.createElement("button");
+                x.type = "button";
+                x.className = "generatr-drone-plugin-picker-chip-x";
+                x.setAttribute("aria-label", "Remove " + entry.label);
+                x.textContent = "×";
+                (function captureEntry(e) {
+                  x.addEventListener("click", function (ev) {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    generatrDroneRemovePickerChipEntry(e);
+                  });
+                })(entry);
+                chip.appendChild(x);
+                dronePluginPickerChips.appendChild(chip);
+              });
+            }
+          }
+        }
+        [dronePluginPickerPatches, dronePluginPickerLibrary].forEach(function (listEl) {
+          if (!listEl) return;
+          listEl.querySelectorAll(".generatr-drone-plugin-picker-choice").forEach(function (btn) {
+            var key = btn.getAttribute("data-item-key") || "";
+            btn.classList.toggle("is-selected", !!key && generatrDronePickerPendingHasKey(key));
+          });
+        });
+      }
+
+      function generatrDroneConfirmPickerInstrumentPool() {
+        if (generatrDronePickerPendingItems.length < 1) {
+          generatrDroneInstrumentSelection = null;
+          generatrDroneClosePluginPicker();
+          generatrDroneRefreshPluginCards();
+          return;
+        }
+        var items = generatrDronePickerPendingItems.map(generatrDroneCloneInstrumentItem);
+        var groups = generatrDroneComputeInstrumentGroups(items, generatrDronePluginPickerData).groups;
+        if (items.length === 1) {
+          generatrDroneInstrumentSelection = items[0];
+        } else {
+          var mode = (generatrDroneInstrumentSelection && generatrDroneInstrumentSelection.kind === "pool"
+            && generatrDroneInstrumentSelection.mode) || "random";
+          generatrDroneInstrumentSelection = {
+            kind: "pool",
+            mode: mode,
+            items: items,
+            groups: groups
+          };
+        }
+        generatrDroneClosePluginPicker();
+        generatrDroneRefreshPluginCards();
       }
 
       function generatrDroneFilterPickerItems(query) {
@@ -7746,12 +8434,20 @@
         btn.type = "button";
         btn.className = "generatr-drone-plugin-picker-choice";
         btn.setAttribute("data-picker-kind", "faust");
+        var faustId = entry.id || entry.faustId || "";
+        var item = {
+          kind: "faust",
+          faustId: faustId,
+          label: entry.label || faustId || "faust",
+          pluginPath: "faust:" + faustId
+        };
+        btn.setAttribute("data-item-key", generatrDroneInstrumentItemKey(item));
         btn.setAttribute(
           "data-search",
-          (categoryLabel || "") + " " + (entry.label || "") + " " + (entry.description || "") + " faust " + (entry.id || "")
+          (categoryLabel || "") + " " + (entry.label || "") + " " + (entry.description || "") + " faust " + faustId
         );
         var title = document.createElement("span");
-        title.textContent = entry.label || entry.id || "instrument";
+        title.textContent = entry.label || faustId || "instrument";
         btn.appendChild(title);
         if (entry.description) {
           var meta = document.createElement("span");
@@ -7760,6 +8456,10 @@
           btn.appendChild(meta);
         }
         btn.addEventListener("click", function () {
+          if (generatrDronePickerInstrumentMultiEnabled()) {
+            generatrDroneTogglePickerPendingItem(item);
+            return;
+          }
           generatrDroneApplyFaustSelection(entry);
         });
         return btn;
@@ -7788,10 +8488,39 @@
           group.className = "generatr-drone-plugin-picker-category";
           group.setAttribute("data-category-id", category.id || "");
           group.setAttribute("data-category-label", category.label || "");
+          var head = document.createElement("div");
+          head.className = "generatr-drone-plugin-picker-category-head";
           var heading = document.createElement("p");
           heading.className = "generatr-drone-plugin-picker-category-title";
           heading.textContent = category.label || category.id || "library";
-          group.appendChild(heading);
+          head.appendChild(heading);
+          if (generatrDronePickerInstrumentMultiEnabled()) {
+            var selectAllBtn = document.createElement("button");
+            selectAllBtn.type = "button";
+            selectAllBtn.className = "generatr-drone-plugin-picker-select-all";
+            selectAllBtn.textContent = "Select all";
+            selectAllBtn.addEventListener("click", function (ev) {
+              ev.preventDefault();
+              ev.stopPropagation();
+              var items = instruments.map(function (entry) {
+                return {
+                  kind: "faust",
+                  faustId: entry.id || entry.faustId || "",
+                  label: entry.label || entry.id || "faust",
+                  pluginPath: "faust:" + (entry.id || entry.faustId || "")
+                };
+              });
+              var merged = generatrDronePickerPendingItems.slice();
+              items.forEach(function (item) {
+                if (!generatrDronePickerPendingHasKey(generatrDroneInstrumentItemKey(item))) {
+                  merged.push(item);
+                }
+              });
+              generatrDroneSetPickerPendingItems(merged);
+            });
+            head.appendChild(selectAllBtn);
+          }
+          group.appendChild(head);
           var items = document.createElement("div");
           items.className = "generatr-drone-plugin-picker-category-items";
           instruments.forEach(function (entry) {
@@ -7815,6 +8544,32 @@
         generatrDroneRefreshPluginCards();
       }
 
+      function generatrDroneAppendPatchesSelectAllToolbar(container, patches) {
+        if (!container || !patches.length || !generatrDronePickerInstrumentMultiEnabled()) return;
+        var toolbar = document.createElement("div");
+        toolbar.className = "generatr-drone-plugin-picker-patches-toolbar";
+        var selectAllBtn = document.createElement("button");
+        selectAllBtn.type = "button";
+        selectAllBtn.className = "generatr-drone-plugin-picker-select-all";
+        selectAllBtn.textContent = "Select all";
+        selectAllBtn.addEventListener("click", function (ev) {
+          ev.preventDefault();
+          ev.stopPropagation();
+          var items = patches.map(function (patch) {
+            return generatrDronePatchSelectionFromPicker(patch, "instrument");
+          });
+          var merged = generatrDronePickerPendingItems.slice();
+          items.forEach(function (item) {
+            if (!generatrDronePickerPendingHasKey(generatrDroneInstrumentItemKey(item))) {
+              merged.push(item);
+            }
+          });
+          generatrDroneSetPickerPendingItems(merged);
+        });
+        toolbar.appendChild(selectAllBtn);
+        container.appendChild(toolbar);
+      }
+
       function generatrDroneRenderPluginPickerLists(data) {
         if (!dronePluginPickerPatches || !dronePluginPickerPlugins) return;
         var showLibrary = !!(data && data.role === "instrument");
@@ -7836,11 +8591,16 @@
           emptyPatch.textContent = "No saved patches yet — use the save icon on a filled slot to create one.";
           dronePluginPickerPatches.appendChild(emptyPatch);
         } else {
+          if (showLibrary) {
+            generatrDroneAppendPatchesSelectAllToolbar(dronePluginPickerPatches, patches);
+          }
           patches.forEach(function (patch) {
             var btn = document.createElement("button");
             btn.type = "button";
             btn.className = "generatr-drone-plugin-picker-choice";
             btn.setAttribute("data-picker-kind", "patch");
+            var item = generatrDronePatchSelectionFromPicker(patch, "instrument");
+            btn.setAttribute("data-item-key", generatrDroneInstrumentItemKey(item));
             btn.setAttribute("data-search", (patch.name || "") + " " + (patch.type || "") + " " + (patch.pluginName || ""));
             var title = document.createElement("span");
             title.textContent = patch.name || "(unnamed)";
@@ -7852,6 +8612,10 @@
               : (patch.pluginName || patch.type || "patch");
             btn.appendChild(meta);
             btn.addEventListener("click", function () {
+              if (showLibrary) {
+                generatrDroneTogglePickerPendingItem(item);
+                return;
+              }
               generatrDroneApplyPatchSelection(patch);
             });
             dronePluginPickerPatches.appendChild(btn);
@@ -7875,14 +8639,20 @@
             btn.className = "generatr-drone-plugin-picker-choice";
             btn.setAttribute("data-picker-kind", "plugin");
             btn.setAttribute("data-search", (plugin.label || "") + " " + (plugin.path || ""));
-            btn.textContent = plugin.label || plugin.path || "plug-in";
+            btn.textContent = plugin.displayLabel || plugin.label || plugin.path || "plug-in";
             btn.addEventListener("click", function () {
+              if (showLibrary) {
+                generatrDronePickerPendingItems = [];
+                generatrDronePickerMultiActive = false;
+                generatrDroneUpdatePickerSelectionUi();
+              }
               generatrDroneOpenPluginEditor(plugin.path, generatrDronePluginPickerContext.role);
             });
             dronePluginPickerPlugins.appendChild(btn);
           });
         }
         generatrDroneFilterPickerItems(dronePluginPickerFilter ? dronePluginPickerFilter.value : "");
+        generatrDroneUpdatePickerSelectionUi();
       }
 
       function generatrDronePatchSelectionFromPicker(patch, patchType) {
@@ -7900,7 +8670,12 @@
         if (!generatrDronePluginPickerContext || !patch) return;
         var ctx = generatrDronePluginPickerContext;
         if (ctx.role === "instrument") {
-          generatrDroneInstrumentSelection = generatrDronePatchSelectionFromPicker(patch, "instrument");
+          var item = generatrDronePatchSelectionFromPicker(patch, "instrument");
+          if (generatrDronePickerInstrumentMultiEnabled()) {
+            generatrDroneTogglePickerPendingItem(item);
+            return;
+          }
+          generatrDroneInstrumentSelection = item;
         } else if (patch.type === "effect_chain" && Array.isArray(patch.effects)) {
           generatrDroneFxSlots = [null, null, null, null, null];
           patch.effects.slice(0, GENERATR_DRONE_FX_SLOT_COUNT).forEach(function (step, idx) {
@@ -7966,6 +8741,10 @@
           generatrDroneOpenPluginPickerForSlot(role, fxSlotIndex);
           return;
         }
+        if (sel.kind === "pool") {
+          generatrDroneOpenPluginPickerForSlot(role, fxSlotIndex);
+          return;
+        }
         if (sel.kind === "faust") {
           generatrDroneOpenPluginPickerForSlot(role, fxSlotIndex);
           return;
@@ -8026,8 +8805,8 @@
           return;
         }
         var sel = getSelection();
-        if (sel && (sel.kind === "plugin" || sel.kind === "patch" || sel.kind === "faust")) {
-          if (sel.kind === "faust") {
+        if (sel && (sel.kind === "plugin" || sel.kind === "patch" || sel.kind === "faust" || sel.kind === "pool")) {
+          if (sel.kind === "faust" || sel.kind === "pool") {
             generatrDroneOpenPluginPickerForSlot(role, fxSlotIndex);
             return;
           }
@@ -8115,6 +8894,7 @@
               return;
             }
             generatrDronePluginPickerData = data;
+            generatrDroneSeedPickerPendingFromSelection();
             generatrDroneRenderPluginPickerLists(data);
           })
           .catch(function (err) {
@@ -8136,13 +8916,24 @@
 
       if (droneInstrumentSlot) {
         droneInstrumentSlot.addEventListener("click", function (ev) {
-          generatrDroneHandlePluginSlotClick(
-            ev,
-            "instrument",
-            0,
-            function () { return generatrDroneInstrumentSelection; },
-            generatrDroneClearInstrumentSelection
-          );
+          if (ev.target.closest(".generatr-drone-instrument-clear")) {
+            ev.stopPropagation();
+            generatrDroneClearInstrumentSelection();
+            return;
+          }
+          generatrDroneOpenPluginPickerForSlot("instrument", 0);
+        });
+      }
+
+      if (dronePluginPickerConfirm) {
+        dronePluginPickerConfirm.addEventListener("click", generatrDroneConfirmPickerInstrumentPool);
+      }
+
+      if (droneInstrumentModeSelect) {
+        droneInstrumentModeSelect.addEventListener("change", function () {
+          if (generatrDroneInstrumentSelection && generatrDroneInstrumentSelection.kind === "pool") {
+            generatrDroneInstrumentSelection.mode = droneInstrumentModeSelect.value || "random";
+          }
         });
       }
 
@@ -8349,8 +9140,8 @@
           var btn = document.createElement("button");
           btn.type = "button";
           btn.className = "generatr-drone-plugin-list-choice is-allowed";
-          btn.textContent = entry.label;
-          btn.title = "Click to remove from allowed list";
+          btn.textContent = entry.displayLabel || entry.label;
+          btn.title = (entry.displayLabel || entry.label) + " — Click to remove from allowed list";
           btn.addEventListener("click", function () {
             generatrDronePluginListState.allowed = generatrDronePluginListState.allowed.filter(function (item) {
               return item.label !== entry.label;
@@ -8371,8 +9162,10 @@
           var btn = document.createElement("button");
           btn.type = "button";
           btn.className = "generatr-drone-plugin-list-choice" + (isAllowed ? " is-allowed" : "");
-          btn.textContent = entry.label;
-          btn.title = isAllowed ? "Already allowed" : "Click to allow in picker";
+          btn.textContent = entry.displayLabel || entry.label;
+          btn.title = isAllowed
+            ? (entry.displayLabel || entry.label) + " — Already allowed"
+            : (entry.displayLabel || entry.label) + " — Click to allow in picker";
           if (!isAllowed) {
             btn.addEventListener("click", function () {
               generatrDronePluginListState.allowed.push(entry);

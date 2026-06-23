@@ -1003,6 +1003,65 @@ def generate_beat_name():
     )
 
 
+def export_wav_is_valid(path: str) -> bool:
+    """Return False when an exports WAV cannot be decoded for auditionr."""
+    if not path or not os.path.isfile(path):
+        return False
+    try:
+        import numpy as np
+        import soundfile as sf
+
+        with sf.SoundFile(path) as handle:
+            frame_count = len(handle)
+            if frame_count <= 0:
+                return False
+            frames = min(max(1, int(frame_count)), 4096)
+            data = handle.read(frames=frames, dtype="float32", always_2d=True)
+        if data.size <= 0:
+            return False
+        return bool(np.isfinite(data).all())
+    except Exception:
+        return False
+
+
+def quarantine_corrupt_export(path: str) -> str | None:
+    """Move a corrupt exports/*.wav into trash/. Returns the trashed basename."""
+    abs_path = os.path.abspath(path)
+    exports_abs = os.path.abspath(EXPORTS_DIR)
+    if not abs_path.startswith(exports_abs + os.sep):
+        return None
+    if not os.path.isfile(abs_path):
+        return None
+    os.makedirs(TRASH_DIR, exist_ok=True)
+    base = os.path.basename(abs_path)
+    dest = _unique_dest_path(os.path.join(os.path.abspath(TRASH_DIR), base))
+    shutil.move(abs_path, dest)
+    return os.path.basename(dest)
+
+
+def sanitize_export_wavs() -> list[str]:
+    """Validate exports/*.wav and move unreadable files to trash/."""
+    if not os.path.isdir(EXPORTS_DIR):
+        return []
+    quarantined: list[str] = []
+    try:
+        names = sorted(os.listdir(EXPORTS_DIR))
+    except OSError:
+        return []
+    for name in names:
+        if not name.lower().endswith(".wav"):
+            continue
+        path = os.path.join(EXPORTS_DIR, name)
+        if not os.path.isfile(path):
+            continue
+        if export_wav_is_valid(path):
+            continue
+        trashed = quarantine_corrupt_export(path)
+        if trashed:
+            quarantined.append(trashed)
+    return quarantined
+
+
 def get_latest_exports(sort_override=None):
     """All `.wav` files in `exports/`, sorted by modification time (newest first)."""
     try:

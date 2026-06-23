@@ -774,6 +774,20 @@ def _parse_drone_instrument_selection(payload: dict) -> tuple[str | None, dict |
     if not isinstance(raw, dict):
         return (payload.get("instrument") or "").strip() or None, None
     kind = (raw.get("kind") or "").strip().lower()
+    if kind == "pool":
+        items = raw.get("items")
+        if not isinstance(items, list) or not items:
+            raise ValueError("Instrument pool must include at least one item.")
+        mode = (raw.get("mode") or "random").strip().lower()
+        if mode not in ("round_robin", "random", "random_unique"):
+            raise ValueError("Instrument pool mode must be round_robin, random, or random_unique.")
+        groups = raw.get("groups")
+        return None, {
+            "kind": "pool",
+            "mode": mode,
+            "items": items,
+            "groups": groups if isinstance(groups, list) else [],
+        }
     if kind == "patch":
         name = (raw.get("name") or "").strip()
         return name or None, None
@@ -878,6 +892,13 @@ def _resolve_drone_editor_instrument_spec(
         return edit_plugin_path, edit_preset_path or None
 
     _instrument, instrument_selection = _parse_drone_instrument_selection(payload)
+    if isinstance(instrument_selection, dict) and instrument_selection.get("kind") == "pool":
+        from dronmakr.apps.drone_instrument_pool import resolve_effective_instrument_selection
+
+        instrument_selection = resolve_effective_instrument_selection(
+            instrument_selection,
+            iteration_index=0,
+        )
     if isinstance(instrument_selection, dict) and instrument_selection.get("kind") in ("plugin", "faust"):
         plugin_path = (
             instrument_selection.get("pluginPath")
@@ -1059,7 +1080,8 @@ def _run_generate_drone(payload: dict) -> list[str]:
         custom_notes = _parse_drone_custom_notes(payload.get("customNotes"))
 
     results: list[str] = []
-    for _ in range(iterations):
+    pool_last_key: str | None = None
+    for iteration in range(iterations):
         midi_kwargs = _build_drone_midi_kwargs_from_payload(payload, preview=False)
         midi_obj, selected_chart, render_duration_sec, _pattern_used = generate_drone_midi(
             **midi_kwargs,
@@ -1070,6 +1092,19 @@ def _run_generate_drone(payload: dict) -> list[str]:
         sample_name = format_name(f"drone___{base_sample_name}")
         output_path = f"{EXPORTS_DIR}/{sample_name}"
         midi_temp = write_drone_midi_temp(midi_obj)
+        iteration_selection = instrument_selection
+        if isinstance(instrument_selection, dict) and instrument_selection.get("kind") == "pool":
+            from dronmakr.apps.drone_instrument_pool import (
+                instrument_item_key,
+                pick_pool_item,
+                pool_item_to_instrument_selection,
+            )
+
+            items = instrument_selection.get("items") or []
+            mode = instrument_selection.get("mode") or "random"
+            picked = pick_pool_item(items, mode, iteration, pool_last_key)
+            pool_last_key = instrument_item_key(picked)
+            iteration_selection = pool_item_to_instrument_selection(picked)
         try:
             generated_sample = generate_drone_sample(
                 input_path=midi_temp,
@@ -1078,7 +1113,7 @@ def _run_generate_drone(payload: dict) -> list[str]:
                 instrument=instrument,
                 effect=effect,
                 render_duration_sec=render_duration_sec,
-                instrument_selection=instrument_selection,
+                instrument_selection=iteration_selection,
                 fx_slots=fx_slots,
             )
         finally:
@@ -1109,6 +1144,13 @@ def _run_drone_audio_preview(payload: dict) -> tuple[str, float, str]:
     preview_payload["lengthBars"] = DRONE_AUDIO_PREVIEW_BARS
 
     instrument, instrument_selection = _parse_drone_instrument_selection(preview_payload)
+    if isinstance(instrument_selection, dict) and instrument_selection.get("kind") == "pool":
+        from dronmakr.apps.drone_instrument_pool import resolve_effective_instrument_selection
+
+        instrument_selection = resolve_effective_instrument_selection(
+            instrument_selection,
+            iteration_index=0,
+        )
     effect = (preview_payload.get("effect") or "").strip() or None
     fx_slots, fx_mode = _parse_drone_fx_state(preview_payload)
     if fx_mode == "disabled":
