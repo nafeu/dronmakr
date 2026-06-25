@@ -97,6 +97,9 @@
 
 #waveforms.os-host {
   min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: hidden !important;
 }
 
 #waveforms.os-host > .os-scrollbar-vertical.os-theme-dronmakr {
@@ -109,6 +112,10 @@
   --os-track-bg-hover: color-mix(in srgb, var(--theme-a) 80%, var(--secondary));
   --os-handle-bg: var(--theme-a);
   --os-handle-bg-hover: color-mix(in srgb, var(--theme-a) 45%, var(--primary));
+  top: 0;
+  bottom: 0;
+  height: auto;
+  max-height: 100%;
   z-index: 2;
   opacity: 1 !important;
   visibility: visible !important;
@@ -126,6 +133,7 @@
 
 #waveforms.os-host > .os-scrollbar-vertical.os-theme-dronmakr .os-scrollbar-track {
   background: var(--secondary) !important;
+  height: 75vh !important;
 }
 
 #waveforms.os-host > .os-scrollbar-vertical.os-theme-dronmakr .os-scrollbar-handle {
@@ -144,6 +152,10 @@
 
 #waveforms.os-host.auditionr-waveform-scroll-idle > .os-scrollbar-vertical.os-theme-dronmakr.os-scrollbar-unusable .os-scrollbar-track {
   background: color-mix(in srgb, var(--theme-a) 22%, var(--secondary)) !important;
+}
+
+#waveforms > .os-scrollbar {
+  height: 75vh;
 }
 
 html.auditionr-debug-waveform-scrollbar #waveforms.os-host > .os-scrollbar-vertical {
