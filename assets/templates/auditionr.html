@@ -1131,6 +1131,115 @@
       border-radius: var(--dron-control-radius);
       overflow: hidden;
       background: var(--dron-control-bg);
+      position: relative;
+    }
+
+    .generatr-drone-chart-pool-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 6;
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      justify-content: center;
+      gap: 0.35rem;
+      padding: 0.45rem 0.55rem;
+      box-sizing: border-box;
+      background: color-mix(in srgb, var(--secondary) 88%, transparent);
+      backdrop-filter: blur(2px);
+    }
+
+    .generatr-drone-chart-pool-overlay.hidden {
+      display: none !important;
+    }
+
+    .generatr-drone-chart-pool-overlay-nav {
+      display: flex;
+      align-items: stretch;
+      gap: 0.35rem;
+      min-height: 0;
+      flex: 1 1 auto;
+    }
+
+    .generatr-drone-chart-pool-arrow {
+      flex: 0 0 auto;
+      align-self: center;
+      width: 1.65rem;
+      height: 1.65rem;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: var(--dron-control-radius);
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--primary);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.72rem;
+    }
+
+    .generatr-drone-chart-pool-arrow:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .generatr-drone-chart-pool-grid {
+      flex: 1 1 auto;
+      min-width: 0;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.28rem 0.45rem;
+      align-content: start;
+      overflow: hidden;
+    }
+
+    .generatr-drone-chart-pool-item {
+      font-size: 0.68rem;
+      line-height: 1.25;
+      color: color-mix(in srgb, var(--primary) 88%, var(--theme-d));
+      padding: 0.18rem 0.28rem;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.06);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .generatr-drone-chart-pool-meta {
+      margin: 0;
+      font-size: 0.62rem;
+      text-align: center;
+      color: color-mix(in srgb, var(--theme-a) 75%, transparent);
+    }
+
+    .generatr-drone-piano-unit.is-chart-pool-locked .generatr-drone-piano-roll,
+    .generatr-drone-piano-unit.is-chart-pool-locked .generatr-drone-octave-nav {
+      pointer-events: none;
+      opacity: 0.35;
+    }
+
+    .generatr-drone-chart-selection-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 0.65rem;
+    }
+
+    .generatr-drone-chart-selection-row.hidden {
+      display: none !important;
+    }
+
+    .generatr-drone-chart-selection-row label {
+      font-size: var(--dron-label-size);
+      color: var(--theme-a);
+    }
+
+    .generatr-drone-chart-selection-row select {
+      min-width: 9rem;
+    }
+
+    .generatr-drone-chart-summary {
+      margin: 0;
+      font-size: 0.62rem;
+      line-height: 1.35;
+      color: color-mix(in srgb, var(--theme-a) 72%, transparent);
     }
 
     .generatr-drone-piano-controls {
@@ -2552,7 +2661,325 @@
       border-color: var(--primary);
     }
 
-    /* Chord/catalog search modal */
+    /* Chart selector modal */
+    #generatr-drone-chart-selector-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 10055;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      box-sizing: border-box;
+      background: rgba(0, 0, 0, 0.45);
+      overflow: hidden;
+    }
+
+    #generatr-drone-chart-selector-modal.hidden {
+      display: none !important;
+    }
+
+    #generatr-drone-chart-selector-modal .generatr-drone-chart-selector-dialog {
+      --chart-selector-dialog-h: min(600px, 88vh);
+      width: min(96vw, 920px);
+      height: var(--chart-selector-dialog-h);
+      min-height: var(--chart-selector-dialog-h);
+      max-height: var(--chart-selector-dialog-h);
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      padding: 0.85rem 1rem;
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--secondary) 96%, transparent);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--primary);
+      box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+    }
+
+    #generatr-drone-chart-selector-modal h3.generatr-drone-chart-selector-title {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--theme-a);
+    }
+
+    #generatr-drone-chart-selector-filter {
+      width: 100%;
+      box-sizing: border-box;
+      font-family: inherit;
+      font-size: 0.82rem;
+      padding: 0.42rem 0.55rem;
+      border-radius: var(--dron-control-radius);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      background: rgba(0, 0, 0, 0.25);
+      color: var(--primary);
+    }
+
+    .generatr-drone-chart-selector-columns {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr) minmax(0, 1.2fr);
+      gap: 0.65rem;
+      align-items: stretch;
+    }
+
+    .generatr-drone-chart-selector-col {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .generatr-drone-chart-selector-col-title {
+      margin: 0;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: color-mix(in srgb, var(--theme-a) 80%, transparent);
+      line-height: 1.2;
+    }
+
+    .generatr-drone-chart-selector-col-hint {
+      margin: 0;
+      font-size: 0.65rem;
+      line-height: var(--dron-label-line, 1.2);
+      color: color-mix(in srgb, var(--theme-a) 70%, transparent);
+    }
+
+    .generatr-drone-chart-selector-col-count {
+      color: var(--primary);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .generatr-drone-chart-selector-col--main {
+      min-height: 0;
+    }
+
+    .generatr-drone-chart-selector-col--main > .generatr-drone-chart-selector-section--grow {
+      flex: 1 1 0;
+    }
+
+    .generatr-drone-chart-selector-section {
+      display: flex;
+      flex-direction: column;
+      gap: 0.28rem;
+      min-height: 0;
+      flex: 1 1 0;
+    }
+
+    .generatr-drone-chart-selector-section-label {
+      margin: 0;
+      font-size: 0.65rem;
+      line-height: var(--dron-label-line, 1.2);
+      color: color-mix(in srgb, var(--theme-a) 70%, transparent);
+    }
+
+    .generatr-drone-chart-selector-section--grow {
+      flex: 1 1 0;
+      min-height: 0;
+    }
+
+    .generatr-drone-chart-selector-section--format {
+      flex: 0 0 auto;
+    }
+
+    .generatr-drone-chart-selector-format-panel {
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(0, 0, 0, 0.2);
+      padding: 0.45rem;
+      max-height: 148px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+
+    .generatr-drone-chart-selector-format-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.28rem;
+    }
+
+    .generatr-drone-chart-selector-format-group-label {
+      margin: 0;
+      font-size: 0.62rem;
+      line-height: 1.2;
+      color: color-mix(in srgb, var(--theme-a) 62%, transparent);
+      text-transform: lowercase;
+    }
+
+    .generatr-drone-chart-selector-chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.28rem;
+    }
+
+    button.generatr-drone-chart-selector-chip {
+      font-family: inherit;
+      font-size: 0.72rem;
+      line-height: 1.2;
+      padding: 0.28rem 0.48rem;
+      border-radius: var(--dron-control-radius);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      background: rgba(255, 255, 255, 0.06);
+      color: inherit;
+      cursor: pointer;
+    }
+
+    button.generatr-drone-chart-selector-chip:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    button.generatr-drone-chart-selector-chip.is-selected {
+      border-color: var(--primary);
+      background: color-mix(in srgb, var(--primary) 18%, transparent);
+      color: var(--primary);
+    }
+
+    .generatr-drone-chart-selector-results-section {
+      flex: 1 1 0;
+      min-height: 0;
+    }
+
+    .generatr-drone-chart-selector-results-section .generatr-drone-chart-selector-list-stack {
+      min-height: 100%;
+    }
+
+    .generatr-drone-chart-selector-results-section .generatr-drone-chart-selector-list-stack.is-idle {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .generatr-drone-chart-selector-results-idle {
+      margin: 0;
+      padding: 0.75rem 1rem;
+      max-width: 18rem;
+      font-size: 0.75rem;
+      line-height: 1.45;
+      text-align: center;
+      color: color-mix(in srgb, var(--theme-a) 78%, transparent);
+    }
+
+    .generatr-drone-chart-selector-list {
+      flex: 1 1 0;
+      min-height: 0;
+      overflow: auto;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(0, 0, 0, 0.2);
+      padding: 0.35rem;
+    }
+
+    .generatr-drone-chart-selector-list-stack {
+      display: flex;
+      flex-direction: column;
+      flex-wrap: nowrap;
+      align-items: stretch;
+      gap: 0.18rem;
+      min-height: min-content;
+      padding-right: 16px;
+    }
+
+    .generatr-drone-chart-selector-list-stack > .generatr-drone-chart-selector-choice,
+    .generatr-drone-chart-selector-list-stack > .generatr-drone-chart-selector-empty,
+    .generatr-drone-chart-selector-list-stack > .generatr-drone-chart-selector-result-row {
+      flex: 0 0 auto;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
+
+    .generatr-drone-chart-selector-list.os-host {
+      overflow: hidden !important;
+      min-height: 0;
+    }
+
+    button.generatr-drone-chart-selector-choice {
+      display: block;
+      width: 100%;
+      text-align: left;
+      font-family: inherit;
+      font-size: 0.78rem;
+      padding: 0.32rem 0.42rem;
+      margin-bottom: 0;
+      border-radius: 3px;
+      border: none;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+    }
+
+    button.generatr-drone-chart-selector-choice:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    button.generatr-drone-chart-selector-choice.is-selected {
+      background: color-mix(in srgb, var(--theme-a) 28%, transparent);
+      color: var(--primary);
+    }
+
+    .generatr-drone-chart-selector-empty {
+      margin: 0;
+      padding: 0.35rem 0.42rem;
+      font-size: 0.75rem;
+      color: color-mix(in srgb, var(--theme-a) 72%, transparent);
+      line-height: 1.35;
+    }
+
+    .generatr-drone-chart-selector-result-row {
+      margin: 0;
+      padding: 0.28rem 0.42rem;
+      font-size: 0.75rem;
+      color: color-mix(in srgb, var(--primary) 88%, var(--theme-d));
+      line-height: 1.35;
+    }
+
+    .generatr-drone-chart-selector-actions {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 0.45rem;
+      flex-shrink: 0;
+    }
+
+    .generatr-drone-chart-selector-actions-spacer {
+      flex: 1 1 auto;
+    }
+
+    .generatr-drone-chart-selector-actions button {
+      font-family: inherit;
+      font-size: 0.78rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--primary);
+      cursor: pointer;
+    }
+
+    .generatr-drone-chart-selector-actions button.is-primary {
+      border-color: var(--primary);
+      background: color-mix(in srgb, var(--primary) 18%, transparent);
+    }
+
+    @media (max-width: 760px) {
+      #generatr-drone-chart-selector-modal .generatr-drone-chart-selector-dialog {
+        --chart-selector-dialog-h: min(600px, 88vh);
+      }
+
+      .generatr-drone-chart-selector-columns {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Chord/catalog search modal (legacy) */
     #generatr-chord-picker-modal {
       position: fixed;
       inset: 0;
@@ -4238,21 +4665,25 @@
                 <div class="generatr-sweep-effect generatr-drone-musical-style-card" id="generatr-drone-musical-style-card">
                   <div class="generatr-sweep-effect-head">
                     <span class="generatr-sweep-effect-title">Musical Style</span>
-                    <div class="generatr-drone-style-mode" role="tablist" aria-label="Musical style mode">
-                      <span id="generatr-drone-style-random-hint" class="generatr-drone-style-random-hint hidden">using random chart when empty</span>
-                      <button type="button" class="generatr-drone-style-mode-btn is-active" role="tab" aria-selected="true" data-drone-style-mode="custom" id="generatr-drone-style-mode-custom">Custom</button>
-                      <button type="button" class="generatr-drone-style-mode-btn" role="tab" aria-selected="false" data-drone-style-mode="chart" id="generatr-drone-style-mode-chart">Chart</button>
-                    </div>
+                    <span id="generatr-drone-style-random-hint" class="generatr-drone-style-random-hint hidden">using random chart when empty</span>
                   </div>
                   <div class="generatr-sweep-effect-body">
-                    <div id="generatr-drone-style-custom" class="generatr-drone-style-panel" role="tabpanel" aria-labelledby="generatr-drone-style-mode-custom">
+                    <div id="generatr-drone-style-custom" class="generatr-drone-style-panel">
                       <div class="generatr-drone-piano-layout">
-                        <div class="generatr-drone-piano-unit">
-                          <div class="generatr-drone-piano-roll" id="generatr-drone-piano-roll" role="group" aria-label="Select notes for custom musical style"></div>
+                        <div class="generatr-drone-piano-unit" id="generatr-drone-piano-unit">
+                          <div class="generatr-drone-piano-roll" id="generatr-drone-piano-roll" role="group" aria-label="Select notes for musical style"></div>
                           <div class="generatr-drone-octave-nav">
                             <button type="button" class="generatr-drone-octave-btn" id="generatr-drone-octave-up" aria-label="Next octave range"><i class="fa-solid fa-chevron-up" aria-hidden="true"></i></button>
                             <span class="generatr-drone-octave-display" id="generatr-drone-octave-display" aria-live="polite">3-4</span>
                             <button type="button" class="generatr-drone-octave-btn" id="generatr-drone-octave-down" aria-label="Previous octave range"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></button>
+                          </div>
+                          <div id="generatr-drone-chart-pool-overlay" class="generatr-drone-chart-pool-overlay hidden" aria-hidden="true">
+                            <div class="generatr-drone-chart-pool-overlay-nav">
+                              <button type="button" class="generatr-drone-chart-pool-arrow" id="generatr-drone-chart-pool-prev" aria-label="Previous charts">&lsaquo;</button>
+                              <div class="generatr-drone-chart-pool-grid" id="generatr-drone-chart-pool-grid" aria-live="polite"></div>
+                              <button type="button" class="generatr-drone-chart-pool-arrow" id="generatr-drone-chart-pool-next" aria-label="Next charts">&rsaquo;</button>
+                            </div>
+                            <p class="generatr-drone-chart-pool-meta" id="generatr-drone-chart-pool-meta"></p>
                           </div>
                         </div>
                         <div class="generatr-drone-piano-controls">
@@ -4271,31 +4702,27 @@
                               <button type="button" class="generatr-drone-preview-wave-btn" id="generatr-drone-upload-midi">upload midi</button>
                             </div>
                           </div>
+                          <div class="generatr-drone-piano-control-section">
+                            <span class="generatr-drone-piano-control-label">charting</span>
+                            <div class="generatr-drone-piano-control-btns" role="group" aria-label="Chart selection">
+                              <button type="button" class="generatr-drone-preview-wave-btn" id="generatr-drone-select-chart">select chart</button>
+                              <button type="button" class="generatr-drone-preview-wave-btn hidden" id="generatr-drone-clear-chart">clear</button>
+                            </div>
+                            <p class="generatr-drone-chart-summary hidden" id="generatr-drone-chart-summary"></p>
+                          </div>
+                        </div>
+                        <div class="generatr-drone-chart-selection-row hidden" id="generatr-drone-chart-selection-row">
+                          <div class="generatr-drone-piano-control-section">
+                            <label for="generatr-drone-chart-selection-mode">selection</label>
+                            <select id="generatr-drone-chart-selection-mode" aria-label="Chart selection mode">
+                              <option value="random" selected>random</option>
+                              <option value="round_robin">round robin</option>
+                              <option value="random_unique">random unique</option>
+                            </select>
+                          </div>
                         </div>
                       </div>
                       <input type="file" id="generatr-drone-midi-import-file" accept=".mid,.midi,audio/midi,audio/x-midi,application/x-midi" hidden>
-                    </div>
-                    <div id="generatr-drone-style-chart" class="generatr-drone-style-panel hidden generatr-drone-musical-style-body" role="tabpanel" aria-labelledby="generatr-drone-style-mode-chart" hidden>
-                      <div class="generatr-drone-musical-style-field">
-                        <label for="generatr-drone-chart-name">Chart name</label>
-                        <input type="text" id="generatr-drone-chart-name" class="generatr-picker-input" data-picker-kind="chartNames" readonly placeholder="(any)" aria-haspopup="dialog" title="Browse chart names">
-                      </div>
-                      <div class="generatr-drone-musical-style-field">
-                        <label for="generatr-drone-chart-type">Chart type</label>
-                        <select id="generatr-drone-chart-type" name="drone_chart_type">
-                          <option value="">(any)</option>
-                          <option value="chord">chord</option>
-                          <option value="scale">scale</option>
-                        </select>
-                      </div>
-                      <div class="generatr-drone-musical-style-field">
-                        <label for="generatr-drone-tags">Tags</label>
-                        <input type="text" id="generatr-drone-tags" class="generatr-picker-input" data-picker-kind="tags" readonly placeholder="(any)" aria-haspopup="dialog" title="Browse tags">
-                      </div>
-                      <div class="generatr-drone-musical-style-field">
-                        <label for="generatr-drone-roots">Roots</label>
-                        <input type="text" id="generatr-drone-roots" class="generatr-picker-input" data-picker-kind="roots" readonly placeholder="(any)" aria-haspopup="dialog" title="Browse roots">
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -4554,7 +4981,58 @@
       </div>
     </div>
   </div>
-  <div id="generatr-chord-picker-modal" class="generatr-modal hidden" role="dialog" aria-modal="true" aria-labelledby="generatr-chord-picker-title" aria-hidden="true">
+  <div id="generatr-drone-chart-selector-modal" class="generatr-modal hidden" role="dialog" aria-modal="true" aria-labelledby="generatr-drone-chart-selector-title" aria-hidden="true">
+    <div class="generatr-drone-chart-selector-dialog">
+      <h3 class="generatr-drone-chart-selector-title" id="generatr-drone-chart-selector-title">Select charts</h3>
+      <input type="search" id="generatr-drone-chart-selector-filter" placeholder="Search chart names and tags…" autocomplete="off">
+      <div class="generatr-drone-chart-selector-columns">
+        <div class="generatr-drone-chart-selector-col">
+          <p class="generatr-drone-chart-selector-col-title">Chart details</p>
+          <div class="generatr-drone-chart-selector-section generatr-drone-chart-selector-section--grow">
+            <p class="generatr-drone-chart-selector-section-label" aria-live="polite">
+              Chart name (<span class="generatr-drone-chart-selector-col-count" id="generatr-drone-chart-selector-names-count">0</span>)
+            </p>
+            <div class="generatr-drone-chart-selector-list dron-list-scroll">
+              <div class="generatr-drone-chart-selector-list-stack" id="generatr-drone-chart-selector-names" role="listbox" aria-label="Chart names"></div>
+            </div>
+          </div>
+          <div class="generatr-drone-chart-selector-section generatr-drone-chart-selector-section--format">
+            <p class="generatr-drone-chart-selector-section-label" aria-live="polite">
+              Roots &amp; format (<span class="generatr-drone-chart-selector-col-count" id="generatr-drone-chart-selector-format-count">0</span>)
+            </p>
+            <div class="generatr-drone-chart-selector-format-panel" id="generatr-drone-chart-selector-format" role="group" aria-label="Roots and format"></div>
+          </div>
+        </div>
+        <div class="generatr-drone-chart-selector-col generatr-drone-chart-selector-col--main">
+          <p class="generatr-drone-chart-selector-col-title">Tags</p>
+          <div class="generatr-drone-chart-selector-section generatr-drone-chart-selector-section--grow">
+            <p class="generatr-drone-chart-selector-section-label" aria-live="polite">
+              Browse by theme (<span class="generatr-drone-chart-selector-col-count" id="generatr-drone-chart-selector-tags-count">0</span>)
+            </p>
+            <div class="generatr-drone-chart-selector-list dron-list-scroll">
+              <div class="generatr-drone-chart-selector-list-stack" id="generatr-drone-chart-selector-tags" role="listbox" aria-label="Tags"></div>
+            </div>
+          </div>
+        </div>
+        <div class="generatr-drone-chart-selector-col generatr-drone-chart-selector-col--main">
+          <p class="generatr-drone-chart-selector-col-title">Results summary</p>
+          <p class="generatr-drone-chart-selector-col-hint" id="generatr-drone-chart-selector-results-hint" aria-live="polite">select charts and tags to build set</p>
+          <div class="generatr-drone-chart-selector-section generatr-drone-chart-selector-section--grow generatr-drone-chart-selector-results-section">
+            <div class="generatr-drone-chart-selector-list dron-list-scroll">
+              <div class="generatr-drone-chart-selector-list-stack" id="generatr-drone-chart-selector-results" aria-live="polite"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="generatr-drone-chart-selector-actions">
+        <span class="generatr-drone-chart-selector-actions-spacer"></span>
+        <button type="button" id="generatr-drone-chart-selector-clear">Clear all</button>
+        <button type="button" id="generatr-drone-chart-selector-cancel">Cancel</button>
+        <button type="button" class="is-primary" id="generatr-drone-chart-selector-confirm">Confirm</button>
+      </div>
+    </div>
+  </div>
+  <div id="generatr-chord-picker-modal" class="generatr-modal hidden" role="dialog" aria-modal="true" aria-labelledby="generatr-chord-picker-title" aria-hidden="true" hidden>
     <div class="generatr-chord-picker-dialog">
       <h3 class="generatr-chord-picker-title" id="generatr-chord-picker-title">Browse</h3>
       <input type="search" id="generatr-chord-picker-filter" placeholder="Search…" autocomplete="off">
@@ -7445,10 +7923,30 @@
       var beatSwingInput = document.getElementById("generatr-beat-swing");
       var beatIterationsInput = document.getElementById("generatr-beat-iterations");
       var beatVariantsList = document.getElementById("generatr-beat-variants-list");
-      var droneChartNameInput = document.getElementById("generatr-drone-chart-name");
-      var droneChartTypeSelect = document.getElementById("generatr-drone-chart-type");
-      var droneTagsInput = document.getElementById("generatr-drone-tags");
-      var droneRootsInput = document.getElementById("generatr-drone-roots");
+      var droneSelectChartBtn = document.getElementById("generatr-drone-select-chart");
+      var droneClearChartBtn = document.getElementById("generatr-drone-clear-chart");
+      var droneChartSummaryEl = document.getElementById("generatr-drone-chart-summary");
+      var droneChartSelectionRow = document.getElementById("generatr-drone-chart-selection-row");
+      var droneChartSelectionMode = document.getElementById("generatr-drone-chart-selection-mode");
+      var dronePianoUnitEl = document.getElementById("generatr-drone-piano-unit");
+      var droneChartPoolOverlay = document.getElementById("generatr-drone-chart-pool-overlay");
+      var droneChartPoolGrid = document.getElementById("generatr-drone-chart-pool-grid");
+      var droneChartPoolMeta = document.getElementById("generatr-drone-chart-pool-meta");
+      var droneChartPoolPrev = document.getElementById("generatr-drone-chart-pool-prev");
+      var droneChartPoolNext = document.getElementById("generatr-drone-chart-pool-next");
+      var droneChartSelectorModal = document.getElementById("generatr-drone-chart-selector-modal");
+      var droneChartSelectorFilter = document.getElementById("generatr-drone-chart-selector-filter");
+      var droneChartSelectorNames = document.getElementById("generatr-drone-chart-selector-names");
+      var droneChartSelectorFormat = document.getElementById("generatr-drone-chart-selector-format");
+      var droneChartSelectorTags = document.getElementById("generatr-drone-chart-selector-tags");
+      var droneChartSelectorResults = document.getElementById("generatr-drone-chart-selector-results");
+      var droneChartSelectorNamesCount = document.getElementById("generatr-drone-chart-selector-names-count");
+      var droneChartSelectorFormatCount = document.getElementById("generatr-drone-chart-selector-format-count");
+      var droneChartSelectorTagsCount = document.getElementById("generatr-drone-chart-selector-tags-count");
+      var droneChartSelectorResultsHint = document.getElementById("generatr-drone-chart-selector-results-hint");
+      var droneChartSelectorClear = document.getElementById("generatr-drone-chart-selector-clear");
+      var droneChartSelectorCancel = document.getElementById("generatr-drone-chart-selector-cancel");
+      var droneChartSelectorConfirm = document.getElementById("generatr-drone-chart-selector-confirm");
       var droneMidiPreviewHost = document.getElementById("generatr-drone-midi-preview-host");
       var droneMidiPreviewEl = document.getElementById("generatr-drone-midi-preview");
       var droneMidiPreviewMeta = document.getElementById("generatr-drone-midi-preview-meta");
@@ -7520,10 +8018,6 @@
       var generatrDronePluginListState = { role: null, allowed: [], detected: [] };
       var generatrDroneSavePresetState = { role: null };
       var droneIterationsInput = document.getElementById("generatr-drone-iterations");
-      var droneStyleModeCustomBtn = document.getElementById("generatr-drone-style-mode-custom");
-      var droneStyleModeChartBtn = document.getElementById("generatr-drone-style-mode-chart");
-      var droneStyleCustomPanel = document.getElementById("generatr-drone-style-custom");
-      var droneStyleChartPanel = document.getElementById("generatr-drone-style-chart");
       var dronePianoRollEl = document.getElementById("generatr-drone-piano-roll");
       var droneUploadMidiBtn = document.getElementById("generatr-drone-upload-midi");
       var droneMidiImportFileInput = document.getElementById("generatr-drone-midi-import-file");
@@ -7544,15 +8038,8 @@
       var generatrPluginPathsConfigured = false;
       var generatrConfigEmptyBeat = document.getElementById("generatr-config-empty-beat");
       var generatrConfigEmptyDrone = document.getElementById("generatr-config-empty-drone");
-      var generatrChordPicklists = { roots: [], tags: [], chartNames: [] };
-      var chordPickerModal = document.getElementById("generatr-chord-picker-modal");
-      var chordPickerTitle = document.getElementById("generatr-chord-picker-title");
-      var chordPickerFilter = document.getElementById("generatr-chord-picker-filter");
-      var chordPickerResults = document.getElementById("generatr-chord-picker-results");
-      var chordPickerChips = document.getElementById("generatr-chord-picker-chips");
-      var chordPickerCancel = document.getElementById("generatr-chord-picker-cancel");
-      var chordPickerClear = document.getElementById("generatr-chord-picker-clear");
-      var chordPickerUse = document.getElementById("generatr-chord-picker-use");
+      var generatrDroneChartCatalog = [];
+      var generatrDroneChartCatalogLoaded = false;
       var generatrErrorModal = document.getElementById("generatr-error-modal");
       var generatrErrorMessage = document.getElementById("generatr-error-message");
       var generatrErrorDismiss = document.getElementById("generatr-error-dismiss");
@@ -7648,9 +8135,6 @@
               : [];
             generatrDroneUpdateMidiPatternLabel();
             mergeProcessingCatalog(data.processingActions || {});
-            generatrChordPicklists.roots = Array.isArray(data.droneChordScaleRoots) ? data.droneChordScaleRoots : [];
-            generatrChordPicklists.tags = Array.isArray(data.droneChordScaleTags) ? data.droneChordScaleTags : [];
-            generatrChordPicklists.chartNames = Array.isArray(data.droneChordScaleChartNames) ? data.droneChordScaleChartNames : [];
             generatrDrumPathsConfigured = data.drumPathsConfigured !== false;
             generatrPluginPathsConfigured = data.pluginPathsConfigured !== false;
             generatrSidebarOptionsLoaded = true;
@@ -7700,8 +8184,29 @@
 
       function generatrDroneUpdateStyleRandomHint() {
         if (!droneStyleRandomHint) return;
-        var show = GENERATR_DRONE_STYLE_MODE === "custom" && generatrDroneGetSelectedCustomNotes().length === 0;
+        var show = !generatrDroneChartPool.active && generatrDroneGetSelectedCustomNotes().length === 0;
         droneStyleRandomHint.classList.toggle("hidden", !show);
+      }
+
+      function generatrDroneAppendChartSelectionToPayload(payload) {
+        if (generatrDroneChartPool.active && generatrDroneChartPool.charts.length) {
+          payload.chartSelection = {
+            mode: (droneChartSelectionMode && droneChartSelectionMode.value) || generatrDroneChartPool.mode || "random",
+            charts: generatrDroneChartPool.charts.map(function (chart) {
+              return {
+                id: chart.id || "",
+                root: chart.root,
+                name: chart.name,
+                notes: chart.notes || [],
+                type: chart.type || "",
+                tags: chart.tags || []
+              };
+            })
+          };
+          return;
+        }
+        var customNotes = generatrDroneGetSelectedCustomNotes();
+        if (customNotes.length > 0) payload.customNotes = customNotes;
       }
 
       function generatrDroneUpdatePluginCardHints() {
@@ -7730,19 +8235,10 @@
 
       function generatrDroneBuildEditorPreviewContext() {
         var body = {
-          musicalStyleMode: GENERATR_DRONE_STYLE_MODE,
           pattern: "quantized_straight_eighth",
           lengthBars: 2
         };
-        if (GENERATR_DRONE_STYLE_MODE === "custom") {
-          var customNotes = generatrDroneGetSelectedCustomNotes();
-          if (customNotes.length > 0) body.customNotes = customNotes;
-        } else {
-          body.chartName = (droneChartNameInput.value || "").trim();
-          body.chartType = (droneChartTypeSelect.value || "").trim();
-          body.tags = (droneTagsInput.value || "").trim();
-          body.roots = (droneRootsInput.value || "").trim();
-        }
+        generatrDroneAppendChartSelectionToPayload(body);
         if (generatrDroneInstrumentSelection) {
           body.instrumentSelection = generatrDroneInstrumentSelection;
         }
@@ -7828,20 +8324,11 @@
 
       function generatrDroneMidiPreviewPayload() {
         var payload = {
-          musicalStyleMode: GENERATR_DRONE_STYLE_MODE,
           pattern: generatrDroneMidiPatternId || "",
           lengthBars: parseInt(droneLengthInput.value || "16", 10),
           paddedSilenceBars: parseInt(dronePaddedSilenceInput.value || "0", 10)
         };
-        if (GENERATR_DRONE_STYLE_MODE === "custom") {
-          var customNotes = generatrDroneGetSelectedCustomNotes();
-          if (customNotes.length > 0) payload.customNotes = customNotes;
-        } else {
-          payload.chartName = (droneChartNameInput.value || "").trim();
-          payload.chartType = (droneChartTypeSelect.value || "").trim();
-          payload.tags = (droneTagsInput.value || "").trim();
-          payload.roots = (droneRootsInput.value || "").trim();
-        }
+        generatrDroneAppendChartSelectionToPayload(payload);
         return payload;
       }
 
@@ -10730,8 +11217,7 @@
         }
       } catch (errTab) { /* ignore */ }
 
-      /* ── Drone: custom piano roll + chart/catalog pickers ── */
-      var GENERATR_DRONE_STYLE_MODE = "custom";
+      /* ── Drone: piano roll + chart selector ── */
       var GENERATR_DRONE_OCTAVE_MIN = -1;
       var GENERATR_DRONE_OCTAVE_MAX = 5;
       var GENERATR_DRONE_OCTAVE_DEFAULT = 3;
@@ -10751,6 +11237,18 @@
       var generatrDroneCustomNotes = Object.create(null);
       var generatrDronePianoOctave = GENERATR_DRONE_OCTAVE_DEFAULT;
       var generatrDronePianoBuilt = false;
+      var GENERATR_DRONE_CHART_TYPES = ["chord", "scale"];
+      var GENERATR_DRONE_CHART_POOL_PAGE_SIZE = 8;
+      var generatrDroneChartPool = {
+        active: false,
+        mode: "random",
+        charts: [],
+        browsePage: 0
+      };
+      var generatrDroneChartSelectorState = {
+        filters: { chartNames: [], chartTypes: [], tags: [], roots: [] },
+        escapeHandler: null
+      };
 
       function generatrDroneNoteId(pitch, octave) {
         return String(pitch) + String(octave);
@@ -10862,6 +11360,7 @@
       }
 
       function generatrDroneToggleNote(pitch, octave) {
+        if (generatrDroneChartPool.active) return;
         generatrDronePreviewNote(pitch, octave);
         var noteId = generatrDroneNoteId(pitch, octave);
         if (generatrDroneCustomNotes[noteId]) delete generatrDroneCustomNotes[noteId];
@@ -10892,7 +11391,7 @@
           generatrShowError("No notes found in MIDI within octaves -1 to 5");
           return;
         }
-        generatrDroneSetStyleMode("custom");
+        generatrDroneClearChartPool();
         generatrDroneCustomNotes = Object.create(null);
         notes.forEach(function (noteName) {
           var parsed = generatrDroneParseNoteId(noteName);
@@ -11031,6 +11530,466 @@
         return block;
       }
 
+      function generatrDroneChartLabel(chart) {
+        if (!chart) return "";
+        return String(chart.root || "").trim() + " " + String(chart.name || "").trim();
+      }
+
+      function generatrDroneLoadChartCatalog() {
+        if (generatrDroneChartCatalogLoaded) {
+          return Promise.resolve(generatrDroneChartCatalog);
+        }
+        return fetch("/api/generatr/drone-chord-scale-catalog")
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            if (data.error) throw new Error(data.error);
+            generatrDroneChartCatalog = Array.isArray(data.charts) ? data.charts : [];
+            generatrDroneChartCatalogLoaded = true;
+            return generatrDroneChartCatalog;
+          });
+      }
+
+      function generatrDroneChartCatalogPicklists(catalog) {
+        var roots = {};
+        var tags = {};
+        var chartNames = {};
+        (catalog || []).forEach(function (chart) {
+          if (chart.root) roots[chart.root] = true;
+          if (chart.name) chartNames[chart.name] = true;
+          (chart.tags || []).forEach(function (tag) {
+            if (tag) tags[tag] = true;
+          });
+        });
+        function sortList(map) {
+          return Object.keys(map).sort(function (a, b) {
+            return a.toLowerCase().localeCompare(b.toLowerCase());
+          });
+        }
+        return {
+          roots: sortList(roots),
+          tags: sortList(tags),
+          chartNames: sortList(chartNames),
+          chartTypes: GENERATR_DRONE_CHART_TYPES.slice()
+        };
+      }
+
+      function generatrDroneChartMatchesFilters(chart, filters) {
+        var roots = filters.roots || [];
+        var chartNames = filters.chartNames || [];
+        var tagFilters = filters.tags || [];
+        var types = filters.chartTypes || [];
+
+        if (roots.length) {
+          var rootLower = (chart.root || "").toLowerCase();
+          if (!roots.some(function (r) { return String(r).toLowerCase() === rootLower; })) return false;
+        }
+        if (chartNames.length) {
+          var nameLower = (chart.name || "").toLowerCase();
+          if (!chartNames.some(function (part) {
+            return nameLower.indexOf(String(part).toLowerCase()) !== -1;
+          })) return false;
+        }
+        if (tagFilters.length) {
+          var chartTags = (chart.tags || []).map(function (t) { return String(t).toLowerCase(); });
+          if (!tagFilters.some(function (t) {
+            return chartTags.indexOf(String(t).toLowerCase()) !== -1;
+          })) return false;
+        }
+        if (types.length) {
+          if (types.indexOf(String(chart.type || "").toLowerCase()) === -1) return false;
+        }
+        return true;
+      }
+
+      function generatrDroneFilterCharts(catalog, filters) {
+        return (catalog || []).filter(function (chart) {
+          return generatrDroneChartMatchesFilters(chart, filters);
+        }).sort(function (a, b) {
+          var la = generatrDroneChartLabel(a).toLowerCase();
+          var lb = generatrDroneChartLabel(b).toLowerCase();
+          return la.localeCompare(lb);
+        });
+      }
+
+      function generatrDroneChartSearchHaystack(chart) {
+        return [
+          generatrDroneChartLabel(chart),
+          chart.type || "",
+          (chart.tags || []).join(" ")
+        ].join(" ").toLowerCase();
+      }
+
+      function generatrDroneApplyChartNotesToPianoRoll(chart) {
+        generatrDroneClearChartPool();
+        generatrDroneCustomNotes = Object.create(null);
+        (chart.notes || []).forEach(function (noteName) {
+          var parsed = generatrDroneParseNoteId(noteName);
+          if (!parsed.pitch) return;
+          if (parsed.octave < GENERATR_DRONE_OCTAVE_MIN || parsed.octave > GENERATR_DRONE_OCTAVE_MAX) return;
+          generatrDroneCustomNotes[generatrDroneNoteId(parsed.pitch, parsed.octave)] = true;
+        });
+        var selected = generatrDroneGetSelectedCustomNotes();
+        if (!selected.length) {
+          generatrShowError("Chart notes are outside the piano roll range");
+          return;
+        }
+        var first = generatrDroneParseNoteId(selected[0]);
+        var targetOctave = Math.max(
+          GENERATR_DRONE_OCTAVE_MIN,
+          Math.min(GENERATR_DRONE_OCTAVE_VIEW_MAX, first.octave)
+        );
+        if (generatrDronePianoOctave !== targetOctave) {
+          generatrDronePianoOctave = targetOctave;
+          generatrDroneBuildPianoRoll(true);
+        } else {
+          generatrDroneSyncPianoRollKeyStates();
+        }
+        generatrDroneUpdateStyleRandomHint();
+        generatrDroneUpdateChartSummaryUi();
+        if (kindSelect && kindSelect.value === "drone") generatrDroneRefreshMidiPreview();
+      }
+
+      function generatrDroneClearChartPool() {
+        generatrDroneChartPool.active = false;
+        generatrDroneChartPool.charts = [];
+        generatrDroneChartPool.browsePage = 0;
+        if (dronePianoUnitEl) dronePianoUnitEl.classList.remove("is-chart-pool-locked");
+        if (droneChartPoolOverlay) {
+          droneChartPoolOverlay.classList.add("hidden");
+          droneChartPoolOverlay.setAttribute("aria-hidden", "true");
+        }
+        if (droneChartPoolGrid) droneChartPoolGrid.innerHTML = "";
+        generatrDroneUpdateChartSummaryUi();
+        generatrDroneUpdateStyleRandomHint();
+      }
+
+      function generatrDroneActivateChartPool(charts) {
+        generatrDroneCustomNotes = Object.create(null);
+        generatrDroneSyncPianoRollKeyStates();
+        generatrDroneChartPool.active = true;
+        generatrDroneChartPool.charts = charts.slice();
+        generatrDroneChartPool.browsePage = 0;
+        generatrDroneChartPool.mode = (droneChartSelectionMode && droneChartSelectionMode.value) || "random";
+        if (dronePianoUnitEl) dronePianoUnitEl.classList.add("is-chart-pool-locked");
+        if (droneChartPoolOverlay) {
+          droneChartPoolOverlay.classList.remove("hidden");
+          droneChartPoolOverlay.setAttribute("aria-hidden", "false");
+        }
+        generatrDroneRenderChartPoolOverlay();
+        generatrDroneUpdateChartSummaryUi();
+        generatrDroneUpdateStyleRandomHint();
+        if (kindSelect && kindSelect.value === "drone") generatrDroneRefreshMidiPreview();
+      }
+
+      function generatrDroneRenderChartPoolOverlay() {
+        if (!droneChartPoolGrid || !generatrDroneChartPool.active) return;
+        var charts = generatrDroneChartPool.charts || [];
+        var pageSize = GENERATR_DRONE_CHART_POOL_PAGE_SIZE;
+        var page = generatrDroneChartPool.browsePage || 0;
+        var maxPage = Math.max(0, Math.ceil(charts.length / pageSize) - 1);
+        if (page > maxPage) {
+          page = maxPage;
+          generatrDroneChartPool.browsePage = page;
+        }
+        var slice = charts.slice(page * pageSize, page * pageSize + pageSize);
+        droneChartPoolGrid.innerHTML = "";
+        slice.forEach(function (chart) {
+          var item = document.createElement("div");
+          item.className = "generatr-drone-chart-pool-item";
+          item.textContent = generatrDroneChartLabel(chart);
+          item.title = generatrDroneChartLabel(chart);
+          droneChartPoolGrid.appendChild(item);
+        });
+        if (droneChartPoolMeta) {
+          droneChartPoolMeta.textContent = charts.length + " charts selected · page " + (page + 1) + " of " + (maxPage + 1);
+        }
+        if (droneChartPoolPrev) droneChartPoolPrev.disabled = page <= 0;
+        if (droneChartPoolNext) droneChartPoolNext.disabled = page >= maxPage;
+      }
+
+      function generatrDroneUpdateChartSummaryUi() {
+        var count = generatrDroneChartPool.active ? generatrDroneChartPool.charts.length : 0;
+        var hasManualNotes = generatrDroneGetSelectedCustomNotes().length > 0 && !generatrDroneChartPool.active;
+        if (droneChartSummaryEl) {
+          if (count > 1) {
+            droneChartSummaryEl.textContent = count + " charts locked for generation";
+            droneChartSummaryEl.classList.remove("hidden");
+          } else if (hasManualNotes) {
+            droneChartSummaryEl.textContent = "Custom notes on piano roll";
+            droneChartSummaryEl.classList.remove("hidden");
+          } else {
+            droneChartSummaryEl.textContent = "";
+            droneChartSummaryEl.classList.add("hidden");
+          }
+        }
+        if (droneClearChartBtn) {
+          droneClearChartBtn.classList.toggle("hidden", !(count > 1 || hasManualNotes));
+        }
+        if (droneChartSelectionRow) {
+          droneChartSelectionRow.classList.toggle("hidden", count <= 1);
+        }
+      }
+
+      function generatrDroneToggleChartSelectorFilter(kind, value) {
+        var list = generatrDroneChartSelectorState.filters[kind] || [];
+        var idx = list.findIndex(function (item) {
+          return String(item).toLowerCase() === String(value).toLowerCase();
+        });
+        if (idx >= 0) list.splice(idx, 1);
+        else list.push(value);
+        generatrDroneChartSelectorState.filters[kind] = list;
+        generatrDroneRenderChartSelectorModal();
+      }
+
+      function generatrDroneChartSelectorHasActiveFilters(filters) {
+        filters = filters || {};
+        return !!(
+          (filters.chartNames && filters.chartNames.length) ||
+          (filters.chartTypes && filters.chartTypes.length) ||
+          (filters.tags && filters.tags.length) ||
+          (filters.roots && filters.roots.length)
+        );
+      }
+
+      function generatrDroneChartSelectorTagsCount(filters) {
+        filters = filters || {};
+        return filters.tags ? filters.tags.length : 0;
+      }
+
+      function generatrDroneChartSelectorFormatCount(filters) {
+        filters = filters || {};
+        return (filters.chartTypes ? filters.chartTypes.length : 0) +
+          (filters.roots ? filters.roots.length : 0);
+      }
+
+      function generatrDroneRenderChartSelectorFormatPanel(picklists, filters) {
+        if (!droneChartSelectorFormat) return;
+        droneChartSelectorFormat.innerHTML = "";
+
+        function appendChipGroup(title, items, kind) {
+          var selected = filters[kind] || [];
+          var selectedKeys = {};
+          selected.forEach(function (item) {
+            selectedKeys[String(item).toLowerCase()] = true;
+          });
+          var visible = items || [];
+
+          var group = document.createElement("div");
+          group.className = "generatr-drone-chart-selector-format-group";
+          var label = document.createElement("p");
+          label.className = "generatr-drone-chart-selector-format-group-label";
+          label.textContent = title;
+          group.appendChild(label);
+
+          var row = document.createElement("div");
+          row.className = "generatr-drone-chart-selector-chip-row";
+          visible.forEach(function (item) {
+            if (!item) return;
+            var btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "generatr-drone-chart-selector-chip";
+            btn.textContent = item;
+            if (selectedKeys[String(item).toLowerCase()]) btn.classList.add("is-selected");
+            btn.addEventListener("click", function () {
+              generatrDroneToggleChartSelectorFilter(kind, item);
+            });
+            row.appendChild(btn);
+          });
+          group.appendChild(row);
+          droneChartSelectorFormat.appendChild(group);
+        }
+
+        appendChipGroup("format", picklists.chartTypes, "chartTypes");
+        appendChipGroup("roots", picklists.roots, "roots");
+      }
+
+      function generatrDroneRenderChartSelectorChoices(container, items, kind, selectedItems, searchQuery) {
+        if (!container) return;
+        container.innerHTML = "";
+        var q = searchQuery != null
+          ? String(searchQuery).trim().toLowerCase()
+          : (droneChartSelectorFilter && droneChartSelectorFilter.value
+            ? String(droneChartSelectorFilter.value).trim().toLowerCase()
+            : "");
+        var selectedKeys = {};
+        (selectedItems || []).forEach(function (item) {
+          selectedKeys[String(item).toLowerCase()] = true;
+        });
+        var visible = (items || []).filter(function (item) {
+          if (!item) return false;
+          if (!q) return true;
+          return String(item).toLowerCase().indexOf(q) !== -1;
+        });
+        if (!visible.length) {
+          var empty = document.createElement("p");
+          empty.className = "generatr-drone-chart-selector-empty";
+          empty.textContent = q ? "No matches." : "Nothing to show.";
+          container.appendChild(empty);
+          return;
+        }
+        visible.slice(0, 300).forEach(function (item) {
+          var btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "generatr-drone-chart-selector-choice";
+          btn.textContent = item;
+          if (selectedKeys[String(item).toLowerCase()]) btn.classList.add("is-selected");
+          btn.addEventListener("click", function () {
+            generatrDroneToggleChartSelectorFilter(kind, item);
+          });
+          container.appendChild(btn);
+        });
+      }
+
+      function generatrDroneRenderChartSelectorModal() {
+        var picklists = generatrDroneChartCatalogPicklists(generatrDroneChartCatalog);
+        var filters = generatrDroneChartSelectorState.filters;
+        var catalogTotal = generatrDroneChartCatalog.length;
+        var namesCount = filters.chartNames ? filters.chartNames.length : 0;
+        var formatCount = generatrDroneChartSelectorFormatCount(filters);
+        var tagsCount = generatrDroneChartSelectorTagsCount(filters);
+
+        generatrDroneRenderChartSelectorChoices(
+          droneChartSelectorNames,
+          picklists.chartNames,
+          "chartNames",
+          filters.chartNames
+        );
+        generatrDroneRenderChartSelectorFormatPanel(picklists, filters);
+        generatrDroneRenderChartSelectorChoices(
+          droneChartSelectorTags,
+          picklists.tags,
+          "tags",
+          filters.tags
+        );
+
+        if (droneChartSelectorNamesCount) {
+          droneChartSelectorNamesCount.textContent = String(namesCount);
+        }
+        if (droneChartSelectorFormatCount) {
+          droneChartSelectorFormatCount.textContent = String(formatCount);
+        }
+        if (droneChartSelectorTagsCount) {
+          droneChartSelectorTagsCount.textContent = String(tagsCount);
+        }
+
+        var matches = generatrDroneFilterCharts(generatrDroneChartCatalog, filters);
+        var hasActiveFilters = generatrDroneChartSelectorHasActiveFilters(filters);
+
+        if (droneChartSelectorResultsHint) {
+          if (!hasActiveFilters) {
+            droneChartSelectorResultsHint.textContent = "select charts and tags to build set";
+          } else if (!matches.length) {
+            droneChartSelectorResultsHint.textContent = "no charts match";
+          } else {
+            droneChartSelectorResultsHint.textContent = matches.length + " chart" + (matches.length === 1 ? "" : "s") + " match";
+          }
+        }
+        if (droneChartSelectorResults) {
+          droneChartSelectorResults.innerHTML = "";
+          droneChartSelectorResults.classList.remove("is-idle");
+          if (!hasActiveFilters) {
+            droneChartSelectorResults.classList.add("is-idle");
+            var idle = document.createElement("p");
+            idle.className = "generatr-drone-chart-selector-results-idle";
+            idle.textContent = "One of " + catalogTotal + " chart" + (catalogTotal === 1 ? "" : "s") + " will be used per sample generation action";
+            droneChartSelectorResults.appendChild(idle);
+          } else if (!matches.length) {
+            var none = document.createElement("p");
+            none.className = "generatr-drone-chart-selector-empty";
+            none.textContent = "No charts found. Adjust your filters or clear all.";
+            droneChartSelectorResults.appendChild(none);
+          } else {
+            matches.slice(0, 500).forEach(function (chart) {
+              var row = document.createElement("div");
+              row.className = "generatr-drone-chart-selector-result-row";
+              row.textContent = generatrDroneChartLabel(chart) + (chart.type ? " · " + chart.type : "");
+              droneChartSelectorResults.appendChild(row);
+            });
+            if (matches.length > 500) {
+              var more = document.createElement("p");
+              more.className = "generatr-drone-chart-selector-empty";
+              more.textContent = "Showing first 500 matches. Narrow your filters.";
+              droneChartSelectorResults.insertBefore(more, droneChartSelectorResults.firstChild);
+            }
+          }
+        }
+        requestAnimationFrame(auditionrRefreshSidebarScrollbars);
+      }
+
+      function generatrDroneRenderChartSelectorSearchLists() {
+        var picklists = generatrDroneChartCatalogPicklists(generatrDroneChartCatalog);
+        var filters = generatrDroneChartSelectorState.filters;
+        generatrDroneRenderChartSelectorChoices(
+          droneChartSelectorNames,
+          picklists.chartNames,
+          "chartNames",
+          filters.chartNames
+        );
+        generatrDroneRenderChartSelectorChoices(
+          droneChartSelectorTags,
+          picklists.tags,
+          "tags",
+          filters.tags
+        );
+        requestAnimationFrame(auditionrRefreshSidebarScrollbars);
+      }
+
+      function closeGeneratrDroneChartSelectorDiscard() {
+        if (!droneChartSelectorModal || droneChartSelectorModal.classList.contains("hidden")) return;
+        droneChartSelectorModal.classList.add("hidden");
+        droneChartSelectorModal.setAttribute("aria-hidden", "true");
+        if (generatrDroneChartSelectorState.escapeHandler) {
+          document.removeEventListener("keydown", generatrDroneChartSelectorState.escapeHandler);
+          generatrDroneChartSelectorState.escapeHandler = null;
+        }
+      }
+
+      function openGeneratrDroneChartSelector() {
+        if (!droneChartSelectorModal) return;
+        generatrDroneLoadChartCatalog()
+          .then(function () {
+            if (droneChartSelectorFilter) droneChartSelectorFilter.value = "";
+            generatrDroneRenderChartSelectorModal();
+            droneChartSelectorModal.classList.remove("hidden");
+            droneChartSelectorModal.setAttribute("aria-hidden", "false");
+            if (droneChartSelectorFilter) droneChartSelectorFilter.focus();
+            generatrDroneChartSelectorState.escapeHandler = function (ev) {
+              if (ev.key === "Escape") closeGeneratrDroneChartSelectorDiscard();
+            };
+            document.addEventListener("keydown", generatrDroneChartSelectorState.escapeHandler);
+          })
+          .catch(function (err) {
+            generatrShowError(err.message || "Failed to load chart catalog");
+          });
+      }
+
+      function confirmGeneratrDroneChartSelector() {
+        var matches = generatrDroneFilterCharts(
+          generatrDroneChartCatalog,
+          generatrDroneChartSelectorState.filters
+        );
+        if (!matches.length) {
+          generatrShowError("No charts match your selection. Adjust filters or clear all.");
+          return;
+        }
+        closeGeneratrDroneChartSelectorDiscard();
+        if (matches.length === 1) {
+          generatrDroneApplyChartNotesToPianoRoll(matches[0]);
+          return;
+        }
+        generatrDroneActivateChartPool(matches);
+      }
+
+      function generatrDroneClearChartSelectorFilters() {
+        generatrDroneChartSelectorState.filters = {
+          chartNames: [],
+          chartTypes: [],
+          tags: [],
+          roots: []
+        };
+        generatrDroneRenderChartSelectorModal();
+      }
+
       function generatrDroneBuildPianoRoll(forceRebuild) {
         if (!dronePianoRollEl) return;
         if (generatrDronePianoBuilt && !forceRebuild) return;
@@ -11046,41 +12005,6 @@
         generatrDroneSyncOctaveNav();
       }
 
-      function generatrDroneSetStyleMode(mode) {
-        var nextMode = mode === "chart" ? "chart" : "custom";
-        GENERATR_DRONE_STYLE_MODE = nextMode;
-        var isCustom = nextMode === "custom";
-        if (droneStyleModeCustomBtn) {
-          droneStyleModeCustomBtn.classList.toggle("is-active", isCustom);
-          droneStyleModeCustomBtn.setAttribute("aria-selected", isCustom ? "true" : "false");
-        }
-        if (droneStyleModeChartBtn) {
-          droneStyleModeChartBtn.classList.toggle("is-active", !isCustom);
-          droneStyleModeChartBtn.setAttribute("aria-selected", !isCustom ? "true" : "false");
-        }
-        if (droneStyleCustomPanel) {
-          droneStyleCustomPanel.classList.toggle("hidden", !isCustom);
-          droneStyleCustomPanel.hidden = !isCustom;
-        }
-        if (droneStyleChartPanel) {
-          droneStyleChartPanel.classList.toggle("hidden", isCustom);
-          droneStyleChartPanel.hidden = isCustom;
-        }
-        if (isCustom) generatrDroneBuildPianoRoll();
-        generatrDroneUpdateStyleRandomHint();
-        requestAnimationFrame(auditionrRefreshSidebarScrollbars);
-      }
-
-      if (droneStyleModeCustomBtn) {
-        droneStyleModeCustomBtn.addEventListener("click", function () {
-          generatrDroneSetStyleMode("custom");
-        });
-      }
-      if (droneStyleModeChartBtn) {
-        droneStyleModeChartBtn.addEventListener("click", function () {
-          generatrDroneSetStyleMode("chart");
-        });
-      }
       if (droneOctaveUpBtn) {
         droneOctaveUpBtn.addEventListener("click", function () {
           generatrDroneShiftOctaveView(1);
@@ -11089,6 +12013,59 @@
       if (droneOctaveDownBtn) {
         droneOctaveDownBtn.addEventListener("click", function () {
           generatrDroneShiftOctaveView(-1);
+        });
+      }
+      if (droneSelectChartBtn) {
+        droneSelectChartBtn.addEventListener("click", function () {
+          openGeneratrDroneChartSelector();
+        });
+      }
+      if (droneClearChartBtn) {
+        droneClearChartBtn.addEventListener("click", function () {
+          generatrDroneClearChartPool();
+          generatrDroneClearChartSelectorFilters();
+          generatrDroneCustomNotes = Object.create(null);
+          generatrDroneSyncPianoRollKeyStates();
+          generatrDroneUpdateStyleRandomHint();
+          if (kindSelect && kindSelect.value === "drone") generatrDroneRefreshMidiPreview();
+        });
+      }
+      if (droneChartPoolPrev) {
+        droneChartPoolPrev.addEventListener("click", function () {
+          if (generatrDroneChartPool.browsePage > 0) {
+            generatrDroneChartPool.browsePage -= 1;
+            generatrDroneRenderChartPoolOverlay();
+          }
+        });
+      }
+      if (droneChartPoolNext) {
+        droneChartPoolNext.addEventListener("click", function () {
+          generatrDroneChartPool.browsePage += 1;
+          generatrDroneRenderChartPoolOverlay();
+        });
+      }
+      if (droneChartSelectionMode) {
+        droneChartSelectionMode.addEventListener("change", function () {
+          generatrDroneChartPool.mode = droneChartSelectionMode.value || "random";
+        });
+      }
+      if (droneChartSelectorFilter) {
+        droneChartSelectorFilter.addEventListener("input", function () {
+          generatrDroneRenderChartSelectorSearchLists();
+        });
+      }
+      if (droneChartSelectorClear) {
+        droneChartSelectorClear.addEventListener("click", generatrDroneClearChartSelectorFilters);
+      }
+      if (droneChartSelectorCancel) {
+        droneChartSelectorCancel.addEventListener("click", closeGeneratrDroneChartSelectorDiscard);
+      }
+      if (droneChartSelectorConfirm) {
+        droneChartSelectorConfirm.addEventListener("click", confirmGeneratrDroneChartSelector);
+      }
+      if (droneChartSelectorModal) {
+        droneChartSelectorModal.addEventListener("click", function (ev) {
+          if (ev.target === droneChartSelectorModal) closeGeneratrDroneChartSelectorDiscard();
         });
       }
       var dronePreviewWaveWrap = document.getElementById("generatr-drone-preview-wave");
@@ -11104,249 +12081,8 @@
       generatrDroneSetupMidiImportUi();
       generatrDroneBuildPianoRoll();
       generatrDroneUpdateStyleRandomHint();
+      generatrDroneUpdateChartSummaryUi();
       generatrDroneSyncPreviewWaveButtons();
-
-      var generatrChordPickerState = {
-        kind: "",
-        targetInput: null,
-        staged: [],
-        escapeHandler: null,
-        originalInputValue: ""
-      };
-
-      var GENERATR_CHORD_PICKER_KIND_LABELS = { roots: "Roots", tags: "Tags", chartNames: "Chart names" };
-
-      function generatrChordPickerStagingKey(kind, cand) {
-        var s = String(cand || "").trim();
-        if (!s) return "";
-        return kind === "chartNames" ? s : s.toLowerCase();
-      }
-
-      function generatrCanonFromCatalog(kind, rawToken) {
-        var p = String(rawToken || "").trim();
-        if (!p) return "";
-        var list = generatrChordPicklists[kind] || [];
-        for (var i = 0; i < list.length; i++) {
-          if ((list[i] || "").toLowerCase() === p.toLowerCase()) return list[i];
-        }
-        return p;
-      }
-
-      function generatrChordPickerParseInputToStaging(kind, valueStr) {
-        var seen = {};
-        var out = [];
-        String(valueStr || "")
-          .split(",")
-          .map(function (x) { return String(x || "").trim(); })
-          .filter(Boolean)
-          .map(function (p) { return generatrCanonFromCatalog(kind, p); })
-          .forEach(function (c) {
-            var k = generatrChordPickerStagingKey(kind, c);
-            if (!k || seen[k]) return;
-            seen[k] = true;
-            out.push(c);
-          });
-        return out;
-      }
-
-      function generatrChordPickerRenderChips() {
-        if (!chordPickerChips) return;
-        chordPickerChips.innerHTML = "";
-        var staged = generatrChordPickerState.staged;
-        if (!staged.length) {
-          var emptyHint = document.createElement("span");
-          emptyHint.className = "generatr-chord-picker-hint";
-          emptyHint.style.marginTop = "0";
-          emptyHint.textContent = "No items selected.";
-          chordPickerChips.appendChild(emptyHint);
-          return;
-        }
-        staged.forEach(function (tok) {
-          var chip = document.createElement("span");
-          chip.className = "generatr-chord-picker-chip";
-          chip.appendChild(document.createTextNode(String(tok)));
-          chip.appendChild(document.createTextNode(" "));
-          var x = document.createElement("button");
-          x.type = "button";
-          x.className = "generatr-chord-picker-chip-x";
-          x.setAttribute("aria-label", "Remove item");
-          x.textContent = "×";
-          (function captureTok(cap) {
-            x.addEventListener("click", function () {
-              var kind = generatrChordPickerState.kind;
-              generatrChordPickerState.staged = generatrChordPickerState.staged.filter(function (zx) {
-                return generatrChordPickerStagingKey(kind, zx) !== generatrChordPickerStagingKey(kind, cap);
-              });
-              generatrChordPickerRenderChips();
-              generatrChordPickerRenderResults();
-            });
-          })(tok);
-          chip.appendChild(x);
-          chordPickerChips.appendChild(chip);
-        });
-      }
-
-      function generatrChordPickerToggleChoice(candCanon) {
-        var kind = generatrChordPickerState.kind;
-        var cand = generatrCanonFromCatalog(kind, candCanon);
-        var staged = generatrChordPickerState.staged;
-        var kNew = generatrChordPickerStagingKey(kind, cand);
-        var idx = staged.findIndex(function (x) {
-          return generatrChordPickerStagingKey(kind, x) === kNew;
-        });
-        if (idx >= 0) staged.splice(idx, 1);
-        else staged.push(cand);
-        generatrChordPickerRenderChips();
-        generatrChordPickerRenderResults();
-      }
-
-      function generatrChordPickerRenderResults() {
-        if (!chordPickerResults) return;
-        var kind = generatrChordPickerState.kind;
-        var list = generatrChordPicklists[kind] || [];
-        var q = chordPickerFilter && chordPickerFilter.value ? String(chordPickerFilter.value).trim().toLowerCase() : "";
-        var stagedKeys = {};
-        generatrChordPickerState.staged.forEach(function (s) {
-          stagedKeys[generatrChordPickerStagingKey(kind, s)] = true;
-        });
-
-        chordPickerResults.innerHTML = "";
-        var passes = [];
-        list.forEach(function (item) {
-          if (!item) return;
-          if (q && item.toLowerCase().indexOf(q) === -1) return;
-          passes.push(item);
-        });
-
-        if (passes.length === 0) {
-          var p = document.createElement("div");
-          p.className = "generatr-chord-picker-hint";
-          p.style.padding = "0.5rem";
-          p.textContent = list.length === 0 ? "No catalog loaded yet." : (q ? "No matches." : "Nothing to show.");
-          chordPickerResults.appendChild(p);
-          return;
-        }
-
-        var maxShow = 400;
-        var slice = passes.slice(0, maxShow);
-        slice.forEach(function (item) {
-          var b = document.createElement("button");
-          b.type = "button";
-          b.className = "generatr-chord-picker-choice";
-          b.textContent = item;
-          if (stagedKeys[generatrChordPickerStagingKey(kind, item)]) {
-            b.classList.add("generatr-picker-selected");
-          }
-          b.addEventListener("click", function () {
-            generatrChordPickerToggleChoice(item);
-          });
-          chordPickerResults.appendChild(b);
-        });
-
-        if (passes.length > maxShow) {
-          var foot = document.createElement("div");
-          foot.className = "generatr-chord-picker-hint";
-          foot.style.padding = "0.35rem";
-          foot.textContent = "Showing first " + maxShow + ". Narrow your search.";
-          chordPickerResults.insertBefore(foot, chordPickerResults.firstChild);
-        }
-      }
-
-      function closeGeneratrChordPickerDiscard() {
-        if (!chordPickerModal || chordPickerModal.classList.contains("hidden")) return;
-        if (generatrChordPickerState.targetInput && typeof generatrChordPickerState.originalInputValue === "string") {
-          generatrChordPickerState.targetInput.value = generatrChordPickerState.originalInputValue;
-        }
-        chordPickerModal.classList.add("hidden");
-        chordPickerModal.setAttribute("aria-hidden", "true");
-        if (generatrChordPickerState.escapeHandler) {
-          document.removeEventListener("keydown", generatrChordPickerState.escapeHandler);
-          generatrChordPickerState.escapeHandler = null;
-        }
-      }
-
-      function closeGeneratrChordPickerApply() {
-        if (!chordPickerModal || chordPickerModal.classList.contains("hidden")) return;
-        var targetInput = generatrChordPickerState.targetInput;
-        if (targetInput) {
-          targetInput.value = generatrChordPickerState.staged
-            .map(function (s) { return String(s).trim(); })
-            .filter(Boolean)
-            .join(", ");
-        }
-        chordPickerModal.classList.add("hidden");
-        chordPickerModal.setAttribute("aria-hidden", "true");
-        if (generatrChordPickerState.escapeHandler) {
-          document.removeEventListener("keydown", generatrChordPickerState.escapeHandler);
-          generatrChordPickerState.escapeHandler = null;
-        }
-      }
-
-      function openGeneratrChordPicker(kind, targetInputEl) {
-        if (!chordPickerModal || !kind || !targetInputEl) return;
-        if (!GENERATR_CHORD_PICKER_KIND_LABELS[kind]) return;
-        generatrChordPickerState.kind = kind;
-        generatrChordPickerState.targetInput = targetInputEl;
-        generatrChordPickerState.originalInputValue = targetInputEl.value || "";
-        generatrChordPickerState.staged = generatrChordPickerParseInputToStaging(kind, targetInputEl.value);
-        if (chordPickerTitle) chordPickerTitle.textContent = GENERATR_CHORD_PICKER_KIND_LABELS[kind] || "Browse";
-        if (chordPickerFilter) chordPickerFilter.value = "";
-        generatrChordPickerRenderChips();
-        generatrChordPickerRenderResults();
-        chordPickerModal.classList.remove("hidden");
-        chordPickerModal.setAttribute("aria-hidden", "false");
-        if (chordPickerFilter) chordPickerFilter.focus();
-
-        generatrChordPickerState.escapeHandler = function (ev) {
-          if (ev.key === "Escape") closeGeneratrChordPickerDiscard();
-        };
-        document.addEventListener("keydown", generatrChordPickerState.escapeHandler);
-      }
-
-      if (chordPickerFilter) {
-        chordPickerFilter.addEventListener("input", function () {
-          generatrChordPickerRenderResults();
-        });
-      }
-      if (chordPickerCancel) chordPickerCancel.addEventListener("click", closeGeneratrChordPickerDiscard);
-      if (chordPickerClear) {
-        chordPickerClear.addEventListener("click", function () {
-          generatrChordPickerState.staged = [];
-          generatrChordPickerRenderChips();
-          generatrChordPickerRenderResults();
-        });
-      }
-      if (chordPickerUse) chordPickerUse.addEventListener("click", closeGeneratrChordPickerApply);
-      if (chordPickerModal) {
-        chordPickerModal.addEventListener("click", function (ev) {
-          if (ev.target === chordPickerModal) closeGeneratrChordPickerDiscard();
-        });
-      }
-
-      function generatrOpenPickerFromInput(inp) {
-        if (!inp) return;
-        var kind = inp.getAttribute("data-picker-kind") || "";
-        if (!GENERATR_CHORD_PICKER_KIND_LABELS[kind]) return;
-        Promise.resolve(loadGeneratrSidebarOptions()).then(function () {
-          openGeneratrChordPicker(kind, inp);
-        });
-      }
-
-      if (generateTabPanel) {
-        generateTabPanel.addEventListener("click", function (ev) {
-          var inp = ev.target.closest(".generatr-picker-input[data-picker-kind]");
-          if (!inp) return;
-          ev.preventDefault();
-          generatrOpenPickerFromInput(inp);
-        });
-        generateTabPanel.addEventListener("keydown", function (ev) {
-          var inp = ev.target.closest(".generatr-picker-input[data-picker-kind]");
-          if (!inp) return;
-          if (ev.key !== "Enter" && ev.key !== " ") return;
-          ev.preventDefault();
-          generatrOpenPickerFromInput(inp);
-        });
-      }
 
       form.addEventListener("submit", function (e) {
         e.preventDefault();
@@ -11374,16 +12110,7 @@
           ).map(function (el) { return el.value; });
           body.postProcessing = postCmds();
         } else if (type === "drone") {
-          body.musicalStyleMode = GENERATR_DRONE_STYLE_MODE;
-          if (GENERATR_DRONE_STYLE_MODE === "custom") {
-            var customNotes = generatrDroneGetSelectedCustomNotes();
-            if (customNotes.length > 0) body.customNotes = customNotes;
-          } else {
-            body.chartName = (droneChartNameInput.value || "").trim();
-            body.chartType = (droneChartTypeSelect.value || "").trim();
-            body.tags = (droneTagsInput.value || "").trim();
-            body.roots = (droneRootsInput.value || "").trim();
-          }
+          generatrDroneAppendChartSelectionToPayload(body);
           body.pattern = generatrDroneMidiPatternId || "";
           body.lengthBars = parseInt(droneLengthInput.value || "16", 10);
           body.paddedSilenceBars = parseInt(dronePaddedSilenceInput.value || "0", 10);

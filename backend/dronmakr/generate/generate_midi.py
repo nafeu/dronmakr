@@ -562,6 +562,7 @@ def generate_drone_midi(
     shift_root_note=None,
     filters={},
     notes=None,  # Add notes parameter
+    chart_entry=None,
     iteration=None,
     iterations=None,
     *,
@@ -611,6 +612,13 @@ def generate_drone_midi(
         root = _note_pitch_from_note_str(notes[0])
         chord_name = "custom"
         track_name = format_name(f"custom_notes_{pattern}")
+    elif chart_entry:
+        chord = chart_entry.get("notes") or []
+        if not chord:
+            raise ValueError("Selected chart has no notes.")
+        root = str(chart_entry.get("root") or _note_pitch_from_note_str(chord[0]))
+        chord_name = str(chart_entry.get("name") or "chart")
+        track_name = format_name(f"{root}_{chord_name}{output_name}_{pattern}")
     else:
         with open(CHORD_SCALE_LIST, "r", encoding="utf-8") as f:
             chords = json.load(f)
@@ -659,10 +667,10 @@ def generate_drone_midi(
         midi_notes.append(midi_number)
 
     # Drop the root note one octave down
-    if shift_root_note and not notes:
+    if shift_root_note and not notes and not chart_entry:
         midi_notes[0] -= 12
 
-    if shift_octave_down and not notes:
+    if shift_octave_down and not notes and not chart_entry:
         midi_notes = [note - 12 for note in midi_notes]
 
     # 🎵 **MIDI Note Generation Based on Pattern**

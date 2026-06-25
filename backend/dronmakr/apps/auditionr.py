@@ -45,7 +45,7 @@ from dronmakr.core.utils import (
     RED,
     RESET,
 )
-from dronmakr.core.chord_scale_catalog import get_chord_scale_picklists, warm_chord_scale_picklists
+from dronmakr.core.chord_scale_catalog import get_chord_scale_catalog, get_chord_scale_picklists, warm_chord_scale_picklists
 from dronmakr.generate.generate_midi import (
     coerce_drone_midi_length_bars,
     coerce_drone_midi_padding_bars,
@@ -722,9 +722,16 @@ def _parse_drone_custom_notes(raw) -> list[str] | None:
     return validated or None
 
 
-def _build_drone_midi_kwargs_from_payload(payload: dict, *, preview: bool = False) -> dict:
+def _build_drone_midi_kwargs_from_payload(
+    payload: dict,
+    *,
+    preview: bool = False,
+    iteration_index: int = 0,
+    chart_pool_last_key: str | None = None,
+) -> dict:
     """Shared MIDI generation kwargs for drone export and live preview."""
-    musical_style_mode = (payload.get("musicalStyleMode") or "custom").strip().lower()
+    from dronmakr.apps.drone_chart_pool import chart_entry_key, parse_drone_chart_selection, pick_chart_entry
+
     pattern_raw = (payload.get("pattern") or "").strip()
     pattern = pattern_raw or None
     if pattern:
@@ -743,27 +750,17 @@ def _build_drone_midi_kwargs_from_payload(payload: dict, *, preview: bool = Fals
         "padded_silence_bars": 0 if preview else padded_silence_bars,
     }
 
-    if musical_style_mode == "custom":
+    chart_selection = parse_drone_chart_selection(payload.get("chartSelection"))
+    if chart_selection:
+        picked = pick_chart_entry(chart_selection, iteration_index, chart_pool_last_key)
+        midi_kwargs["chart_entry"] = picked
+        midi_kwargs["_chart_pool_last_key"] = chart_entry_key(picked)
+    else:
         custom_notes = _parse_drone_custom_notes(payload.get("customNotes"))
         if custom_notes:
             midi_kwargs["notes"] = custom_notes
         else:
             midi_kwargs["filters"] = {}
-    else:
-        filters: dict = {}
-        tags_raw = (payload.get("tags") or "").strip()
-        roots_raw = (payload.get("roots") or "").strip()
-        if tags_raw:
-            filters["tags"] = [t.strip() for t in tags_raw.split(",") if t.strip()]
-        if roots_raw:
-            filters["roots"] = [r.strip() for r in roots_raw.split(",") if r.strip()]
-        chart_type = (payload.get("chartType") or "").strip().lower()
-        if chart_type:
-            filters["type"] = chart_type
-        chart_name = (payload.get("chartName") or "").strip()
-        if chart_name:
-            filters["name"] = chart_name
-        midi_kwargs["filters"] = filters
 
     return midi_kwargs
 
@@ -1051,7 +1048,6 @@ def _run_generate_drone(payload: dict) -> list[str]:
             "config/presets.json does not exist — open Patchcraftr from the desktop tray (Launch patchcraftr)."
         )
 
-    chart_name = (payload.get("chartName") or "").strip() or None
     instrument, instrument_selection = _parse_drone_instrument_selection(payload)
     effect = (payload.get("effect") or "").strip() or None
     fx_slots, fx_mode = _parse_drone_fx_state(payload)
@@ -1076,13 +1072,21 @@ def _run_generate_drone(payload: dict) -> list[str]:
 
     musical_style_mode = (payload.get("musicalStyleMode") or "custom").strip().lower()
     custom_notes = None
-    if musical_style_mode == "custom":
+    chart_selection = payload.get("chartSelection")
+    if musical_style_mode == "custom" and not chart_selection:
         custom_notes = _parse_drone_custom_notes(payload.get("customNotes"))
 
     results: list[str] = []
     pool_last_key: str | None = None
+    chart_pool_last_key: str | None = None
     for iteration in range(iterations):
-        midi_kwargs = _build_drone_midi_kwargs_from_payload(payload, preview=False)
+        midi_kwargs = _build_drone_midi_kwargs_from_payload(
+            payload,
+            preview=False,
+            iteration_index=iteration,
+            chart_pool_last_key=chart_pool_last_key,
+        )
+        chart_pool_last_key = midi_kwargs.pop("_chart_pool_last_key", chart_pool_last_key)
         midi_obj, selected_chart, render_duration_sec, _pattern_used = generate_drone_midi(
             **midi_kwargs,
             quiet=True,
@@ -1829,6 +1833,10 @@ def _handle_drone_save_preset():
         return jsonify({"error": str(e)}), 500
 
 
+def _handle_drone_chord_scale_catalog():
+    return jsonify({"charts": get_chord_scale_catalog()})
+
+
 def _handle_api_generate_options():
     ensure_settings()
     preset_index = get_presets()
@@ -2040,6 +2048,12 @@ def register_auditionr(app, socketio):
         "auditionr_api_drone_plugin_editor",
         _handle_drone_plugin_editor,
         methods=["POST"],
+    )
+    app.add_url_rule(
+        "/api/generatr/drone-chord-scale-catalog",
+        "auditionr_api_drone_chord_scale_catalog",
+        _handle_drone_chord_scale_catalog,
+        methods=["GET"],
     )
     app.add_url_rule(
         "/api/generatr/drone-midi-patterns",

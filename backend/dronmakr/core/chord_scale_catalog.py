@@ -14,7 +14,17 @@ class ChordScalePicklists(TypedDict):
     chartNames: list[str]
 
 
+class ChordScaleEntry(TypedDict, total=False):
+    id: str
+    root: str
+    name: str
+    notes: list[str]
+    tags: list[str]
+    type: str
+
+
 _picklists_cache: ChordScalePicklists | None = None
+_catalog_cache: list[ChordScaleEntry] | None = None
 
 
 def _ci_sort(vals: list[str]) -> list[str]:
@@ -73,6 +83,52 @@ def get_chord_scale_picklists(path: str | None = None) -> ChordScalePicklists:
         "chartNames": _ci_sort(list(chart_names)),
     }
     return _picklists_cache
+
+
+def get_chord_scale_catalog(path: str | None = None) -> list[ChordScaleEntry]:
+    """Load the full chord/scale catalog once."""
+    global _catalog_cache
+    if _catalog_cache is not None:
+        return _catalog_cache
+
+    data_path = path or str(bundled_asset_path("resources", "chord-scale-data.json"))
+    try:
+        with open(data_path, "r", encoding="utf-8") as f:
+            raw = json.load(f)
+    except (OSError, json.JSONDecodeError, TypeError):
+        _catalog_cache = []
+        return _catalog_cache
+
+    if not isinstance(raw, list):
+        _catalog_cache = []
+        return _catalog_cache
+
+    entries: list[ChordScaleEntry] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        root = item.get("root")
+        name = item.get("name")
+        notes = item.get("notes")
+        if not isinstance(root, str) or not isinstance(name, str) or not isinstance(notes, list):
+            continue
+        if not root.strip() or not name.strip() or not notes:
+            continue
+        entry: ChordScaleEntry = {
+            "id": str(item.get("id") or "").strip(),
+            "root": root.strip(),
+            "name": name.strip(),
+            "notes": [str(n).strip() for n in notes if str(n).strip()],
+            "type": str(item.get("type") or "").strip().lower(),
+            "tags": [],
+        }
+        tags_raw = item.get("tags") or []
+        if isinstance(tags_raw, list):
+            entry["tags"] = [str(t).strip() for t in tags_raw if isinstance(t, str) and str(t).strip()]
+        entries.append(entry)
+
+    _catalog_cache = entries
+    return _catalog_cache
 
 
 def warm_chord_scale_picklists() -> None:

@@ -176,6 +176,11 @@ html.auditionr-debug-waveform-scrollbar #waveforms.os-host > .os-scrollbar-verti
   min-height: 0;
 }
 
+.generatr-drone-chart-selector-list.os-host {
+  overflow: hidden !important;
+  min-height: 600px;
+}
+
 .dron-select-list-scroll.os-host {
   overflow: hidden !important;
 }
