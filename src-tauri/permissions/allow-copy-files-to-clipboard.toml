@@ -1,0 +1,6 @@
+"$schema" = "../gen/schemas/schema.json"
+
+[[permission]]
+identifier = "allow-copy-files-to-clipboard"
+description = "Enables copying audio file paths to the system clipboard."
+commands.allow = ["copy_files_to_clipboard"]

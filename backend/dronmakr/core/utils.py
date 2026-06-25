@@ -1172,20 +1172,22 @@ def ensure_post_processing_shortcuts_file() -> None:
     )
 
 
-DRAGGED_SAVED_MARKER = "_dragged"
+COPIED_SAVED_MARKER = "_copied"
+LEGACY_DRAGGED_SAVED_MARKER = "_dragged"
 
 
 def is_dragged_saved_artifact(filename: str) -> bool:
-    """True for saved/ copies created for DAW drag-out (not user-approved collection items)."""
-    return DRAGGED_SAVED_MARKER in (filename or "")
+    """True for saved/ copies created for DAW export (not user-approved collection items)."""
+    name = filename or ""
+    return COPIED_SAVED_MARKER in name or LEGACY_DRAGGED_SAVED_MARKER in name
 
 
 def allocate_dragged_saved_filename(source_basename: str, saved_dir: str) -> str:
-    """Return an unused filename under saved/ for a drag-out copy of source_basename."""
+    """Return an unused filename under saved/ for a DAW export copy of source_basename."""
     stem, ext = os.path.splitext(source_basename or "")
     if ext.lower() != ".wav":
         ext = ".wav"
-    base = f"{stem}{DRAGGED_SAVED_MARKER}"
+    base = f"{stem}{COPIED_SAVED_MARKER}"
     candidate = f"{base}{ext}"
     if not os.path.exists(os.path.join(saved_dir, candidate)):
         return candidate

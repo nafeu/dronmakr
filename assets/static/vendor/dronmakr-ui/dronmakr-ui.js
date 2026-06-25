@@ -49,12 +49,29 @@
     return value === "auto" || value === "scroll" || value === "overlay";
   }
 
+  var WAVEFORMS_SCROLLBAR_VERSION = "4";
+
+  function isWaveformsScrollHost(el) {
+    return !!(el && el.id === "waveforms");
+  }
+
+  function waveformsScrollbarOptions() {
+    return {
+      theme: "os-theme-dronmakr",
+      visibility: "visible",
+      autoHide: "never",
+      autoHideSuspend: false,
+      dragScroll: true,
+      clickScroll: true,
+    };
+  }
+
   function shouldSkipScrollbar(el) {
     if (!el || el.nodeType !== 1) return true;
     if (el.tagName === "HTML") return true;
     if (el.dataset.nativeUi === "true") return true;
     if (el.closest("[data-native-ui]")) return true;
-    if (el.hasAttribute("data-overlayscrollbars")) return true;
+    if (el.hasAttribute("data-overlayscrollbars") && !isListScrollEl(el)) return true;
     if (el.classList.contains("os-scrollbar")) return true;
     if (el.closest(".os-size-observer, .os-trinsic-observer")) return true;
     if (el.classList.contains("generatr-pp-list-stack")) return true;
@@ -217,6 +234,32 @@
     );
   }
 
+  function getListScrollbarInitOptions(el) {
+    if (isWaveformsScrollHost(el)) {
+      return {
+        overflow: {
+          x: "hidden",
+          y: "scroll",
+        },
+        scrollbars: waveformsScrollbarOptions(),
+      };
+    }
+    return {
+      overflow: {
+        x: "hidden",
+        y: "scroll",
+      },
+      scrollbars: scrollbarOptions.scrollbars,
+    };
+  }
+
+  function waveformsScrollbarNeedsReinit(el) {
+    if (!isWaveformsScrollHost(el)) return false;
+    var bar = el.querySelector(".os-scrollbar-vertical.os-theme-dronmakr");
+    var version = el.getAttribute("data-dron-waveform-scrollbar-version");
+    return !bar || version !== WAVEFORMS_SCROLLBAR_VERSION;
+  }
+
   function bindListScrollbar(el) {
     if (!el || el.nodeType !== 1 || !isListScrollEl(el)) return;
     if (shouldSkipScrollbar(el)) return;
@@ -224,20 +267,26 @@
     if (!OverlayScrollbars) return;
     if (scrollbarInstances.has(el)) {
       var existing = scrollbarInstances.get(el);
-      if (existing && typeof existing.update === "function") {
-        existing.update();
+      if (isWaveformsScrollHost(el) && existing && typeof existing.destroy === "function") {
+        if (waveformsScrollbarNeedsReinit(el)) {
+          existing.destroy();
+          scrollbarInstances.delete(el);
+          delete el.dataset.dronUiScrollbar;
+          el.removeAttribute("data-overlayscrollbars-initialize");
+          el.removeAttribute("data-dron-waveform-scrollbar-version");
+        }
       }
-      return;
+      if (scrollbarInstances.has(el)) {
+        existing = scrollbarInstances.get(el);
+        if (existing && typeof existing.update === "function") {
+          existing.update();
+        }
+        return;
+      }
     }
 
     el.setAttribute("data-overlayscrollbars-initialize", "");
-    var instance = OverlayScrollbars(el, {
-      overflow: {
-        x: "hidden",
-        y: "scroll",
-      },
-      scrollbars: scrollbarOptions.scrollbars,
-    });
+    var instance = OverlayScrollbars(el, getListScrollbarInitOptions(el));
     if (!instance) {
       el.removeAttribute("data-overlayscrollbars-initialize");
       return;
@@ -245,6 +294,24 @@
 
     scrollbarInstances.set(el, instance);
     el.dataset.dronUiScrollbar = "true";
+    if (isWaveformsScrollHost(el)) {
+      el.setAttribute("data-dron-waveform-scrollbar-version", WAVEFORMS_SCROLLBAR_VERSION);
+    }
+  }
+
+  function rebindWaveformListScrollbar() {
+    var el = document.getElementById("waveforms");
+    if (!el) return null;
+    var existing = scrollbarInstances.get(el);
+    if (existing && typeof existing.destroy === "function") {
+      existing.destroy();
+    }
+    scrollbarInstances.delete(el);
+    delete el.dataset.dronUiScrollbar;
+    el.removeAttribute("data-overlayscrollbars-initialize");
+    el.removeAttribute("data-dron-waveform-scrollbar-version");
+    bindListScrollbar(el);
+    return scrollbarInstances.get(el) || null;
   }
 
   function bindScrollbar(el) {
@@ -490,6 +557,7 @@
     unbindSelect: unbindSelect,
     bindScrollbar: bindScrollbar,
     bindListScrollbar: bindListScrollbar,
+    rebindWaveformListScrollbar: rebindWaveformListScrollbar,
     unbindScrollbar: unbindScrollbar,
   };
 

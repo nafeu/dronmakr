@@ -126,10 +126,22 @@
       min-height: 0;
       overflow-x: hidden;
       overflow-y: auto;
-      padding-right: 0.5rem;
+      direction: rtl;
+      padding-left: 0;
+      padding-right: 0;
       padding-bottom: 4rem;
       box-sizing: border-box;
       position: relative;
+    }
+
+    #waveforms #waveform-container,
+    #waveforms #queue-empty-placeholder {
+      direction: ltr;
+    }
+
+    #waveforms #waveform-container {
+      padding-left: 0.5rem;
+      box-sizing: border-box;
     }
 
     #waveforms.os-host {
@@ -3340,6 +3352,34 @@
       color: inherit;
     }
 
+    .waveform-title-copy-icon {
+      opacity: 0.72;
+      flex-shrink: 0;
+      font-size: 0.65rem;
+      min-width: 1em;
+      transition: opacity 0.12s ease, color 0.12s ease;
+      color: var(--theme-c);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .waveform-title-row:hover .waveform-title-copy-icon,
+    .waveform-title-copy-icon.waveform-copy-ready,
+    .waveform-title-copy-icon.waveform-copy-busy {
+      opacity: 1;
+    }
+
+    .waveform-title-copy-icon.waveform-copy-ready {
+      color: var(--theme-e);
+    }
+
+    .waveform-title-copy-icon.waveform-copy-busy {
+      opacity: 0.55;
+      pointer-events: none;
+    }
+
     .waveform-title-row:hover ~ .waveform-duration-wrap .waveform-title-edit-icon,
     .waveform-title-row.waveform-sample-selected ~ .waveform-duration-wrap .waveform-title-edit-icon,
     .waveform-title-row:focus-visible ~ .waveform-duration-wrap .waveform-title-edit-icon,
@@ -4570,7 +4610,7 @@
     var lastFolderCounts = { archive: 0, trash: 0, exports: 0, saved: 0 };
     var selectedWaveformTimestamps = {};
     var processingCatalog = { types: [], actions: [], paramSchemas: {}, presets: [] };
-    var AUDITIONR_WAVEFORM_VISIBLE = 4;
+    var AUDITIONR_WAVEFORM_VISIBLE = 10;
     var currentDisplayedFiles = [];
     var auditionrQuarantinePending = {};
     var auditionrQuarantineNotified = {};
@@ -4688,11 +4728,92 @@
       window.dronmakrUi.refreshScrollbars(sidebar || document);
     }
 
-    function auditionrRefreshWaveformScrollbars() {
-      if (!window.dronmakrUi || typeof window.dronmakrUi.refreshScrollbars !== "function") return;
-      var waveforms = document.getElementById("waveforms");
-      window.dronmakrUi.refreshScrollbars(waveforms || document);
+    function auditionrDebugWaveformScrollbar() {
+      var host = document.getElementById("waveforms");
+      if (!host) {
+        console.warn("[auditionr waveform scrollbar] #waveforms not found");
+        return null;
+      }
+      var bar = host.querySelector(".os-scrollbar-vertical");
+      var track = bar ? bar.querySelector(".os-scrollbar-track") : null;
+      var handle = bar ? bar.querySelector(".os-scrollbar-handle") : null;
+      var viewport = host.querySelector("[data-overlayscrollbars-viewport]");
+      var info = {
+        hostClasses: host.className,
+        bound: host.dataset.dronUiScrollbar === "true",
+        version: host.getAttribute("data-dron-waveform-scrollbar-version"),
+        overlayScrollbarsLoaded: !!(window.OverlayScrollbarsGlobal && window.OverlayScrollbarsGlobal.OverlayScrollbars),
+        verticalBarFound: !!bar,
+        verticalBarClasses: bar ? bar.className : null,
+        verticalBarRect: bar ? bar.getBoundingClientRect() : null,
+        viewportScrollHeight: viewport ? viewport.scrollHeight : host.scrollHeight,
+        viewportClientHeight: viewport ? viewport.clientHeight : host.clientHeight,
+        trackBackground: track ? getComputedStyle(track).backgroundColor : null,
+        handleBackground: handle ? getComputedStyle(handle).backgroundColor : null,
+        handleOpacity: handle ? getComputedStyle(handle).opacity : null,
+        handleHeight: handle ? getComputedStyle(handle).height : null
+      };
+      console.info("[auditionr waveform scrollbar]", info);
+      return info;
     }
+    window.auditionrDebugWaveformScrollbar = auditionrDebugWaveformScrollbar;
+
+    function auditionrApplyWaveformScrollbarDebugMode() {
+      var enabled = false;
+      try {
+        enabled = window.localStorage.getItem("auditionr_debug_waveform_scrollbar") === "1";
+      } catch (e) {}
+      document.documentElement.classList.toggle("auditionr-debug-waveform-scrollbar", enabled);
+      return enabled;
+    }
+
+    function auditionrSyncWaveformScrollIdleState() {
+      var waveforms = document.getElementById("waveforms");
+      if (!waveforms) return;
+      var viewport = waveforms.querySelector("[data-overlayscrollbars-viewport]");
+      var canScroll = false;
+      if (viewport) {
+        canScroll = viewport.scrollHeight > viewport.clientHeight + 1;
+      } else {
+        canScroll = waveforms.scrollHeight > waveforms.clientHeight + 1;
+      }
+      waveforms.classList.toggle("auditionr-waveform-scroll-idle", !canScroll);
+    }
+
+    function auditionrRefreshWaveformScrollbars() {
+      if (!window.dronmakrUi) return;
+      var waveforms = document.getElementById("waveforms");
+      if (waveforms && typeof window.dronmakrUi.rebindWaveformListScrollbar === "function") {
+        if (!waveforms.querySelector(".os-scrollbar-vertical.os-theme-dronmakr")) {
+          window.dronmakrUi.rebindWaveformListScrollbar();
+        } else if (typeof window.dronmakrUi.bindListScrollbar === "function") {
+          window.dronmakrUi.bindListScrollbar(waveforms);
+        }
+      } else if (typeof window.dronmakrUi.refreshScrollbars === "function") {
+        window.dronmakrUi.refreshScrollbars(waveforms || document);
+      }
+      requestAnimationFrame(function () {
+        auditionrSyncWaveformScrollIdleState();
+        requestAnimationFrame(function () {
+          auditionrSyncWaveformScrollIdleState();
+          if (auditionrApplyWaveformScrollbarDebugMode()) {
+            auditionrDebugWaveformScrollbar();
+          }
+        });
+      });
+    }
+
+    function auditionrInitWaveformScrollbar() {
+      auditionrApplyWaveformScrollbarDebugMode();
+      auditionrRefreshWaveformScrollbars();
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", auditionrInitWaveformScrollbar);
+    } else {
+      auditionrInitWaveformScrollbar();
+    }
+    window.addEventListener("load", auditionrInitWaveformScrollbar);
 
     function generatrDroneRefreshPluginPickerScrollbars() {
       if (!window.dronmakrUi || typeof window.dronmakrUi.refreshScrollbars !== "function") return;
@@ -6224,6 +6345,62 @@
       });
     }
 
+    var auditionrClipboardCopyCheckTimer = null;
+    var auditionrActiveClipboardCopyButton = null;
+
+    function auditionrResetClipboardCopyButton(buttonEl) {
+      if (!buttonEl) return;
+      buttonEl.classList.remove("waveform-copy-ready", "waveform-copy-busy");
+      buttonEl.innerHTML = "<i class=\"fa-solid fa-copy\" aria-hidden=\"true\"></i>";
+      buttonEl.title = "Copy to clipboard for DAW paste";
+    }
+
+    function auditionrSetClipboardCopySuccess(buttonEl) {
+      if (
+        auditionrActiveClipboardCopyButton &&
+        auditionrActiveClipboardCopyButton !== buttonEl
+      ) {
+        auditionrResetClipboardCopyButton(auditionrActiveClipboardCopyButton);
+      }
+      auditionrActiveClipboardCopyButton = buttonEl;
+      if (buttonEl) {
+        buttonEl.classList.remove("waveform-copy-busy");
+        buttonEl.classList.add("waveform-copy-ready");
+        buttonEl.innerHTML = "<i class=\"fa-solid fa-check\" aria-hidden=\"true\"></i>";
+        buttonEl.title = "Copied — paste into your DAW";
+      }
+      if (auditionrClipboardCopyCheckTimer) clearTimeout(auditionrClipboardCopyCheckTimer);
+      auditionrClipboardCopyCheckTimer = setTimeout(function () {
+        if (auditionrActiveClipboardCopyButton) {
+          auditionrResetClipboardCopyButton(auditionrActiveClipboardCopyButton);
+          auditionrActiveClipboardCopyButton = null;
+        }
+      }, 4000);
+    }
+
+    function auditionrCopySampleToClipboard(apiPath, copyButtonEl) {
+      if (!auditionrCanExternalFileDrag()) {
+        window.alert("Copy to clipboard is only available in the desktop app.");
+        return Promise.reject(new Error("Not in Tauri"));
+      }
+      if (copyButtonEl) {
+        copyButtonEl.classList.add("waveform-copy-busy");
+        copyButtonEl.innerHTML = "<i class=\"fa-solid fa-spinner fa-spin\" aria-hidden=\"true\"></i>";
+      }
+      return auditionrPrepareDragCopy(apiPath)
+        .then(function (copyPath) {
+          return window.__TAURI__.core.invoke("copy_files_to_clipboard", { paths: [copyPath] });
+        })
+        .then(function () {
+          auditionrSetClipboardCopySuccess(copyButtonEl);
+        })
+        .catch(function (err) {
+          auditionrResetClipboardCopyButton(copyButtonEl);
+          window.alert(err && err.message ? err.message : "Could not copy sample to clipboard.");
+          throw err;
+        });
+    }
+
     function auditionrCreateDragPrepIndicator(clientX, clientY) {
       var el = document.createElement("div");
       el.className = "auditionr-drag-prep-indicator";
@@ -6740,14 +6917,25 @@
       var titleRowEl = document.createElement("button");
       titleRowEl.type = "button";
       titleRowEl.classList.add("waveform-title-row");
-      titleRowEl.title = "Edit sample";
+      titleRowEl.title = "Copy to clipboard for DAW paste";
       var titleTextSpan = document.createElement("span");
       titleTextSpan.className = "waveform-title-text";
       titleTextSpan.textContent = displayName;
+      var titleCopyIcon = document.createElement("span");
+      titleCopyIcon.className = "waveform-title-copy-icon";
+      titleCopyIcon.innerHTML = "<i class=\"fa-solid fa-copy\" aria-hidden=\"true\"></i>";
+      titleCopyIcon.title = "Copy to clipboard for DAW paste";
+      titleCopyIcon.setAttribute("aria-label", "Copy to clipboard for DAW paste");
       titleRowEl.appendChild(titleTextSpan);
-      titleRowEl.addEventListener("click", function () {
-        selectSampleForEdit(file, apiPath, { openEditTab: true });
-      });
+      titleRowEl.appendChild(titleCopyIcon);
+
+      function triggerSampleClipboardCopy(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        auditionrCopySampleToClipboard(apiPath, titleCopyIcon);
+      }
+
+      titleRowEl.addEventListener("click", triggerSampleClipboardCopy);
       titleContainer.appendChild(titleRowEl);
 
       var durationWrap = document.createElement("div");
@@ -6853,7 +7041,7 @@
       actions.appendChild(normalizeButton);
 
       var duplicateButton = document.createElement("div");
-      duplicateButton.innerHTML = "<i class=\"fa-solid fa-copy\"></i>";
+      duplicateButton.innerHTML = "<i class=\"fa-solid fa-layer-group\"></i>";
       duplicateButton.classList.add("button", "icon-btn");
       duplicateButton.title = "Duplicate";
       duplicateButton.addEventListener("click", function () {

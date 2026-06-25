@@ -3,6 +3,8 @@ use std::sync::Mutex;
 use std::thread;
 use std::time::{Duration, Instant};
 
+mod clipboard;
+
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{AppHandle, Emitter, Manager, RunEvent, Url};
 use tauri_plugin_opener::OpenerExt;
@@ -147,6 +149,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_drag::init())
+        .invoke_handler(tauri::generate_handler![clipboard::copy_files_to_clipboard])
         .manage(BackendState {
             port: backend_port,
             child: Mutex::new(None),

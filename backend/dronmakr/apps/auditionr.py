@@ -415,7 +415,7 @@ def refresh_configs():
 
 
 def prepare_drag_copy():
-    """Copy a managed sample into saved/ with a _dragged suffix for stable DAW references."""
+    """Copy a managed sample into saved/ with a _copied suffix for stable DAW references."""
     params = request.get_json() or {}
     if not params.get("path"):
         return jsonify({"error": "File path is required."}), 400
