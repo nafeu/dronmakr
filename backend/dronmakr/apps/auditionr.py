@@ -728,7 +728,7 @@ def _build_drone_midi_kwargs_from_payload(
     preview: bool = False,
     iteration_index: int = 0,
     chart_pool_last_key: str | None = None,
-) -> dict:
+) -> tuple[dict, str | None]:
     """Shared MIDI generation kwargs for drone export and live preview."""
     from dronmakr.apps.drone_chart_pool import chart_entry_key, parse_drone_chart_selection, pick_chart_entry
 
@@ -750,11 +750,12 @@ def _build_drone_midi_kwargs_from_payload(
         "padded_silence_bars": 0 if preview else padded_silence_bars,
     }
 
+    next_chart_pool_last_key = chart_pool_last_key
     chart_selection = parse_drone_chart_selection(payload.get("chartSelection"))
     if chart_selection:
         picked = pick_chart_entry(chart_selection, iteration_index, chart_pool_last_key)
         midi_kwargs["chart_entry"] = picked
-        midi_kwargs["_chart_pool_last_key"] = chart_entry_key(picked)
+        next_chart_pool_last_key = chart_entry_key(picked)
     else:
         custom_notes = _parse_drone_custom_notes(payload.get("customNotes"))
         if custom_notes:
@@ -762,7 +763,7 @@ def _build_drone_midi_kwargs_from_payload(
         else:
             midi_kwargs["filters"] = {}
 
-    return midi_kwargs
+    return midi_kwargs, next_chart_pool_last_key
 
 
 def _parse_drone_instrument_selection(payload: dict) -> tuple[str | None, dict | None]:
@@ -1005,7 +1006,7 @@ def _prepare_drone_editor_preview(
     preview_payload = dict(payload)
     preview_payload["pattern"] = DRONE_AUDIO_PREVIEW_PATTERN
     preview_payload["lengthBars"] = DRONE_AUDIO_PREVIEW_BARS
-    midi_kwargs = _build_drone_midi_kwargs_from_payload(preview_payload, preview=True)
+    midi_kwargs, _chart_pool_last_key = _build_drone_midi_kwargs_from_payload(preview_payload, preview=True)
     midi_kwargs["pattern"] = DRONE_AUDIO_PREVIEW_PATTERN
     midi_obj, _chart_label, render_duration_sec, _pattern_used = generate_drone_midi(
         **midi_kwargs,
@@ -1080,13 +1081,12 @@ def _run_generate_drone(payload: dict) -> list[str]:
     pool_last_key: str | None = None
     chart_pool_last_key: str | None = None
     for iteration in range(iterations):
-        midi_kwargs = _build_drone_midi_kwargs_from_payload(
+        midi_kwargs, chart_pool_last_key = _build_drone_midi_kwargs_from_payload(
             payload,
             preview=False,
             iteration_index=iteration,
             chart_pool_last_key=chart_pool_last_key,
         )
-        chart_pool_last_key = midi_kwargs.pop("_chart_pool_last_key", chart_pool_last_key)
         midi_obj, selected_chart, render_duration_sec, _pattern_used = generate_drone_midi(
             **midi_kwargs,
             quiet=True,
@@ -1163,7 +1163,7 @@ def _run_drone_audio_preview(payload: dict) -> tuple[str, float, str]:
     elif fx_mode == "random":
         fx_slots = None
 
-    midi_kwargs = _build_drone_midi_kwargs_from_payload(preview_payload, preview=True)
+    midi_kwargs, _chart_pool_last_key = _build_drone_midi_kwargs_from_payload(preview_payload, preview=True)
     midi_kwargs["pattern"] = DRONE_AUDIO_PREVIEW_PATTERN
     midi_obj, chart_label, render_duration_sec, _pattern_used = generate_drone_midi(
         **midi_kwargs,
@@ -1752,7 +1752,7 @@ def _handle_drone_midi_import():
 def _handle_drone_midi_preview():
     data = request.get_json() or {}
     try:
-        midi_kwargs = _build_drone_midi_kwargs_from_payload(data, preview=True)
+        midi_kwargs, _chart_pool_last_key = _build_drone_midi_kwargs_from_payload(data, preview=True)
         midi_obj, chart_label, render_duration_sec, pattern_id = generate_drone_midi(
             **midi_kwargs,
             quiet=True,

@@ -1140,11 +1140,12 @@
       z-index: 6;
       display: flex;
       flex-direction: column;
-      align-items: stretch;
+      align-items: center;
       justify-content: center;
-      gap: 0.35rem;
-      padding: 0.45rem 0.55rem;
+      gap: 0.55rem;
+      padding: 0.65rem 0.75rem;
       box-sizing: border-box;
+      text-align: center;
       background: color-mix(in srgb, var(--secondary) 88%, transparent);
       backdrop-filter: blur(2px);
     }
@@ -1153,93 +1154,46 @@
       display: none !important;
     }
 
-    .generatr-drone-chart-pool-overlay-nav {
-      display: flex;
-      align-items: stretch;
-      gap: 0.35rem;
-      min-height: 0;
-      flex: 1 1 auto;
-    }
-
-    .generatr-drone-chart-pool-arrow {
-      flex: 0 0 auto;
-      align-self: center;
-      width: 1.65rem;
-      height: 1.65rem;
-      border: 1px solid rgba(255, 255, 255, 0.22);
-      border-radius: var(--dron-control-radius);
-      background: rgba(255, 255, 255, 0.08);
-      color: var(--primary);
-      cursor: pointer;
-      font-family: inherit;
-      font-size: 0.72rem;
-    }
-
-    .generatr-drone-chart-pool-arrow:disabled {
-      opacity: 0.35;
-      cursor: not-allowed;
-    }
-
-    .generatr-drone-chart-pool-grid {
-      flex: 1 1 auto;
-      min-width: 0;
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0.28rem 0.45rem;
-      align-content: start;
-      overflow: hidden;
-    }
-
-    .generatr-drone-chart-pool-item {
-      font-size: 0.68rem;
-      line-height: 1.25;
-      color: color-mix(in srgb, var(--primary) 88%, var(--theme-d));
-      padding: 0.18rem 0.28rem;
-      border-radius: 3px;
-      background: rgba(255, 255, 255, 0.06);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .generatr-drone-chart-pool-meta {
+    .generatr-drone-chart-pool-summary {
       margin: 0;
-      font-size: 0.62rem;
-      text-align: center;
-      color: color-mix(in srgb, var(--theme-a) 75%, transparent);
+      font-size: 0.75rem;
+      line-height: 1.35;
+      color: var(--primary);
+    }
+
+    .generatr-drone-chart-pool-selection {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .generatr-drone-chart-pool-selection-options {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.45rem 0.75rem;
+    }
+
+    .generatr-drone-chart-pool-selection-options label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.28rem;
+      font-size: 0.68rem;
+      line-height: 1.2;
+      color: color-mix(in srgb, var(--theme-a) 82%, transparent);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .generatr-drone-chart-pool-selection-options input[type="radio"] {
+      margin: 0;
+      accent-color: var(--primary);
     }
 
     .generatr-drone-piano-unit.is-chart-pool-locked .generatr-drone-piano-roll,
     .generatr-drone-piano-unit.is-chart-pool-locked .generatr-drone-octave-nav {
       pointer-events: none;
       opacity: 0.35;
-    }
-
-    .generatr-drone-chart-selection-row {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: flex-end;
-      gap: 0.65rem;
-    }
-
-    .generatr-drone-chart-selection-row.hidden {
-      display: none !important;
-    }
-
-    .generatr-drone-chart-selection-row label {
-      font-size: var(--dron-label-size);
-      color: var(--theme-a);
-    }
-
-    .generatr-drone-chart-selection-row select {
-      min-width: 9rem;
-    }
-
-    .generatr-drone-chart-summary {
-      margin: 0;
-      font-size: 0.62rem;
-      line-height: 1.35;
-      color: color-mix(in srgb, var(--theme-a) 72%, transparent);
     }
 
     .generatr-drone-piano-controls {
@@ -4678,12 +4632,14 @@
                             <button type="button" class="generatr-drone-octave-btn" id="generatr-drone-octave-down" aria-label="Previous octave range"><i class="fa-solid fa-chevron-down" aria-hidden="true"></i></button>
                           </div>
                           <div id="generatr-drone-chart-pool-overlay" class="generatr-drone-chart-pool-overlay hidden" aria-hidden="true">
-                            <div class="generatr-drone-chart-pool-overlay-nav">
-                              <button type="button" class="generatr-drone-chart-pool-arrow" id="generatr-drone-chart-pool-prev" aria-label="Previous charts">&lsaquo;</button>
-                              <div class="generatr-drone-chart-pool-grid" id="generatr-drone-chart-pool-grid" aria-live="polite"></div>
-                              <button type="button" class="generatr-drone-chart-pool-arrow" id="generatr-drone-chart-pool-next" aria-label="Next charts">&rsaquo;</button>
+                            <p class="generatr-drone-chart-pool-summary" id="generatr-drone-chart-pool-summary" aria-live="polite"></p>
+                            <div class="generatr-drone-chart-pool-selection" role="radiogroup" aria-label="Selection">
+                              <div class="generatr-drone-chart-pool-selection-options">
+                                <label><input type="radio" name="generatr-drone-chart-selection-mode" value="random" checked> random</label>
+                                <label><input type="radio" name="generatr-drone-chart-selection-mode" value="round_robin"> round robin</label>
+                                <label><input type="radio" name="generatr-drone-chart-selection-mode" value="random_unique"> random unique</label>
+                              </div>
                             </div>
-                            <p class="generatr-drone-chart-pool-meta" id="generatr-drone-chart-pool-meta"></p>
                           </div>
                         </div>
                         <div class="generatr-drone-piano-controls">
@@ -4708,17 +4664,6 @@
                               <button type="button" class="generatr-drone-preview-wave-btn" id="generatr-drone-select-chart">select chart</button>
                               <button type="button" class="generatr-drone-preview-wave-btn hidden" id="generatr-drone-clear-chart">clear</button>
                             </div>
-                            <p class="generatr-drone-chart-summary hidden" id="generatr-drone-chart-summary"></p>
-                          </div>
-                        </div>
-                        <div class="generatr-drone-chart-selection-row hidden" id="generatr-drone-chart-selection-row">
-                          <div class="generatr-drone-piano-control-section">
-                            <label for="generatr-drone-chart-selection-mode">selection</label>
-                            <select id="generatr-drone-chart-selection-mode" aria-label="Chart selection mode">
-                              <option value="random" selected>random</option>
-                              <option value="round_robin">round robin</option>
-                              <option value="random_unique">random unique</option>
-                            </select>
                           </div>
                         </div>
                       </div>
@@ -7925,15 +7870,9 @@
       var beatVariantsList = document.getElementById("generatr-beat-variants-list");
       var droneSelectChartBtn = document.getElementById("generatr-drone-select-chart");
       var droneClearChartBtn = document.getElementById("generatr-drone-clear-chart");
-      var droneChartSummaryEl = document.getElementById("generatr-drone-chart-summary");
-      var droneChartSelectionRow = document.getElementById("generatr-drone-chart-selection-row");
-      var droneChartSelectionMode = document.getElementById("generatr-drone-chart-selection-mode");
-      var dronePianoUnitEl = document.getElementById("generatr-drone-piano-unit");
       var droneChartPoolOverlay = document.getElementById("generatr-drone-chart-pool-overlay");
-      var droneChartPoolGrid = document.getElementById("generatr-drone-chart-pool-grid");
-      var droneChartPoolMeta = document.getElementById("generatr-drone-chart-pool-meta");
-      var droneChartPoolPrev = document.getElementById("generatr-drone-chart-pool-prev");
-      var droneChartPoolNext = document.getElementById("generatr-drone-chart-pool-next");
+      var droneChartPoolSummary = document.getElementById("generatr-drone-chart-pool-summary");
+      var dronePianoUnitEl = document.getElementById("generatr-drone-piano-unit");
       var droneChartSelectorModal = document.getElementById("generatr-drone-chart-selector-modal");
       var droneChartSelectorFilter = document.getElementById("generatr-drone-chart-selector-filter");
       var droneChartSelectorNames = document.getElementById("generatr-drone-chart-selector-names");
@@ -8188,10 +8127,22 @@
         droneStyleRandomHint.classList.toggle("hidden", !show);
       }
 
+      function generatrDroneGetChartSelectionMode() {
+        var checked = document.querySelector('input[name="generatr-drone-chart-selection-mode"]:checked');
+        return (checked && checked.value) || generatrDroneChartPool.mode || "random";
+      }
+
+      function generatrDroneSyncChartSelectionModeRadios() {
+        var mode = generatrDroneChartPool.mode || "random";
+        document.querySelectorAll('input[name="generatr-drone-chart-selection-mode"]').forEach(function (input) {
+          input.checked = input.value === mode;
+        });
+      }
+
       function generatrDroneAppendChartSelectionToPayload(payload) {
         if (generatrDroneChartPool.active && generatrDroneChartPool.charts.length) {
           payload.chartSelection = {
-            mode: (droneChartSelectionMode && droneChartSelectionMode.value) || generatrDroneChartPool.mode || "random",
+            mode: generatrDroneGetChartSelectionMode(),
             charts: generatrDroneChartPool.charts.map(function (chart) {
               return {
                 id: chart.id || "",
@@ -11238,12 +11189,10 @@
       var generatrDronePianoOctave = GENERATR_DRONE_OCTAVE_DEFAULT;
       var generatrDronePianoBuilt = false;
       var GENERATR_DRONE_CHART_TYPES = ["chord", "scale"];
-      var GENERATR_DRONE_CHART_POOL_PAGE_SIZE = 8;
       var generatrDroneChartPool = {
         active: false,
         mode: "random",
-        charts: [],
-        browsePage: 0
+        charts: []
       };
       var generatrDroneChartSelectorState = {
         filters: { chartNames: [], chartTypes: [], tags: [], roots: [] },
@@ -11535,6 +11484,48 @@
         return String(chart.root || "").trim() + " " + String(chart.name || "").trim();
       }
 
+      function generatrDroneChartResultRowLabel(chart, includeRoot) {
+        if (!chart) return "";
+        var name = String(chart.name || "").trim();
+        var type = String(chart.type || "").trim();
+        if (includeRoot) {
+          return generatrDroneChartLabel(chart) + (type ? " · " + type : "");
+        }
+        return name + (type ? " · " + type : "");
+      }
+
+      function generatrDroneSummarizeChartMatchesForDisplay(matches, filters) {
+        filters = filters || {};
+        var includeRoot = !!(filters.roots && filters.roots.length);
+        if (includeRoot) {
+          return (matches || []).map(function (chart) {
+            return {
+              label: generatrDroneChartResultRowLabel(chart, true),
+              sortKey: generatrDroneChartLabel(chart).toLowerCase()
+            };
+          }).sort(function (a, b) {
+            return a.sortKey.localeCompare(b.sortKey);
+          });
+        }
+
+        var seen = Object.create(null);
+        var rows = [];
+        (matches || []).forEach(function (chart) {
+          var name = String(chart.name || "").trim();
+          var type = String(chart.type || "").trim();
+          var key = name.toLowerCase() + "\0" + type.toLowerCase();
+          if (seen[key]) return;
+          seen[key] = true;
+          rows.push({
+            label: generatrDroneChartResultRowLabel(chart, false),
+            sortKey: name.toLowerCase() + "\0" + type.toLowerCase()
+          });
+        });
+        return rows.sort(function (a, b) {
+          return a.sortKey.localeCompare(b.sortKey);
+        });
+      }
+
       function generatrDroneLoadChartCatalog() {
         if (generatrDroneChartCatalogLoaded) {
           return Promise.resolve(generatrDroneChartCatalog);
@@ -11652,13 +11643,12 @@
       function generatrDroneClearChartPool() {
         generatrDroneChartPool.active = false;
         generatrDroneChartPool.charts = [];
-        generatrDroneChartPool.browsePage = 0;
         if (dronePianoUnitEl) dronePianoUnitEl.classList.remove("is-chart-pool-locked");
         if (droneChartPoolOverlay) {
           droneChartPoolOverlay.classList.add("hidden");
           droneChartPoolOverlay.setAttribute("aria-hidden", "true");
         }
-        if (droneChartPoolGrid) droneChartPoolGrid.innerHTML = "";
+        if (droneChartPoolSummary) droneChartPoolSummary.textContent = "";
         generatrDroneUpdateChartSummaryUi();
         generatrDroneUpdateStyleRandomHint();
       }
@@ -11668,8 +11658,8 @@
         generatrDroneSyncPianoRollKeyStates();
         generatrDroneChartPool.active = true;
         generatrDroneChartPool.charts = charts.slice();
-        generatrDroneChartPool.browsePage = 0;
-        generatrDroneChartPool.mode = (droneChartSelectionMode && droneChartSelectionMode.value) || "random";
+        generatrDroneChartPool.mode = generatrDroneGetChartSelectionMode();
+        generatrDroneSyncChartSelectionModeRadios();
         if (dronePianoUnitEl) dronePianoUnitEl.classList.add("is-chart-pool-locked");
         if (droneChartPoolOverlay) {
           droneChartPoolOverlay.classList.remove("hidden");
@@ -11682,51 +11672,15 @@
       }
 
       function generatrDroneRenderChartPoolOverlay() {
-        if (!droneChartPoolGrid || !generatrDroneChartPool.active) return;
-        var charts = generatrDroneChartPool.charts || [];
-        var pageSize = GENERATR_DRONE_CHART_POOL_PAGE_SIZE;
-        var page = generatrDroneChartPool.browsePage || 0;
-        var maxPage = Math.max(0, Math.ceil(charts.length / pageSize) - 1);
-        if (page > maxPage) {
-          page = maxPage;
-          generatrDroneChartPool.browsePage = page;
-        }
-        var slice = charts.slice(page * pageSize, page * pageSize + pageSize);
-        droneChartPoolGrid.innerHTML = "";
-        slice.forEach(function (chart) {
-          var item = document.createElement("div");
-          item.className = "generatr-drone-chart-pool-item";
-          item.textContent = generatrDroneChartLabel(chart);
-          item.title = generatrDroneChartLabel(chart);
-          droneChartPoolGrid.appendChild(item);
-        });
-        if (droneChartPoolMeta) {
-          droneChartPoolMeta.textContent = charts.length + " charts selected · page " + (page + 1) + " of " + (maxPage + 1);
-        }
-        if (droneChartPoolPrev) droneChartPoolPrev.disabled = page <= 0;
-        if (droneChartPoolNext) droneChartPoolNext.disabled = page >= maxPage;
+        if (!generatrDroneChartPool.active || !droneChartPoolSummary) return;
+        var count = (generatrDroneChartPool.charts || []).length;
+        droneChartPoolSummary.textContent = count + " chart" + (count === 1 ? "" : "s") + " selected";
       }
 
       function generatrDroneUpdateChartSummaryUi() {
         var count = generatrDroneChartPool.active ? generatrDroneChartPool.charts.length : 0;
-        var hasManualNotes = generatrDroneGetSelectedCustomNotes().length > 0 && !generatrDroneChartPool.active;
-        if (droneChartSummaryEl) {
-          if (count > 1) {
-            droneChartSummaryEl.textContent = count + " charts locked for generation";
-            droneChartSummaryEl.classList.remove("hidden");
-          } else if (hasManualNotes) {
-            droneChartSummaryEl.textContent = "Custom notes on piano roll";
-            droneChartSummaryEl.classList.remove("hidden");
-          } else {
-            droneChartSummaryEl.textContent = "";
-            droneChartSummaryEl.classList.add("hidden");
-          }
-        }
         if (droneClearChartBtn) {
-          droneClearChartBtn.classList.toggle("hidden", !(count > 1 || hasManualNotes));
-        }
-        if (droneChartSelectionRow) {
-          droneChartSelectionRow.classList.toggle("hidden", count <= 1);
+          droneClearChartBtn.classList.toggle("hidden", count <= 1);
         }
       }
 
@@ -11899,16 +11853,17 @@
             none.textContent = "No charts found. Adjust your filters or clear all.";
             droneChartSelectorResults.appendChild(none);
           } else {
-            matches.slice(0, 500).forEach(function (chart) {
-              var row = document.createElement("div");
-              row.className = "generatr-drone-chart-selector-result-row";
-              row.textContent = generatrDroneChartLabel(chart) + (chart.type ? " · " + chart.type : "");
-              droneChartSelectorResults.appendChild(row);
+            var displayRows = generatrDroneSummarizeChartMatchesForDisplay(matches, filters);
+            displayRows.slice(0, 500).forEach(function (row) {
+              var el = document.createElement("div");
+              el.className = "generatr-drone-chart-selector-result-row";
+              el.textContent = row.label;
+              droneChartSelectorResults.appendChild(el);
             });
-            if (matches.length > 500) {
+            if (displayRows.length > 500) {
               var more = document.createElement("p");
               more.className = "generatr-drone-chart-selector-empty";
-              more.textContent = "Showing first 500 matches. Narrow your filters.";
+              more.textContent = "Showing first 500 entries. Narrow your filters.";
               droneChartSelectorResults.insertBefore(more, droneChartSelectorResults.firstChild);
             }
           }
@@ -11964,6 +11919,16 @@
       }
 
       function confirmGeneratrDroneChartSelector() {
+        var filters = generatrDroneChartSelectorState.filters;
+        if (!generatrDroneChartSelectorHasActiveFilters(filters)) {
+          closeGeneratrDroneChartSelectorDiscard();
+          generatrDroneClearChartPool();
+          generatrDroneCustomNotes = Object.create(null);
+          generatrDroneSyncPianoRollKeyStates();
+          generatrDroneUpdateStyleRandomHint();
+          if (kindSelect && kindSelect.value === "drone") generatrDroneRefreshMidiPreview();
+          return;
+        }
         var matches = generatrDroneFilterCharts(
           generatrDroneChartCatalog,
           generatrDroneChartSelectorState.filters
@@ -12030,23 +11995,11 @@
           if (kindSelect && kindSelect.value === "drone") generatrDroneRefreshMidiPreview();
         });
       }
-      if (droneChartPoolPrev) {
-        droneChartPoolPrev.addEventListener("click", function () {
-          if (generatrDroneChartPool.browsePage > 0) {
-            generatrDroneChartPool.browsePage -= 1;
-            generatrDroneRenderChartPoolOverlay();
-          }
-        });
-      }
-      if (droneChartPoolNext) {
-        droneChartPoolNext.addEventListener("click", function () {
-          generatrDroneChartPool.browsePage += 1;
-          generatrDroneRenderChartPoolOverlay();
-        });
-      }
-      if (droneChartSelectionMode) {
-        droneChartSelectionMode.addEventListener("change", function () {
-          generatrDroneChartPool.mode = droneChartSelectionMode.value || "random";
+      if (droneChartPoolOverlay) {
+        droneChartPoolOverlay.addEventListener("change", function (ev) {
+          var input = ev.target;
+          if (!input || input.name !== "generatr-drone-chart-selection-mode") return;
+          generatrDroneChartPool.mode = input.value || "random";
         });
       }
       if (droneChartSelectorFilter) {
