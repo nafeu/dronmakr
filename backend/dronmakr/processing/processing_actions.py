@@ -60,6 +60,7 @@ from dronmakr.audio.process_sample import (
     pad_sample,
     trim_sample_end,
     trim_sample_start,
+    apply_plugin_patch_to_sample,
 )
 
 PROCESSING_TYPES = [
@@ -82,6 +83,7 @@ PROCESSING_TYPES = [
     {"key": "chorus", "label": "Chorus"},
     {"key": "flanger", "label": "Flanger"},
     {"key": "phaser", "label": "Phaser"},
+    {"key": "plugin_patch", "label": "Plugin Patch"},
 ]
 
 PROCESSING_TYPE_KEYS = frozenset(t["key"] for t in PROCESSING_TYPES)
@@ -1362,7 +1364,53 @@ def action_from_bracket_segment(seg: str) -> dict:
             },
         }
 
+    if ptype == "plugin_patch":
+        patch = str(params.get("patch") or "").strip()
+        if not patch:
+            raise ValueError("plugin_patch: requires patch=<saved FX patch name>")
+        return {
+            "token": seg_stripped,
+            "command": "apply_plugin_patch_to_sample",
+            "params": {"patch": patch},
+        }
+
     raise ValueError(f"Unknown bracket action type: {ptype}")
+
+
+def _load_fx_patch_options_for_edit_ui() -> list[dict[str, str]]:
+    """Saved effect / effect_chain presets for the Edit Samples plugin-patch picker."""
+    from dronmakr.core.utils import resolve_presets_index_path
+
+    presets_path = resolve_presets_index_path()
+    if not presets_path or not os.path.isfile(presets_path):
+        return []
+    try:
+        with open(presets_path, encoding="utf-8") as handle:
+            presets = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return []
+    if not isinstance(presets, list):
+        return []
+
+    options: list[dict[str, str]] = []
+    for preset in presets:
+        if not isinstance(preset, dict):
+            continue
+        ptype = (preset.get("type") or "").strip()
+        if ptype not in ("effect", "effect_chain"):
+            continue
+        name = (preset.get("name") or "").strip()
+        if not name:
+            continue
+        plugin_name = (preset.get("plugin_name") or "").strip()
+        if ptype == "effect_chain":
+            steps = len(preset.get("effects") or [])
+            label = f"{name} · FX chain · {steps} step(s)"
+        else:
+            label = f"{name} · {plugin_name or 'FX patch'}"
+        options.append({"name": name, "type": ptype, "label": label})
+    options.sort(key=lambda row: row["name"].lower())
+    return options
 
 
 def infer_processing_type_prefix(command: str) -> str:
@@ -1554,6 +1602,7 @@ def get_processing_actions_payload() -> dict:
         "actions": actions,
         "paramSchemas": copy.deepcopy(_PARAM_SCHEMAS_UI),
         "presets": presets,
+        "pluginPatchOptions": _load_fx_patch_options_for_edit_ui(),
     }
 
 
@@ -1855,6 +1904,8 @@ def apply_processing_command(file_path: str, command: str, params: dict | None =
             apply_eq_mids_to_sample(file_path, p.get("db", 0))
         case "eq_highs_sample":
             apply_eq_highs_to_sample(file_path, p.get("db", 0))
+        case "apply_plugin_patch_to_sample":
+            apply_plugin_patch_to_sample(file_path, p.get("patch") or "")
         case _:
             raise ValueError(f"Unsupported processing command: {command}")
 

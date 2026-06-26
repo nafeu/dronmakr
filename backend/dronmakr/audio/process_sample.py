@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 import numpy as np
@@ -7,7 +8,7 @@ from scipy.signal import fftconvolve
 
 import dronmakr.audio.dsp as dsp
 from dronmakr.audio.paulstretch import paulstretch
-from dronmakr.core.utils import with_process_drone_sample_prompt
+from dronmakr.core.utils import resolve_presets_index_path, with_process_drone_sample_prompt
 
 
 def log_sample_processing_line(message: str) -> None:
@@ -35,6 +36,92 @@ def apply_normalization(input_path):
     audio, sample_rate = _read_channels_first(input_path)
     processed = dsp.apply_master_normalization_chain(audio, sample_rate)
     _write_channels_first(input_path, processed, sample_rate)
+
+
+def _finalize_fx_processed_audio(
+    processed: np.ndarray,
+    *,
+    target_samples: int | None = None,
+    peak_limit: float = 0.99,
+) -> np.ndarray:
+    """Prepare plug-in FX output for sample replacement without export mastering."""
+    out = np.asarray(processed, dtype=np.float32)
+    if out.ndim == 1:
+        out = np.column_stack([out, out])
+    if target_samples is not None and out.shape[0] > target_samples:
+        out = out[:target_samples]
+    peak = float(np.max(np.abs(out))) if out.size else 0.0
+    if peak > float(peak_limit):
+        out = out * (float(peak_limit) / peak)
+    return out
+
+
+def apply_plugin_patch_to_sample(input_path, patch_name, presets_path=None):
+    """Run the selected saved FX patch or FX chain through a WAV file in place."""
+    from dronmakr.audio.audio_host import render_wav_through_fx_paths
+
+    patch_name = (patch_name or "").strip()
+    if not patch_name:
+        raise ValueError("Plugin patch name is required.")
+
+    presets_path = presets_path or resolve_presets_index_path()
+    if not presets_path:
+        raise FileNotFoundError(
+            "config/presets.json does not exist — save an FX patch from Generate Samples first."
+        )
+
+    from dronmakr.audio.audio_worker import delegate_apply_plugin_patch_if_needed
+
+    if delegate_apply_plugin_patch_if_needed(
+        os.path.abspath(input_path),
+        patch_name,
+        os.path.abspath(presets_path),
+    ):
+        return
+
+    input_data, input_sample_rate = sf.read(input_path, dtype="float32", always_2d=True)
+    target_samples = int(input_data.shape[0])
+
+    with open(presets_path, encoding="utf-8") as handle:
+        presets = json.load(handle)
+    if not isinstance(presets, list):
+        raise ValueError(f"{presets_path} must contain a JSON array of preset objects.")
+
+    effect_preset = next(
+        (
+            preset
+            for preset in presets
+            if isinstance(preset, dict)
+            and preset.get("type") in ("effect", "effect_chain")
+            and (preset.get("name") or "").strip() == patch_name
+        ),
+        None,
+    )
+    if effect_preset is None:
+        raise ValueError(f"No saved FX patch named '{patch_name}'.")
+
+    from dronmakr.generate.generate_sample import effect_slot_entries
+
+    slot_list = effect_slot_entries(effect_preset)
+    if not slot_list:
+        raise ValueError(f"FX patch '{patch_name}' has no processors to load.")
+
+    fx_specs = [(step["plugin_path"], step.get("preset_path") or "") for step in slot_list]
+    processed, sample_rate = render_wav_through_fx_paths(
+        input_path,
+        fx_specs,
+        tail_sec=3.0,
+    )
+    if processed.size == 0 or not np.isfinite(processed).all():
+        raise RuntimeError(f"Plugin patch '{patch_name}' produced empty or invalid audio.")
+    if sample_rate != input_sample_rate:
+        raise ValueError(
+            f"Sample rate changed during FX render ({input_sample_rate} → {sample_rate})."
+        )
+
+    out = _finalize_fx_processed_audio(processed, target_samples=target_samples)
+    sf.write(input_path, out, sample_rate, subtype="PCM_16")
+    log_sample_processing_line(f"Applied plugin patch '{patch_name}'")
 
 
 def trim_sample_start(input_path, start_time_s):

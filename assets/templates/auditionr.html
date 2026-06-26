@@ -3470,6 +3470,17 @@
       margin-top: 0;
     }
 
+    .edit-apply-row.edit-apply-row-solo .btn-edit-apply {
+      width: 100%;
+    }
+
+    .edit-plugin-patch-empty {
+      margin: 0;
+      padding: 0.35rem;
+      font-size: 0.78rem;
+      color: var(--secondary);
+    }
+
     .edit-shortcut-name-input {
       flex: 1 1 140px;
       min-width: 0;
@@ -5209,7 +5220,7 @@
     var socket = io();
     var lastFolderCounts = { archive: 0, trash: 0, exports: 0, saved: 0 };
     var selectedWaveformTimestamps = {};
-    var processingCatalog = { types: [], actions: [], paramSchemas: {}, presets: [] };
+    var processingCatalog = { types: [], actions: [], paramSchemas: {}, presets: [], pluginPatchOptions: [] };
     var AUDITIONR_WAVEFORM_VISIBLE = 10;
     var currentDisplayedFiles = [];
     var auditionrQuarantinePending = {};
@@ -5273,7 +5284,7 @@
       renderGeneratrPostProcessingQueue();
     }
 
-    var EDIT_SECTION_ORDER = ["fade", "padding", "eq", "gain", "filter", "noisegate", "timestretch", "paulstretch", "pitch", "reverb", "delay", "compress", "overdrive", "distort", "chorus", "flanger", "phaser"];
+    var EDIT_SECTION_ORDER = ["fade", "padding", "eq", "gain", "filter", "noisegate", "timestretch", "paulstretch", "pitch", "reverb", "delay", "compress", "overdrive", "distort", "chorus", "flanger", "phaser", "plugin_patch"];
     /** Beat multipliers for tempo-sync delay preview (matches dsp.delay_division_to_seconds). */
     var EDIT_DELAY_DIV_BEATS = {
       "1/64": 1 / 16,
@@ -5313,9 +5324,41 @@
       processingCatalog.actions = Array.isArray(payload.actions) ? payload.actions : [];
       processingCatalog.paramSchemas = payload.paramSchemas || {};
       processingCatalog.presets = Array.isArray(payload.presets) ? payload.presets : [];
+      processingCatalog.pluginPatchOptions = Array.isArray(payload.pluginPatchOptions)
+        ? payload.pluginPatchOptions
+        : [];
       renderEditSamplesPanel();
       renderGeneratrPostProcessingLibraryFromCatalog();
       renderGeneratrPostProcessingQueue();
+    }
+
+    function editGetPluginPatchSelectOptions() {
+      return (processingCatalog.pluginPatchOptions || []).map(function (patch) {
+        return {
+          value: patch.name || "",
+          label: patch.label || patch.name || "patch"
+        };
+      }).filter(function (opt) { return opt.value; });
+    }
+
+    function generatrEditReloadFxPatchOptions() {
+      fetch("/api/generatr/drone-plugin-picker?role=effect")
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (data.error) return;
+          processingCatalog.pluginPatchOptions = (Array.isArray(data.patches) ? data.patches : []).map(function (patch) {
+            var name = patch.name || "";
+            var label = name;
+            if (patch.type === "effect_chain") {
+              label = name + " · FX chain · " + ((patch.effects || []).length || 0) + " step(s)";
+            } else if (patch.pluginName) {
+              label = name + " · " + patch.pluginName;
+            }
+            return { name: name, type: patch.type || "", label: label };
+          });
+          renderEditSamplesPanel();
+        })
+        .catch(function () {});
     }
 
     function generatrRefreshPostProcessingScrollbars() {
@@ -6520,6 +6563,11 @@
           return "flanger:[rate_hz=" + fmtSpecNum(phys("rate_hz_ui")) + "][depth=" + fmtSpecNum(phys("depth_ui")) + "][centre_delay_ms=" + fmtSpecNum(phys("centre_delay_ms_ui")) + "][feedback=" + fmtSpecNum(phys("feedback_ui")) + "][mix=" + fmtSpecNum(phys("mix_ui")) + "]";
         case "phaser":
           return "phaser:[rate_hz=" + fmtSpecNum(phys("rate_hz_ui")) + "][depth=" + fmtSpecNum(phys("depth_ui")) + "][centre_frequency_hz=" + fmtSpecNum(phys("centre_frequency_hz_ui")) + "][feedback=" + fmtSpecNum(phys("feedback_ui")) + "][mix=" + fmtSpecNum(phys("mix_ui")) + "]";
+        case "plugin_patch": {
+          var patchName = readEditControl(sectionEl, "patch") || "";
+          if (!String(patchName).trim()) return null;
+          return "plugin_patch:[patch=" + String(patchName).trim() + "]";
+        }
         default:
           return null;
       }
@@ -6555,6 +6603,66 @@
         var sec = document.createElement("section");
         sec.className = "edit-sample-section";
         sec.dataset.editType = typeKey;
+
+        if (typeKey === "plugin_patch") {
+          var pluginPatchCard = document.createElement("div");
+          pluginPatchCard.className = "generatr-sweep-effect edit-effect-card";
+
+          var pluginPatchHead = document.createElement("div");
+          pluginPatchHead.className = "generatr-sweep-effect-head";
+          var pluginPatchTitle = document.createElement("span");
+          pluginPatchTitle.className = "generatr-sweep-effect-title";
+          pluginPatchTitle.textContent = typesByKey[typeKey] || typeKey;
+          pluginPatchHead.appendChild(pluginPatchTitle);
+
+          var pluginPatchBody = document.createElement("div");
+          pluginPatchBody.className = "generatr-sweep-effect-body";
+          var pluginPatchKnobs = document.createElement("div");
+          pluginPatchKnobs.className = "generatr-sweep-effect-knobs edit-effect-knobs";
+
+          var pluginPatchOptions = editGetPluginPatchSelectOptions();
+          if (!pluginPatchOptions.length) {
+            var pluginPatchEmpty = document.createElement("p");
+            pluginPatchEmpty.className = "generatr-drone-plugin-picker-meta edit-plugin-patch-empty";
+            pluginPatchEmpty.textContent = "No saved FX patches yet — save one from the FX slot in Generate Samples.";
+            pluginPatchKnobs.appendChild(pluginPatchEmpty);
+          } else {
+            pluginPatchKnobs.appendChild(editCreateSelectControl({
+              key: "patch",
+              label: "Saved patch",
+              widget: "select",
+              options: pluginPatchOptions,
+              default: pluginPatchOptions[0].value
+            }, typeKey, sec));
+          }
+
+          pluginPatchBody.appendChild(pluginPatchKnobs);
+          pluginPatchCard.appendChild(pluginPatchHead);
+          pluginPatchCard.appendChild(pluginPatchBody);
+          sec.appendChild(pluginPatchCard);
+
+          var pluginPatchApplyBtn = document.createElement("button");
+          pluginPatchApplyBtn.type = "button";
+          pluginPatchApplyBtn.className = "btn-edit-apply";
+          pluginPatchApplyBtn.textContent = "Apply";
+          pluginPatchApplyBtn.disabled = !pluginPatchOptions.length;
+          pluginPatchApplyBtn.addEventListener("click", function () {
+            var spec = buildSpecFromSection(sec, typeKey);
+            if (!spec) {
+              window.alert("Choose a saved FX patch first.");
+              return;
+            }
+            applyEditProcessingSpec(spec);
+          });
+
+          var pluginPatchApplyRow = document.createElement("div");
+          pluginPatchApplyRow.className = "edit-apply-row edit-apply-row-solo";
+          pluginPatchApplyRow.appendChild(pluginPatchApplyBtn);
+          sec.appendChild(pluginPatchApplyRow);
+
+          detailEl.appendChild(sec);
+          return;
+        }
 
         var presetsWrap = document.createElement("div");
         presetsWrap.className = "edit-presets-row";
@@ -8995,6 +9103,7 @@
             generatrDroneClearSelectionsUsingPatch(deletedPatch);
             generatrDroneCloseDeletePresetModal();
             generatrDroneRefreshOpenPickerPatchLists();
+            generatrEditReloadFxPatchOptions();
           })
           .catch(function (err) {
             generatrShowError(err.message || "Failed to delete patch");
@@ -9114,6 +9223,9 @@
               return;
             }
             generatrDroneCloseSavePresetModal();
+            if (generatrDroneSavePresetState.role === "effect") {
+              generatrEditReloadFxPatchOptions();
+            }
           })
           .catch(function (err) {
             if (droneSavePresetStatus) {

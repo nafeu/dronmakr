@@ -406,11 +406,10 @@ def apply_effect(input_path, effect_chain, presets_path=None):
         print(f"using preset {eff['name']}")
         fx_specs.append((eff["plugin_path"], eff["preset_path"]))
 
-    processed, sample_rate = render_wav_through_fx_paths(input_path, fx_specs)
-    normalized = dsp.apply_master_normalization_chain(
-        samples_channels_to_daw_audio(processed), sample_rate
-    )
-    out = daw_audio_to_samples_channels(normalized)
+    processed, sample_rate = render_wav_through_fx_paths(input_path, fx_specs, tail_sec=3.0)
+    from dronmakr.audio.process_sample import _finalize_fx_processed_audio
+
+    out = _finalize_fx_processed_audio(processed)
 
     sf.write(output_path, out, sample_rate, subtype="PCM_16")
 

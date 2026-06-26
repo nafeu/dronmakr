@@ -209,6 +209,24 @@ def delegate_apply_effect_if_needed(
     return True
 
 
+def delegate_apply_plugin_patch_if_needed(
+    input_path: str,
+    patch_name: str,
+    presets_path: str,
+) -> bool:
+    if not _should_delegate_to_worker():
+        return False
+    invoke_audio_worker(
+        "apply_plugin_patch",
+        {
+            "input_path": input_path,
+            "patch_name": patch_name,
+            "presets_path": presets_path,
+        },
+    )
+    return True
+
+
 def run_stdio_worker() -> None:
     import dronmakr.audio.audio_host as audio_host  # noqa: F401, PLC0415 — DawDreamer before numba
 
@@ -253,6 +271,15 @@ def run_stdio_worker() -> None:
             apply_effect(
                 params["input_path"],
                 params["effect_chain"],
+                presets_path=params["presets_path"],
+            )
+            result = {"ok": True}
+        elif task == "apply_plugin_patch":
+            from dronmakr.audio.process_sample import apply_plugin_patch_to_sample
+
+            apply_plugin_patch_to_sample(
+                params["input_path"],
+                params["patch_name"],
                 presets_path=params["presets_path"],
             )
             result = {"ok": True}

@@ -698,6 +698,8 @@ def render_wav_through_fx_paths(
     *,
     sample_rate: int = SAMPLE_RATE,
     buffer_size: int = BUFFER_SIZE,
+    tail_sec: float = 0.0,
+    warmup_sec: float = PLUGIN_RENDER_WARMUP_SEC,
 ) -> tuple[np.ndarray, int]:
     """Load WAV, run through FX chain loaded from paths. Returns (samples, channels), sr."""
     data, sr = sf.read(wav_path, dtype="float32", always_2d=True)
@@ -723,7 +725,9 @@ def render_wav_through_fx_paths(
 
     graph = _build_plugin_graph(None, fx_procs, playback=playback)
     engine.load_graph(graph)
-    engine.render(duration_sec)
+    if warmup_sec > 0:
+        time.sleep(float(warmup_sec))
+    engine.render(duration_sec + max(0.0, float(tail_sec)))
     return daw_audio_to_samples_channels(engine.get_audio()), sample_rate
 
 
