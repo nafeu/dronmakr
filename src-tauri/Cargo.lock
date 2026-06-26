@@ -829,7 +829,7 @@ dependencies = [
 
 [[package]]
 name = "dronmakr"
-version = "0.57.10"
+version = "0.57.11"
 dependencies = [
  "objc2",
  "objc2-app-kit",
