@@ -12,101 +12,142 @@
   <style>
     {% include '_app_css_root.html' %}
 
+    html {
+      height: 100%;
+    }
+
+    body {
+      box-sizing: border-box;
+      height: 100%;
+      min-height: 100%;
+      overflow: hidden;
+    }
+
     main {
-      max-width: 56rem;
+      width: min(100%, 40rem);
+      max-width: 40rem;
+      height: calc(100vh - var(--toolbar-height) - 1rem);
+      max-height: calc(100vh - var(--toolbar-height) - 1rem);
+      margin: 0 auto;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      gap: 0.75rem;
     }
 
-    .settings-card {
+    .settings-panel {
       border: 1px solid var(--theme-a);
-      padding: 0.75rem;
-      border-radius: 4px;
+      border-radius: 6px;
+      padding: 1.25rem;
       background: #050505;
-      overflow: auto;
+      box-sizing: border-box;
+      flex: 1 1 auto;
+      min-height: 0;
+      height: 80vh;
+      max-height: 80vh;
+      overflow: hidden;
     }
 
-    .settings-card h1 {
-      margin: 0 0 0.5rem 0;
-      font-size: 0.95rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--theme-a);
+    .settings-panel.os-host {
+      overflow: hidden !important;
     }
 
-    .settings-card .intro {
-      font-size: 0.7rem;
-      color: var(--theme-a);
-      margin-bottom: 1rem;
-      line-height: 1.4;
+    .settings-actions {
+      flex-shrink: 0;
+      display: flex;
+      justify-content: flex-start;
+      padding-top: 0.15rem;
     }
 
     .settings-form {
       display: flex;
       flex-direction: column;
       gap: 0.75rem;
+      width: 100%;
+      min-width: 0;
     }
 
-    .field-group {
-      gap: var(--dron-field-gap);
+    .field-group > label:first-of-type {
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
     }
 
-    .field-row {
+    .field-row,
+    .append-row {
       display: flex;
       gap: 0.5rem;
       align-items: flex-start;
+      width: 100%;
+      min-width: 0;
     }
 
-    .field-row textarea {
-      width: 600px;
-      min-height: 3.5rem;
-      padding: 0.5rem 0.75rem;
-      font-family: inherit;
-      font-size: 0.8rem;
-      line-height: 1.4;
-      background: #0a0a0a;
-      border: 1px solid var(--theme-a);
-      border-radius: 4px;
-      color: var(--primary);
-      resize: none;
+    .field-row textarea,
+    .append-row input[type="text"] {
+      flex: 1 1 auto;
+      min-width: 0;
+      width: auto;
     }
 
-    .field-row textarea:focus {
-      outline: none;
+    .settings-textarea-scroll {
+      flex: 1 1 auto;
+      min-width: 0;
+      box-sizing: border-box;
+      border: 1px solid var(--dron-control-border);
+      border-radius: var(--dron-control-radius);
+      background: var(--dron-control-bg);
+      min-height: 2.5rem;
+      max-height: 2.5rem;
+    }
+
+    .settings-textarea-scroll:focus-within {
       border-color: var(--primary);
     }
 
-    .field-group textarea {
-      width: 600px;
-      min-height: 3rem;
-      padding: 0.5rem 0.75rem;
-      font-family: inherit;
-      font-size: 0.8rem;
-      background: #0a0a0a;
-      border: 1px solid var(--theme-a);
-      border-radius: 4px;
-      color: var(--primary);
+    .settings-textarea-scroll textarea {
+      display: block;
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      overflow: hidden;
       resize: none;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      box-sizing: border-box;
     }
 
-    .field-group textarea:focus {
+    .settings-textarea-scroll textarea:focus {
       outline: none;
-      border-color: var(--primary);
+    }
+
+    .field-group--tall .settings-textarea-scroll {
+      min-height: 5.5rem;
+      max-height: 5.5rem;
+    }
+
+    .field-group--ignore-plugins .settings-textarea-scroll {
+      min-height: 8.25rem;
+      max-height: 8.25rem;
     }
 
     .btn-add {
       flex-shrink: 0;
-      width: 2rem;
-      height: 2rem;
+      width: var(--dron-control-h);
+      height: var(--dron-control-h);
+      min-height: var(--dron-control-h);
       padding: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #0a0a0a;
-      border: 1px solid var(--theme-a);
-      border-radius: 4px;
+      background: var(--dron-control-bg);
+      border: 1px solid var(--dron-control-border);
+      border-radius: var(--dron-control-radius);
       color: var(--primary);
       cursor: pointer;
       font-size: 0.75rem;
       transition: background 0.15s ease, border-color 0.15s ease;
+      box-sizing: border-box;
     }
 
     .btn-add:hover:not(:disabled) {
@@ -120,42 +161,18 @@
     }
 
     .append-row {
-      display: flex;
-      gap: 0.5rem;
-      margin-top: 0.5rem;
+      margin-top: 0.35rem;
     }
 
-    .append-row input {
-      width: 568px;
-      height: var(--dron-control-h);
-      min-height: var(--dron-control-h);
-      padding: 0 var(--dron-control-pad-x);
+    .settings-actions .btn-save {
+      padding: 0.55rem 1rem;
       font-family: inherit;
       font-size: var(--dron-control-font);
-      line-height: calc(var(--dron-control-h) - 2px);
-      background: var(--dron-control-bg);
-      border: 1px solid var(--dron-control-border);
-      border-radius: var(--dron-control-radius);
-      color: var(--primary);
-      box-sizing: border-box;
-    }
-
-    .append-row input:focus {
-      outline: none;
-      border-color: var(--primary);
-    }
-
-    .btn-save {
-      margin-top: 1rem;
-      padding: 0.5rem 1rem;
-      font-family: inherit;
-      font-size: 0.8rem;
       background: var(--primary);
       color: var(--secondary);
       border: 1px solid var(--primary);
-      border-radius: 4px;
+      border-radius: var(--dron-control-radius);
       cursor: pointer;
-      align-self: flex-start;
       transition: opacity 0.15s ease;
     }
 
@@ -166,6 +183,112 @@
     .btn-save:disabled {
       opacity: 0.5;
       cursor: not-allowed;
+    }
+
+    #settingsSavedModal {
+      position: fixed;
+      inset: 0;
+      z-index: 10060;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      box-sizing: border-box;
+      background: rgba(0, 0, 0, 0.45);
+      overflow: hidden;
+    }
+
+    #settingsSavedModal.hidden {
+      display: none !important;
+    }
+
+    #settingsSavedModal .settings-saved-dialog {
+      width: min(94vw, 520px);
+      max-height: min(86vh, 480px);
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      padding: 0.9rem 1rem 1rem;
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--secondary) 96%, transparent);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--primary);
+      box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
+      min-height: 0;
+    }
+
+    #settingsSavedModal h3.settings-saved-title {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--theme-a);
+    }
+
+    .settings-saved-intro {
+      margin: 0;
+      font-size: 0.75rem;
+      color: color-mix(in srgb, var(--theme-a) 78%, transparent);
+      line-height: 1.4;
+    }
+
+    .settings-saved-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      flex: 1 1 auto;
+      min-height: 0;
+      max-height: min(50vh, 320px);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 0.45rem;
+    }
+
+    .settings-saved-item {
+      padding: 0.5rem 0.65rem;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: rgba(0, 0, 0, 0.22);
+      font-size: 0.75rem;
+      line-height: 1.4;
+    }
+
+    .settings-saved-item-key {
+      display: block;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--theme-a);
+      margin-bottom: 0.25rem;
+    }
+
+    .settings-saved-item-value {
+      display: block;
+      color: var(--primary);
+      word-break: break-word;
+      white-space: pre-wrap;
+    }
+
+    .settings-saved-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.35rem;
+      margin-top: 0.15rem;
+    }
+
+    button.settings-saved-dismiss {
+      font-family: inherit;
+      cursor: pointer;
+      font-size: var(--dron-control-font);
+      padding: 0.55rem 1rem;
+      border-radius: var(--dron-control-radius);
+      background: var(--primary);
+      border: 1px solid var(--primary);
+      color: var(--secondary);
+    }
+
+    button.settings-saved-dismiss:hover {
+      opacity: 0.9;
     }
 
     .toast {
@@ -187,13 +310,13 @@
     }
 
     .section-title {
-      font-size: 0.65rem;
+      font-size: var(--dron-label-size);
       text-transform: uppercase;
       letter-spacing: 0.08em;
       color: var(--theme-a);
-      margin: 1rem 0 0.35rem 0;
+      margin: 0.75rem 0 0;
       padding-top: 0.75rem;
-      border-top: 1px solid var(--theme-a);
+      border-top: 1px solid color-mix(in srgb, var(--theme-a) 65%, transparent);
     }
 
     .section-title:first-child {
@@ -206,12 +329,14 @@
       display: flex;
       align-items: flex-end;
       gap: 0.5rem;
-      margin-bottom: 0.75rem;
+      width: 100%;
+      min-width: 0;
       flex-wrap: wrap;
     }
 
     .preset-toolbar .field-group {
-      gap: var(--dron-field-gap);
+      flex: 1 1 12rem;
+      min-width: 0;
     }
 
     @keyframes fadeIn {
@@ -260,55 +385,26 @@
   {% include '_app_toolbar.html' %}
 
   <main>
+    <div id="settingsPanel" class="settings-panel dron-list-scroll">
     <form id="settingsForm" class="settings-form">
-      <div class="field-group" data-key="PLUGIN_PATHS" data-is-path="true">
+      <div class="field-group field-group--tall" data-key="PLUGIN_PATHS" data-is-path="true">
         <label for="PLUGIN_PATHS">PLUGIN_PATHS</label>
         <div class="field-row">
-          <textarea id="PLUGIN_PATHS" name="PLUGIN_PATHS" rows="2"
+          <textarea id="PLUGIN_PATHS" name="PLUGIN_PATHS" rows="4"
             placeholder="macOS: VST3 + AU folders only (omit legacy Plug-Ins/VST — .vst not supported); comma-separated"></textarea>
           <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
-      <div class="field-group" data-key="CUSTOM_PLUGINS" data-is-path="true">
-        <label for="CUSTOM_PLUGINS">CUSTOM_PLUGINS</label>
-        <div class="field-row">
-          <textarea id="CUSTOM_PLUGINS" name="CUSTOM_PLUGINS" rows="2"
-            placeholder="Comma-separated paths"></textarea>
-          <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
-        </div>
-      </div>
-      <div class="field-group" data-key="ASSERT_INSTRUMENT" data-append-type="plugin">
-        <label for="ASSERT_INSTRUMENT">ASSERT_INSTRUMENT</label>
-        <div class="field-row">
-          <textarea id="ASSERT_INSTRUMENT" name="ASSERT_INSTRUMENT" rows="2"
-            placeholder="Plugin names treated as instruments"></textarea>
-        </div>
-        <div class="append-row">
-          <input type="text" id="ASSERT_INSTRUMENT_append" placeholder="Add plugin name..."
-            data-target="ASSERT_INSTRUMENT">
-          <button type="button" class="btn-add" title="Append"><i class="fa-solid fa-plus"></i></button>
-        </div>
-      </div>
-      <div class="field-group" data-key="IGNORE_PLUGINS" data-append-type="plugin">
+      <div class="field-group field-group--ignore-plugins" data-key="IGNORE_PLUGINS" data-append-type="plugin">
         <label for="IGNORE_PLUGINS">IGNORE_PLUGINS</label>
         <div class="field-row">
-          <textarea id="IGNORE_PLUGINS" name="IGNORE_PLUGINS" rows="2"
+          <textarea id="IGNORE_PLUGINS" name="IGNORE_PLUGINS" rows="6"
             placeholder="Plugin names to ignore"></textarea>
         </div>
         <div class="append-row">
           <input type="text" id="IGNORE_PLUGINS_append" placeholder="Add plugin name..." data-target="IGNORE_PLUGINS">
           <button type="button" class="btn-add" title="Append"><i class="fa-solid fa-plus"></i></button>
         </div>
-      </div>
-      <div class="field-group" data-key="QT_LOGGING_RULES">
-        <label for="QT_LOGGING_RULES">QT_LOGGING_RULES</label>
-        <textarea id="QT_LOGGING_RULES" name="QT_LOGGING_RULES" rows="1"
-          placeholder="e.g. *.debug=false"></textarea>
-      </div>
-      <div class="field-group" data-key="IMKLogLevel">
-        <label for="IMKLogLevel">IMKLogLevel</label>
-        <textarea id="IMKLogLevel" name="IMKLogLevel" rows="1"
-          placeholder="e.g. none"></textarea>
       </div>
       <div class="section-title">Storage</div>
       <div class="field-group" data-key="FILES_ROOT" data-is-path="true">
@@ -398,13 +494,31 @@
           <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
-      <button type="submit" class="btn-save">Save settings</button>
     </form>
+    </div>
+    <div class="settings-actions">
+      <button type="submit" form="settingsForm" id="saveSettingsBtn" class="btn-save">Save settings</button>
+    </div>
   </main>
+  <div id="settingsSavedModal" class="hidden" role="dialog" aria-modal="true" aria-labelledby="settingsSavedModalTitle">
+    <div class="settings-saved-dialog">
+      <h3 id="settingsSavedModalTitle" class="settings-saved-title">Settings saved</h3>
+      <p class="settings-saved-intro">The following fields were updated:</p>
+      <ul id="settingsSavedList" class="settings-saved-list dron-list-scroll"></ul>
+      <div class="settings-saved-actions">
+        <button type="button" id="settingsSavedDismiss" class="settings-saved-dismiss">OK</button>
+      </div>
+    </div>
+  </div>
   {% include '_app_version_chip.html' %}
   <div id="toast" class="toast" style="display: none;"></div>
   <script>
     const form = document.getElementById("settingsForm");
+    const settingsPanel = document.getElementById("settingsPanel");
+    const saveSettingsBtn = document.getElementById("saveSettingsBtn");
+    const settingsSavedModal = document.getElementById("settingsSavedModal");
+    const settingsSavedList = document.getElementById("settingsSavedList");
+    const settingsSavedDismiss = document.getElementById("settingsSavedDismiss");
     const toast = document.getElementById("toast");
     const drumPresetSelect = document.getElementById("drumPresetSelect");
     const drumPresetNewName = document.getElementById("drumPresetNewName");
@@ -424,6 +538,101 @@
     let drumPresets = {};
     let activeDrumPreset = "";
     let defaultDrumPreset = "default";
+    let settingsSnapshot = {};
+
+    function collectFormData() {
+      const data = {};
+      document.querySelectorAll("input[name], textarea[name]").forEach((el) => {
+        if (el.name && !el.name.endsWith("_append")) data[el.name] = el.value;
+      });
+      return data;
+    }
+
+    function captureSettingsSnapshot() {
+      settingsSnapshot = collectFormData();
+    }
+
+    function truncateSettingValue(value, maxLen = 120) {
+      const text = String(value ?? "");
+      if (!text) return "(empty)";
+      if (text.length <= maxLen) return text;
+      return `${text.slice(0, maxLen)}…`;
+    }
+
+    function computeSettingChanges(before, after) {
+      const keys = new Set([...Object.keys(before || {}), ...Object.keys(after || {})]);
+      const changes = [];
+      keys.forEach((key) => {
+        const prev = before?.[key] ?? "";
+        const next = after?.[key] ?? "";
+        if (prev !== next) changes.push({ key, before: prev, after: next });
+      });
+      return changes.sort((a, b) => a.key.localeCompare(b.key));
+    }
+
+    function showSettingsSavedModal(changes) {
+      settingsSavedList.innerHTML = "";
+      changes.forEach(({ key, after }) => {
+        const item = document.createElement("li");
+        item.className = "settings-saved-item";
+        item.innerHTML =
+          `<span class="settings-saved-item-key">${key}</span>` +
+          `<span class="settings-saved-item-value">${truncateSettingValue(after)}</span>`;
+        settingsSavedList.appendChild(item);
+      });
+      settingsSavedModal.classList.remove("hidden");
+      if (window.dronmakrUi) window.dronmakrUi.refreshScrollbars(settingsSavedList);
+    }
+
+    function hideSettingsSavedModal() {
+      settingsSavedModal.classList.add("hidden");
+    }
+
+    settingsSavedDismiss.addEventListener("click", hideSettingsSavedModal);
+    settingsSavedModal.addEventListener("click", (e) => {
+      if (e.target === settingsSavedModal) hideSettingsSavedModal();
+    });
+
+    function wrapSettingsTextareas() {
+      form.querySelectorAll(".field-row > textarea").forEach((ta) => {
+        if (ta.closest(".settings-textarea-scroll")) return;
+        const wrap = document.createElement("div");
+        wrap.className = "settings-textarea-scroll dron-list-scroll";
+        ta.parentNode.insertBefore(wrap, ta);
+        wrap.appendChild(ta);
+      });
+    }
+
+    function syncSettingsTextareaHeight(ta) {
+      const host = ta.closest(".settings-textarea-scroll");
+      const minHost = host ? host.clientHeight : 0;
+      ta.style.height = "0px";
+      ta.style.height = `${Math.max(ta.scrollHeight, minHost)}px`;
+      if (host && window.dronmakrUi) {
+        window.dronmakrUi.refreshScrollbars(host);
+      }
+    }
+
+    function syncAllSettingsTextareaHeights() {
+      form.querySelectorAll(".settings-textarea-scroll textarea").forEach(syncSettingsTextareaHeight);
+      refreshSettingsScrollbars();
+    }
+
+    function refreshSettingsScrollbars() {
+      if (!window.dronmakrUi) return;
+      if (settingsPanel) window.dronmakrUi.refreshScrollbars(settingsPanel);
+    }
+
+    function initSettingsScrollUi() {
+      wrapSettingsTextareas();
+      form.querySelectorAll(".field-row > textarea").forEach((ta) => {
+        if (ta.dataset.scrollSyncBound === "true") return;
+        ta.dataset.scrollSyncBound = "true";
+        ta.addEventListener("input", () => syncSettingsTextareaHeight(ta));
+      });
+      syncAllSettingsTextareaHeights();
+      refreshSettingsScrollbars();
+    }
 
     function showToast(msg, isError = false) {
       toast.textContent = msg;
@@ -516,6 +725,7 @@
           const data = await res.json();
           if (data.path) {
             input.value = appendComma(input.value, escapePathCsvToken(data.path));
+            syncSettingsTextareaHeight(input);
             showToast("Folder added.");
           } else if (data.cancelled) {
             showToast("Folder selection cancelled.");
@@ -528,7 +738,7 @@
       });
     });
 
-    // Append + button for ASSERT_INSTRUMENT and IGNORE_PLUGINS
+    // Append + button for IGNORE_PLUGINS
     document.querySelectorAll("[data-append-type='plugin'] .append-row .btn-add").forEach((btn) => {
       btn.addEventListener("click", () => {
         const appendInput = btn.previousElementSibling;
@@ -537,6 +747,7 @@
         const add = appendInput.value.trim();
         if (add) {
           mainInput.value = appendComma(mainInput.value, add);
+          syncSettingsTextareaHeight(mainInput);
           appendInput.value = "";
         }
       });
@@ -613,12 +824,15 @@
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const btn = form.querySelector(".btn-save");
+      const btn = saveSettingsBtn;
       btn.disabled = true;
-      const data = {};
-      document.querySelectorAll("input[name], textarea[name]").forEach((el) => {
-        if (el.name && !el.name.endsWith("_append")) data[el.name] = el.value;
-      });
+      const data = collectFormData();
+      const changes = computeSettingChanges(settingsSnapshot, data);
+      if (!changes.length) {
+        showToast("No changes to save.");
+        btn.disabled = false;
+        return;
+      }
       try {
         const res = await fetch("/api/settings", {
           method: "POST",
@@ -630,7 +844,8 @@
           if (activeDrumPreset) {
             drumPresets[activeDrumPreset] = collectDrumFields();
           }
-          showToast("Settings saved.");
+          captureSettingsSnapshot();
+          showSettingsSavedModal(changes);
         } else {
           showToast(result.error || "Failed to save.", true);
         }
@@ -655,8 +870,13 @@
 
     loadSettingsFromApi()
       .then(() => loadDrumPathPresets())
+      .then(() => syncAllSettingsTextareaHeights())
+      .then(() => captureSettingsSnapshot())
       .catch((err) => showToast(err.message, true));
-    document.addEventListener("DOMContentLoaded", function () { if (window.__pageReady) window.__pageReady(); });
+    document.addEventListener("DOMContentLoaded", function () {
+      initSettingsScrollUi();
+      if (window.__pageReady) window.__pageReady();
+    });
   </script>
 </body>
 

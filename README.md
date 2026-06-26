@@ -144,7 +144,7 @@ Audio runs through [DawDreamer](https://github.com/DBraun/DawDreamer) (JUCE-base
 
 **A synth shows up as an effect (e.g. Reaktor 6)**
 
-Add its name to **`ASSERT_INSTRUMENT`** in **Settings** so it is treated as an instrument.
+Choose the instrument variant in the plug-in picker (for example **Reaktor 6 (Instrument)** instead of **Reaktor 6 FX**). Use the plug-in list editor in Generate Samples to hide unwanted variants.
 
 **Desktop updates**
 

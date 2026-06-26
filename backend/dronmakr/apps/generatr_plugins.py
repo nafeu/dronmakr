@@ -132,7 +132,7 @@ def get_drone_picker_payload(role: str) -> dict:
     else:
         patches = [p for p in presets if p.get("type") in ("effect", "effect_chain")]
 
-    plugin_paths, _, _, custom_plugins = plugin_settings_tuple()
+    plugin_paths, _ = plugin_settings_tuple()
     plugins: list[dict] = []
     if plugin_paths and plugin_paths != [""]:
         plugins = [

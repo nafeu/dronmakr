@@ -103,11 +103,7 @@ DRUM_PATH_KEY_TO_SPLIT_CATEGORY = {
 }
 DEFAULT_KEYS = [
     "PLUGIN_PATHS",
-    "QT_LOGGING_RULES",
-    "IMKLogLevel",
-    "ASSERT_INSTRUMENT",
     "IGNORE_PLUGINS",
-    "CUSTOM_PLUGINS",
     *DRUM_PATH_KEYS,
     "ACTIVE_DRUM_PATH_PRESET",
     "DRUM_PATH_PRESETS",
@@ -116,11 +112,7 @@ DEFAULT_KEYS = [
 
 _default_values = {
     "PLUGIN_PATHS": "",
-    "QT_LOGGING_RULES": "*.debug=false",
-    "IMKLogLevel": "none",
-    "ASSERT_INSTRUMENT": "",
     "IGNORE_PLUGINS": "",
-    "CUSTOM_PLUGINS": "",
     "DRUM_KICK_PATHS": "",
     "DRUM_HIHAT_PATHS": "",
     "DRUM_PERC_PATHS": "",
@@ -323,26 +315,20 @@ def has_configured_drum_paths(settings: dict | None = None) -> bool:
 
 
 def has_configured_plugin_paths(settings: dict | None = None) -> bool:
-    """True when PLUGIN_PATHS / CUSTOM_PLUGINS are set and at least one plug-in is discovered."""
+    """True when PLUGIN_PATHS are set and at least one plug-in is discovered."""
     import glob
     import sys
 
     src = settings if isinstance(settings, dict) else load_settings()
     plugin_paths_raw = src.get("PLUGIN_PATHS", "")
-    custom_raw = src.get("CUSTOM_PLUGINS", "")
     plugin_paths = (
         [p.strip() for p in plugin_paths_raw.split(",") if p.strip()]
         if isinstance(plugin_paths_raw, str)
         else []
     )
-    custom_plugins = (
-        [p.strip() for p in custom_raw.split(",") if p.strip()]
-        if isinstance(custom_raw, str)
-        else []
-    )
-    if not plugin_paths and not custom_plugins:
+    if not plugin_paths:
         return False
-    discovered = list(custom_plugins)
+    discovered: list[str] = []
     for plugin_dir in plugin_paths:
         if not plugin_dir or not os.path.exists(plugin_dir):
             continue

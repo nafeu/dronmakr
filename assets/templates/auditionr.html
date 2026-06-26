@@ -1866,7 +1866,8 @@
 
     .generatr-drone-plugin-picker-list-stack > .generatr-drone-plugin-picker-choice,
     .generatr-drone-plugin-picker-list-stack > .generatr-drone-plugin-picker-meta,
-    .generatr-drone-plugin-picker-list-stack > .generatr-drone-plugin-picker-category {
+    .generatr-drone-plugin-picker-list-stack > .generatr-drone-plugin-picker-category,
+    .generatr-drone-plugin-picker-list-stack > .generatr-drone-plugin-picker-category-head {
       flex: 0 0 auto;
       width: 100%;
       max-width: 100%;
@@ -2002,10 +2003,13 @@
       margin-bottom: 0.2rem;
     }
 
+    .generatr-drone-plugin-picker-category-head .generatr-drone-plugin-picker-category-title {
+      margin-bottom: 0;
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
     .generatr-drone-plugin-picker-patches-toolbar {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
       margin-bottom: 0.2rem;
     }
 
@@ -9180,7 +9184,11 @@
       function generatrDroneAppendPatchesSelectAllToolbar(container, patches) {
         if (!container || !patches.length || !generatrDronePickerInstrumentMultiEnabled()) return;
         var toolbar = document.createElement("div");
-        toolbar.className = "generatr-drone-plugin-picker-patches-toolbar";
+        toolbar.className = "generatr-drone-plugin-picker-category-head generatr-drone-plugin-picker-patches-toolbar";
+        var heading = document.createElement("p");
+        heading.className = "generatr-drone-plugin-picker-category-title";
+        heading.textContent = "USER MADE PATCHES";
+        toolbar.appendChild(heading);
         var selectAllBtn = document.createElement("button");
         selectAllBtn.type = "button";
         selectAllBtn.className = "generatr-drone-plugin-picker-select-all";
