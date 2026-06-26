@@ -72,7 +72,7 @@ htmlcov/
 
 # Dronmakr user data (lives under configured dronmakr-files/, not in repo)
 archive/
-presets/
+/presets/
 exports/
 archive/
 saved/

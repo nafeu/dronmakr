@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# Pre-release build verification. macOS-only checks run when executed on Darwin.
+# Pre-release build verification (macOS only).
+#
+# Typical release flow:
+#   1. ./scripts/pre_release_checks.sh --build   # build + verify locally
+#   2. ./scripts/bump_and_release.sh patch       # re-verify same build, then tag + release
 #
 # Usage:
 #   ./scripts/pre_release_checks.sh              # verify existing release build

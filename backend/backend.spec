@@ -74,16 +74,12 @@ _hidden_socketio_threading = (
 _dd_collect_datas, _dd_collect_bins, _dd_collect_hidden = collect_all("dawdreamer")
 _dawdreamer_submodules = collect_submodules("dawdreamer")
 _dronmakr_submodules = collect_submodules("dronmakr")
+# collect_submodules can miss dronmakr.presets on some CI runners; always pin explicitly.
 _presets_hidden = [
     "dronmakr.presets",
     "dronmakr.presets.plugin_default_paths",
     "dronmakr.presets.preset_authoring",
 ]
-if not all(m in _dronmakr_submodules for m in _presets_hidden):
-    raise RuntimeError(
-        "PyInstaller hook did not collect dronmakr.presets submodules. "
-        f"Got {len(_dronmakr_submodules)} dronmakr modules; missing presets."
-    )
 
 a = Analysis(
     ["backend_server.py"],

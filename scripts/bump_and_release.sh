@@ -4,10 +4,12 @@
 #
 # Prerequisites:
 #   - gh authenticated (`gh auth login`)
-#   - On macOS: release build passes scripts/pre_release_checks.sh (use --skip-checks to bypass)
+#   - On macOS: build and verify first with scripts/pre_release_checks.sh --build
+#     (bump_and_release re-runs verification on that build; use --skip-checks to bypass)
 #
 # Usage:
-#   ./scripts/bump_and_release.sh patch
+#   ./scripts/pre_release_checks.sh --build      # step 1: build + verify
+#   ./scripts/bump_and_release.sh patch            # step 2: verify + bump + release
 #   ./scripts/bump_and_release.sh minor --dry-run
 #   ./scripts/bump_and_release.sh patch --skip-checks
 #   ./scripts/bump_and_release.sh patch -- --draft --title "Smoke test"
@@ -28,7 +30,8 @@ PASS_THROUGH=()
 usage() {
   echo "Usage: $(basename "$0") [major|minor|patch] [--dry-run] [--skip-checks] [-- <gh-release-args>]"
   echo "Combines scripts/bump_version.sh and gh release create (--generate-notes)."
-  echo "On macOS, runs scripts/pre_release_checks.sh --build before bumping (unless --skip-checks)."
+  echo "On macOS, runs scripts/pre_release_checks.sh (verify existing build) before bumping."
+  echo "Build and verify first: scripts/pre_release_checks.sh --build"
 }
 
 while (($#)); do
@@ -103,7 +106,7 @@ echo "Current version: ${current_version}"
 echo "Next version:   ${new_version}  (release tag ${NEW_TAG})"
 
 if [[ "$DRY_RUN" == true ]]; then
-  echo "[Dry run] Would run: scripts/pre_release_checks.sh --build (unless --skip-checks)"
+  echo "[Dry run] Would run: scripts/pre_release_checks.sh (unless --skip-checks)"
   echo "[Dry run] Would run: scripts/bump_version.sh ${BUMP_TYPE}"
   CMD=(gh release create "$NEW_TAG" --verify-tag --generate-notes --latest)
   if ((${#PASS_THROUGH[@]} > 0)); then
@@ -118,8 +121,13 @@ if [[ "$DRY_RUN" == true ]]; then
 fi
 
 if [[ "$SKIP_CHECKS" != true ]]; then
-  echo "Running pre-release build checks..."
-  "$ROOT_DIR/scripts/pre_release_checks.sh" --build
+  if [[ "$(uname -s)" != "Darwin" ]]; then
+    echo "error: bump_and_release requires macOS for pre-release checks." >&2
+    echo "Run on a Mac after scripts/pre_release_checks.sh --build, or use --skip-checks." >&2
+    exit 1
+  fi
+  echo "Running pre-release checks (existing build; no rebuild)..."
+  "$ROOT_DIR/scripts/pre_release_checks.sh"
 fi
 
 "$ROOT_DIR/scripts/bump_version.sh" "$BUMP_TYPE"
