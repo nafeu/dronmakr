@@ -4,7 +4,7 @@ import os
 import re
 import tempfile
 
-from dronmakr.core.utils import POST_PROCESSING_SHORTCUTS_PATH, ensure_post_processing_shortcuts_file
+from dronmakr.core.utils import ensure_post_processing_shortcuts_file, managed_config_path
 
 from dronmakr.audio.process_sample import (
     apply_bandpass_to_sample,
@@ -1490,19 +1490,21 @@ def load_post_processing_shortcuts_models() -> list[dict[str, str]]:
     """Normalized shortcut rows from disk: name, command, type."""
     ensure_post_processing_shortcuts_file()
     _ensure_additive_shortcut_defaults()
-    with open(POST_PROCESSING_SHORTCUTS_PATH, "r", encoding="utf-8") as f:
+    shortcuts_path = managed_config_path("post-processing-shortcuts.json")
+    with open(shortcuts_path, "r", encoding="utf-8") as f:
         data = json.load(f)
     raw_list = data.get("shortcuts")
-    return _validate_shortcuts_raw_list(raw_list, path_label=POST_PROCESSING_SHORTCUTS_PATH)
+    return _validate_shortcuts_raw_list(raw_list, path_label=shortcuts_path)
 
 
 def read_post_processing_shortcuts_document() -> dict:
     """Return validated ``{\"shortcuts\": [...]}`` from disk."""
     ensure_post_processing_shortcuts_file()
-    with open(POST_PROCESSING_SHORTCUTS_PATH, "r", encoding="utf-8") as f:
+    shortcuts_path = managed_config_path("post-processing-shortcuts.json")
+    with open(shortcuts_path, "r", encoding="utf-8") as f:
         data = json.load(f)
     raw_list = data.get("shortcuts")
-    models = _validate_shortcuts_raw_list(raw_list, path_label=POST_PROCESSING_SHORTCUTS_PATH)
+    models = _validate_shortcuts_raw_list(raw_list, path_label=shortcuts_path)
     return {"shortcuts": models}
 
 
@@ -1510,7 +1512,7 @@ def write_post_processing_shortcuts_document_atomic(shortcuts: list) -> None:
     """Write shortcuts list to disk atomically after validation."""
     models = _validate_shortcuts_raw_list(shortcuts, path_label="shortcuts payload")
     ensure_post_processing_shortcuts_file()
-    path = POST_PROCESSING_SHORTCUTS_PATH
+    path = managed_config_path("post-processing-shortcuts.json")
     parent = os.path.dirname(path) or "."
     fd, tmp_path = tempfile.mkstemp(
         prefix="post-processing-shortcuts-", suffix=".tmp", dir=parent

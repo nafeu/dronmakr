@@ -29,7 +29,6 @@ class TestManagedConfigBootstrap(unittest.TestCase):
                 "dronmakr.core.utils.get_managed_file",
                 side_effect=managed_file,
             ):
-                utils.refresh_managed_path_constants()
                 utils.ensure_managed_config_files()
 
             config_dir = files_root / "config"

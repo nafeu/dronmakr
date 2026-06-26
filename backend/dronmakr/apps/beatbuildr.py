@@ -616,7 +616,9 @@ def serve_kit_sample(filename: str):
 
 def ensure_beat_patterns():
     """Ensure config/beat-patterns.json exists, copy from sample if needed."""
-    beat_patterns_file = BEAT_PATTERNS_FILE
+    from dronmakr.core.utils import managed_config_path
+
+    beat_patterns_file = managed_config_path("beat-patterns.json")
     beat_patterns_sample = str(bundled_asset_path("resources", "beat-patterns-sample.json"))
 
     if not os.path.exists(beat_patterns_file):
@@ -633,11 +635,15 @@ VALID_CONFIG_NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 def ensure_drum_kits():
     """Ensure config/drum-kits.json exists, copy from sample if needed."""
-    if not os.path.exists(DRUM_KITS_FILE):
-        os.makedirs(os.path.dirname(DRUM_KITS_FILE), exist_ok=True)
-        if os.path.exists(DRUM_KITS_SAMPLE):
-            shutil.copy2(DRUM_KITS_SAMPLE, DRUM_KITS_FILE)
-            print(f"Created {DRUM_KITS_FILE} from sample template")
+    from dronmakr.core.utils import managed_config_path
+
+    drum_kits_file = managed_config_path("drum-kits.json")
+    drum_kits_sample = str(bundled_asset_path("resources", "drum-kits-sample.json"))
+    if not os.path.exists(drum_kits_file):
+        os.makedirs(os.path.dirname(drum_kits_file), exist_ok=True)
+        if os.path.exists(drum_kits_sample):
+            shutil.copy2(drum_kits_sample, drum_kits_file)
+            print(f"Created {drum_kits_file} from sample template")
 
 
 def _load_drum_kits_config() -> dict:

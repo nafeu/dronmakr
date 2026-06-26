@@ -48,16 +48,37 @@ def refresh_managed_path_constants() -> None:
     EXPORTS_DIR = get_managed_dir("exports")
     MIDI_DIR = get_managed_dir("midi")
     PRESETS_DIR = get_managed_dir("presets")
-    PRESETS_PATH = get_managed_file("config", "presets.json")
+    PRESETS_PATH = managed_config_path("presets.json")
     LEGACY_PRESETS_PATH = get_managed_file("presets", "presets.json")
-    POST_PROCESSING_SHORTCUTS_PATH = get_managed_file(
-        "config", "post-processing-shortcuts.json"
-    )
+    POST_PROCESSING_SHORTCUTS_PATH = managed_config_path("post-processing-shortcuts.json")
     SAVED_DIR = get_managed_dir("saved")
     SPLITS_DIR = get_managed_dir("splits")
     TEMP_DIR = get_managed_dir("temp")
     TRASH_DIR = get_managed_dir("trash")
     PACKAGES_DIR = get_managed_dir("packages")
+    _refresh_dependent_managed_paths()
+
+
+def managed_config_path(filename: str) -> str:
+    """Runtime path under FILES_ROOT/config/ (do not cache at import time)."""
+    return get_managed_file("config", filename)
+
+
+def _refresh_dependent_managed_paths() -> None:
+    """Rebind config paths in modules that captured get_managed_file() at import."""
+    try:
+        import dronmakr.apps.beatbuildr as beatbuildr
+
+        beatbuildr.BEAT_PATTERNS_FILE = managed_config_path("beat-patterns.json")
+        beatbuildr.DRUM_KITS_FILE = managed_config_path("drum-kits.json")
+    except Exception:
+        pass
+    try:
+        import dronmakr.generate.generate_midi as generate_midi
+
+        generate_midi.BEAT_PATTERNS_FILE = managed_config_path("beat-patterns.json")
+    except Exception:
+        pass
 
 
 def get_cli_version():
@@ -1142,7 +1163,9 @@ def resolve_presets_index_path() -> str:
     Preferred location is config/presets.json. If a legacy presets/presets.json
     exists, copy it forward.
     """
-    presets_path = get_managed_file("config", "presets.json")
+    from dronmakr.core.settings import has_configured_files_root
+
+    presets_path = managed_config_path("presets.json")
     legacy_presets_path = get_managed_file("presets", "presets.json")
     if os.path.exists(presets_path):
         return presets_path
@@ -1153,6 +1176,10 @@ def resolve_presets_index_path() -> str:
             return presets_path
         except OSError:
             return legacy_presets_path
+    if has_configured_files_root():
+        created = ensure_presets_index()
+        if created:
+            return created
     return ""
 
 
@@ -1162,10 +1189,9 @@ def ensure_presets_index() -> str:
 
     if not has_configured_files_root():
         return ""
-    existing = resolve_presets_index_path()
-    if existing:
-        return existing
-    presets_path = get_managed_file("config", "presets.json")
+    presets_path = managed_config_path("presets.json")
+    if os.path.exists(presets_path):
+        return presets_path
     parent = os.path.dirname(presets_path)
     if parent:
         os.makedirs(parent, exist_ok=True)
@@ -1173,6 +1199,21 @@ def ensure_presets_index() -> str:
         json.dump([], f, indent=2)
     print(f"Created {presets_path}")
     return presets_path
+
+
+def _copy_config_template_if_missing(config_name: str, sample_filename: str) -> str:
+    dest = managed_config_path(config_name)
+    if os.path.exists(dest):
+        return dest
+    parent = os.path.dirname(dest)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    sample = bundled_asset_path("resources", sample_filename)
+    if not sample.is_file():
+        raise FileNotFoundError(f"Bundled config sample missing: {sample}")
+    shutil.copy2(str(sample), dest)
+    print(f"Created {dest} from sample template")
+    return dest
 
 
 def ensure_managed_config_files() -> None:
@@ -1183,27 +1224,25 @@ def ensure_managed_config_files() -> None:
         return
     refresh_managed_path_constants()
     ensure_presets_index()
-    ensure_post_processing_shortcuts_file()
-    from dronmakr.apps.beatbuildr import ensure_beat_patterns, ensure_drum_kits
-
-    ensure_beat_patterns()
-    ensure_drum_kits()
+    _copy_config_template_if_missing(
+        "post-processing-shortcuts.json",
+        "post-processing-shortcuts-sample.json",
+    )
+    _copy_config_template_if_missing(
+        "beat-patterns.json",
+        "beat-patterns-sample.json",
+    )
+    _copy_config_template_if_missing(
+        "drum-kits.json",
+        "drum-kits-sample.json",
+    )
 
 
 def ensure_post_processing_shortcuts_file() -> None:
     """Ensure config/post-processing-shortcuts.json exists; copy bundled sample if missing."""
-    shortcuts_path = get_managed_file("config", "post-processing-shortcuts.json")
-    if os.path.exists(shortcuts_path):
-        return
-    parent = os.path.dirname(shortcuts_path)
-    if parent:
-        os.makedirs(parent, exist_ok=True)
-    if os.path.exists(POST_PROCESSING_SHORTCUTS_SAMPLE):
-        shutil.copy2(POST_PROCESSING_SHORTCUTS_SAMPLE, shortcuts_path)
-        print(f"Created {shortcuts_path} from sample template")
-        return
-    raise FileNotFoundError(
-        f"Post-processing shortcuts sample not found at {POST_PROCESSING_SHORTCUTS_SAMPLE}"
+    _copy_config_template_if_missing(
+        "post-processing-shortcuts.json",
+        "post-processing-shortcuts-sample.json",
     )
 
 
