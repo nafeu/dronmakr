@@ -224,7 +224,6 @@ pub fn run() {
                         }
                         Err(err) => {
                             startup.set_spawn_error(err.clone());
-                            startup.push_line(err);
                             let _ = handle.emit("backend-error", err);
                             return;
                         }
