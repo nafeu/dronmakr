@@ -30,11 +30,6 @@ from dronmakr.core.utils import (
     get_auditionr_folder_counts,
     get_presets,
     delete_all_files,
-    EXPORTS_DIR,
-    ARCHIVE_DIR,
-    SAVED_DIR,
-    TRASH_DIR,
-    TEMP_DIR,
     format_name,
     generate_beat_name,
     generate_drone_name,
@@ -45,6 +40,7 @@ from dronmakr.core.utils import (
     RED,
     RESET,
 )
+import dronmakr.core.utils as managed_paths
 from dronmakr.core.chord_scale_catalog import get_chord_scale_catalog, get_chord_scale_picklists, warm_chord_scale_picklists
 from dronmakr.generate.generate_midi import (
     coerce_drone_midi_length_bars,
@@ -92,12 +88,42 @@ from dronmakr.audio.process_sample import (
 
 # Injected by register_auditionr(app, socketio); used by view functions for emits.
 _socketio = None
-UNDO_DIR = os.path.join(TEMP_DIR, "auditionr_undo")
-PITCH_DIR = os.path.join(TEMP_DIR, "auditionr_pitch")
-PITCH_STATE_FILE = os.path.join(PITCH_DIR, "state.json")
+UNDO_DIR = ""
+PITCH_DIR = ""
+PITCH_STATE_FILE = ""
 DRONE_AUDIO_PREVIEW_PATTERN = "quantized_straight_eighth"
 DRONE_AUDIO_PREVIEW_BARS = 2
-_MANAGED_AUDIO_ROOTS = [EXPORTS_DIR, ARCHIVE_DIR, SAVED_DIR, TRASH_DIR]
+_MANAGED_AUDIO_ROOTS: list[str] = []
+
+
+def refresh_auditionr_paths() -> None:
+    """Rebind auditionr managed paths after FILES_ROOT changes."""
+    global UNDO_DIR, PITCH_DIR, PITCH_STATE_FILE, _MANAGED_AUDIO_ROOTS
+
+    if managed_paths.TEMP_DIR:
+        UNDO_DIR = os.path.join(managed_paths.TEMP_DIR, "auditionr_undo")
+        PITCH_DIR = os.path.join(managed_paths.TEMP_DIR, "auditionr_pitch")
+        PITCH_STATE_FILE = os.path.join(PITCH_DIR, "state.json")
+    else:
+        UNDO_DIR = ""
+        PITCH_DIR = ""
+        PITCH_STATE_FILE = ""
+    _MANAGED_AUDIO_ROOTS = [
+        p
+        for p in (
+            managed_paths.EXPORTS_DIR,
+            managed_paths.ARCHIVE_DIR,
+            managed_paths.SAVED_DIR,
+            managed_paths.TRASH_DIR,
+        )
+        if p
+    ]
+
+
+def _socket_broadcast(event: str, payload) -> None:
+    """Emit to all connected clients (required from HTTP request handlers)."""
+    if _socketio:
+        _socketio.emit(event, payload, broadcast=True)
 
 
 def _ensure_undo_dir():
@@ -202,14 +228,14 @@ def _undo_availability_for_files(files):
 
 def _emit_folder_counts():
     if _socketio:
-        _socketio.emit("folder_counts", get_auditionr_folder_counts())
+        _socket_broadcast("folder_counts", get_auditionr_folder_counts())
 
 
 def _emit_configs_to_clients():
     """Broadcast presets, patterns, and processing catalog (shortcuts) to connected clients."""
     if not _socketio:
         return
-    _socketio.emit(
+    _socket_broadcast(
         "configs",
         {
             "presets": get_presets(),
@@ -227,16 +253,16 @@ def _resolve_managed_audio_path(path_value: str) -> str | None:
 
     if raw.startswith("/exports/"):
         slug = raw[len("/exports/") :].strip()
-        candidate = os.path.join(EXPORTS_DIR, normalize_path_basename(slug))
+        candidate = os.path.join(managed_paths.EXPORTS_DIR, normalize_path_basename(slug))
     elif raw.startswith("/archive/"):
         slug = raw[len("/archive/") :].strip()
-        candidate = os.path.join(ARCHIVE_DIR, normalize_path_basename(slug))
+        candidate = os.path.join(managed_paths.ARCHIVE_DIR, normalize_path_basename(slug))
     elif raw.startswith("/saved/"):
         slug = raw[len("/saved/") :].strip()
-        candidate = os.path.join(SAVED_DIR, normalize_path_basename(slug))
+        candidate = os.path.join(managed_paths.SAVED_DIR, normalize_path_basename(slug))
     elif raw.startswith("/trash/"):
         slug = raw[len("/trash/") :].strip()
-        candidate = os.path.join(TRASH_DIR, normalize_path_basename(slug))
+        candidate = os.path.join(managed_paths.TRASH_DIR, normalize_path_basename(slug))
     else:
         candidate = raw
 
@@ -266,7 +292,7 @@ def _open_files_with_default_player(file_paths):
 def serve_exported_file(filename):
     """Allows direct access to exported .wav files"""
     safe_name = normalize_path_basename(filename)
-    return send_from_directory(EXPORTS_DIR, safe_name)
+    return send_from_directory(managed_paths.EXPORTS_DIR, safe_name)
 
 
 def skip_file():
@@ -281,39 +307,39 @@ def skip_file():
     if not os.path.exists(file_path):
         return jsonify({"error": "File does not exist."}), 404
 
-    if not os.path.exists(ARCHIVE_DIR):
-        os.makedirs(ARCHIVE_DIR)
+    if not os.path.exists(managed_paths.ARCHIVE_DIR):
+        os.makedirs(managed_paths.ARCHIVE_DIR)
 
     file_name = os.path.basename(file_path)
     _clear_undo_snapshot(file_path)
     _clear_pitch_state_for_file(file_path)
 
-    shutil.move(file_path, os.path.join(ARCHIVE_DIR, file_name))
+    shutil.move(file_path, os.path.join(managed_paths.ARCHIVE_DIR, file_name))
 
-    _socketio.emit("exports", {"files": get_latest_exports()})
+    _socket_broadcast("exports", {"files": get_latest_exports()})
     _emit_folder_counts()
     return jsonify({"success": "File moved to archive."}), 200
 
 
 def unarchive_files():
-    if not os.path.exists(ARCHIVE_DIR):
+    if not os.path.exists(managed_paths.ARCHIVE_DIR):
         return jsonify({"error": "Archive does not exist"}), 404
 
-    if not os.path.exists(EXPORTS_DIR):
+    if not os.path.exists(managed_paths.EXPORTS_DIR):
         return jsonify({"error": "Exports do not exist"}), 404
 
-    move_all_files(ARCHIVE_DIR, EXPORTS_DIR)
+    move_all_files(managed_paths.ARCHIVE_DIR, managed_paths.EXPORTS_DIR)
 
-    _socketio.emit("exports", {"files": get_latest_exports()})
+    _socket_broadcast("exports", {"files": get_latest_exports()})
     _emit_folder_counts()
     return jsonify({"success": "Files moved back from archive"}), 200
 
 
 def empty_trash():
-    if not os.path.exists(TRASH_DIR):
+    if not os.path.exists(managed_paths.TRASH_DIR):
         return jsonify({"error": "Trash does not exist"}), 404
 
-    delete_all_files(TRASH_DIR)
+    delete_all_files(managed_paths.TRASH_DIR)
 
     _emit_folder_counts()
     return jsonify({"success": "Trash has been emptied"}), 200
@@ -333,9 +359,9 @@ def reprocess():
 
     apply_effect(file_path, params["effect"])
 
-    _socketio.emit("exports", {"files": get_latest_exports()})
+    _socket_broadcast("exports", {"files": get_latest_exports()})
     _emit_folder_counts()
-    _socketio.emit("status", {"done": True})
+    _socket_broadcast("status", {"done": True})
     return jsonify({"success": "File moved to archive."}), 200
 
 
@@ -361,16 +387,16 @@ def delete_file():
     if not os.path.exists(file_path):
         return jsonify({"error": "File does not exist."}), 404
 
-    if not os.path.exists(TRASH_DIR):
-        os.makedirs(TRASH_DIR)
+    if not os.path.exists(managed_paths.TRASH_DIR):
+        os.makedirs(managed_paths.TRASH_DIR)
 
     file_name = os.path.basename(file_path)
     _clear_undo_snapshot(file_path)
     _clear_pitch_state_for_file(file_path)
 
-    shutil.move(file_path, os.path.join(TRASH_DIR, file_name))
+    shutil.move(file_path, os.path.join(managed_paths.TRASH_DIR, file_name))
 
-    _socketio.emit("exports", {"files": get_latest_exports()})
+    _socket_broadcast("exports", {"files": get_latest_exports()})
     _emit_folder_counts()
     return jsonify({"success": "File moved to trash."}), 200
 
@@ -404,7 +430,7 @@ def duplicate_file():
     _now = time.time()
     os.utime(duplicate_path, (_now, _now))
 
-    _socketio.emit("exports", {"files": get_latest_exports()})
+    _socket_broadcast("exports", {"files": get_latest_exports()})
     _emit_folder_counts()
     return jsonify({"success": f"File duplicated as {duplicate_name}"}), 200
 
@@ -427,9 +453,9 @@ def prepare_drag_copy():
     if not os.path.exists(file_path):
         return jsonify({"error": "File does not exist."}), 404
 
-    os.makedirs(SAVED_DIR, exist_ok=True)
-    dest_name = allocate_dragged_saved_filename(os.path.basename(file_path), SAVED_DIR)
-    dest_path = os.path.join(SAVED_DIR, dest_name)
+    os.makedirs(managed_paths.SAVED_DIR, exist_ok=True)
+    dest_name = allocate_dragged_saved_filename(os.path.basename(file_path), managed_paths.SAVED_DIR)
+    dest_path = os.path.join(managed_paths.SAVED_DIR, dest_name)
     shutil.copy2(file_path, dest_path)
 
     return jsonify(
@@ -454,16 +480,16 @@ def save_file():
     if not os.path.exists(file_path):
         return jsonify({"error": "File does not exist."}), 404
 
-    if not os.path.exists(SAVED_DIR):
-        os.makedirs(SAVED_DIR)
+    if not os.path.exists(managed_paths.SAVED_DIR):
+        os.makedirs(managed_paths.SAVED_DIR)
 
     file_name = os.path.basename(file_path)
     _clear_undo_snapshot(file_path)
     _clear_pitch_state_for_file(file_path)
 
-    shutil.move(file_path, os.path.join(SAVED_DIR, file_name))
+    shutil.move(file_path, os.path.join(managed_paths.SAVED_DIR, file_name))
 
-    _socketio.emit("exports", {"files": get_latest_exports()})
+    _socket_broadcast("exports", {"files": get_latest_exports()})
     _emit_folder_counts()
     return jsonify({"success": "File moved to saved."}), 200
 
@@ -527,7 +553,7 @@ def process_file():
 
     files = get_latest_exports(sort_override=params["files"])
     undo_available = _undo_availability_for_files(files)
-    _socketio.emit(
+    _socket_broadcast(
         "exports",
         {
             "files": files,
@@ -1117,7 +1143,7 @@ def _run_generate_drone(payload: dict) -> list[str]:
         chart_label = "custom" if custom_notes else selected_chart
         base_sample_name = f"{generate_drone_name()}_-_{chart_label}_-_{generate_id()}"
         sample_name = format_name(f"drone___{base_sample_name}")
-        output_path = f"{EXPORTS_DIR}/{sample_name}"
+        output_path = f"{managed_paths.EXPORTS_DIR}/{sample_name}"
         midi_temp = write_drone_midi_temp(midi_obj)
         iteration_selection = instrument_selection
         if isinstance(instrument_selection, dict) and instrument_selection.get("kind") == "pool":
@@ -1238,7 +1264,7 @@ def _run_generate_bass(subcommand: str, payload: dict) -> list[str]:
             beat_name = generate_beat_name()
             name_parts = ["reese", beat_name, f"{tempo}bpm", f"{bars}bars", generate_id()]
             sample_name = format_name("___".join(name_parts))
-            output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+            output_path = f"{managed_paths.EXPORTS_DIR}/{sample_name}.wav"
             output_path, _ = generate_reese_sample(
                 tempo=tempo, bars=bars, output=output_path, config=config
             )
@@ -1253,7 +1279,7 @@ def _run_generate_bass(subcommand: str, payload: dict) -> list[str]:
             beat_name = generate_beat_name()
             name_parts = ["donk", beat_name, f"{tempo}bpm", f"{bars}bars", generate_id()]
             sample_name = format_name("___".join(name_parts))
-            output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+            output_path = f"{managed_paths.EXPORTS_DIR}/{sample_name}.wav"
             output_path, _ = generate_donk_sample(
                 tempo=tempo, bars=bars, output=output_path, config=config
             )
@@ -1357,7 +1383,7 @@ def _run_generate_sweep(payload: dict) -> list[str]:
             generate_id(),
         ]
         sample_name = format_name("___".join(name_parts))
-        output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+        output_path = f"{managed_paths.EXPORTS_DIR}/{sample_name}.wav"
         output_path, _ = generate_sweep_sample(
             tempo=tempo, bars=bars, output=output_path, config=config
         )
@@ -1398,7 +1424,7 @@ def _run_generate_wash(payload: dict) -> list[str]:
                 generate_id(),
             ]
             sample_name = format_name("___".join(name_parts))
-            output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+            output_path = f"{managed_paths.EXPORTS_DIR}/{sample_name}.wav"
             output_path, _ = generate_wash_sample(
                 tempo=tempo,
                 bars=bars,
@@ -1587,7 +1613,7 @@ def _run_generate_beat(payload: dict):
                 name_parts.append(f"{export_tempo}bpm")
                 name_parts.append(generate_id())
                 sample_name = format_name("___".join(name_parts))
-                output_path = f"{EXPORTS_DIR}/{sample_name}.wav"
+                output_path = f"{managed_paths.EXPORTS_DIR}/{sample_name}.wav"
 
                 generate_beat_sample(
                     bpm=export_tempo,
@@ -1941,6 +1967,12 @@ def _handle_api_generate():
     if gen_type == "bass" and subcommand not in ("reese", "donk"):
         return jsonify({"paths": [], "error": "Bass requires subcommand: reese or donk"}), 400
 
+    from dronmakr.core.utils import refresh_managed_path_constants
+
+    refresh_managed_path_constants()
+    if not managed_paths.EXPORTS_DIR:
+        return jsonify({"paths": [], "error": "Storage folder is not configured. Complete onboarding first."}), 400
+
     try:
         print(f"{RED}│{RESET} generate: {gen_type}" + (f" {subcommand}" if subcommand and gen_type == "bass" else ""))
         if gen_type == "drone":
@@ -1954,7 +1986,7 @@ def _handle_api_generate():
         else:
             paths = _run_generate_beat(data)
         print(f"{RED}■ generate completed{RESET}")
-        _socketio.emit("exports", {"files": get_latest_exports()})
+        _socket_broadcast("exports", {"files": get_latest_exports()})
         _emit_folder_counts()
         return jsonify({"paths": paths, "error": None})
     except Exception as e:
@@ -1964,7 +1996,7 @@ def _handle_api_generate():
 
 def _handle_request_exports():
     """Socket handler: client requests latest exports and folder counts (e.g. after generate)."""
-    _socketio.emit("exports", {"files": get_latest_exports()})
+    _socket_broadcast("exports", {"files": get_latest_exports()})
     _emit_folder_counts()
 
 

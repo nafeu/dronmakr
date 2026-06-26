@@ -9,7 +9,8 @@ import uuid
 
 from dronmakr.version import __version__
 from dronmakr.core.bundle_paths import bundled_asset_path
-from dronmakr.core.paths import get_managed_dir, get_managed_file
+from dronmakr.core.paths import get_managed_dir, get_managed_file, get_files_root_path
+from dronmakr.core.settings import has_configured_files_root
 
 BLUE = "\033[34m"
 CYAN = "\033[36m"
@@ -20,48 +21,21 @@ YELLOW = "\033[33m"
 RESET = "\033[0m"
 
 APP_NAME = "dronmakr"
-ARCHIVE_DIR = get_managed_dir("archive")
-EXPORTS_DIR = get_managed_dir("exports")
-MIDI_DIR = get_managed_dir("midi")
-PRESETS_DIR = get_managed_dir("presets")
-PRESETS_PATH = get_managed_file("config", "presets.json")
-LEGACY_PRESETS_PATH = get_managed_file("presets", "presets.json")
-POST_PROCESSING_SHORTCUTS_PATH = get_managed_file(
-    "config", "post-processing-shortcuts.json"
-)
+ARCHIVE_DIR = ""
+EXPORTS_DIR = ""
+MIDI_DIR = ""
+PRESETS_DIR = ""
+PRESETS_PATH = ""
+LEGACY_PRESETS_PATH = ""
+POST_PROCESSING_SHORTCUTS_PATH = ""
 POST_PROCESSING_SHORTCUTS_SAMPLE = str(
     bundled_asset_path("resources", "post-processing-shortcuts-sample.json")
 )
-SAVED_DIR = get_managed_dir("saved")
-SPLITS_DIR = get_managed_dir("splits")
-TEMP_DIR = get_managed_dir("temp")
-TRASH_DIR = get_managed_dir("trash")
-PACKAGES_DIR = get_managed_dir("packages")
-
-
-def refresh_managed_path_constants() -> None:
-    """Rebind module-level managed paths after FILES_ROOT changes in-process."""
-    global ARCHIVE_DIR, EXPORTS_DIR, MIDI_DIR, PRESETS_DIR, PRESETS_PATH
-    global LEGACY_PRESETS_PATH, POST_PROCESSING_SHORTCUTS_PATH
-    global SAVED_DIR, SPLITS_DIR, TEMP_DIR, TRASH_DIR, PACKAGES_DIR
-    ARCHIVE_DIR = get_managed_dir("archive")
-    EXPORTS_DIR = get_managed_dir("exports")
-    MIDI_DIR = get_managed_dir("midi")
-    PRESETS_DIR = get_managed_dir("presets")
-    PRESETS_PATH = managed_config_path("presets.json")
-    LEGACY_PRESETS_PATH = get_managed_file("presets", "presets.json")
-    POST_PROCESSING_SHORTCUTS_PATH = managed_config_path("post-processing-shortcuts.json")
-    SAVED_DIR = get_managed_dir("saved")
-    SPLITS_DIR = get_managed_dir("splits")
-    TEMP_DIR = get_managed_dir("temp")
-    TRASH_DIR = get_managed_dir("trash")
-    PACKAGES_DIR = get_managed_dir("packages")
-    _refresh_dependent_managed_paths()
-
-
-def managed_config_path(filename: str) -> str:
-    """Runtime path under FILES_ROOT/config/ (do not cache at import time)."""
-    return get_managed_file("config", filename)
+SAVED_DIR = ""
+SPLITS_DIR = ""
+TEMP_DIR = ""
+TRASH_DIR = ""
+PACKAGES_DIR = ""
 
 
 def _refresh_dependent_managed_paths() -> None:
@@ -79,6 +53,59 @@ def _refresh_dependent_managed_paths() -> None:
         generate_midi.BEAT_PATTERNS_FILE = managed_config_path("beat-patterns.json")
     except Exception:
         pass
+    try:
+        import dronmakr.apps.folysplitr as folysplitr
+
+        folysplitr.refresh_folysplitr_paths()
+    except Exception:
+        pass
+    try:
+        import dronmakr.apps.auditionr as auditionr
+
+        auditionr.refresh_auditionr_paths()
+    except Exception:
+        pass
+
+
+def refresh_managed_path_constants() -> None:
+    """Rebind module-level managed paths after FILES_ROOT changes in-process."""
+    global ARCHIVE_DIR, EXPORTS_DIR, MIDI_DIR, PRESETS_DIR, PRESETS_PATH
+    global LEGACY_PRESETS_PATH, POST_PROCESSING_SHORTCUTS_PATH
+    global SAVED_DIR, SPLITS_DIR, TEMP_DIR, TRASH_DIR, PACKAGES_DIR
+    if not has_configured_files_root():
+        ARCHIVE_DIR = ""
+        EXPORTS_DIR = ""
+        MIDI_DIR = ""
+        PRESETS_DIR = ""
+        PRESETS_PATH = ""
+        LEGACY_PRESETS_PATH = ""
+        POST_PROCESSING_SHORTCUTS_PATH = ""
+        SAVED_DIR = ""
+        SPLITS_DIR = ""
+        TEMP_DIR = ""
+        TRASH_DIR = ""
+        PACKAGES_DIR = ""
+        _refresh_dependent_managed_paths()
+        return
+    root_path = get_files_root_path(ensure=False)
+    ARCHIVE_DIR = str(root_path / "archive")
+    EXPORTS_DIR = str(root_path / "exports")
+    MIDI_DIR = str(root_path / "midi")
+    PRESETS_DIR = str(root_path / "presets")
+    PRESETS_PATH = managed_config_path("presets.json")
+    LEGACY_PRESETS_PATH = str(root_path / "presets" / "presets.json")
+    POST_PROCESSING_SHORTCUTS_PATH = managed_config_path("post-processing-shortcuts.json")
+    SAVED_DIR = str(root_path / "saved")
+    SPLITS_DIR = str(root_path / "splits")
+    TEMP_DIR = str(root_path / "temp")
+    TRASH_DIR = str(root_path / "trash")
+    PACKAGES_DIR = str(root_path / "packages")
+    _refresh_dependent_managed_paths()
+
+
+def managed_config_path(filename: str) -> str:
+    """Runtime path under FILES_ROOT/config/ (do not cache at import time)."""
+    return get_managed_file("config", filename)
 
 
 def get_cli_version():
@@ -1085,6 +1112,9 @@ def sanitize_export_wavs() -> list[str]:
 
 def get_latest_exports(sort_override=None):
     """All `.wav` files in `exports/`, sorted by modification time (newest first)."""
+    refresh_managed_path_constants()
+    if not EXPORTS_DIR:
+        return []
     try:
         if not os.path.exists(EXPORTS_DIR):
             return []

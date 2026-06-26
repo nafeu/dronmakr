@@ -47,7 +47,6 @@ from dronmakr.core.settings import (
 
 # Helpers for unified socket connect
 from dronmakr.core.utils import (
-    SAVED_DIR,
     export_collections_package,
     ensure_managed_config_files,
     get_auditionr_folder_counts,
@@ -57,7 +56,9 @@ from dronmakr.core.utils import (
     sanitize_export_wavs,
     trash_selected_saved_samples,
     validate_saved_paths_for_package,
+    refresh_managed_path_constants,
 )
+import dronmakr.core.utils as managed_paths
 from dronmakr.generate.generate_midi import get_patterns
 from dronmakr.core.config_validation import validate_server_config_names
 from dronmakr.processing.processing_actions import get_processing_actions_payload
@@ -111,6 +112,7 @@ def handle_connect(auth=None):
     """Unified connect: send auditionr exports/configs; beatbuildr requests its kit over the socket."""
     if DEBUG_WEBSOCKETS:
         print("Client connected via WebSocket")
+    refresh_managed_path_constants()
     socketio.emit(
         "configs",
         {
@@ -157,6 +159,8 @@ def beatbuildr_page():
 @app.route("/settings")
 def settings_page():
     """Settings page for editing config/settings.json values."""
+    if not has_configured_files_root():
+        return redirect(url_for("onboarding_page"))
     return _serve_page("settings.html")
 
 
@@ -291,7 +295,8 @@ def api_collections_trash_selected():
 
 def _serve_saved_file(filename):
     """Serve a file from the saved/ directory."""
-    return send_from_directory(SAVED_DIR, filename)
+    refresh_managed_path_constants()
+    return send_from_directory(managed_paths.SAVED_DIR, filename)
 
 
 app.add_url_rule(
@@ -578,24 +583,29 @@ def start_server(
         )
     print(with_prompt("[desktop] startup: ensure settings"))
     ensure_settings()
+    refresh_managed_path_constants()
     if has_configured_files_root():
         print(with_prompt("[desktop] startup: ensure managed files root"))
         ensure_managed_files_root()
         ensure_folysplitr_drum_path_preset()
         print(with_prompt("[desktop] startup: ensure config templates"))
         ensure_managed_config_files()
-    print(with_prompt("[desktop] startup: ensure recordings dir"))
-    ensure_recordings_dir()
-    print(with_prompt("[desktop] startup: ensure splits dirs"))
-    ensure_splits_dirs()
-    try:
-        validate_server_config_names()
-    except ValueError as e:
-        print(with_prompt(str(e)))
-        raise SystemExit(1) from e
-    if build_sample_cache:
+        print(with_prompt("[desktop] startup: ensure recordings dir"))
+        ensure_recordings_dir()
+        print(with_prompt("[desktop] startup: ensure splits dirs"))
+        ensure_splits_dirs()
+        try:
+            validate_server_config_names()
+        except ValueError as e:
+            print(with_prompt(str(e)))
+            raise SystemExit(1) from e
+    else:
+        print(with_prompt("[desktop] startup: FILES_ROOT not configured — onboarding required"))
+    if build_sample_cache and has_configured_files_root():
         print(with_prompt("[desktop] startup: build sample cache (blocking)"))
         ensure_all_sample_caches()
+    elif build_sample_cache:
+        print(with_prompt("[desktop] startup: skip sample cache until FILES_ROOT is configured"))
     else:
         print(with_prompt("[desktop] startup: sample cache warmup in background"))
 

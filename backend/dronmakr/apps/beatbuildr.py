@@ -25,13 +25,12 @@ from dronmakr.core.settings import (
 )
 
 from dronmakr.core.utils import (
-    EXPORTS_DIR,
-    TEMP_DIR,
     delete_all_files,
     format_name,
     generate_beat_name,
     generate_id,
 )
+import dronmakr.core.utils as managed_paths
 from dronmakr.generate.generate_sample import generate_beat_sample, BEAT_EXPORT_PEAK_DB
 from dronmakr.core.paths import get_managed_file
 from dronmakr.processing.processing_actions import apply_post_processing_actions
@@ -131,7 +130,7 @@ def generate_random_drum_kit() -> dict:
     """
     # Prepare temp directory to host the current kit's samples so they can be
     # served over HTTP to the browser.
-    kit_temp_root = Path(TEMP_DIR) / "beatbuildr"
+    kit_temp_root = Path(managed_paths.TEMP_DIR) / "beatbuildr"
     kit_temp_root.mkdir(parents=True, exist_ok=True)
     delete_all_files(str(kit_temp_root))
 
@@ -173,7 +172,7 @@ def replace_sample_for_row(row: str) -> dict | None:
     src_path = _get_random_sample_for_env(env_key)
     if not src_path:
         return None
-    kit_temp_root = Path(TEMP_DIR) / "beatbuildr"
+    kit_temp_root = Path(managed_paths.TEMP_DIR) / "beatbuildr"
     kit_temp_root.mkdir(parents=True, exist_ok=True)
     filename = f"{row}_{src_path.name}"
     dest_path = kit_temp_root / filename
@@ -265,7 +264,7 @@ def _get_all_drum_paths_for_key_across_presets(env_key: str) -> list[str]:
 
 
 def _get_cache_file(sample_type: str) -> str:
-    return os.path.join(TEMP_DIR, f"sample-cache-all-presets-{sample_type}s.json")
+    return os.path.join(managed_paths.TEMP_DIR, f"sample-cache-all-presets-{sample_type}s.json")
 
 
 def invalidate_sample_caches() -> None:
@@ -275,10 +274,10 @@ def invalidate_sample_caches() -> None:
     _sample_paths_by_type.clear()
     _all_sample_paths_set.clear()
     try:
-        for name in os.listdir(TEMP_DIR):
+        for name in os.listdir(managed_paths.TEMP_DIR):
             if name.startswith("sample-cache-") and name.endswith(".json"):
                 try:
-                    os.remove(os.path.join(TEMP_DIR, name))
+                    os.remove(os.path.join(managed_paths.TEMP_DIR, name))
                 except OSError:
                     pass
     except OSError:
@@ -419,7 +418,7 @@ def replace_sample_with_path(row: str, path_str: str) -> dict | None:
     src_path = Path(path_str)
     if not src_path.exists() or not src_path.is_file():
         return None
-    kit_temp_root = Path(TEMP_DIR) / "beatbuildr"
+    kit_temp_root = Path(managed_paths.TEMP_DIR) / "beatbuildr"
     kit_temp_root.mkdir(parents=True, exist_ok=True)
     filename = f"{row}_{src_path.name}"
     dest_path = kit_temp_root / filename
@@ -610,7 +609,7 @@ def _handle_delete_pattern(payload):
 
 def serve_kit_sample(filename: str):
     """Serve the currently selected drum kit samples to the browser."""
-    kit_temp_root = Path(TEMP_DIR) / "beatbuildr"
+    kit_temp_root = Path(managed_paths.TEMP_DIR) / "beatbuildr"
     return send_from_directory(kit_temp_root, filename)
 
 
@@ -668,7 +667,7 @@ def load_kit_by_name(kit_name: str) -> dict | None:
     if not kit_data or not isinstance(kit_data, dict):
         return None
 
-    kit_temp_root = Path(TEMP_DIR) / "beatbuildr"
+    kit_temp_root = Path(managed_paths.TEMP_DIR) / "beatbuildr"
     kit_temp_root.mkdir(parents=True, exist_ok=True)
     delete_all_files(str(kit_temp_root))
 
@@ -936,14 +935,14 @@ def _resolve_kit_path(row: str, path_str: str) -> str | None:
     if "/kit-samples/" in s:
         filename = unquote(s.split("/kit-samples/")[-1].split("?")[0])
         if filename:
-            resolved = Path(TEMP_DIR) / "beatbuildr" / filename
+            resolved = Path(managed_paths.TEMP_DIR) / "beatbuildr" / filename
             if resolved.exists():
                 return str(resolved)
     p = Path(s)
     if p.exists() and p.is_file():
         return str(p)
     # Fallback: temp copy from load_kit (row_originalname)
-    temp_path = Path(TEMP_DIR) / "beatbuildr" / f"{row}_{p.name}"
+    temp_path = Path(managed_paths.TEMP_DIR) / "beatbuildr" / f"{row}_{p.name}"
     if temp_path.exists():
         return str(temp_path)
     return None
@@ -994,7 +993,7 @@ def _handle_export_beat(payload):
         _socketio.emit("exportBeatResult", {"error": "Invalid pattern data"})
         return
 
-    os.makedirs(EXPORTS_DIR, exist_ok=True)
+    os.makedirs(managed_paths.EXPORTS_DIR, exist_ok=True)
 
     try:
         beat_name = generate_beat_name()
@@ -1016,7 +1015,7 @@ def _handle_export_beat(payload):
             name_parts.append(f"{export_bpm}bpm")
             name_parts.append(generate_id())
             sample_name = format_name("___".join(name_parts))
-            output_path = os.path.join(EXPORTS_DIR, f"{sample_name}.wav")
+            output_path = os.path.join(managed_paths.EXPORTS_DIR, f"{sample_name}.wav")
 
             generate_beat_sample(
                 bpm=export_bpm,

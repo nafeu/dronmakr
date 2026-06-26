@@ -25,14 +25,14 @@ from dronmakr.processing.processing_actions import (
     get_processing_actions_payload,
     parse_single_processing_spec,
 )
-from dronmakr.core.paths import get_files_root_path
 from dronmakr.core.bundle_paths import resolve_ffmpeg_executable
-from dronmakr.core.utils import EXPORTS_DIR
+from dronmakr.core.utils import get_latest_exports, refresh_managed_path_constants
+import dronmakr.core.utils as managed_paths
 
-ROOT_DIR = get_files_root_path()
-RECORDINGS_DIR = ROOT_DIR / "recordings"
-SPLITS_DIR = ROOT_DIR / "splits"
-FOLYSPLITR_UNDO_DIR = ROOT_DIR / "temp" / "folysplitr_undo"
+ROOT_DIR: Path | None = None
+RECORDINGS_DIR: Path | None = None
+SPLITS_DIR: Path | None = None
+FOLYSPLITR_UNDO_DIR: Path | None = None
 MAX_RECORDING_BYTES = 300 * 1024 * 1024
 SPLIT_CATEGORIES = [
     "kick",
@@ -76,37 +76,79 @@ _MIME_TO_EXTENSION = {
 }
 
 
+def refresh_folysplitr_paths() -> None:
+    """Rebind folysplitr storage paths after FILES_ROOT changes."""
+    global ROOT_DIR, RECORDINGS_DIR, SPLITS_DIR, FOLYSPLITR_UNDO_DIR
+    from dronmakr.core.paths import get_files_root_path
+    from dronmakr.core.settings import has_configured_files_root
+
+    if not has_configured_files_root():
+        ROOT_DIR = None
+        RECORDINGS_DIR = None
+        SPLITS_DIR = None
+        FOLYSPLITR_UNDO_DIR = None
+        return
+    ROOT_DIR = get_files_root_path(ensure=False)
+    RECORDINGS_DIR = ROOT_DIR / "recordings"
+    SPLITS_DIR = ROOT_DIR / "splits"
+    FOLYSPLITR_UNDO_DIR = ROOT_DIR / "temp" / "folysplitr_undo"
+
+
+def _require_root_dir() -> Path:
+    if ROOT_DIR is None:
+        refresh_folysplitr_paths()
+    if ROOT_DIR is None:
+        raise ValueError("FILES_ROOT is not configured")
+    return ROOT_DIR
+
+
 def ensure_recordings_dir() -> Path:
     """Ensure recordings directory exists."""
-    RECORDINGS_DIR.mkdir(parents=True, exist_ok=True)
-    return RECORDINGS_DIR
+    root = _require_root_dir()
+    from dronmakr.core.settings import ensure_managed_files_root
+
+    ensure_managed_files_root(str(root))
+    recordings = root / "recordings"
+    recordings.mkdir(parents=True, exist_ok=True)
+    global RECORDINGS_DIR
+    RECORDINGS_DIR = recordings
+    return recordings
 
 
 def ensure_splits_dirs() -> Path:
     """Ensure splits root and category directories exist."""
-    SPLITS_DIR.mkdir(parents=True, exist_ok=True)
+    root = _require_root_dir()
+    from dronmakr.core.settings import ensure_managed_files_root
+
+    ensure_managed_files_root(str(root))
+    splits = root / "splits"
+    splits.mkdir(parents=True, exist_ok=True)
     for category in SPLIT_CATEGORIES:
-        (SPLITS_DIR / category).mkdir(parents=True, exist_ok=True)
-    return SPLITS_DIR
+        (splits / category).mkdir(parents=True, exist_ok=True)
+    global SPLITS_DIR
+    SPLITS_DIR = splits
+    return splits
 
 
 def _resolve_audio_path(file_ref: str) -> Path | None:
+    root = _require_root_dir()
+    recordings_dir = RECORDINGS_DIR or (root / "recordings")
     cleaned = (file_ref or "").strip().lstrip("/")
     if not cleaned:
         return None
     if cleaned.startswith("recordings/"):
-        candidate = ROOT_DIR / cleaned
+        candidate = root / cleaned
     elif cleaned.startswith("splits/"):
-        candidate = ROOT_DIR / cleaned
+        candidate = root / cleaned
     elif cleaned.startswith("exports/"):
-        candidate = ROOT_DIR / cleaned
+        candidate = root / cleaned
     else:
-        candidate = RECORDINGS_DIR / cleaned
+        candidate = recordings_dir / cleaned
     try:
         resolved = candidate.resolve(strict=False)
     except OSError:
         return None
-    if not str(resolved).startswith(str(ROOT_DIR.resolve())):
+    if not str(resolved).startswith(str(root.resolve())):
         return None
     return resolved
 
@@ -421,7 +463,8 @@ def register_folysplitr(app):
         if source is None or not source.exists() or not source.is_file():
             return jsonify({"ok": False, "error": "File does not exist"}), 404
         if destination == "exports":
-            target_dir = Path(EXPORTS_DIR)
+            refresh_managed_path_constants()
+            target_dir = Path(managed_paths.EXPORTS_DIR)
             target_dir.mkdir(parents=True, exist_ok=True)
         elif destination in SPLIT_CATEGORIES:
             target_dir = SPLITS_DIR / destination
@@ -448,6 +491,14 @@ def register_folysplitr(app):
             target = _next_organize_export_path(target_dir, destination, collection_kebab, ext)
 
         shutil.move(str(source), str(target))
+        if destination == "exports":
+            try:
+                from dronmakr.apps.auditionr import _emit_folder_counts, _socket_broadcast
+
+                _socket_broadcast("exports", {"files": get_latest_exports()})
+                _emit_folder_counts()
+            except Exception:
+                pass
         return jsonify({"ok": True, "file": _public_audio_payload(target)})
 
     @app.route("/api/folysplitr/reveal", methods=["POST"])

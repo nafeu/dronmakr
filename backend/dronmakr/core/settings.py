@@ -361,7 +361,11 @@ def has_configured_plugin_paths(settings: dict | None = None) -> bool:
 
 
 def ensure_managed_files_root(root: str | None = None) -> str:
-    resolved_root = normalize_files_root(root) if root is not None else get_files_root(allow_default=True)
+    resolved_root = (
+        normalize_files_root(root)
+        if root is not None
+        else get_files_root(allow_default=False)
+    )
     if not resolved_root:
         raise ValueError("FILES_ROOT is not configured")
     os.makedirs(resolved_root, exist_ok=True)
