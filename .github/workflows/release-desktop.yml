@@ -54,6 +54,9 @@ jobs:
           python scripts/verify_frozen_soundfile_macos.py \
             src-tauri/target/release/bundle/macos/dronmakr.app
 
+      - name: Verify macOS app backend launch
+        run: bash scripts/verify_macos_app_launch.sh
+
       - name: Verify macOS app signature
         run: codesign --verify --deep --strict --verbose=2 src-tauri/target/release/bundle/macos/dronmakr.app
 

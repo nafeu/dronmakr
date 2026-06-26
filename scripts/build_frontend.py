@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import base64
 import re
 import sys
 from pathlib import Path
@@ -59,6 +60,16 @@ def _inline_assets(html: str) -> str:
     return html
 
 
+def _embed_startup_logo(html: str) -> str:
+    logo = STATIC / "branding" / "logo.png"
+    if logo.is_file():
+        data = base64.standard_b64encode(logo.read_bytes()).decode("ascii")
+        uri = f"data:image/png;base64,{data}"
+    else:
+        uri = ""
+    return html.replace("__STARTUP_LOGO_DATA_URI__", uri)
+
+
 def _build_page(env, template_name: str, out_name: str, active_path: str) -> None:
     template = env.get_template(template_name)
     rendered = template.render(
@@ -68,7 +79,10 @@ def _build_page(env, template_name: str, out_name: str, active_path: str) -> Non
         settings={},
         url_for=build_url_for,
     )
-    rendered = _inline_assets(rendered)
+    if out_name == "startup.html":
+        rendered = _embed_startup_logo(rendered)
+    else:
+        rendered = _inline_assets(rendered)
     out_path = DIST / out_name
     out_path.write_text(rendered, encoding="utf-8")
     print(f"  wrote {out_path.relative_to(ROOT)} ({out_path.stat().st_size // 1024} KiB)")

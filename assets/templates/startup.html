@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Starting dronmakr</title>
+  <title>dronmakr</title>
   <style>
     :root {
       --bg: #353531;
       --text: #f5f5f0;
       --accent: #ff9505;
       --muted: #b8b5a8;
+      --error: #ff6b6b;
     }
     * { box-sizing: border-box; }
     body {
@@ -24,88 +25,142 @@
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
     }
     .panel {
-      width: min(100%, 28rem);
+      width: min(100%, 32rem);
       text-align: center;
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 1rem;
     }
-    .brand {
-      color: var(--accent);
-      font-size: 0.85rem;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
+    .logo {
+      width: 5rem;
+      height: 5rem;
+      object-fit: contain;
+    }
+    .loading-text {
+      margin: 0;
+      font-size: 0.95rem;
+      color: var(--text);
     }
     .spinner {
-      font-size: 2.25rem;
-      color: var(--accent);
-      animation: spin 0.9s linear infinite;
-      line-height: 1;
+      width: 1.5rem;
+      height: 1.5rem;
+      border: 2px solid color-mix(in srgb, var(--accent) 25%, transparent);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    #status {
+    .error-panel {
+      width: 100%;
+      text-align: left;
+      display: none;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .error-panel.visible { display: flex; }
+    .error-title {
       margin: 0;
+      color: var(--error);
       font-size: 0.9rem;
-      line-height: 1.5;
     }
-    .hint {
-      margin: 0;
-      font-size: 0.75rem;
-      line-height: 1.45;
-      color: var(--muted);
-    }
-    .error {
-      color: #ff6b6b;
-    }
-    .log-path {
-      word-break: break-all;
+    .error-logs {
+      width: 100%;
+      min-height: 10rem;
+      max-height: 40vh;
+      padding: 0.65rem 0.75rem;
+      font-family: inherit;
       font-size: 0.68rem;
+      line-height: 1.45;
+      color: var(--text);
+      background: #050505;
+      border: 1px solid color-mix(in srgb, var(--error) 40%, transparent);
+      border-radius: 4px;
+      resize: vertical;
+    }
+    .support {
+      margin: 0;
+      font-size: 0.72rem;
+      line-height: 1.5;
       color: var(--muted);
     }
+    .support a { color: var(--accent); }
+    .loading-panel.hidden { display: none; }
   </style>
 </head>
 <body>
   <div class="panel">
-    <div class="brand">dronmakr</div>
-    <div class="spinner" aria-hidden="true">&#9696;</div>
-    <p id="status">Starting backend…</p>
-    <p class="hint" id="hint">First launch can take up to a minute while plug-ins and sample caches are prepared.</p>
-    <p class="log-path" id="log-path"></p>
+    <div id="loading-panel" class="loading-panel">
+      <img class="logo" src="__STARTUP_LOGO_DATA_URI__" alt="dronmakr">
+      <div class="spinner" aria-hidden="true"></div>
+      <p class="loading-text">loading...</p>
+    </div>
+    <div id="error-panel" class="error-panel" role="alert">
+      <p class="error-title">Could not start dronmakr</p>
+      <textarea id="error-logs" class="error-logs" readonly aria-label="Startup error log"></textarea>
+      <p class="support">
+        Contact support on
+        <a href="https://discord.gg/d9M9CQhhmS" target="_blank" rel="noopener noreferrer">Discord</a>
+        or open a GitHub issue at
+        <a href="https://github.com/nafeu/dronmakr/issues" target="_blank" rel="noopener noreferrer">github.com/nafeu/dronmakr</a>.
+      </p>
+    </div>
   </div>
   <script>
     (function () {
       var PORTS = [3766, 3767, 3768, 3769];
-      var statusEl = document.getElementById("status");
-      var hintEl = document.getElementById("hint");
-      var logPathEl = document.getElementById("log-path");
+      var TIMEOUT_MS = 180000;
       var started = Date.now();
-      var attempt = 0;
-      var logPaths = {
-        darwin: "~/Library/Application Support/dronmakr/logs/errors.log",
-        win32: "%AppData%\\dronmakr\\logs\\errors.log",
-        linux: "~/.local/share/dronmakr/logs/errors.log"
-      };
-      var platform = (navigator.platform || "").toLowerCase();
-      var logHint = logPaths.linux;
-      if (platform.indexOf("mac") >= 0) logHint = logPaths.darwin;
-      else if (platform.indexOf("win") >= 0) logHint = logPaths.win32;
-      logPathEl.textContent = "Error log: " + logHint;
+      var failed = false;
+      var loadingPanel = document.getElementById("loading-panel");
+      var errorPanel = document.getElementById("error-panel");
+      var errorLogs = document.getElementById("error-logs");
 
-      function setStatus(text, isError) {
-        statusEl.textContent = text;
-        statusEl.classList.toggle("error", !!isError);
+      function invokeDiagnostics() {
+        if (
+          window.__TAURI__ &&
+          window.__TAURI__.core &&
+          typeof window.__TAURI__.core.invoke === "function"
+        ) {
+          return window.__TAURI__.core.invoke("get_startup_diagnostics").catch(function () {
+            return null;
+          });
+        }
+        return Promise.resolve(null);
+      }
+
+      function showFailure(reason) {
+        if (failed) return;
+        failed = true;
+        loadingPanel.classList.add("hidden");
+        errorPanel.classList.add("visible");
+        invokeDiagnostics().then(function (data) {
+          var lines = [];
+          if (reason) lines.push(reason);
+          if (data) {
+            if (data.spawnError) lines.push("Spawn error: " + data.spawnError);
+            if (data.startupLogPath) lines.push("Log: " + data.startupLogPath);
+            if (data.errorsLogPath) lines.push("Errors: " + data.errorsLogPath);
+            if (Array.isArray(data.lines) && data.lines.length) {
+              lines.push("");
+              lines.push.apply(lines, data.lines);
+            }
+          }
+          if (!lines.length) {
+            lines.push("Backend did not respond on ports " + PORTS.join(", ") + ".");
+            lines.push("No diagnostic log was captured.");
+          }
+          errorLogs.value = lines.join("\n");
+          errorLogs.focus();
+          errorLogs.select();
+        });
       }
 
       function tryConnect() {
-        attempt += 1;
-        var elapsed = Math.round((Date.now() - started) / 1000);
-        if (attempt < 8) {
-          setStatus("Starting backend… (" + elapsed + "s)");
-        } else if (attempt < 40) {
-          setStatus("Still starting… building caches (" + elapsed + "s)");
-        } else {
-          setStatus("Still starting… this can take a while on first launch (" + elapsed + "s)");
+        if (failed) return;
+        if (Date.now() - started > TIMEOUT_MS) {
+          showFailure("Timed out after " + Math.round(TIMEOUT_MS / 1000) + "s waiting for backend.");
+          return;
         }
 
         var pending = PORTS.length;
@@ -116,22 +171,23 @@
               if (found) return;
               if (res.ok) {
                 found = true;
-                setStatus("Backend ready — opening dronmakr…");
                 window.location.replace("http://127.0.0.1:" + port + "/");
               }
             })
             .catch(function () {})
             .finally(function () {
               pending -= 1;
-              if (!found && pending === 0) {
-                if (Date.now() - started > 120000) {
-                  setStatus("Backend did not start in time. Check the error log or restart the app.", true);
-                  hintEl.textContent = "If this keeps happening, run the app from Terminal to see backend output, or delete Application Support settings for a clean install.";
-                  return;
-                }
-                setTimeout(tryConnect, 450);
+              if (!found && pending === 0 && !failed) {
+                setTimeout(tryConnect, 500);
               }
             });
+        });
+      }
+
+      if (window.__TAURI__ && window.__TAURI__.event && typeof window.__TAURI__.event.listen === "function") {
+        window.__TAURI__.event.listen("backend-error", function (ev) {
+          var msg = (ev && ev.payload) ? String(ev.payload) : "Backend error";
+          showFailure(msg);
         });
       }
 

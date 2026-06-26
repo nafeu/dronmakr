@@ -175,7 +175,7 @@ The app checks GitHub Releases in the background. When a newer version exists, a
 
 ```sh
 ./scripts/bump_version.sh patch              # bump, commit, tag, push
-./scripts/bump_and_release.sh patch          # above + AI release notes + gh release
+./scripts/bump_and_release.sh patch          # above + gh release (--generate-notes)
 ```
 
 Publishing a GitHub Release triggers [`.github/workflows/release-desktop.yml`](.github/workflows/release-desktop.yml) (macOS, Windows, Linux artifacts).

@@ -4,7 +4,9 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 mod clipboard;
+mod startup_log;
 
+use startup_log::{get_startup_diagnostics, init_log_files, StartupState};
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::{AppHandle, Emitter, Manager, RunEvent, Url};
 use tauri_plugin_opener::OpenerExt;
@@ -15,6 +17,7 @@ use tauri_plugin_shell::ShellExt;
 
 const PREFERRED_PORTS: [u16; 4] = [3766, 3767, 3768, 3769];
 const DEV_PORT: u16 = 3766;
+const BACKEND_STARTUP_TIMEOUT: Duration = Duration::from_secs(180);
 
 struct BackendState {
     port: u16,
@@ -37,17 +40,23 @@ fn select_listen_port() -> u16 {
         .unwrap_or(DEV_PORT)
 }
 
-fn wait_for_health(port: u16, timeout: Duration) -> bool {
+fn wait_for_health(port: u16, timeout: Duration, startup: &StartupState) -> bool {
     let url = format!("http://127.0.0.1:{port}/api/health");
     let deadline = Instant::now() + timeout;
     while Instant::now() < deadline {
         if let Ok(resp) = ureq::get(&url).timeout(Duration::from_secs(2)).call() {
             if resp.status() / 100 == 2 {
+                startup.set_backend_ready(true);
+                startup.push_line(format!("backend health OK on port {port}"));
                 return true;
             }
         }
         thread::sleep(Duration::from_millis(200));
     }
+    startup.push_line(format!(
+        "backend health check timed out after {}s on port {port}",
+        timeout.as_secs()
+    ));
     false
 }
 
@@ -65,7 +74,9 @@ fn navigate_main(app: &AppHandle, port: u16) {
 fn spawn_backend_sidecar(
     app: &AppHandle,
     port: u16,
+    startup: &StartupState,
 ) -> Result<tauri_plugin_shell::process::CommandChild, String> {
+    startup.push_line(format!("spawning sidecar on port {port}"));
     let sidecar = app
         .shell()
         .sidecar("dronmakr-backend")
@@ -75,11 +86,27 @@ fn spawn_backend_sidecar(
         .spawn()
         .map_err(|e| format!("failed to spawn backend: {e}"))?;
 
+    startup.push_line("sidecar process started".to_string());
+
     let app_handle = app.clone();
     thread::spawn(move || {
         while let Some(event) = rx.blocking_recv() {
-            if let CommandEvent::Stdout(line) = event {
-                let _ = app_handle.emit("backend-log", String::from_utf8_lossy(&line).to_string());
+            let startup = app_handle.state::<StartupState>();
+            match event {
+                CommandEvent::Stdout(line) => {
+                    let text = String::from_utf8_lossy(&line).to_string();
+                    startup.push_line(text.clone());
+                    let _ = app_handle.emit("backend-log", text);
+                }
+                CommandEvent::Stderr(line) => {
+                    let text = String::from_utf8_lossy(&line).to_string();
+                    startup.push_line(format!("stderr: {text}"));
+                    let _ = app_handle.emit("backend-log", text);
+                }
+                CommandEvent::Terminated(payload) => {
+                    startup.push_line(format!("sidecar terminated: {payload:?}"));
+                }
+                _ => {}
             }
         }
     });
@@ -144,12 +171,18 @@ pub fn run() {
         select_listen_port()
     };
 
+    let (startup_log_path, errors_log_path) = init_log_files();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_macos_fps::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_drag::init())
-        .invoke_handler(tauri::generate_handler![clipboard::copy_files_to_clipboard])
+        .invoke_handler(tauri::generate_handler![
+            clipboard::copy_files_to_clipboard,
+            get_startup_diagnostics
+        ])
+        .manage(StartupState::new(backend_port))
         .manage(BackendState {
             port: backend_port,
             child: Mutex::new(None),
@@ -157,6 +190,15 @@ pub fn run() {
         .setup(move |app| {
             let menu = build_menu(app.handle())?;
             app.set_menu(menu)?;
+
+            if let Some(startup) = app.try_state::<StartupState>() {
+                startup.push_line(format!(
+                    "log files: startup={} errors={}",
+                    startup_log_path.display(),
+                    errors_log_path.display()
+                ));
+                startup.push_line(format!("selected backend port {backend_port}"));
+            }
 
             app.on_menu_event(|app, event| match event.id().as_ref() {
                 "open_files" => open_files_root(app),
@@ -170,31 +212,34 @@ pub fn run() {
             let startup_port = backend_port;
 
             thread::spawn(move || {
+                let startup = handle.state::<StartupState>();
+
                 #[cfg(not(debug_assertions))]
                 {
-                    match spawn_backend_sidecar(&handle, startup_port) {
+                    match spawn_backend_sidecar(&handle, startup_port, &startup) {
                         Ok(child) => {
                             if let Some(state) = handle.try_state::<BackendState>() {
                                 *state.child.lock().unwrap() = Some(child);
                             }
                         }
                         Err(err) => {
+                            startup.set_spawn_error(err.clone());
+                            startup.push_line(err);
                             let _ = handle.emit("backend-error", err);
                             return;
                         }
                     }
                 }
 
-                if wait_for_health(startup_port, Duration::from_secs(120)) {
+                if wait_for_health(startup_port, BACKEND_STARTUP_TIMEOUT, &startup) {
                     let _ = handle.run_on_main_thread({
                         let handle = handle.clone();
                         move || navigate_main(&handle, startup_port)
                     });
                 } else {
-                    let _ = handle.emit(
-                        "backend-error",
-                        "Backend did not become ready in time",
-                    );
+                    let msg = "Backend did not become ready in time".to_string();
+                    startup.push_line(msg.clone());
+                    let _ = handle.emit("backend-error", msg);
                 }
             });
 

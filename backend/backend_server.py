@@ -53,6 +53,11 @@ def main() -> None:
         print("smoke: soundfile OK", _sf.__libsndfile_version__, flush=True)
         raise SystemExit(0)
 
+    if getattr(sys, "frozen", False):
+        from dronmakr.core.server_error_logging import ensure_server_error_file_logging
+
+        ensure_server_error_file_logging(announce=False)
+
     from dronmakr.server.webui import start_server
 
     stop = threading.Event()
@@ -67,7 +72,7 @@ def main() -> None:
         debug=args.debug,
         port=int(args.port),
         host=str(args.host),
-        build_sample_cache=True,
+        build_sample_cache=not getattr(sys, "frozen", False),
         dev_frontend=args.dev_frontend,
     )
     print(f"[backend] ready on http://{args.host}:{args.port}", flush=True)
