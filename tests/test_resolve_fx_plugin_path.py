@@ -77,3 +77,8 @@ def test_resolve_fx_plugin_path_keeps_explicit_fx(
     resolved = pa.resolve_fx_plugin_path("/plugins/Reaktor 6 FX.vst3")
 
     assert resolved == "/plugins/Reaktor 6 FX.vst3"
+
+
+def test_resolve_fx_plugin_path_passes_through_faust_fx():
+    resolved = pa.resolve_fx_plugin_path("faustfx:ghost_echo")
+    assert resolved == "faustfx:ghost_echo"

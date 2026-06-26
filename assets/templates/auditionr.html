@@ -8638,10 +8638,25 @@
 
       function generatrDroneInstrumentItemKey(item) {
         if (!item) return "";
-        if (item.kind === "faust") return "faust:" + (item.faustId || item.faust_id || "");
+        if (item.kind === "faust") {
+          var path = item.pluginPath || item.plugin_path || "";
+          if (path.indexOf("faustfx:") === 0) {
+            return "faustfx:" + (item.faustId || item.faust_id || "");
+          }
+          return "faust:" + (item.faustId || item.faust_id || "");
+        }
         if (item.kind === "patch") return "patch:" + (item.name || "");
         if (item.kind === "plugin") return "plugin:" + (item.pluginPath || item.plugin_path || "");
         return "";
+      }
+
+      function generatrDronePickerShowsLibraryColumn(data) {
+        var role = data && data.role;
+        return role === "instrument" || role === "effect";
+      }
+
+      function generatrDroneFaustPathPrefix(role) {
+        return role === "effect" ? "faustfx:" : "faust:";
       }
 
       function generatrDroneCloneInstrumentItem(item) {
@@ -9351,11 +9366,13 @@
         btn.className = "generatr-drone-plugin-picker-choice";
         btn.setAttribute("data-picker-kind", "faust");
         var faustId = entry.id || entry.faustId || "";
+        var role = generatrDronePluginPickerContext && generatrDronePluginPickerContext.role;
+        var prefix = generatrDroneFaustPathPrefix(role);
         var item = {
           kind: "faust",
           faustId: faustId,
           label: entry.label || faustId || "faust",
-          pluginPath: "faust:" + faustId
+          pluginPath: prefix + faustId
         };
         btn.setAttribute("data-item-key", generatrDroneInstrumentItemKey(item));
         btn.setAttribute(
@@ -9363,7 +9380,7 @@
           (categoryLabel || "") + " " + (entry.label || "") + " " + (entry.description || "") + " faust " + faustId
         );
         var title = document.createElement("span");
-        title.textContent = entry.label || faustId || "instrument";
+        title.textContent = entry.label || faustId || (role === "effect" ? "effect" : "instrument");
         btn.appendChild(title);
         if (entry.description) {
           var meta = document.createElement("span");
@@ -9384,22 +9401,29 @@
       function generatrDroneRenderFaustLibraryColumn(data) {
         if (!dronePluginPickerLibrary) return;
         dronePluginPickerLibrary.innerHTML = "";
+        var role = data && data.role;
+        var prefix = generatrDroneFaustPathPrefix(role);
         var categories = Array.isArray(data.libraryCategories) ? data.libraryCategories : [];
         var flatLibrary = Array.isArray(data.library) ? data.library : [];
         if (!categories.length && flatLibrary.length) {
-          categories = [{ id: "library", label: "library", instruments: flatLibrary }];
+          var flatKey = role === "effect" ? "effects" : "instruments";
+          var flatCat = { id: "library", label: "library" };
+          flatCat[flatKey] = flatLibrary;
+          categories = [flatCat];
         }
         if (!categories.length) {
           var emptyLib = document.createElement("p");
           emptyLib.className = "generatr-drone-plugin-picker-meta";
           emptyLib.style.padding = "0.35rem";
-          emptyLib.textContent = "No built-in instruments available.";
+          emptyLib.textContent = role === "effect"
+            ? "No built-in effects available."
+            : "No built-in instruments available.";
           dronePluginPickerLibrary.appendChild(emptyLib);
           return;
         }
         categories.forEach(function (category) {
-          var instruments = Array.isArray(category.instruments) ? category.instruments : [];
-          if (!instruments.length) return;
+          var libraryItems = category.instruments || category.effects || [];
+          if (!libraryItems.length) return;
           var group = document.createElement("section");
           group.className = "generatr-drone-plugin-picker-category";
           group.setAttribute("data-category-id", category.id || "");
@@ -9418,12 +9442,12 @@
             selectAllBtn.addEventListener("click", function (ev) {
               ev.preventDefault();
               ev.stopPropagation();
-              var items = instruments.map(function (entry) {
+              var items = libraryItems.map(function (entry) {
                 return {
                   kind: "faust",
                   faustId: entry.id || entry.faustId || "",
                   label: entry.label || entry.id || "faust",
-                  pluginPath: "faust:" + (entry.id || entry.faustId || "")
+                  pluginPath: prefix + (entry.id || entry.faustId || "")
                 };
               });
               var merged = generatrDronePickerPendingItems.slice();
@@ -9439,7 +9463,7 @@
           group.appendChild(head);
           var items = document.createElement("div");
           items.className = "generatr-drone-plugin-picker-category-items";
-          instruments.forEach(function (entry) {
+          libraryItems.forEach(function (entry) {
             items.appendChild(generatrDroneCreateFaustPickerChoice(entry, category.label || ""));
           });
           group.appendChild(items);
@@ -9449,13 +9473,22 @@
 
       function generatrDroneApplyFaustSelection(entry) {
         if (!generatrDronePluginPickerContext || !entry) return;
-        if (generatrDronePluginPickerContext.role !== "instrument") return;
-        generatrDroneInstrumentSelection = {
+        var ctx = generatrDronePluginPickerContext;
+        var faustId = entry.id || entry.faustId || "";
+        var prefix = generatrDroneFaustPathPrefix(ctx.role);
+        var selection = {
           kind: "faust",
-          faustId: entry.id || entry.faustId || "",
-          label: entry.label || entry.id || "faust",
-          pluginPath: "faust:" + (entry.id || entry.faustId || "")
+          faustId: faustId,
+          label: entry.label || faustId || "faust",
+          pluginPath: prefix + faustId
         };
+        if (ctx.role === "effect") {
+          generatrDroneFxSlots[ctx.fxSlotIndex] = selection;
+        } else if (ctx.role === "instrument") {
+          generatrDroneInstrumentSelection = selection;
+        } else {
+          return;
+        }
         generatrDroneClosePluginPicker();
         generatrDroneRefreshPluginCards();
       }
@@ -9492,12 +9525,18 @@
 
       function generatrDroneRenderPluginPickerLists(data) {
         if (!dronePluginPickerPatches || !dronePluginPickerPlugins) return;
-        var showLibrary = !!(data && data.role === "instrument");
+        var showLibrary = generatrDronePickerShowsLibraryColumn(data);
         if (dronePluginPickerColumns) {
           dronePluginPickerColumns.classList.toggle("has-library", showLibrary);
         }
         if (dronePluginPickerLibraryCol) {
           dronePluginPickerLibraryCol.hidden = !showLibrary;
+        }
+        if (dronePluginPickerLibrary) {
+          dronePluginPickerLibrary.setAttribute(
+            "aria-label",
+            data && data.role === "effect" ? "Built-in Faust effects" : "Built-in Faust instruments"
+          );
         }
         dronePluginPickerPatches.innerHTML = "";
         if (dronePluginPickerLibrary) dronePluginPickerLibrary.innerHTML = "";
@@ -9511,7 +9550,7 @@
           emptyPatch.textContent = "No saved patches yet — use the save icon on a filled slot to create one.";
           dronePluginPickerPatches.appendChild(emptyPatch);
         } else {
-          if (showLibrary) {
+          if (generatrDronePickerInstrumentMultiEnabled()) {
             generatrDroneAppendPatchesSelectAllToolbar(dronePluginPickerPatches, patches);
           }
           patches.forEach(function (patch) {
@@ -9534,7 +9573,7 @@
               : (patch.pluginName || patch.type || "patch");
             btn.appendChild(meta);
             btn.addEventListener("click", function () {
-              if (showLibrary) {
+              if (generatrDronePickerInstrumentMultiEnabled()) {
                 generatrDroneTogglePickerPendingItem(item);
                 return;
               }
@@ -9565,7 +9604,7 @@
             btn.setAttribute("data-search", (plugin.label || "") + " " + (plugin.path || ""));
             btn.textContent = plugin.displayLabel || plugin.label || plugin.path || "plug-in";
             btn.addEventListener("click", function () {
-              if (showLibrary) {
+              if (generatrDronePickerInstrumentMultiEnabled()) {
                 generatrDronePickerPendingItems = [];
                 generatrDronePickerMultiActive = false;
                 generatrDroneUpdatePickerSelectionUi();
@@ -9649,7 +9688,7 @@
             generatrDroneOpenPluginPickerForSlot(role, fxSlotIndex);
             return;
           }
-          if (String(pluginPath).indexOf("faust:") === 0) {
+          if (String(pluginPath).indexOf("faust:") === 0 || String(pluginPath).indexOf("faustfx:") === 0) {
             generatrDroneOpenPluginPickerForSlot(role, fxSlotIndex);
             return;
           }

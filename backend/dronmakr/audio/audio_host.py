@@ -97,7 +97,11 @@ def _unique_processor_name(prefix: str = "proc") -> str:
 
 
 def load_plugin(engine: Any, plugin_path: str, *, name: str | None = None) -> Any:
-    """Load a VST3/AU plug-in processor on ``engine``."""
+    """Load a VST3/AU plug-in or built-in Faust library effect on ``engine``."""
+    from dronmakr.audio.faust_fx_library import faust_fx_id_from_path, is_faust_fx_path, load_faust_effect
+
+    if is_faust_fx_path(plugin_path):
+        return load_faust_effect(engine, faust_fx_id_from_path(plugin_path), name=name)
     proc_name = name or _unique_processor_name("plugin")
     with _filter_dawdreamer_stderr():
         return engine.make_plugin_processor(proc_name, os.path.abspath(plugin_path))

@@ -871,6 +871,33 @@ def _parse_drone_fx_slots(payload: dict) -> list | None:
                         "pluginName": raw.get("pluginName") or raw.get("plugin_name") or "",
                     }
                 )
+        elif kind == "faust":
+            faust_id = (raw.get("faustId") or raw.get("faust_id") or "").strip()
+            plugin_path = (raw.get("pluginPath") or raw.get("plugin_path") or "").strip()
+            if plugin_path:
+                from dronmakr.audio.faust_fx_library import faust_fx_id_from_path, is_faust_fx_path
+
+                if is_faust_fx_path(plugin_path) and not faust_id:
+                    faust_id = faust_fx_id_from_path(plugin_path)
+            if not faust_id:
+                slots.append(None)
+                continue
+            if not plugin_path:
+                from dronmakr.audio.faust_fx_library import faust_fx_path_for_id, list_faust_effects
+
+                plugin_path = faust_fx_path_for_id(faust_id)
+            label = (raw.get("label") or raw.get("name") or "").strip()
+            if not label:
+                match = next((entry for entry in list_faust_effects() if entry["id"] == faust_id), None)
+                label = match["label"] if match else faust_id
+            slots.append(
+                {
+                    "kind": "faust",
+                    "faustId": faust_id,
+                    "pluginPath": plugin_path,
+                    "label": label,
+                }
+            )
         else:
             slots.append(None)
     while len(slots) < 5:
