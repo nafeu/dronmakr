@@ -32,6 +32,7 @@ if [[ "$UNAME_S" == "darwin" ]]; then
     exit 1
   fi
   ARCHIVE_NAME="dronmakr-v${VERSION}-macos-${ARCH_LABEL}.tar.gz"
+  bash scripts/sign_mac_app.sh "$APP"
   tar -czf "${ARTIFACT_DIR}/${ARCHIVE_NAME}" -C "$(dirname "$APP")" "$(basename "$APP")"
   APP_PATH="$APP" bash scripts/package_mac_dmg.sh
 elif [[ "$UNAME_S" == "linux" ]]; then

@@ -46,6 +46,10 @@ jobs:
           source venv/bin/activate
           bash scripts/build_sidecar.sh
           npm run tauri build
+          bash scripts/sign_mac_app.sh
+
+      - name: Verify macOS app signature
+        run: codesign --verify --deep --strict --verbose=2 src-tauri/target/release/bundle/macos/dronmakr.app
 
       - name: Create archive and DMG
         run: |

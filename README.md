@@ -134,7 +134,11 @@ Yes. Desktop releases ship a **vendored FFmpeg** for Folysplitr browser recordin
 
 **macOS says the app is blocked or won’t open**
 
-CI builds are not Apple-notarized. After download, use **System Settings → Privacy & Security → Open Anyway**, or **Control-click the app → Open** once. If needed: `xattr -dr com.apple.quarantine /Applications/dronmakr.app`.
+CI builds are ad-hoc signed but **not Apple-notarized**. After download:
+
+1. If macOS says the app is **“damaged”**, the bundle signature is invalid — use a current release build (v0.57.1+) or rebuild locally with `bash scripts/sign_mac_app.sh` after `npm run tauri build`.
+2. For the usual first-run Gatekeeper prompt, use **System Settings → Privacy & Security → Open Anyway**, or **Control-click the app → Open** once.
+3. If the app was quarantined by the browser, run: `xattr -dr com.apple.quarantine /Applications/dronmakr.app`
 
 **Plug-in compatibility**
 

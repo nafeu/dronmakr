@@ -38,6 +38,10 @@ if [[ ! -f "$SRC" ]]; then
   exit 1
 fi
 
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  codesign --force --sign - "$SRC"
+fi
+
 DEST="$BIN_DIR/dronmakr-backend-${TARGET}"
 cp "$SRC" "$DEST"
 chmod +x "$DEST"

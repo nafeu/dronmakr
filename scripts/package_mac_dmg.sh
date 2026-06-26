@@ -29,6 +29,7 @@ cleanup() {
 trap cleanup EXIT
 
 ditto "$APP" "${STAGE}/dronmakr.app"
+bash "$ROOT_DIR/scripts/sign_mac_app.sh" "${STAGE}/dronmakr.app"
 ln -sf /Applications "${STAGE}/Applications"
 
 rm -f "$DMG_PATH"
