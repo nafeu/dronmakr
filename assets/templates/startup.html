@@ -32,19 +32,28 @@
       align-items: center;
       gap: 1rem;
     }
+    .loading-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2rem;
+      width: 100%;
+    }
     .logo {
       width: 5rem;
       height: 5rem;
       object-fit: contain;
     }
-    .loading-text {
-      margin: 0;
-      font-size: 0.95rem;
-      color: var(--text);
+    .spinner-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
     }
     .spinner {
-      width: 1.5rem;
-      height: 1.5rem;
+      width: 2rem;
+      height: 2rem;
       border: 2px solid color-mix(in srgb, var(--accent) 25%, transparent);
       border-top-color: var(--accent);
       border-radius: 50%;
@@ -92,8 +101,9 @@
   <div class="panel">
     <div id="loading-panel" class="loading-panel">
       <img class="logo" src="__STARTUP_LOGO_DATA_URI__" alt="dronmakr">
-      <div class="spinner" aria-hidden="true"></div>
-      <p class="loading-text">loading...</p>
+      <div class="spinner-wrap">
+        <div class="spinner" aria-hidden="true"></div>
+      </div>
     </div>
     <div id="error-panel" class="error-panel" role="alert">
       <p class="error-title">Could not start dronmakr</p>

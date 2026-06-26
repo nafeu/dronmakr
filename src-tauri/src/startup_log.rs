@@ -10,6 +10,20 @@ pub struct StartupState {
     pub lines: Mutex<Vec<String>>,
 }
 
+fn should_skip_log_line(line: &str) -> bool {
+    let lower = line.to_ascii_lowercase();
+    if lower.contains("/api/health") {
+        return true;
+    }
+    if lower.contains("received packet pong") || lower.contains("sending packet ping") {
+        return true;
+    }
+    if lower.contains("backend health ok") {
+        return true;
+    }
+    false
+}
+
 impl StartupState {
     pub fn new(port: u16) -> Self {
         Self {
@@ -23,7 +37,7 @@ impl StartupState {
     pub fn push_line(&self, line: impl Into<String>) {
         let text = line.into();
         let trimmed = text.trim();
-        if trimmed.is_empty() {
+        if trimmed.is_empty() || should_skip_log_line(trimmed) {
             return;
         }
         append_both_logs(trimmed);

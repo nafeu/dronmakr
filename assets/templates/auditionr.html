@@ -5256,15 +5256,17 @@
       auditionrFetchExportsFallback("socket connect_error");
     });
 
+    auditionrFetchExportsFallback("initial");
+
     setTimeout(function () {
       if (!auditionrExportsBootstrapped) {
         auditionrFetchExportsFallback("socket timeout");
       }
-    }, 6000);
+    }, 1500);
 
     setTimeout(function () {
-      if (window.__pageReady) window.__pageReady();
-    }, 20000);
+      if (!auditionrExportsBootstrapped && window.__pageReady) window.__pageReady();
+    }, 8000);
     var lastFolderCounts = { archive: 0, trash: 0, exports: 0, saved: 0 };
     var selectedWaveformTimestamps = {};
     var processingCatalog = { types: [], actions: [], paramSchemas: {}, presets: [], pluginPatchOptions: [] };

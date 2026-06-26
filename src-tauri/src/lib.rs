@@ -47,7 +47,6 @@ fn wait_for_health(port: u16, timeout: Duration, startup: &StartupState) -> bool
         if let Ok(resp) = ureq::get(&url).timeout(Duration::from_secs(2)).call() {
             if resp.status() / 100 == 2 {
                 startup.set_backend_ready(true);
-                startup.push_line(format!("backend health OK on port {port}"));
                 return true;
             }
         }

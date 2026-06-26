@@ -1,4 +1,4 @@
-"""DawDreamer preset authoring shared by Patchcraftr GUI and CLI helpers."""
+"""DawDreamer preset authoring shared by Generate Samples and CLI helpers."""
 
 from __future__ import annotations
 
@@ -849,7 +849,7 @@ def list_presets(show_chain_plugins: bool = False, show_patterns: bool = False) 
     if len(instruments) < 1:
         print(
             with_prompt(
-                "No instruments — edit config/presets.json in your dronmakr files folder."
+                "No instruments — add one in Generate Samples or edit config/presets.json in your dronmakr files folder."
             )
         )
         return

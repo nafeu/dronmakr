@@ -97,9 +97,9 @@ def generate_drone_sample(
 ):
     presets_path = presets_path or resolve_presets_index_path()
     if not presets_path:
-        raise FileNotFoundError(
-            "config/presets.json does not exist — open Patchcraftr from the desktop tray (Launch patchcraftr)."
-        )
+        from dronmakr.core.utils import PRESETS_INDEX_MISSING_MSG
+
+        raise FileNotFoundError(PRESETS_INDEX_MISSING_MSG)
 
     # Desktop tray mode: Flask runs on a worker thread; many plug-ins require the process main thread.
     from dronmakr.audio.audio_worker import delegate_generate_drone_sample_if_needed
@@ -354,9 +354,9 @@ def apply_effect(input_path, effect_chain, presets_path=None):
 
     presets_path = presets_path or resolve_presets_index_path()
     if not presets_path:
-        raise FileNotFoundError(
-            "config/presets.json does not exist — open Patchcraftr from the desktop tray (Launch patchcraftr)."
-        )
+        from dronmakr.core.utils import PRESETS_INDEX_MISSING_MSG
+
+        raise FileNotFoundError(PRESETS_INDEX_MISSING_MSG)
     from dronmakr.audio.audio_worker import delegate_apply_effect_if_needed
 
     if delegate_apply_effect_if_needed(

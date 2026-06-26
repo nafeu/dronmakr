@@ -43,7 +43,10 @@
     ],
     "macOS": {
       "minimumSystemVersion": "10.15",
-      "signingIdentity": "-"
+      "signingIdentity": "-",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "dronmakr uses the microphone for folysplitr audio input and recording."
+      }
     }
   },
   "plugins": {

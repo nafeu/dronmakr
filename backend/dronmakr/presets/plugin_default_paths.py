@@ -1,4 +1,4 @@
-"""OS-specific default PLUGIN_PATHS (comma-separated) for Patchcraftr AU/VST scan roots."""
+"""OS-specific default PLUGIN_PATHS (comma-separated) for VST/AU plugin scan roots."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ def default_plugin_paths_csv() -> str:
     Return comma-separated canonical plugin folders for this OS.
 
     Paths are normalized with expanduser / expandvars; missing directories are still included
-    (Patchcraftr skips non-existent dirs when scanning).
+    (plugin scans skip non-existent directories).
     """
     sep = ","
     if sys.platform == "darwin":

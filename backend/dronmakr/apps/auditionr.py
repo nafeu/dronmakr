@@ -1012,13 +1012,11 @@ def _prepare_drone_editor_preview(
     edit_preset_path: str | None,
     fx_slot_index: int | None,
 ) -> dict:
-    from dronmakr.core.utils import resolve_presets_index_path
+    from dronmakr.core.utils import PRESETS_INDEX_MISSING_MSG, resolve_presets_index_path
 
     presets_path = resolve_presets_index_path()
     if not presets_path:
-        raise FileNotFoundError(
-            "config/presets.json does not exist — open Patchcraftr from the desktop tray (Launch patchcraftr)."
-        )
+        raise FileNotFoundError(PRESETS_INDEX_MISSING_MSG)
 
     with open(presets_path, "r", encoding="utf-8") as f:
         presets = json.load(f)
@@ -1068,13 +1066,11 @@ def _prepare_drone_editor_preview(
 
 def _run_generate_drone(payload: dict) -> list[str]:
     """`generate-drone` CLI parity (omits UI for --shift-octave-down, --shift-root-note, --dry-run, --log-server, --play)."""
-    from dronmakr.core.utils import resolve_presets_index_path
+    from dronmakr.core.utils import PRESETS_INDEX_MISSING_MSG, resolve_presets_index_path
 
     presets_path = resolve_presets_index_path()
     if not presets_path:
-        raise FileNotFoundError(
-            "config/presets.json does not exist — open Patchcraftr from the desktop tray (Launch patchcraftr)."
-        )
+        raise FileNotFoundError(PRESETS_INDEX_MISSING_MSG)
 
     instrument, instrument_selection = _parse_drone_instrument_selection(payload)
     effect = (payload.get("effect") or "").strip() or None
@@ -1162,13 +1158,11 @@ def _run_generate_drone(payload: dict) -> list[str]:
 
 def _run_drone_audio_preview(payload: dict) -> tuple[str, float, str]:
     """Render a short looping WAV preview of the current instrument + FX chain."""
-    from dronmakr.core.utils import resolve_presets_index_path
+    from dronmakr.core.utils import PRESETS_INDEX_MISSING_MSG, resolve_presets_index_path
 
     presets_path = resolve_presets_index_path()
     if not presets_path:
-        raise FileNotFoundError(
-            "config/presets.json does not exist — open Patchcraftr from the desktop tray (Launch patchcraftr)."
-        )
+        raise FileNotFoundError(PRESETS_INDEX_MISSING_MSG)
 
     preview_payload = dict(payload)
     preview_payload["pattern"] = DRONE_AUDIO_PREVIEW_PATTERN

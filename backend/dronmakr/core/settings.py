@@ -433,6 +433,12 @@ def set_files_root(path: str) -> str:
     if not resolved:
         raise ValueError("A valid files root path is required")
     ensure_managed_files_root(resolved)
+    try:
+        from dronmakr.core.utils import ensure_managed_config_files
+
+        ensure_managed_config_files()
+    except Exception:
+        pass
     settings = load_settings()
     settings[FILES_ROOT_KEY] = resolved
     _apply_folysplitr_drum_path_preset(settings, resolved)

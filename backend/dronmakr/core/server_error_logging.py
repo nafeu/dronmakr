@@ -1,7 +1,7 @@
 """
 Rotating ``errors.log`` for dronmakr: server/traceback errors plus optional app diagnostics.
 
-The ``dronmakr`` logger family (including ``dronmakr.server``, ``dronmakr.patchcraftr``, …)
+The ``dronmakr`` logger family (including ``dronmakr.server``, ``dronmakr.apps``, …)
 writes at INFO and above into this file. Unhandled Flask request exceptions attach full
 tracebacks via ``register_flask_server_error_signals``.
 """
@@ -9,6 +9,7 @@ tracebacks via ``register_flask_server_error_signals``.
 from __future__ import annotations
 
 import logging
+import re
 import subprocess
 import sys
 from logging.handlers import RotatingFileHandler
@@ -26,6 +27,29 @@ _file_handler_installed = False
 _flask_signal_registered = False
 
 _DRAONMAKR_LOGGER = "dronmakr"
+
+_QUIET_PROBE_REQUEST_RE = re.compile(
+    r'"(?:GET|HEAD) (?:'
+    + "|".join(re.escape(path) for path in ("/api/health", "/dev/reload-check"))
+    + r")(?:\?[^\"]*)? HTTP/[^\"]+\" (\d{3})"
+)
+_QUIET_ENGINEIO_RE = re.compile(
+    r"(?:Received packet PONG|Sending packet PING|Sending packet MESSAGE.*[\"']ping[\"'])",
+    re.IGNORECASE,
+)
+
+
+class QuietNoiseLogFilter(logging.Filter):
+    """Drop health probes and websocket heartbeat lines from log files."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        match = _QUIET_PROBE_REQUEST_RE.search(msg)
+        if match is not None and 200 <= int(match.group(1)) < 400:
+            return False
+        if _QUIET_ENGINEIO_RE.search(msg):
+            return False
+        return True
 
 
 def errors_log_path() -> Path:
@@ -45,8 +69,7 @@ def ensure_server_error_file_logging(*, announce: bool = False) -> str:
     Returns absolute path of ``errors.log``. When ``announce`` is True, prints one
     line (with ANSI prompt when ``utils.with_main_prompt`` is available).
 
-    Intended to run when unified web/desktop starts and when Patchcraftr opens,
-    so imports do not create files prematurely.
+    Intended to run when the unified web/desktop server starts.
     """
     global _file_handler_installed
 
@@ -75,11 +98,12 @@ def ensure_server_error_file_logging(*, announce: bool = False) -> str:
             datefmt="%Y-%m-%d %H:%M:%S",
         )
     )
+    fh.addFilter(QuietNoiseLogFilter())
 
     app_log = logging.getLogger(_DRAONMAKR_LOGGER)
     app_log.setLevel(logging.INFO)
     app_log.addHandler(fh)
-    # Child loggers like dronmakr.server / dronmakr.patchcraftr propagate here;
+    # Child loggers like dronmakr.server propagate here;
     # do not also send everything on the Python root logger to stderr via this handler.
     app_log.propagate = False
 

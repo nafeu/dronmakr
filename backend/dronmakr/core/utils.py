@@ -84,8 +84,12 @@ def with_final_main_prompt(text):
     return f"{RED}■{RESET}   {text}"
 
 
-def with_patchcraftr_prompt(text):
-    return f"{MAGENTA}┌ {APP_NAME} ■ patchcraftr {MAGENTA}┐{RESET} {text}"
+PRESETS_INDEX_MISSING_MSG = (
+    "config/presets.json is missing in your dronmakr files folder — restart the app or check Settings."
+)
+PRESETS_INDEX_EMPTY_INSTRUMENT_MSG = (
+    "No instrument presets yet — save one from Generate Samples or pick an installed instrument plug-in."
+)
 
 
 def with_generate_drone_midi_prompt(text):
@@ -102,10 +106,6 @@ def with_process_drone_sample_prompt(text):
 
 def with_generate_beat_prompt(text):
     return f"{CYAN}│{RESET}   {text}"
-
-
-def patchcraftr_header():
-    return f"{MAGENTA}┌ {APP_NAME} ■ patchcraftr{RESET}"
 
 
 def generate_drone_midi_header():
@@ -1156,16 +1156,51 @@ def resolve_presets_index_path() -> str:
     return ""
 
 
+def ensure_presets_index() -> str:
+    """Ensure config/presets.json exists (empty list on first install)."""
+    from dronmakr.core.settings import has_configured_files_root
+
+    if not has_configured_files_root():
+        return ""
+    existing = resolve_presets_index_path()
+    if existing:
+        return existing
+    presets_path = get_managed_file("config", "presets.json")
+    parent = os.path.dirname(presets_path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    with open(presets_path, "w", encoding="utf-8") as f:
+        json.dump([], f, indent=2)
+    print(f"Created {presets_path}")
+    return presets_path
+
+
+def ensure_managed_config_files() -> None:
+    """Copy bundled config samples into FILES_ROOT/config/ on first install."""
+    from dronmakr.core.settings import has_configured_files_root
+
+    if not has_configured_files_root():
+        return
+    refresh_managed_path_constants()
+    ensure_presets_index()
+    ensure_post_processing_shortcuts_file()
+    from dronmakr.apps.beatbuildr import ensure_beat_patterns, ensure_drum_kits
+
+    ensure_beat_patterns()
+    ensure_drum_kits()
+
+
 def ensure_post_processing_shortcuts_file() -> None:
     """Ensure config/post-processing-shortcuts.json exists; copy bundled sample if missing."""
-    if os.path.exists(POST_PROCESSING_SHORTCUTS_PATH):
+    shortcuts_path = get_managed_file("config", "post-processing-shortcuts.json")
+    if os.path.exists(shortcuts_path):
         return
-    parent = os.path.dirname(POST_PROCESSING_SHORTCUTS_PATH)
+    parent = os.path.dirname(shortcuts_path)
     if parent:
         os.makedirs(parent, exist_ok=True)
     if os.path.exists(POST_PROCESSING_SHORTCUTS_SAMPLE):
-        shutil.copy2(POST_PROCESSING_SHORTCUTS_SAMPLE, POST_PROCESSING_SHORTCUTS_PATH)
-        print(f"Created {POST_PROCESSING_SHORTCUTS_PATH} from sample template")
+        shutil.copy2(POST_PROCESSING_SHORTCUTS_SAMPLE, shortcuts_path)
+        print(f"Created {shortcuts_path} from sample template")
         return
     raise FileNotFoundError(
         f"Post-processing shortcuts sample not found at {POST_PROCESSING_SHORTCUTS_SAMPLE}"

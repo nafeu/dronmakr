@@ -1028,7 +1028,7 @@
           </div>
           <div class="device-picker" id="device-picker-wrap">
             <i class="fa-solid fa-microphone-lines" title="select input device"></i>
-            <select id="device-select">
+            <select id="device-select" class="dron-control--native" data-native-ui="true">
               <option value="">no input device selected</option>
             </select>
           </div>
@@ -2356,32 +2356,26 @@
     }
 
     async function initInputDeviceMonitor() {
+      await startMonitorForDevice("");
       await refreshDevices();
+
       var savedId = readSavedInputDeviceId();
-      await startMonitorForDevice(savedId);
-      await refreshDevices();
-
-      var deviceId = resolveInputDeviceId();
-      var activeId = getActiveInputDeviceId();
-      if (deviceId && deviceId !== activeId) {
+      var deviceId = savedId && findInputDeviceOption(savedId) ? savedId : resolveInputDeviceId();
+      if (deviceId && deviceId !== getActiveInputDeviceId()) {
         await startMonitorForDevice(deviceId);
-        activeId = getActiveInputDeviceId();
+        await refreshDevices();
       }
 
-      if (deviceId && deviceId !== activeId) {
-        deviceId = deviceSelect && deviceSelect.options.length ? deviceSelect.options[0].value : "";
-        if (deviceId && deviceId !== activeId) {
-          await startMonitorForDevice(deviceId);
-        }
-      }
-
+      deviceId = resolveInputDeviceId();
       syncInputDeviceSelect(deviceId);
       if (deviceSelect && deviceSelect.value) saveInputDeviceId(deviceSelect.value);
     }
 
     async function refreshDevices() {
       var devices = await navigator.mediaDevices.enumerateDevices();
-      var inputs = devices.filter(function (d) { return d.kind === "audioinput"; });
+      var inputs = devices.filter(function (d) {
+        return d.kind === "audioinput" && d.deviceId;
+      });
       deviceSelect.innerHTML = "";
       if (!inputs.length) {
         var optNone = document.createElement("option");
@@ -2399,6 +2393,9 @@
         deviceSelect.appendChild(option);
       });
       deviceSelect.disabled = false;
+      if (window.dronmakrUi && typeof window.dronmakrUi.refreshSelects === "function") {
+        window.dronmakrUi.refreshSelects(devicePickerWrap || deviceSelect.parentElement);
+      }
     }
 
     function setRecordingUi(isRecording) {

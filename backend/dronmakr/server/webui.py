@@ -7,7 +7,6 @@ import os
 os.environ.setdefault("DRONMAKR_ASYNC_MODE", "threading")
 
 import logging
-import re
 import sys
 import threading
 import time
@@ -24,8 +23,6 @@ from dronmakr.core.utils import get_version, with_main_prompt as with_prompt
 from dronmakr.apps.auditionr import register_auditionr
 from dronmakr.apps.beatbuildr import (
     register_beatbuildr,
-    ensure_beat_patterns,
-    ensure_drum_kits,
     ensure_all_sample_caches,
 )
 from dronmakr.core.native_folder_picker import pick_folder_subprocess
@@ -52,6 +49,7 @@ from dronmakr.core.settings import (
 from dronmakr.core.utils import (
     SAVED_DIR,
     export_collections_package,
+    ensure_managed_config_files,
     get_auditionr_folder_counts,
     get_latest_exports,
     get_presets,
@@ -66,6 +64,7 @@ from dronmakr.processing.processing_actions import get_processing_actions_payloa
 from dronmakr.apps.folysplitr import ensure_recordings_dir, ensure_splits_dirs, register_folysplitr
 
 from dronmakr.core.server_error_logging import (
+    QuietNoiseLogFilter,
     ensure_server_error_file_logging,
     log_server_session_start,
     mirror_errors_log_to,
@@ -513,29 +512,13 @@ def _wait_for_server_health(host: str, port: int, timeout_s: float = 30.0) -> bo
 
 
 _DESKTOP_STDERR_LOGGING_CONFIGURED = False
-_QUIET_PROBE_LOG_FILTER: logging.Filter | None = None
-_QUIET_PROBE_REQUEST_RE = re.compile(
-    r'"(?:GET|HEAD) (?:'
-    + "|".join(re.escape(path) for path in ("/api/health", "/dev/reload-check"))
-    + r")(?:\?[^\"]*)? HTTP/[^\"]+\" (\d{3})"
-)
+_QUIET_PROBE_LOG_FILTER: QuietNoiseLogFilter | None = None
 
 
-class _QuietProbeLogFilter(logging.Filter):
-    """Drop successful health/reload probe lines from werkzeug access logs."""
-
-    def filter(self, record: logging.LogRecord) -> bool:
-        match = _QUIET_PROBE_REQUEST_RE.search(record.getMessage())
-        if match is None:
-            return True
-        status = int(match.group(1))
-        return not (200 <= status < 400)
-
-
-def _configure_quiet_probe_request_logs() -> logging.Filter:
+def _configure_quiet_probe_request_logs() -> QuietNoiseLogFilter:
     global _QUIET_PROBE_LOG_FILTER
     if _QUIET_PROBE_LOG_FILTER is None:
-        _QUIET_PROBE_LOG_FILTER = _QuietProbeLogFilter()
+        _QUIET_PROBE_LOG_FILTER = QuietNoiseLogFilter()
         for logger_name in ("werkzeug", "geventwebsocket.handler"):
             logging.getLogger(logger_name).addFilter(_QUIET_PROBE_LOG_FILTER)
     return _QUIET_PROBE_LOG_FILTER
@@ -599,10 +582,8 @@ def start_server(
         print(with_prompt("[desktop] startup: ensure managed files root"))
         ensure_managed_files_root()
         ensure_folysplitr_drum_path_preset()
-    print(with_prompt("[desktop] startup: ensure beat patterns"))
-    ensure_beat_patterns()
-    print(with_prompt("[desktop] startup: ensure drum kits"))
-    ensure_drum_kits()
+        print(with_prompt("[desktop] startup: ensure config templates"))
+        ensure_managed_config_files()
     print(with_prompt("[desktop] startup: ensure recordings dir"))
     ensure_recordings_dir()
     print(with_prompt("[desktop] startup: ensure splits dirs"))

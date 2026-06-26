@@ -756,7 +756,7 @@ def reload_plugin_preserving_state(
 
 @dataclass
 class DawDreamerGraphSession:
-    """Shared RenderEngine holding instrument + FX processors for Patchcraftr."""
+    """Shared RenderEngine holding instrument + FX processors for plugin editing."""
 
     sample_rate: int = SAMPLE_RATE
     buffer_size: int = BUFFER_SIZE
