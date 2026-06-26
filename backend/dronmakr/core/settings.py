@@ -104,6 +104,8 @@ DRUM_PATH_KEY_TO_SPLIT_CATEGORY = {
 DEFAULT_KEYS = [
     "PLUGIN_PATHS",
     "IGNORE_PLUGINS",
+    "INSTRUMENT_ALLOW_LIST",
+    "FX_ALLOW_LIST",
     *DRUM_PATH_KEYS,
     "ACTIVE_DRUM_PATH_PRESET",
     "DRUM_PATH_PRESETS",
@@ -113,6 +115,8 @@ DEFAULT_KEYS = [
 _default_values = {
     "PLUGIN_PATHS": "",
     "IGNORE_PLUGINS": "",
+    "INSTRUMENT_ALLOW_LIST": "",
+    "FX_ALLOW_LIST": "",
     "DRUM_KICK_PATHS": "",
     "DRUM_HIHAT_PATHS": "",
     "DRUM_PERC_PATHS": "",
@@ -251,6 +255,21 @@ def _normalize_drum_presets_inplace(settings: dict) -> None:
             break
     for key in DRUM_PATH_KEYS:
         settings[key] = active_paths.get(key, "")
+
+
+def _migrate_legacy_settings_keys(settings: dict) -> None:
+    """Copy values from deprecated keys into current allow-list settings."""
+    legacy_allow_lists = (
+        ("ALLOWED_INSTRUMENT_PLUGINS", "INSTRUMENT_ALLOW_LIST"),
+        ("ALLOWED_FX_PLUGINS", "FX_ALLOW_LIST"),
+    )
+    for old_key, new_key in legacy_allow_lists:
+        old_val = settings.get(old_key, "")
+        new_val = settings.get(new_key, "")
+        if isinstance(old_val, str) and old_val.strip() and not (
+            isinstance(new_val, str) and new_val.strip()
+        ):
+            settings[new_key] = old_val
 
 
 def _migrate_from_env() -> dict:
@@ -458,6 +477,7 @@ def load_settings() -> dict:
         ):
             out[k] = v
     _normalize_drum_presets_inplace(out)
+    _migrate_legacy_settings_keys(out)
     return out
 
 

@@ -16,8 +16,6 @@ from dronmakr.audio.audio_host import (
     load_instrument as load_instrument_on_engine,
     load_plugin as load_plugin_on_engine,
     open_plugin_editor,
-    plugin_is_effect,
-    plugin_is_instrument,
     run_live_preview_during_editor,
     save_plugin_state,
 )
@@ -26,7 +24,9 @@ from dronmakr.core.utils import TEMP_DIR, generate_id, resolve_presets_index_pat
 from dronmakr.audio.faust_library import list_faust_instruments, list_faust_library_categories
 from dronmakr.presets.preset_authoring import (
     format_plugin_name,
+    get_allowed_plugin_labels,
     get_plugin_scan_cache_info,
+    list_all_installed_plugin_entries,
     list_installed_plugin_entries,
     load_presets_json,
     name_exists,
@@ -57,6 +57,7 @@ def _load_presets_list() -> list[dict]:
 
 def _patch_summary(preset: dict) -> dict:
     return {
+        "id": preset.get("id") or "",
         "name": preset.get("name") or "",
         "type": preset.get("type") or "",
         "pluginName": preset.get("plugin_name") or "",
@@ -76,8 +77,28 @@ def _plugin_path_exists(plugin_path: str) -> bool:
     return bool(path) and os.path.exists(path)
 
 
+def _plugin_entry_payload(entry: dict) -> dict:
+    return {
+        "label": entry["label"],
+        "displayLabel": entry.get("displayLabel") or entry["label"],
+        "path": entry["path"],
+    }
+
+
+def _all_plugin_entries() -> list[dict]:
+    return [
+        _plugin_entry_payload(entry)
+        for entry in list_all_installed_plugin_entries()
+        if _plugin_path_exists(entry["path"])
+    ]
+
+
 def _role_plugins(role: str, *, respect_ignore: bool) -> list[dict]:
-    return list_installed_plugin_entries(role=role, respect_ignore=respect_ignore)
+    return [
+        _plugin_entry_payload(entry)
+        for entry in list_installed_plugin_entries(role=role, respect_ignore=respect_ignore)
+        if _plugin_path_exists(entry["path"])
+    ]
 
 
 def get_drone_plugin_scan_status() -> dict:
@@ -136,14 +157,8 @@ def get_drone_picker_payload(role: str) -> dict:
     plugins: list[dict] = []
     if plugin_paths and plugin_paths != [""]:
         plugins = [
-            {
-                "label": entry["label"],
-                "displayLabel": entry.get("displayLabel") or entry["label"],
-                "path": entry["path"],
-                "role": entry.get("role") or "",
-            }
+            _plugin_entry_payload(entry)
             for entry in _role_plugins(role, respect_ignore=True)
-            if _plugin_path_exists(entry["path"])
         ]
 
     return {
@@ -152,7 +167,7 @@ def get_drone_picker_payload(role: str) -> dict:
         "plugins": plugins,
         "library": list_faust_instruments() if role == "instrument" else [],
         "libraryCategories": list_faust_library_categories() if role == "instrument" else [],
-        "pluginPathsConfigured": bool(plugins) or bool(list_installed_plugin_entries(respect_ignore=False)),
+        "pluginPathsConfigured": bool(plugin_paths and plugin_paths != [""]),
         "scan": get_drone_plugin_scan_status(),
     }
 
@@ -160,40 +175,25 @@ def get_drone_picker_payload(role: str) -> dict:
 def get_drone_plugin_list_editor_payload(role: str) -> dict:
     """Return allowed vs detected plug-ins for the list editor modal."""
     role = (role or "instrument").strip().lower()
-    detected = _role_plugins(role, respect_ignore=False)
-    allowed = _role_plugins(role, respect_ignore=True)
-    scan = get_drone_plugin_scan_status()
+    detected = _all_plugin_entries()
+    allowed_labels = set(get_allowed_plugin_labels(role))
+    allowed = [entry for entry in detected if entry["label"] in allowed_labels]
     return {
         "role": role,
-        "allowed": [
-            {
-                "label": entry["label"],
-                "displayLabel": entry.get("displayLabel") or entry["label"],
-                "path": entry["path"],
-                "role": entry.get("role") or "",
-            }
-            for entry in allowed
-        ],
-        "detected": [
-            {
-                "label": entry["label"],
-                "displayLabel": entry.get("displayLabel") or entry["label"],
-                "path": entry["path"],
-                "role": entry.get("role") or "",
-            }
-            for entry in detected
-        ],
-        "scan": scan,
+        "allowed": allowed,
+        "detected": detected,
+        "scan": get_drone_plugin_scan_status(),
     }
 
 
 def save_drone_plugin_list_editor(role: str, allowed_labels: list[str]) -> dict:
-    """Persist allowed plug-ins for a role via ``IGNORE_PLUGINS``."""
+    """Persist the per-role allow list in settings."""
     role = (role or "instrument").strip().lower()
-    ignore_plugins = save_allowed_plugins_for_role(role, allowed_labels)
+    allowed_plugins = save_allowed_plugins_for_role(role, allowed_labels)
     return {
+        "ok": True,
         "role": role,
-        "ignorePlugins": ignore_plugins,
+        "allowedPlugins": allowed_plugins,
         **get_drone_plugin_list_editor_payload(role),
     }
 
@@ -273,15 +273,6 @@ def open_drone_plugin_editor_capture(
                 fx_specs,
             )
             processor = _resolve_edit_processor(instrument, fx_processors, role, plugin_path)
-            if role == "instrument" and not plugin_is_instrument(processor):
-                raise ValueError(
-                    "Selected plug-in is not an instrument (it accepts audio input). "
-                    "Choose a synth or instrument plug-in."
-                )
-            if role == "effect" and not plugin_is_effect(processor):
-                raise ValueError(
-                    "Selected plug-in is an instrument (no audio input). Choose an FX plug-in."
-                )
             if existing_preset and os.path.isfile(existing_preset):
                 apply_plugin_state(processor, existing_preset)
 
@@ -302,16 +293,6 @@ def open_drone_plugin_editor_capture(
         else:
             engine = create_engine()
             processor = load_plugin_on_engine(engine, plugin_path)
-
-            if role == "instrument" and not plugin_is_instrument(processor):
-                raise ValueError(
-                    "Selected plug-in is not an instrument (it accepts audio input). "
-                    "Choose a synth or instrument plug-in."
-                )
-            if role == "effect" and not plugin_is_effect(processor):
-                raise ValueError(
-                    "Selected plug-in is an instrument (no audio input). Choose an FX plug-in."
-                )
 
             if existing_preset and os.path.isfile(existing_preset):
                 apply_plugin_state(processor, existing_preset)
@@ -483,3 +464,20 @@ def save_drone_preset(
     data.append(preset_data)
     save_presets_json(data)
     return _patch_summary(preset_data)
+
+
+def delete_drone_preset(*, name: str | None = None, preset_id: str | None = None) -> dict:
+    """Remove a saved patch from ``presets.json``."""
+    from dronmakr.presets.preset_authoring import delete_preset_by_id, delete_preset_by_name
+
+    uid = (preset_id or "").strip()
+    preset_name = (name or "").strip()
+    if uid:
+        deleted = delete_preset_by_id(uid)
+    elif preset_name:
+        deleted = delete_preset_by_name(preset_name)
+    else:
+        raise ValueError("Patch name or id is required.")
+    if not deleted:
+        raise ValueError(f"No saved patch named '{preset_name or uid}'.")
+    return {"ok": True, "deleted": preset_name or uid}

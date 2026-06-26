@@ -24,6 +24,9 @@ import soundfile as sf
 SAMPLE_RATE = 44100
 BUFFER_SIZE = 512
 HEADROOM_GAIN = 0.5  # -6 dB
+# DawDreamer returns (channels, samples); first dim is rarely above this for plug-in output.
+MAX_PLUGIN_OUTPUT_CHANNELS = 64
+EXPORT_CHANNEL_COUNT = 2
 
 _LOG = logging.getLogger("dronmakr.audio_host")
 
@@ -171,13 +174,31 @@ def daw_audio_to_samples_channels(audio: np.ndarray) -> np.ndarray:
     arr = np.asarray(audio, dtype=np.float32)
     if arr.ndim == 1:
         arr = np.stack([arr, arr], axis=0)
-    if arr.shape[0] <= 8 and arr.shape[0] < arr.shape[1]:
-        arr = arr.T
+    if arr.ndim == 2:
+        rows, cols = arr.shape
+        if rows <= MAX_PLUGIN_OUTPUT_CHANNELS and rows < cols:
+            arr = arr.T
+        elif cols <= MAX_PLUGIN_OUTPUT_CHANNELS and cols < rows:
+            pass
+        elif rows <= MAX_PLUGIN_OUTPUT_CHANNELS and cols <= MAX_PLUGIN_OUTPUT_CHANNELS:
+            arr = arr.T if rows <= cols else arr
     if arr.ndim == 1:
         arr = np.column_stack([arr, arr])
     elif arr.shape[1] == 1:
         arr = np.column_stack([arr[:, 0], arr[:, 0]])
     return np.ascontiguousarray(arr, dtype=np.float32)
+
+
+def downmix_audio_for_export(audio: np.ndarray, channels: int = EXPORT_CHANNEL_COUNT) -> np.ndarray:
+    """Keep stereo (or mono) exports even when a plug-in renders extra output buses."""
+    arr = np.asarray(audio, dtype=np.float32)
+    if arr.ndim != 2:
+        raise ValueError(f"Expected 2D audio for export, got shape {arr.shape}")
+    if arr.shape[1] <= channels:
+        return arr
+    if channels == 1:
+        return np.ascontiguousarray(arr.mean(axis=1, dtype=np.float32)[:, np.newaxis], dtype=np.float32)
+    return np.ascontiguousarray(arr[:, :channels], dtype=np.float32)
 
 
 def samples_channels_to_daw_audio(audio: np.ndarray) -> np.ndarray:
@@ -284,7 +305,7 @@ def _trim_rendered_audio(
     sample_rate: int,
     headroom_gain: float,
 ) -> np.ndarray:
-    out = daw_audio_to_samples_channels(audio)
+    out = downmix_audio_for_export(daw_audio_to_samples_channels(audio))
     target_samples = int(round(float(duration_sec) * sample_rate))
     if out.shape[0] > target_samples:
         out = out[:target_samples]
@@ -610,9 +631,15 @@ def render_midi_chain_from_paths(
 
         fx_procs = []
         for idx, (fx_path, fx_state) in enumerate(fx_specs):
-            fx = load_plugin(engine, fx_path, name=f"fx_{idx}")
-            if fx_state:
+            from dronmakr.presets.preset_authoring import resolve_fx_plugin_path
+
+            resolved_path = resolve_fx_plugin_path(fx_path)
+            fx = load_plugin(engine, resolved_path, name=f"fx_{idx}")
+            if fx_state and os.path.abspath(resolved_path) == os.path.abspath(fx_path):
                 apply_plugin_state(fx, fx_state)
+            elif fx_state:
+                with contextlib.suppress(Exception):
+                    apply_plugin_state(fx, fx_state)
             fx_procs.append(fx)
 
         graph = _build_plugin_graph(inst, fx_procs)
@@ -635,6 +662,11 @@ def render_midi_chain_from_paths(
 
     if last_out is None:
         raise RuntimeError("DawDreamer render produced no audio")
+    if not _render_output_is_usable(last_out):
+        raise RuntimeError(
+            "DawDreamer render produced empty or invalid audio. "
+            "If an instrument plug-in (e.g. Reaktor 6) is in an FX slot, use its FX variant instead."
+        )
     return last_out
 
 
@@ -674,9 +706,15 @@ def render_wav_through_fx_paths(
 
     fx_procs: list[Any] = []
     for idx, (fx_path, fx_state) in enumerate(fx_specs):
-        fx = load_plugin(engine, fx_path, name=f"fx_{idx}")
-        if fx_state:
+        from dronmakr.presets.preset_authoring import resolve_fx_plugin_path
+
+        resolved_path = resolve_fx_plugin_path(fx_path)
+        fx = load_plugin(engine, resolved_path, name=f"fx_{idx}")
+        if fx_state and os.path.abspath(resolved_path) == os.path.abspath(fx_path):
             apply_plugin_state(fx, fx_state)
+        elif fx_state:
+            with contextlib.suppress(Exception):
+                apply_plugin_state(fx, fx_state)
         fx_procs.append(fx)
 
     graph = _build_plugin_graph(None, fx_procs, playback=playback)

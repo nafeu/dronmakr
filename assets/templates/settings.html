@@ -126,7 +126,7 @@
       max-height: 5.5rem;
     }
 
-    .field-group--ignore-plugins .settings-textarea-scroll {
+    .field-group--plugin-lists .settings-textarea-scroll {
       min-height: 8.25rem;
       max-height: 8.25rem;
     }
@@ -395,14 +395,25 @@
           <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
-      <div class="field-group field-group--ignore-plugins" data-key="IGNORE_PLUGINS" data-append-type="plugin">
-        <label for="IGNORE_PLUGINS">IGNORE_PLUGINS</label>
+      <div class="field-group field-group--plugin-lists" data-key="INSTRUMENT_ALLOW_LIST" data-append-type="plugin">
+        <label for="INSTRUMENT_ALLOW_LIST">INSTRUMENT_ALLOW_LIST</label>
         <div class="field-row">
-          <textarea id="IGNORE_PLUGINS" name="IGNORE_PLUGINS" rows="6"
-            placeholder="Plugin names to ignore"></textarea>
+          <textarea id="INSTRUMENT_ALLOW_LIST" name="INSTRUMENT_ALLOW_LIST" rows="4"
+            placeholder="Comma-separated instrument allow list (empty = show all plug-ins)"></textarea>
         </div>
         <div class="append-row">
-          <input type="text" id="IGNORE_PLUGINS_append" placeholder="Add plugin name..." data-target="IGNORE_PLUGINS">
+          <input type="text" id="INSTRUMENT_ALLOW_LIST_append" placeholder="Add plugin name..." data-target="INSTRUMENT_ALLOW_LIST">
+          <button type="button" class="btn-add" title="Append"><i class="fa-solid fa-plus"></i></button>
+        </div>
+      </div>
+      <div class="field-group field-group--plugin-lists" data-key="FX_ALLOW_LIST" data-append-type="plugin">
+        <label for="FX_ALLOW_LIST">FX_ALLOW_LIST</label>
+        <div class="field-row">
+          <textarea id="FX_ALLOW_LIST" name="FX_ALLOW_LIST" rows="4"
+            placeholder="Comma-separated FX allow list (empty = show all plug-ins)"></textarea>
+        </div>
+        <div class="append-row">
+          <input type="text" id="FX_ALLOW_LIST_append" placeholder="Add plugin name..." data-target="FX_ALLOW_LIST">
           <button type="button" class="btn-add" title="Append"><i class="fa-solid fa-plus"></i></button>
         </div>
       </div>
@@ -738,7 +749,7 @@
       });
     });
 
-    // Append + button for IGNORE_PLUGINS
+    // Append + button for plug-in allow lists
     document.querySelectorAll("[data-append-type='plugin'] .append-row .btn-add").forEach((btn) => {
       btn.addEventListener("click", () => {
         const appendInput = btn.previousElementSibling;

@@ -76,6 +76,7 @@
     if (el.closest(".os-size-observer, .os-trinsic-observer")) return true;
     if (el.classList.contains("generatr-pp-list-stack")) return true;
     if (el.classList.contains("generatr-drone-plugin-picker-list-stack")) return true;
+    if (el.classList.contains("generatr-drone-plugin-list-stack")) return true;
     if (el.classList.contains("browser-list-shell")) return true;
     if (el.classList.contains("browser-list")) return true;
     if (

@@ -1833,6 +1833,23 @@ def _handle_drone_save_preset():
         return jsonify({"error": str(e)}), 500
 
 
+def _handle_drone_delete_preset():
+    data = request.get_json() or {}
+    name = (data.get("name") or "").strip()
+    preset_id = (data.get("id") or data.get("presetId") or "").strip()
+    if not name and not preset_id:
+        return jsonify({"error": "name or id is required"}), 400
+    try:
+        from dronmakr.apps.generatr_plugins import delete_drone_preset
+
+        result = delete_drone_preset(name=name or None, preset_id=preset_id or None)
+        return jsonify(result)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 def _handle_drone_chord_scale_catalog():
     return jsonify({"charts": get_chord_scale_catalog()})
 
@@ -2083,6 +2100,12 @@ def register_auditionr(app, socketio):
         "/api/generatr/drone-save-preset",
         "auditionr_api_drone_save_preset",
         _handle_drone_save_preset,
+        methods=["POST"],
+    )
+    app.add_url_rule(
+        "/api/generatr/drone-delete-preset",
+        "auditionr_api_drone_delete_preset",
+        _handle_drone_delete_preset,
         methods=["POST"],
     )
     app.add_url_rule(

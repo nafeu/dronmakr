@@ -5,6 +5,8 @@ import os
 import json
 import random
 import subprocess
+import contextlib
+import tempfile
 from pathlib import Path
 from dronmakr.core.settings import get_setting, parse_escaped_csv
 from pydub import AudioSegment
@@ -317,12 +319,34 @@ def generate_drone_sample(
     )
 
     output_path = output_path.replace("#", "sharp")
-
-    sf.write(output_path, post_fx_signal, SAMPLE_RATE, subtype="PCM_16")
+    _write_validated_export_wav(output_path, post_fx_signal, SAMPLE_RATE)
 
     print(f"{GREEN}│{RESET}")
 
     return output_path
+
+
+def _write_validated_export_wav(output_path: str, audio: np.ndarray, sample_rate: int) -> None:
+    from dronmakr.core.utils import export_wav_is_valid
+
+    arr = np.asarray(audio, dtype=np.float32)
+    if arr.size == 0 or not np.isfinite(arr).all():
+        raise RuntimeError("Render produced invalid audio and cannot be exported.")
+    if arr.ndim != 2 or arr.shape[0] <= 0:
+        raise RuntimeError(f"Render produced unexpected audio shape {arr.shape!r}.")
+
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+    fd, tmp_path = tempfile.mkstemp(suffix=".wav", prefix="dronmakr_export_")
+    os.close(fd)
+    try:
+        sf.write(tmp_path, arr, sample_rate, subtype="PCM_16")
+        if not export_wav_is_valid(tmp_path):
+            raise RuntimeError(f"Exported WAV failed validation: {output_path}")
+        os.replace(tmp_path, output_path)
+    finally:
+        with contextlib.suppress(OSError):
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
 
 
 def apply_effect(input_path, effect_chain, presets_path=None):
