@@ -185,7 +185,7 @@ pub fn run() {
                     }
                 }
 
-                if wait_for_health(startup_port, Duration::from_secs(45)) {
+                if wait_for_health(startup_port, Duration::from_secs(120)) {
                     let _ = handle.run_on_main_thread({
                         let handle = handle.clone();
                         move || navigate_main(&handle, startup_port)

@@ -67,6 +67,8 @@ from dronmakr.apps.folysplitr import ensure_recordings_dir, ensure_splits_dirs, 
 
 from dronmakr.core.server_error_logging import (
     ensure_server_error_file_logging,
+    log_server_session_start,
+    mirror_errors_log_to,
     register_flask_server_error_signals,
 )
 from dronmakr.server.dev_frontend import enable_dev_frontend, get_dev_frontend
@@ -196,6 +198,38 @@ def api_settings_config_status():
             "pluginPathsConfigured": has_configured_plugin_paths(),
         }
     )
+
+
+@app.route("/api/settings/plugin-path-defaults")
+def api_settings_plugin_path_defaults():
+    """Return OS-recommended PLUGIN_PATHS (comma-separated)."""
+    from dronmakr.presets.plugin_default_paths import default_plugin_paths_csv
+
+    return jsonify({"pluginPaths": default_plugin_paths_csv()})
+
+
+@app.route("/api/diagnostics")
+def api_diagnostics():
+    """Paths and environment hints for troubleshooting."""
+    import sys
+
+    from dronmakr.core.settings import SETTINGS_PATH
+
+    log_path = ensure_server_error_file_logging()
+    return jsonify(
+        {
+            "errorsLogPath": str(log_path),
+            "settingsPath": SETTINGS_PATH,
+            "frozen": bool(getattr(sys, "frozen", False)),
+        }
+    )
+
+
+@app.route("/api/auditionr/exports")
+def api_auditionr_exports():
+    """HTTP fallback for auditionr queue bootstrap when the socket is slow."""
+    quarantined = sanitize_export_wavs()
+    return jsonify({"files": get_latest_exports(), "quarantined": quarantined})
 
 
 @app.route("/api/collections/saved")
@@ -455,6 +489,8 @@ def _print_webui_startup_header() -> None:
     """Print version banner first, then errors.log path and other startup lines."""
     print(get_version())
     ensure_server_error_file_logging(announce=True)
+    mirror_errors_log_to("werkzeug", "dronmakr.server", "flask.app")
+    log_server_session_start(get_version())
 
 
 def _health_probe_url(host: str, port: int) -> str:

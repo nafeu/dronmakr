@@ -15,7 +15,7 @@ if (-not (Test-Path "venv")) {
 $target = (& rustc --print host-tuple).Trim()
 $binDir = Join-Path $Root "src-tauri\binaries"
 New-Item -ItemType Directory -Path $binDir -Force | Out-Null
-$src = Join-Path $Root "dist\dronmakr-backend\dronmakr-backend.exe"
+$src = Join-Path $Root "dist\dronmakr-backend.exe"
 if (-not (Test-Path $src)) {
   throw "PyInstaller output missing at $src"
 }

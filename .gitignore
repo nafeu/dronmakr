@@ -49,6 +49,10 @@ Thumbs.db
 node_modules/
 src-tauri/target/
 
+# PyInstaller sidecar executables (~120MB one-file builds). Never commit these.
+# Tracked dev placeholders live under src-tauri/binaries/placeholders/.
+src-tauri/binaries/dronmakr-backend-*
+
 # Testing
 .coverage
 htmlcov/

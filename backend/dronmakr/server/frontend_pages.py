@@ -12,6 +12,7 @@ TEMPLATES_DIR = ASSETS_ROOT / "templates"
 
 # (template_name, dist_filename, active_path for toolbar highlight)
 PAGE_SPECS: list[tuple[str, str, str]] = [
+    ("startup.html", "startup.html", "/"),
     ("index.html", "index.html", "/"),
     ("auditionr.html", "auditionr.html", "/auditionr"),
     ("beatbuildr.html", "beatbuildr.html", "/beatbuildr"),

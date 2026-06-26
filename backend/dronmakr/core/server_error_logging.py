@@ -88,6 +88,32 @@ def ensure_server_error_file_logging(*, announce: bool = False) -> str:
     return abs_path
 
 
+def mirror_errors_log_to(*logger_names: str) -> None:
+    """Attach the rotating errors.log handler to additional loggers (werkzeug, etc.)."""
+    ensure_server_error_file_logging()
+    app_log = logging.getLogger(_DRAONMAKR_LOGGER)
+    file_handler = next(
+        (h for h in app_log.handlers if isinstance(h, RotatingFileHandler)),
+        None,
+    )
+    if file_handler is None:
+        return
+    for name in logger_names:
+        logger = logging.getLogger(name)
+        if file_handler not in logger.handlers:
+            logger.addHandler(file_handler)
+        if logger.level > logging.INFO:
+            logger.setLevel(logging.INFO)
+
+
+def log_server_session_start(version: str) -> None:
+    """Write a session-start line so errors.log shows recent activity."""
+    path = ensure_server_error_file_logging()
+    logging.getLogger(_DRAONMAKR_LOGGER).info(
+        "dronmakr %s server session started (log: %s)", version, path
+    )
+
+
 def _announce_log_path(abs_path: str) -> None:
     try:
         from dronmakr.core.utils import with_main_prompt as _wp

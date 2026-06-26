@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-Verify a frozen dronmakr.app bundles libsndfile where PySoundFile expects it (macOS).
+Verify a frozen dronmakr sidecar or .app can import soundfile (macOS).
 
-Run after PyInstaller sidecar build, before Tauri packaging. Used by build_sidecar.sh and release-desktop.yml.
+Run after PyInstaller sidecar build and again after Tauri packaging so the
+executable inside the bundle is checked, not only the pre-bundle dist/ copy.
 """
 
 from __future__ import annotations
 
 import argparse
-import platform
 import subprocess
 import sys
 from pathlib import Path
@@ -18,73 +18,7 @@ def _err(msg: str) -> None:
     print(f"error: {msg}", file=sys.stderr)
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "app_bundle",
-        type=Path,
-        help="Path to dronmakr.app or the dronmakr-backend sidecar executable",
-    )
-    args = parser.parse_args()
-
-    if sys.platform != "darwin":
-        print("verify_frozen_soundfile_macos: skip (not macOS)")
-        return 0
-
-    target = args.app_bundle.expanduser().resolve()
-    if target.suffix == ".app":
-        bundle = target
-        fw = bundle / "Contents" / "Frameworks" / "_soundfile_data"
-        res = bundle / "Contents" / "Resources" / "_soundfile_data"
-        exe = bundle / "Contents" / "MacOS" / "dronmakr"
-        work_dir = bundle.parent
-    else:
-        exe = target
-        sidecar_dir = exe.parent
-        fw = sidecar_dir / "_internal" / "_soundfile_data"
-        res = sidecar_dir / "_soundfile_data"
-        work_dir = sidecar_dir
-
-    failed = False
-    if target.suffix == ".app" and not target.is_dir():
-        _err(f"not a bundle: {target}")
-        return 1
-    if not exe.is_file():
-        _err(f"missing executable: {exe}")
-        failed = True
-    if not fw.is_dir():
-        _err(f"missing Frameworks dir: {fw}")
-        failed = True
-    if failed:
-        return 1
-
-    arch = platform.machine().strip().lower()
-    arm = fw / "libsndfile_arm64.dylib"
-    x86 = fw / "libsndfile_x86_64.dylib"
-    generic = fw / "libsndfile.dylib"
-
-    if arch in {"arm64", "aarch64"}:
-        if not arm.is_file() and not (res / "libsndfile_arm64.dylib").is_file():
-            _err(f"expected libsndfile_arm64.dylib under {fw} or Resources symlink")
-            failed = True
-    elif arch in {"x86_64", "amd64"}:
-        if not x86.is_file() and not (res / "libsndfile_x86_64.dylib").is_file():
-            _err(f"expected libsndfile_x86_64.dylib under {fw} or Resources symlink")
-            failed = True
-
-    # Always require generic name: frozen PySoundFile may use this when platform.machine() is ''.
-    if not generic.is_file() and not (res / "libsndfile.dylib").is_file():
-        _err(
-            "missing libsndfile.dylib (backend.spec must ship a copy for empty platform.machine()); "
-            f"checked {fw} and {res}"
-        )
-        failed = True
-
-    if failed:
-        print(f"Listing {fw}:", file=sys.stderr)
-        subprocess.run(["ls", "-la", str(fw)], check=False)
-        return 1
-
+def _run_smoke_imports(exe: Path, work_dir: Path) -> int:
     try:
         proc = subprocess.run(
             [str(exe), "--smoke-imports"],
@@ -106,6 +40,37 @@ def main() -> int:
 
     print(proc.stdout.strip() or "verify_frozen_soundfile_macos: OK")
     return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "target",
+        type=Path,
+        help="Path to dronmakr.app or the dronmakr-backend sidecar executable",
+    )
+    args = parser.parse_args()
+
+    if sys.platform != "darwin":
+        print("verify_frozen_soundfile_macos: skip (not macOS)")
+        return 0
+
+    target = args.target.expanduser().resolve()
+    if target.suffix == ".app":
+        if not target.is_dir():
+            _err(f"not a bundle: {target}")
+            return 1
+        exe = target / "Contents" / "MacOS" / "dronmakr-backend"
+        work_dir = target / "Contents" / "MacOS"
+    else:
+        exe = target
+        work_dir = exe.parent
+
+    if not exe.is_file():
+        _err(f"missing executable: {exe}")
+        return 1
+
+    return _run_smoke_imports(exe, work_dir)
 
 
 if __name__ == "__main__":

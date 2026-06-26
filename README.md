@@ -120,9 +120,26 @@ Rotating log file **`errors.log`**:
 - **Desktop macOS:** `~/Library/Application Support/dronmakr/logs/errors.log`
 - **Desktop Windows:** `%AppData%\dronmakr\logs\errors.log`
 - **Desktop Linux:** `~/.local/share/dronmakr/logs/errors.log`
-- **From source:** `logs/errors.log` in the repo root
+- **From source (`npm run dev`):** `logs/errors.log` in the repo root
+
+Each server start writes a session line to this file. Werkzeug request errors and unhandled exceptions are mirrored there as well. The **About** page shows the resolved path for your install.
 
 Use the app menu **Report issue** to open the about page, or locate the log file directly.
+
+**How do I fully uninstall dronmakr?**
+
+1. Quit the app.
+2. Delete the application bundle (e.g. `/Applications/dronmakr.app` or wherever you installed it).
+3. Remove user data (settings, logs, and bundled config — not your audio library):
+
+   - **macOS:** `~/Library/Application Support/dronmakr`
+   - **Windows:** `%AppData%\dronmakr`
+   - **Linux:** `~/.local/share/dronmakr`
+
+4. Optionally remove your **dronmakr-files** folder if you no longer want generated audio (default location: `~/dronmakr-files` unless you chose another path during onboarding).
+5. If macOS still blocks a re-downloaded build, clear quarantine: `xattr -dr com.apple.quarantine /path/to/dronmakr.app`
+
+After that you can install or build again for a clean first-run experience.
 
 **How do I report a bug?**
 

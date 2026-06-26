@@ -238,9 +238,18 @@
       flex: 1 1 auto;
       min-height: 0;
       max-height: min(50vh, 320px);
-      overflow: hidden;
+      overflow-y: auto;
+      overflow-x: hidden;
       display: flex;
       flex-direction: column;
+      gap: 0.45rem;
+    }
+
+    #settingsSavedModal .settings-saved-list .os-content,
+    #settingsSavedModal .settings-saved-list .os-content-glue {
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: stretch !important;
       gap: 0.45rem;
     }
 
@@ -515,7 +524,7 @@
     <div class="settings-saved-dialog">
       <h3 id="settingsSavedModalTitle" class="settings-saved-title">Settings saved</h3>
       <p class="settings-saved-intro">The following fields were updated:</p>
-      <ul id="settingsSavedList" class="settings-saved-list dron-list-scroll"></ul>
+      <ul id="settingsSavedList" class="settings-saved-list"></ul>
       <div class="settings-saved-actions">
         <button type="button" id="settingsSavedDismiss" class="settings-saved-dismiss">OK</button>
       </div>
@@ -592,7 +601,6 @@
         settingsSavedList.appendChild(item);
       });
       settingsSavedModal.classList.remove("hidden");
-      if (window.dronmakrUi) window.dronmakrUi.refreshScrollbars(settingsSavedList);
     }
 
     function hideSettingsSavedModal() {
@@ -867,8 +875,12 @@
     });
 
     async function loadSettingsFromApi() {
-      const res = await fetch("/api/settings");
+      const [res, defaultsRes] = await Promise.all([
+        fetch("/api/settings"),
+        fetch("/api/settings/plugin-path-defaults"),
+      ]);
       const data = await res.json();
+      const defaults = defaultsRes.ok ? await defaultsRes.json() : {};
       if (!res.ok) {
         throw new Error(data.error || "Failed to load settings");
       }
@@ -877,6 +889,10 @@
           el.value = data[el.name];
         }
       });
+      const pluginEl = document.getElementById("PLUGIN_PATHS");
+      if (pluginEl && !(pluginEl.value || "").trim() && defaults.pluginPaths) {
+        pluginEl.value = defaults.pluginPaths;
+      }
     }
 
     loadSettingsFromApi()

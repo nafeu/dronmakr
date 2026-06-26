@@ -5218,6 +5218,53 @@
   {% include '_app_version_chip.html' %}
   <script>
     var socket = io();
+    var auditionrExportsBootstrapped = false;
+
+    function auditionrBootstrapExports(data) {
+      if (auditionrExportsBootstrapped || !data) return;
+      auditionrExportsBootstrapped = true;
+      if (data.quarantined && data.quarantined.length) {
+        window.alert(
+          "Removed " + data.quarantined.length + " corrupted export(s) to Trash:\n\n" + data.quarantined.join("\n")
+        );
+      }
+      if (data.files) {
+        applyExportsUpdate(data.files, data.updated_path || null, data.undo_available || null);
+      } else {
+        applyExportsUpdate([], null, null);
+      }
+    }
+
+    function auditionrFetchExportsFallback(reason) {
+      if (auditionrExportsBootstrapped) return;
+      fetch("/api/auditionr/exports", { cache: "no-store" })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (!auditionrExportsBootstrapped) {
+            if (reason) console.warn("[auditionr] exports fallback:", reason);
+            auditionrBootstrapExports(data);
+          }
+        })
+        .catch(function (err) {
+          console.error("[auditionr] exports fallback failed:", err);
+          if (window.__pageReady) window.__pageReady();
+        });
+    }
+
+    socket.on("connect_error", function (err) {
+      console.warn("[auditionr] socket connect_error:", err);
+      auditionrFetchExportsFallback("socket connect_error");
+    });
+
+    setTimeout(function () {
+      if (!auditionrExportsBootstrapped) {
+        auditionrFetchExportsFallback("socket timeout");
+      }
+    }, 6000);
+
+    setTimeout(function () {
+      if (window.__pageReady) window.__pageReady();
+    }, 20000);
     var lastFolderCounts = { archive: 0, trash: 0, exports: 0, saved: 0 };
     var selectedWaveformTimestamps = {};
     var processingCatalog = { types: [], actions: [], paramSchemas: {}, presets: [], pluginPatchOptions: [] };
@@ -7392,14 +7439,7 @@
     }
 
     socket.on("exports", function (data) {
-      if (data.quarantined && data.quarantined.length) {
-        window.alert(
-          "Removed " + data.quarantined.length + " corrupted export(s) to Trash:\n\n" + data.quarantined.join("\n")
-        );
-      }
-      if (data.files) {
-        applyExportsUpdate(data.files, data.updated_path || null, data.undo_available || null);
-      }
+      auditionrBootstrapExports(data);
     });
 
     socket.on("folder_counts", function (data) {

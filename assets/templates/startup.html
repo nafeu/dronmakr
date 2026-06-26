@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Starting dronmakr</title>
+  <style>
+    :root {
+      --bg: #353531;
+      --text: #f5f5f0;
+      --accent: #ff9505;
+      --muted: #b8b5a8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1.25rem;
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    .panel {
+      width: min(100%, 28rem);
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+    .brand {
+      color: var(--accent);
+      font-size: 0.85rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    .spinner {
+      font-size: 2.25rem;
+      color: var(--accent);
+      animation: spin 0.9s linear infinite;
+      line-height: 1;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #status {
+      margin: 0;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .hint {
+      margin: 0;
+      font-size: 0.75rem;
+      line-height: 1.45;
+      color: var(--muted);
+    }
+    .error {
+      color: #ff6b6b;
+    }
+    .log-path {
+      word-break: break-all;
+      font-size: 0.68rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="panel">
+    <div class="brand">dronmakr</div>
+    <div class="spinner" aria-hidden="true">&#9696;</div>
+    <p id="status">Starting backend…</p>
+    <p class="hint" id="hint">First launch can take up to a minute while plug-ins and sample caches are prepared.</p>
+    <p class="log-path" id="log-path"></p>
+  </div>
+  <script>
+    (function () {
+      var PORTS = [3766, 3767, 3768, 3769];
+      var statusEl = document.getElementById("status");
+      var hintEl = document.getElementById("hint");
+      var logPathEl = document.getElementById("log-path");
+      var started = Date.now();
+      var attempt = 0;
+      var logPaths = {
+        darwin: "~/Library/Application Support/dronmakr/logs/errors.log",
+        win32: "%AppData%\\dronmakr\\logs\\errors.log",
+        linux: "~/.local/share/dronmakr/logs/errors.log"
+      };
+      var platform = (navigator.platform || "").toLowerCase();
+      var logHint = logPaths.linux;
+      if (platform.indexOf("mac") >= 0) logHint = logPaths.darwin;
+      else if (platform.indexOf("win") >= 0) logHint = logPaths.win32;
+      logPathEl.textContent = "Error log: " + logHint;
+
+      function setStatus(text, isError) {
+        statusEl.textContent = text;
+        statusEl.classList.toggle("error", !!isError);
+      }
+
+      function tryConnect() {
+        attempt += 1;
+        var elapsed = Math.round((Date.now() - started) / 1000);
+        if (attempt < 8) {
+          setStatus("Starting backend… (" + elapsed + "s)");
+        } else if (attempt < 40) {
+          setStatus("Still starting… building caches (" + elapsed + "s)");
+        } else {
+          setStatus("Still starting… this can take a while on first launch (" + elapsed + "s)");
+        }
+
+        var pending = PORTS.length;
+        var found = false;
+        PORTS.forEach(function (port) {
+          fetch("http://127.0.0.1:" + port + "/api/health", { cache: "no-store" })
+            .then(function (res) {
+              if (found) return;
+              if (res.ok) {
+                found = true;
+                setStatus("Backend ready — opening dronmakr…");
+                window.location.replace("http://127.0.0.1:" + port + "/");
+              }
+            })
+            .catch(function () {})
+            .finally(function () {
+              pending -= 1;
+              if (!found && pending === 0) {
+                if (Date.now() - started > 120000) {
+                  setStatus("Backend did not start in time. Check the error log or restart the app.", true);
+                  hintEl.textContent = "If this keeps happening, run the app from Terminal to see backend output, or delete Application Support settings for a clean install.";
+                  return;
+                }
+                setTimeout(tryConnect, 450);
+              }
+            });
+        });
+      }
+
+      tryConnect();
+    })();
+  </script>
+</body>
+</html>

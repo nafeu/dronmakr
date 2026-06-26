@@ -27,7 +27,9 @@ MACOS_DIR="${APP}/Contents/MacOS"
 # Sign nested executables first, then the bundle (avoid codesign --deep when signing).
 for bin in dronmakr-backend dronmakr; do
   if [[ -f "${MACOS_DIR}/${bin}" ]]; then
-    codesign --force --sign - "${MACOS_DIR}/${bin}"
+    codesign --force --options runtime \
+      --entitlements "${ROOT_DIR}/src-tauri/entitlements.plist" \
+      --sign - "${MACOS_DIR}/${bin}"
   fi
 done
 

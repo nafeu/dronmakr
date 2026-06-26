@@ -187,7 +187,7 @@
           <label for="PLUGIN_PATHS">VIRTUAL INSTRUMENTS & FX (optional)</label>
           <div class="field-row">
             <textarea id="PLUGIN_PATHS" name="PLUGIN_PATHS" rows="2"
-              placeholder="Please enter a comma seperated list of paths to VST3/AU install directories"></textarea>
+              placeholder="macOS defaults: /Library/Audio/Plug-Ins/VST3, ~/Library/Audio/Plug-Ins/Components, etc."></textarea>
             <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
           </div>
         </div>
@@ -304,12 +304,14 @@
     ];
 
     async function loadOnboardingFromApi() {
-      const [settingsRes, presetsRes] = await Promise.all([
+      const [settingsRes, presetsRes, defaultsRes] = await Promise.all([
         fetch("/api/settings"),
         fetch("/api/drum-path-presets"),
+        fetch("/api/settings/plugin-path-defaults"),
       ]);
       const settings = await settingsRes.json();
       const presetsPayload = await presetsRes.json();
+      const defaultsPayload = defaultsRes.ok ? await defaultsRes.json() : {};
       if (!settingsRes.ok) {
         throw new Error(settings.error || "Failed to load settings");
       }
@@ -318,6 +320,10 @@
           el.value = settings[el.name];
         }
       });
+      const pluginInput = document.getElementById("PLUGIN_PATHS");
+      if (pluginInput && !(pluginInput.value || "").trim() && defaultsPayload.pluginPaths) {
+        pluginInput.value = defaultsPayload.pluginPaths;
+      }
       const active = presetsPayload.activePreset || "default";
       const preset = (presetsPayload.presets || {})[active] || {};
       drumPathKeys.forEach((key) => {
@@ -382,6 +388,13 @@
             settingsData[el.name] = el.value;
           }
         });
+        if (!(settingsData.PLUGIN_PATHS || "").trim()) {
+          try {
+            const defRes = await fetch("/api/settings/plugin-path-defaults");
+            const defData = defRes.ok ? await defRes.json() : {};
+            if (defData.pluginPaths) settingsData.PLUGIN_PATHS = defData.pluginPaths;
+          } catch (_e) { /* optional */ }
+        }
         const settingsRes = await fetch("/api/settings", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

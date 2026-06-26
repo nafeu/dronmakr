@@ -17,7 +17,7 @@ python scripts/vendor_ffmpeg.py
 pyinstaller --noconfirm --clean backend/backend.spec
 
 if [[ "$(uname -s)" == "Darwin" ]]; then
-  python scripts/verify_frozen_soundfile_macos.py "dist/dronmakr-backend/dronmakr-backend"
+  python scripts/verify_frozen_soundfile_macos.py "dist/dronmakr-backend"
 fi
 
 TARGET="$(rustc --print host-tuple)"
@@ -25,11 +25,11 @@ BIN_DIR="src-tauri/binaries"
 mkdir -p "$BIN_DIR"
 
 if [[ "$(uname -s)" == "Darwin" ]]; then
-  SRC="dist/dronmakr-backend/dronmakr-backend"
+  SRC="dist/dronmakr-backend"
 else
-  SRC="dist/dronmakr-backend/dronmakr-backend"
-  if [[ "$(uname -s)" == "MINGW"* ]] || [[ "$(uname -s)" == "MSYS"* ]] || [[ -f "dist/dronmakr-backend/dronmakr-backend.exe" ]]; then
-    SRC="dist/dronmakr-backend/dronmakr-backend.exe"
+  SRC="dist/dronmakr-backend"
+  if [[ "$(uname -s)" == "MINGW"* ]] || [[ "$(uname -s)" == "MSYS"* ]] || [[ -f "dist/dronmakr-backend.exe" ]]; then
+    SRC="dist/dronmakr-backend.exe"
   fi
 fi
 
@@ -39,10 +39,13 @@ if [[ ! -f "$SRC" ]]; then
 fi
 
 if [[ "$(uname -s)" == "Darwin" ]]; then
-  codesign --force --sign - "$SRC"
+  codesign --force --options runtime \
+    --entitlements src-tauri/entitlements.plist \
+    --sign - "$SRC"
 fi
 
 DEST="$BIN_DIR/dronmakr-backend-${TARGET}"
 cp "$SRC" "$DEST"
 chmod +x "$DEST"
 echo "Sidecar ready: $DEST"
+echo "Note: ${DEST} is gitignored (PyInstaller one-file ~120MB). Do not git add it."

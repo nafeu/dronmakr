@@ -1630,7 +1630,7 @@
             waveformRow.className = "card-waveform-row";
             var waveDiv = document.createElement("div");
             waveDiv.className = "card-waveform";
-            var waveId = "wave-" + item.path.replace(/[/.]/g, "-").replace(/\s/g, "_");
+            var waveId = "collections-wave-" + (start + idx);
             waveDiv.id = waveId;
             waveformRow.appendChild(waveDiv);
             attachCollectionsExternalDrag(waveDiv, item.absPath);
@@ -1660,16 +1660,18 @@
             grid.appendChild(card);
 
             var ws = WaveSurfer.create({
-              container: "#" + waveId,
+              container: waveDiv,
               waveColor: "#353531",
               progressColor: progressColorForType(item.type),
-              backend: "MediaElement",
-              height: 48
+              height: 48,
             });
             ws.load(item.path);
-            var cardDurationEl = durationEl;
             ws.on("ready", function () {
-              cardDurationEl.textContent = formatDuration(ws.getDuration());
+              durationEl.textContent = formatDuration(ws.getDuration());
+            });
+            ws.on("error", function (err) {
+              console.error("[collections] waveform failed:", item.path, err);
+              durationEl.textContent = "unable to load";
             });
             waveSurferInstances[waveId] = { ws: ws, playBtn: playBtn, path: item.path };
 

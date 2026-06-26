@@ -493,10 +493,22 @@ def get_setting(key: str, default: str = "") -> str:
     return settings.get(key, default) if isinstance(settings.get(key), str) else default
 
 
+def _coalesce_plugin_paths(value: str | None) -> str:
+    """Use OS default VST/AU scan folders when the user leaves PLUGIN_PATHS empty."""
+    cleaned = (value or "").strip()
+    if cleaned:
+        return cleaned
+    from dronmakr.presets.plugin_default_paths import default_plugin_paths_csv
+
+    return default_plugin_paths_csv()
+
+
 def save_settings(settings: dict) -> None:
     """Save settings to config/settings.json."""
     _normalize_drum_presets_inplace(settings)
     settings[FILES_ROOT_KEY] = normalize_files_root(settings.get(FILES_ROOT_KEY, ""))
+    if isinstance(settings.get("PLUGIN_PATHS"), str):
+        settings["PLUGIN_PATHS"] = _coalesce_plugin_paths(settings["PLUGIN_PATHS"])
     os.makedirs(os.path.dirname(SETTINGS_PATH), exist_ok=True)
     with open(SETTINGS_PATH, "w") as f:
         json.dump(settings, f, indent=2)

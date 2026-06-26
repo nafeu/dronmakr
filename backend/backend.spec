@@ -108,11 +108,15 @@ pyz = PYZ(a.pure)
 _console = True
 _upx = sys.platform != "darwin"
 
+# One-file bundle: Tauri externalBin ships a single sidecar executable into
+# Contents/MacOS/, so a PyInstaller COLLECT folder (_internal/) cannot be bundled.
 exe = EXE(
     pyz,
     a.scripts,
+    a.binaries,
+    a.datas,
     [],
-    exclude_binaries=True,
+    exclude_binaries=False,
     name="dronmakr-backend",
     debug=False,
     bootloader_ignore_signals=False,
@@ -120,13 +124,4 @@ exe = EXE(
     upx=_upx,
     console=_console,
     icon=str(_brand_ico) if _brand_ico.is_file() else None,
-)
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.datas,
-    strip=False,
-    upx=_upx,
-    upx_exclude=[],
-    name="dronmakr-backend",
 )

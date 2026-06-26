@@ -91,9 +91,26 @@
         <strong>Author:</strong> Nafeu ·
         <a href="https://github.com/nafeu/dronmakr" rel="noopener noreferrer" target="_blank">github.com/nafeu/dronmakr</a>
       </p>
+      <p class="about-meta" id="about-log-path">Error log: loading…</p>
     </article>
   </main>
-  <script>document.addEventListener('DOMContentLoaded', function () { if (window.__pageReady) window.__pageReady(); });</script>
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      fetch("/api/diagnostics")
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          var el = document.getElementById("about-log-path");
+          if (el && data.errorsLogPath) {
+            el.textContent = "Error log: " + data.errorsLogPath;
+          }
+        })
+        .catch(function () {
+          var el = document.getElementById("about-log-path");
+          if (el) el.textContent = "Error log: see README FAQ (path depends on install vs source)";
+        });
+      if (window.__pageReady) window.__pageReady();
+    });
+  </script>
 </body>
 
 </html>
