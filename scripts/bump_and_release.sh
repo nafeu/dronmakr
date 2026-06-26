@@ -4,10 +4,12 @@
 #
 # Prerequisites:
 #   - gh authenticated (`gh auth login`)
+#   - On macOS: release build passes scripts/pre_release_checks.sh (use --skip-checks to bypass)
 #
 # Usage:
 #   ./scripts/bump_and_release.sh patch
 #   ./scripts/bump_and_release.sh minor --dry-run
+#   ./scripts/bump_and_release.sh patch --skip-checks
 #   ./scripts/bump_and_release.sh patch -- --draft --title "Smoke test"
 #
 # Extra args after -- are forwarded to `gh release create`.
@@ -20,11 +22,13 @@ cd "$ROOT_DIR"
 VERSION_FILE="backend/dronmakr/version.py"
 BUMP_TYPE=""
 DRY_RUN=false
+SKIP_CHECKS=false
 PASS_THROUGH=()
 
 usage() {
-  echo "Usage: $(basename "$0") [major|minor|patch] [--dry-run] [-- <gh-release-args>]"
+  echo "Usage: $(basename "$0") [major|minor|patch] [--dry-run] [--skip-checks] [-- <gh-release-args>]"
   echo "Combines scripts/bump_version.sh and gh release create (--generate-notes)."
+  echo "On macOS, runs scripts/pre_release_checks.sh --build before bumping (unless --skip-checks)."
 }
 
 while (($#)); do
@@ -40,6 +44,10 @@ while (($#)); do
       ;;
     --dry-run)
       DRY_RUN=true
+      shift
+      ;;
+    --skip-checks)
+      SKIP_CHECKS=true
       shift
       ;;
     --)
@@ -95,6 +103,7 @@ echo "Current version: ${current_version}"
 echo "Next version:   ${new_version}  (release tag ${NEW_TAG})"
 
 if [[ "$DRY_RUN" == true ]]; then
+  echo "[Dry run] Would run: scripts/pre_release_checks.sh --build (unless --skip-checks)"
   echo "[Dry run] Would run: scripts/bump_version.sh ${BUMP_TYPE}"
   CMD=(gh release create "$NEW_TAG" --verify-tag --generate-notes --latest)
   if ((${#PASS_THROUGH[@]} > 0)); then
@@ -106,6 +115,11 @@ if [[ "$DRY_RUN" == true ]]; then
   printf " %q" "${CMD[@]}"
   printf "\n"
   exit 0
+fi
+
+if [[ "$SKIP_CHECKS" != true ]]; then
+  echo "Running pre-release build checks..."
+  "$ROOT_DIR/scripts/pre_release_checks.sh" --build
 fi
 
 "$ROOT_DIR/scripts/bump_version.sh" "$BUMP_TYPE"

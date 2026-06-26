@@ -49,8 +49,12 @@ def main() -> None:
     args = _parse_args()
     if args.smoke_imports:
         import soundfile as _sf  # noqa: PLC0415
+        from dronmakr.presets.plugin_default_paths import (  # noqa: PLC0415
+            default_plugin_paths_csv,
+        )
 
         print("smoke: soundfile OK", _sf.__libsndfile_version__, flush=True)
+        print("smoke: presets OK", bool(default_plugin_paths_csv()), flush=True)
         raise SystemExit(0)
 
     if getattr(sys, "frozen", False):

@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Verify the bundled macOS sidecar starts and serves /api/health within a timeout.
-# Run after Tauri packaging in CI and locally before release.
+# Uses a temporary HOME so first-launch settings creation runs (catches missing PyInstaller modules).
+#
+# Run locally before release via scripts/pre_release_checks.sh.
 
 set -euo pipefail
 
@@ -22,14 +24,19 @@ if [[ ! -x "$SIDECAR" ]]; then
   exit 1
 fi
 
-echo "Launching sidecar from ${SIDECAR} on port ${PORT} (timeout ${TIMEOUT_SEC}s)..."
-"$SIDECAR" --port "$PORT" &
-PID=$!
+TMPHOME="$(mktemp -d)"
+SIDECAR_LOG="$(mktemp)"
 cleanup() {
+  rm -rf "$TMPHOME"
+  rm -f "$SIDECAR_LOG"
   kill "$PID" 2>/dev/null || true
   wait "$PID" 2>/dev/null || true
 }
 trap cleanup EXIT
+
+echo "Launching sidecar from ${SIDECAR} on port ${PORT} (timeout ${TIMEOUT_SEC}s, fresh HOME)..."
+HOME="$TMPHOME" "$SIDECAR" --port "$PORT" >"$SIDECAR_LOG" 2>&1 &
+PID=$!
 
 deadline=$((SECONDS + TIMEOUT_SEC))
 while (( SECONDS < deadline )); do
@@ -39,10 +46,14 @@ while (( SECONDS < deadline )); do
   fi
   if ! kill -0 "$PID" 2>/dev/null; then
     echo "error: sidecar exited before becoming ready" >&2
+    echo "--- sidecar output ---" >&2
+    cat "$SIDECAR_LOG" >&2 || true
     exit 1
   fi
   sleep 2
 done
 
 echo "error: backend did not respond within ${TIMEOUT_SEC}s" >&2
+echo "--- sidecar output ---" >&2
+cat "$SIDECAR_LOG" >&2 || true
 exit 1
