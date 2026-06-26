@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Bump semver across backend/dronmakr/version.py, package.json, and Tauri metadata
-# (src-tauri/tauri.conf.json, src-tauri/Cargo.toml), then commit + annotated tag + push.
+# (src-tauri/tauri.conf.json, src-tauri/Cargo.toml, src-tauri/Cargo.lock), then commit + annotated tag + push.
 # To bump and immediately create the GitHub Release for the new tag, use scripts/bump_and_release.sh.
 #
 # Examples:
@@ -19,6 +19,7 @@ VERSION_FILES=(
   "src-tauri/tauri.conf.json"
   "src-tauri/Cargo.toml"
 )
+CARGO_LOCK="src-tauri/Cargo.lock"
 DRY_RUN=false
 
 POSITIONAL=()
@@ -56,6 +57,10 @@ for file in "${VERSION_FILES[@]}"; do
     exit 1
   fi
 done
+if [[ ! -f "$CARGO_LOCK" ]]; then
+  echo "error: ${CARGO_LOCK} not found under ${ROOT_DIR}" >&2
+  exit 1
+fi
 
 current_version=$(sed -nE 's/^__version__ *= *"([0-9]+\.[0-9]+\.[0-9]+)"/\1/p' "$VERSION_FILE")
 
@@ -86,9 +91,25 @@ if [ "$DRY_RUN" = true ]; then
   for file in "${VERSION_FILES[@]}"; do
     echo "  - ${file}"
   done
+  echo "  - ${CARGO_LOCK} (via cargo metadata)"
   echo "[Dry run] Then commit, tag v${new_version}, and push to origin."
   exit 0
 fi
+
+sync_cargo_lock() {
+  if ! command -v cargo >/dev/null 2>&1; then
+    echo "error: cargo not found; install Rust to refresh ${CARGO_LOCK} before commit." >&2
+    exit 1
+  fi
+  echo "Refreshing ${CARGO_LOCK}…"
+  (cd src-tauri && cargo metadata --format-version=1 >/dev/null)
+  local lock_version
+  lock_version=$(sed -n '/^name = "dronmakr"$/{n;s/^version = "\([0-9.]*\)"/\1/p;q;}' "$CARGO_LOCK")
+  if [[ "$lock_version" != "$new_version" ]]; then
+    echo "error: ${CARGO_LOCK} dronmakr version is \"${lock_version}\"; expected \"${new_version}\"." >&2
+    exit 1
+  fi
+}
 
 sync_semver_in_file() {
   local file=$1
@@ -114,7 +135,9 @@ for file in "${VERSION_FILES[@]}"; do
   sync_semver_in_file "$file"
 done
 
-git add "${VERSION_FILES[@]}"
+sync_cargo_lock
+
+git add "${VERSION_FILES[@]}" "$CARGO_LOCK"
 git commit -m "Bump version to v${new_version}"
 git tag -a "v${new_version}" -m "Version ${new_version}"
 

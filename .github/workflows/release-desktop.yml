@@ -96,11 +96,9 @@ jobs:
       - name: Build frontend, sidecar, and Tauri app
         shell: pwsh
         run: |
-          .\venv\Scripts\python scripts/build_frontend.py
-          .\venv\Scripts\pyinstaller --noconfirm --clean backend/backend.spec
-          $target = (rustc --print host-tuple)
-          New-Item -ItemType Directory -Path src-tauri/binaries -Force | Out-Null
-          Copy-Item "dist/dronmakr-backend/dronmakr-backend.exe" "src-tauri/binaries/dronmakr-backend-$target.exe" -Force
+          .\scripts\build_sidecar.ps1
+          # Tauri beforeBuildCommand runs `python scripts/build_frontend.py` — use venv on PATH.
+          .\venv\Scripts\Activate.ps1
           npm run tauri build
 
       - name: Create zip
