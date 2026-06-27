@@ -3,12 +3,26 @@ name: Release desktop builds
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Platform to build
+        type: choice
+        options:
+          - all
+          - macos
+          - windows
+        default: windows
 
 permissions:
   contents: write
 
 jobs:
   desktop-macos:
+    if: >-
+      github.event_name == 'release'
+      || github.event.inputs.target == 'all'
+      || github.event.inputs.target == 'macos'
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -59,15 +73,69 @@ jobs:
           APP_PATH="$APP" bash scripts/package_mac_dmg.sh
 
       - uses: softprops/action-gh-release@v2
+        if: github.event_name == 'release'
         with:
           files: dist-artifacts/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  # Windows/Linux desktop builds disabled until macOS release path is stable.
-  # desktop-windows:
-  #   runs-on: windows-latest
-  #   ...
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          name: dronmakr-macos-arm64
+          path: dist-artifacts/*
+          if-no-files-found: error
+
+  desktop-windows:
+    if: >-
+      github.event_name == 'release'
+      || github.event.inputs.target == 'all'
+      || github.event.inputs.target == 'windows'
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Require committed Windows icon
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "src-tauri/icons/icon.ico")) {
+            throw "Missing src-tauri/icons/icon.ico"
+          }
+
+      - name: Build Windows desktop app
+        shell: pwsh
+        run: |
+          python -m venv venv
+          .\venv\Scripts\python -m pip install --upgrade pip
+          .\venv\Scripts\python -m pip install -r requirements.txt pyinstaller
+          .\scripts\build_app.ps1
+
+      - uses: softprops/action-gh-release@v2
+        if: github.event_name == 'release'
+        with:
+          files: dist-artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          name: dronmakr-windows-x64
+          path: dist-artifacts/*
+          if-no-files-found: error
+
+  # Linux desktop builds disabled until release path is stable on macOS + Windows.
   # desktop-linux:
   #   runs-on: ubuntu-latest
   #   ...
