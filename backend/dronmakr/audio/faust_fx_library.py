@@ -221,7 +221,7 @@ def faust_fx_path_exists(path: str) -> bool:
 
 
 def load_faust_effect(engine: Any, effect_id: str, *, name: str | None = None) -> Any:
-    """Compile and return a mono/stereo Faust audio effect processor."""
+    """Compile and return a stereo (2 in / 2 out) Faust audio effect processor."""
     from dronmakr.audio.audio_host import _unique_processor_name
 
     dsp_path = resolve_faust_fx_dsp_path(effect_id)

@@ -109,11 +109,11 @@ _LEGACY_COLON_TOKEN_DEFINITIONS = [
     {"token": "gain:-2db", "type": "gain", "label": "-2db", "command": "decrease_sample_gain", "params": {"db": 2}},
     {"token": "gain:-5db", "type": "gain", "label": "-5db", "command": "decrease_sample_gain", "params": {"db": 5}},
     {"token": "gain:-10db", "type": "gain", "label": "-10db", "command": "decrease_sample_gain", "params": {"db": 10}},
-    {"token": "filter:lpf", "type": "filter", "label": "LPF", "command": "lpf_sample", "params": {}},
-    {"token": "filter:lpf-", "type": "filter", "label": "LPF-", "command": "lpf_sample", "params": {"cutoff_hz": 2500}},
-    {"token": "filter:lpf--", "type": "filter", "label": "LPF--", "command": "lpf_sample", "params": {"cutoff_hz": 800}},
+    {"token": "filter:lpf", "type": "filter", "label": "LPF", "command": "lpf_sample", "params": {"cutoff_hz": 1200}},
+    {"token": "filter:lpf-", "type": "filter", "label": "LPF-", "command": "lpf_sample", "params": {"cutoff_hz": 800}},
+    {"token": "filter:lpf--", "type": "filter", "label": "LPF--", "command": "lpf_sample", "params": {"cutoff_hz": 400}},
     {"token": "filter:lpf-res", "type": "filter", "label": "LPF resonant", "command": "lpf_sample", "params": {"cutoff_hz": 4200, "steepness": 0.78, "resonance": 0.45}},
-    {"token": "filter:hpf", "type": "filter", "label": "HPF", "command": "hpf_sample", "params": {}},
+    {"token": "filter:hpf", "type": "filter", "label": "HPF", "command": "hpf_sample", "params": {"cutoff_hz": 120}},
     {"token": "filter:hpf+", "type": "filter", "label": "HPF+", "command": "hpf_sample", "params": {"cutoff_hz": 350}},
     {"token": "filter:hpf++", "type": "filter", "label": "HPF++", "command": "hpf_sample", "params": {"cutoff_hz": 800}},
     {"token": "filter:bpf", "type": "filter", "label": "BPF", "command": "bpf_sample", "params": {}},
@@ -341,7 +341,7 @@ _PARAM_SCHEMAS_UI: dict[str, list[dict]] = {
             "min": 0,
             "max": 1,
             "step": 0.005,
-            "default": 0.55,
+            "default": 0.075,
             "maps_to": "cutoff_hz",
             "range_hz": [80, 16000],
         },
@@ -1175,11 +1175,15 @@ def action_from_bracket_segment(seg: str) -> dict:
             merged = resonance.copy()
             if "cutoff_hz" in params:
                 merged["cutoff_hz"] = float(params["cutoff_hz"])
+            else:
+                merged.setdefault("cutoff_hz", 1200.0)
             return {"token": seg_stripped, "command": "lpf_sample", "params": merged}
         if kind == "hpf":
             merged = resonance.copy()
             if "cutoff_hz" in params:
                 merged["cutoff_hz"] = float(params["cutoff_hz"])
+            else:
+                merged.setdefault("cutoff_hz", 120.0)
             return {"token": seg_stripped, "command": "hpf_sample", "params": merged}
         if kind == "bpf":
             merged = resonance.copy()
@@ -1466,6 +1470,48 @@ _ADDITIVE_SHORTCUT_DEFAULTS: list[dict[str, str]] = [
     {"name": "2x", "type": "padding", "command": "padding:[side=after][amount=1]"},
 ]
 
+_FILTER_SHORTCUT_CANONICAL: dict[str, str] = {
+    "lpf": "filter:[kind=lpf][cutoff_hz=1200]",
+    "lpf-": "filter:[kind=lpf][cutoff_hz=800]",
+    "lpf--": "filter:[kind=lpf][cutoff_hz=400]",
+    "hpf": "filter:[kind=hpf][cutoff_hz=120]",
+    "hpf+": "filter:[kind=hpf][cutoff_hz=350]",
+    "hpf++": "filter:[kind=hpf][cutoff_hz=800]",
+}
+
+_FILTER_SHORTCUT_LEGACY_COMMANDS: frozenset[str] = frozenset(
+    {
+        "filter:[kind=lpf]",
+        "filter:[kind=hpf]",
+        "filter:lpf",
+        "filter:hpf",
+    }
+)
+
+
+def _ensure_filter_shortcut_cutoffs() -> None:
+    """Upgrade legacy filter shortcuts that omitted audible cutoff defaults."""
+    doc = read_post_processing_shortcuts_document()
+    shortcuts = list(doc.get("shortcuts") or [])
+    changed = False
+    for row in shortcuts:
+        name = str(row.get("name") or "").strip()
+        command = str(row.get("command") or "").strip()
+        if command not in _FILTER_SHORTCUT_LEGACY_COMMANDS:
+            continue
+        canonical = _FILTER_SHORTCUT_CANONICAL.get(name)
+        if not canonical:
+            canonical = (
+                "filter:[kind=lpf][cutoff_hz=1200]"
+                if "lpf" in command
+                else "filter:[kind=hpf][cutoff_hz=120]"
+            )
+        row["command"] = canonical
+        row["type"] = "filter"
+        changed = True
+    if changed:
+        write_post_processing_shortcuts_document_atomic(shortcuts)
+
 
 def _ensure_additive_shortcut_defaults() -> None:
     """Append built-in shortcuts that were added after a user config was created."""
@@ -1490,6 +1536,7 @@ def load_post_processing_shortcuts_models() -> list[dict[str, str]]:
     """Normalized shortcut rows from disk: name, command, type."""
     ensure_post_processing_shortcuts_file()
     _ensure_additive_shortcut_defaults()
+    _ensure_filter_shortcut_cutoffs()
     shortcuts_path = managed_config_path("post-processing-shortcuts.json")
     with open(shortcuts_path, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -1865,14 +1912,14 @@ def apply_processing_command(file_path: str, command: str, params: dict | None =
         case "lpf_sample":
             apply_lowpass_to_sample(
                 file_path,
-                cutoff_hz=float(p.get("cutoff_hz", 6000)),
+                cutoff_hz=float(p.get("cutoff_hz", 1200)),
                 resonance=float(p.get("resonance", 0.0)),
                 steepness=float(p.get("steepness", 0.72)),
             )
         case "hpf_sample":
             apply_highpass_to_sample(
                 file_path,
-                cutoff_hz=float(p.get("cutoff_hz", 100)),
+                cutoff_hz=float(p.get("cutoff_hz", 120)),
                 resonance=float(p.get("resonance", 0.0)),
                 steepness=float(p.get("steepness", 0.72)),
             )

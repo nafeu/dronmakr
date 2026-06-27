@@ -6,4 +6,4 @@ base_ms = hslider("delay_ms", 18, 5, 45, 0.5);
 mix = hslider("mix", 0.62, 0, 1, 0.01);
 mod = os.osc(rate) * depth + base_ms * ma.SR / 1000;
 wet(x) = de.fdelay(2048, mod, x);
-process = wet * mix + _ * (1 - mix);
+process(l, r) = wet(l) * mix + l * (1 - mix), wet(r) * mix + r * (1 - mix);

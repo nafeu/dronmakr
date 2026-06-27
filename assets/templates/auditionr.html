@@ -7384,6 +7384,25 @@
       return null;
     }
 
+    function resolveWaveformAbsForProcessPath(pathToken) {
+      var absPath = resolveDisplayedFileFromProcessPath(pathToken);
+      if (absPath) return absPath;
+      if (selectedEditAbsPath && selectedEditApiPath === pathToken) return selectedEditAbsPath;
+      if (selectedEditAbsPath && resolveDisplayedFileFromProcessPath(selectedEditApiPath) === selectedEditAbsPath) {
+        return selectedEditAbsPath;
+      }
+      return null;
+    }
+
+    function refreshWaveformAfterProcess(pathToken, hintedAbsPath) {
+      var absPath = hintedAbsPath || resolveWaveformAbsForProcessPath(pathToken);
+      if (absPath && waveformInstances[absPath] && waveformInstances[absPath].wavesurfer) {
+        refreshWaveform(absPath);
+        return;
+      }
+      endEditSamplesBusy();
+    }
+
     function endWaveformProcessing(absPath, opts) {
       opts = opts || {};
       var inst = waveformInstances[absPath];
@@ -7429,7 +7448,7 @@
         console.warn("processSample: command or processing_spec is required");
         return;
       }
-      var fileAbs = resolveDisplayedFileFromProcessPath(params.path);
+      var fileAbs = resolveWaveformAbsForProcessPath(params.path);
       if (fileAbs) beginWaveformProcessing(fileAbs);
       fetch("/process", {
         method: "POST",
@@ -7445,12 +7464,16 @@
           if (!pack.ok || (pack.data && pack.data.error)) {
             if (fileAbs) endWaveformProcessing(fileAbs);
             endEditSamplesBusy();
+            window.alert((pack.data && pack.data.error) || "Processing failed");
+            return;
           }
+          refreshWaveformAfterProcess(params.path, fileAbs);
           console.log(pack.data);
         })
         .catch(function (error) {
           if (fileAbs) endWaveformProcessing(fileAbs);
           endEditSamplesBusy();
+          window.alert("Processing failed: " + (error && error.message ? error.message : String(error)));
           console.error("Error:", error);
         });
     }
@@ -7609,8 +7632,12 @@
 
       if (pendingReady === 0 && window.__pageReady) window.__pageReady();
 
-      if (updatedPath && newFiles.indexOf(updatedPath) !== -1 && slice.indexOf(updatedPath) !== -1) {
-        refreshWaveform(updatedPath);
+      if (updatedPath) {
+        var refreshAbs = resolveWaveformAbsForProcessPath(updatedPath);
+        if (!refreshAbs && newFiles.indexOf(updatedPath) !== -1) refreshAbs = updatedPath;
+        if (refreshAbs && waveformInstances[refreshAbs] && waveformInstances[refreshAbs].wavesurfer) {
+          refreshWaveform(refreshAbs);
+        }
       }
 
       requestAnimationFrame(auditionrRefreshWaveformScrollbars);

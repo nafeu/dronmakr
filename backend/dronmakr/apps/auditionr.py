@@ -555,13 +555,19 @@ def process_file():
 
     files = get_latest_exports(sort_override=params["files"])
     undo_available = _undo_availability_for_files(files)
+    updated_path = file_path
+    file_basename = os.path.basename(file_path)
+    for export_path in files:
+        if os.path.basename(export_path) == file_basename:
+            updated_path = export_path
+            break
     _socket_broadcast(
         "exports",
         {
             "files": files,
             # Keep updated_path in the same shape as entries returned by get_latest_exports()
             # so the frontend can detect and refresh the modified waveform.
-            "updated_path": file_path,
+            "updated_path": updated_path,
             "undo_available": undo_available,
         },
     )

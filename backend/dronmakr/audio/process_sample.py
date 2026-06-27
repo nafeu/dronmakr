@@ -29,7 +29,18 @@ def _write_channels_first(input_path: str, audio: np.ndarray, sample_rate: int) 
     out = np.asarray(audio, dtype=np.float32)
     if out.ndim == 2 and out.shape[0] <= 8 and out.shape[0] < out.shape[1]:
         out = out.T
-    sf.write(input_path, out, sample_rate, subtype="PCM_16")
+    parent = os.path.dirname(input_path) or "."
+    fd, tmp_path = tempfile.mkstemp(suffix=".tmp.wav", dir=parent)
+    os.close(fd)
+    try:
+        sf.write(tmp_path, out, sample_rate, subtype="PCM_16")
+        os.replace(tmp_path, input_path)
+    except Exception:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
 
 def apply_normalization(input_path):
@@ -921,7 +932,7 @@ def apply_distortion_heavy_to_sample(input_path):
     apply_distortion_to_sample(input_path, drive_db=11.0)
 
 
-def apply_lowpass_to_sample(input_path, cutoff_hz=6000, **_kwargs):
+def apply_lowpass_to_sample(input_path, cutoff_hz=1200, **_kwargs):
     """Apply steep low-pass; optional resonance / steepness in _kwargs."""
     resonance = float(_kwargs.get("resonance", 0.0))
     steepness = float(_kwargs.get("steepness", 0.72))
@@ -939,7 +950,7 @@ def apply_lowpass_to_sample(input_path, cutoff_hz=6000, **_kwargs):
     )
 
 
-def apply_highpass_to_sample(input_path, cutoff_hz=100, **_kwargs):
+def apply_highpass_to_sample(input_path, cutoff_hz=120, **_kwargs):
     """Apply steep high-pass; optional resonance / steepness in _kwargs."""
     resonance = float(_kwargs.get("resonance", 0.0))
     steepness = float(_kwargs.get("steepness", 0.72))

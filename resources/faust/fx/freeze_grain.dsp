@@ -5,4 +5,4 @@ c1 = 97;
 c2 = 163;
 c3 = 241;
 wet(x) = (x + x : @(c1) + x : @(c2) + x : @(c3)) / 4;
-process = wet * mix + _ * (1 - mix);
+process(l, r) = wet(l) * mix + l * (1 - mix), wet(r) * mix + r * (1 - mix);

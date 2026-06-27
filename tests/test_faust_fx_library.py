@@ -47,6 +47,20 @@ def test_unknown_faust_fx_raises():
         fxl.resolve_faust_fx_dsp_path("not_an_effect")
 
 
+def test_all_faust_effects_expose_stereo_io():
+    from dronmakr.audio.audio_host import create_engine, load_plugin
+
+    for entry in fxl.list_faust_effects():
+        engine = create_engine()
+        fx = load_plugin(engine, fxl.faust_fx_path_for_id(entry["id"]), name="fx_0")
+        assert fx.get_num_input_channels() == 2, (
+            f"{entry['id']} has {fx.get_num_input_channels()} inputs; FX chain expects stereo in."
+        )
+        assert fx.get_num_output_channels() == 2, (
+            f"{entry['id']} has {fx.get_num_output_channels()} outputs; FX chain expects stereo out."
+        )
+
+
 def test_wash_reverbs_render_usable_audio_in_fx_chain(tmp_path):
     import numpy as np
     import pretty_midi
@@ -75,9 +89,8 @@ def test_wash_reverbs_render_usable_audio_in_fx_chain(tmp_path):
         engine = create_engine()
         inst = load_instrument(engine, "faust:sine_osc", name="instrument")
         fx = load_plugin(engine, fxl.faust_fx_path_for_id(fx_id), name="fx_0")
-        assert fx.get_num_input_channels() <= 3, (
-            f"{fx_id} exposes {fx.get_num_input_channels()} inputs; FX chain expects stereo in."
-        )
+        assert fx.get_num_input_channels() == 2
+        assert fx.get_num_output_channels() == 2
         engine.load_graph(_build_plugin_graph(inst, [fx]))
         engine.set_bpm(120)
         _inject_midi_notes_from_file(inst, str(midi_path))
