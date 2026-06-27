@@ -254,6 +254,40 @@
     };
   }
 
+  function getDataDrivenScrollbarInitOptions(el) {
+    var mode = (el.getAttribute("data-dron-scrollbar") || "").toLowerCase();
+    if (mode === "both" || mode === "xy") {
+      return {
+        overflow: {
+          x: "scroll",
+          y: "scroll",
+        },
+        scrollbars: Object.assign({}, scrollbarOptions.scrollbars, {
+          pointers: ["mouse", "touch", "pen"],
+        }),
+      };
+    }
+    if (mode === "horizontal" || mode === "x") {
+      return {
+        overflow: {
+          x: "scroll",
+          y: "hidden",
+        },
+        scrollbars: scrollbarOptions.scrollbars,
+      };
+    }
+    if (mode === "vertical" || mode === "y") {
+      return {
+        overflow: {
+          x: "hidden",
+          y: "scroll",
+        },
+        scrollbars: scrollbarOptions.scrollbars,
+      };
+    }
+    return null;
+  }
+
   function waveformsScrollbarNeedsReinit(el) {
     if (!isWaveformsScrollHost(el)) return false;
     var bar = el.querySelector(".os-scrollbar-vertical.os-theme-dronmakr");
@@ -316,17 +350,26 @@
   }
 
   function bindScrollbar(el) {
-    if (shouldSkipScrollbar(el) || !isOverflowScrollable(el)) return;
+    if (shouldSkipScrollbar(el)) return;
+    var forcedOptions = getDataDrivenScrollbarInitOptions(el);
+    if (!forcedOptions && !isOverflowScrollable(el)) return;
     var OverlayScrollbars = getOverlayScrollbars();
     if (!OverlayScrollbars) return;
-    if (scrollbarInstances.has(el)) return;
+    if (scrollbarInstances.has(el)) {
+      var existing = scrollbarInstances.get(el);
+      if (existing && typeof existing.update === "function") {
+        existing.update();
+      }
+      return;
+    }
 
     if (el.tagName === "BODY") {
       document.documentElement.setAttribute("data-overlayscrollbars-initialize", "");
     }
     el.setAttribute("data-overlayscrollbars-initialize", "");
 
-    var instance = OverlayScrollbars(el, scrollbarOptions);
+    var initOptions = forcedOptions || scrollbarOptions;
+    var instance = OverlayScrollbars(el, initOptions);
     if (!instance) {
       if (el.tagName === "BODY") {
         document.documentElement.removeAttribute("data-overlayscrollbars-initialize");

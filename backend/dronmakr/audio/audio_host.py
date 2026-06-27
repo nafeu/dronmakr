@@ -288,9 +288,11 @@ def _prepare_instrument_for_render(
     engine: Any,
     instrument: Any,
     midi_path: str,
+    *,
+    tempo_bpm: float = DRONE_MIDI_TEMPO_BPM,
 ) -> int:
     """Load note events after the graph is wired; returns injected note count."""
-    engine.set_bpm(float(DRONE_MIDI_TEMPO_BPM))
+    engine.set_bpm(float(tempo_bpm))
     return _inject_midi_notes_from_file(instrument, midi_path)
 
 
@@ -327,9 +329,12 @@ def _render_loaded_midi_graph(
     *,
     sample_rate: int,
     headroom_gain: float,
+    tempo_bpm: float = DRONE_MIDI_TEMPO_BPM,
 ) -> np.ndarray:
     engine.load_graph(graph)
-    note_count = _prepare_instrument_for_render(engine, instrument, midi_path)
+    note_count = _prepare_instrument_for_render(
+        engine, instrument, midi_path, tempo_bpm=tempo_bpm
+    )
     if note_count <= 0:
         raise ValueError(f"No playable notes found in MIDI file: {midi_path}")
     if PLUGIN_RENDER_WARMUP_SEC > 0:
@@ -619,12 +624,14 @@ def render_midi_chain_from_paths(
     midi_path: str,
     *,
     duration_sec: float | None = None,
+    tempo_bpm: float | None = None,
     sample_rate: int = SAMPLE_RATE,
     buffer_size: int = BUFFER_SIZE,
     headroom_gain: float = HEADROOM_GAIN,
 ) -> np.ndarray:
     """Load plug-ins by path, apply saved states, render MIDI → (samples, channels)."""
     dur = duration_sec if duration_sec is not None else _midi_duration_seconds(midi_path)
+    host_bpm = float(tempo_bpm if tempo_bpm is not None else DRONE_MIDI_TEMPO_BPM)
 
     last_out: np.ndarray | None = None
     for attempt in range(2):
@@ -655,6 +662,7 @@ def render_midi_chain_from_paths(
             float(dur),
             sample_rate=sample_rate,
             headroom_gain=headroom_gain,
+            tempo_bpm=host_bpm,
         )
         if _render_output_is_usable(last_out):
             return last_out

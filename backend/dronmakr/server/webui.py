@@ -468,6 +468,8 @@ def api_health():
 @app.route("/api/update/check", methods=["GET"])
 def api_update_check():
     """Report whether a newer GitHub release exists than this build."""
+    if get_dev_frontend() is not None:
+        return jsonify({"available": False, "dev": True})
     from dronmakr.core.updater import fetch_update_info_throttled
 
     info = fetch_update_info_throttled()

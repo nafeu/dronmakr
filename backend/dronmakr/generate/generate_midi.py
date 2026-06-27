@@ -149,6 +149,8 @@ DRONE_MIDI_PADDING_BARS_ALLOWED = frozenset({0, 1, 2, 4, 8, 16, 32, 64})
 DEFAULT_DRONE_MIDI_LENGTH_BARS = 16
 DEFAULT_DRONE_MIDI_PADDING_BARS = 0
 DRONE_MIDI_TEMPO_BPM = 120
+DRONE_MIDI_TEMPO_MIN_BPM = 50
+DRONE_MIDI_TEMPO_MAX_BPM = 250
 DRONE_MIDI_BEATS_PER_BAR = 4
 
 
@@ -198,6 +200,24 @@ def coerce_drone_midi_padding_bars(
     if n not in DRONE_MIDI_PADDING_BARS_ALLOWED:
         raise ValueError(
             f"paddedSilenceBars must be one of {sorted(DRONE_MIDI_PADDING_BARS_ALLOWED)}"
+        )
+    return n
+
+
+def coerce_drone_midi_tempo_bpm(
+    value, *, default: int = DRONE_MIDI_TEMPO_BPM
+) -> int:
+    """Parse UI/API ``tempo`` in BPM (50–250, whole numbers)."""
+    if value is None or value == "":
+        return int(default)
+    try:
+        n = int(float(value))
+    except (TypeError, ValueError):
+        raise ValueError("tempo must be an integer BPM") from None
+    if n < DRONE_MIDI_TEMPO_MIN_BPM or n > DRONE_MIDI_TEMPO_MAX_BPM:
+        raise ValueError(
+            f"tempo must be between {DRONE_MIDI_TEMPO_MIN_BPM} and "
+            f"{DRONE_MIDI_TEMPO_MAX_BPM} BPM"
         )
     return n
 
@@ -556,6 +576,7 @@ def generate_drone_midi(
     velocity_range=(80, 120),  # MIDI note velocity range
     num_bars: int = DEFAULT_DRONE_MIDI_LENGTH_BARS,
     padded_silence_bars: int = DEFAULT_DRONE_MIDI_PADDING_BARS,
+    tempo_bpm: float = DRONE_MIDI_TEMPO_BPM,
     humanization=0.02,  # Time shift variance in seconds (default: 20ms)
     swing: float = 0.0,  # Rhythmic swing amount (0 = straight, 1 = strong swing)
     shift_octave_down=None,
@@ -591,6 +612,12 @@ def generate_drone_midi(
             "padded_silence_bars must be one of "
             f"{sorted(DRONE_MIDI_PADDING_BARS_ALLOWED)}"
         )
+
+    try:
+        bpm = int(float(tempo_bpm))
+    except (TypeError, ValueError):
+        raise ValueError("tempo_bpm must be numeric") from None
+    bpm = coerce_drone_midi_tempo_bpm(bpm)
 
     if not pattern:
         pattern = random.choice(SUPPORTED_PATTERNS)
@@ -646,7 +673,6 @@ def generate_drone_midi(
         print(with_prompt(f"drone midi: {label} · {pattern}{detail}"))
 
     # Define tempo and timing
-    bpm = 120
     beats_per_bar = 4
     seconds_per_beat = 60.0 / bpm
     bar_length = beats_per_bar * seconds_per_beat

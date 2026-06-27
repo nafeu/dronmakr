@@ -155,6 +155,11 @@
       overflow: hidden !important;
     }
 
+    /* OverlayScrollbars H-bar on auditionr — nudge up slightly */
+    .auditionr-layout .os-scrollbar.os-scrollbar-horizontal.os-theme-dronmakr {
+      margin-bottom: -5px;
+    }
+
     .queue-empty {
       position: absolute;
       inset: 0;
@@ -2122,6 +2127,44 @@
     .generatr-drone-instrument-summary-line.is-muted {
       color: color-mix(in srgb, var(--theme-a) 78%, transparent);
       font-style: italic;
+    }
+
+    .generatr-drone-instrument-summary-line--single {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      min-width: 0;
+    }
+
+    .generatr-drone-instrument-summary-name {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    button.generatr-drone-instrument-edit-btn {
+      flex-shrink: 0;
+      width: 1.1rem;
+      height: 1.1rem;
+      padding: 0;
+      border: none;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--theme-a);
+      font-size: 0.62rem;
+      line-height: 1;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.65;
+    }
+
+    .generatr-drone-instrument-picker.is-filled:hover button.generatr-drone-instrument-edit-btn {
+      opacity: 1;
+      background: rgba(0, 0, 0, 0.45);
     }
 
     .generatr-drone-instrument-empty-icon {
@@ -4927,6 +4970,14 @@
                   </div>
                   <div class="generatr-sweep-effect-body">
                     <div class="generatr-sweep-effect-knobs">
+                      <div class="daw-knob" data-knob-unit="bpm" data-knob-decimals="0">
+                        <span class="daw-knob-label">Tempo</span>
+                        <button type="button" class="daw-knob-dial" aria-label="Export tempo in BPM">
+                          <span class="daw-knob-ring" aria-hidden="true"></span>
+                        </button>
+                        <span class="daw-knob-readout" aria-hidden="true">120 bpm</span>
+                        <input type="number" class="daw-knob-input" id="generatr-drone-tempo" step="1" min="50" max="250" value="120" tabindex="-1" aria-hidden="true">
+                      </div>
                       <div class="daw-knob" data-knob-choices="1,2,4,8,16,32,64" data-knob-unit="bars" data-knob-decimals="0">
                         <span class="daw-knob-label">Length</span>
                         <button type="button" class="daw-knob-dial" aria-label="MIDI length in bars">
@@ -5220,19 +5271,25 @@
     var socket = io();
     var auditionrExportsBootstrapped = false;
 
+    function auditionrHandleExports(data) {
+      if (!data) return;
+      if (!auditionrExportsBootstrapped) {
+        if (data.quarantined && data.quarantined.length) {
+          window.alert(
+            "Removed " + data.quarantined.length + " corrupted export(s) to Trash:\n\n" + data.quarantined.join("\n")
+          );
+        }
+        auditionrExportsBootstrapped = true;
+      }
+      applyExportsUpdate(
+        data.files || [],
+        data.updated_path || null,
+        data.undo_available || null
+      );
+    }
+
     function auditionrBootstrapExports(data) {
-      if (auditionrExportsBootstrapped || !data) return;
-      auditionrExportsBootstrapped = true;
-      if (data.quarantined && data.quarantined.length) {
-        window.alert(
-          "Removed " + data.quarantined.length + " corrupted export(s) to Trash:\n\n" + data.quarantined.join("\n")
-        );
-      }
-      if (data.files) {
-        applyExportsUpdate(data.files, data.updated_path || null, data.undo_available || null);
-      } else {
-        applyExportsUpdate([], null, null);
-      }
+      auditionrHandleExports(data);
     }
 
     function auditionrFetchExportsFallback(reason) {
@@ -7006,7 +7063,13 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ path })
       }).then(response => response.json())
-        .then(data => console.log(data))
+        .then(data => {
+          if (data.error) {
+            console.error(data.error);
+            return;
+          }
+          socket.emit("requestExports");
+        })
         .catch(error => console.error("Error:", error));
     }
 
@@ -7441,7 +7504,7 @@
     }
 
     socket.on("exports", function (data) {
-      auditionrBootstrapExports(data);
+      auditionrHandleExports(data);
     });
 
     socket.on("folder_counts", function (data) {
@@ -8232,6 +8295,7 @@
       var generatrDroneMidiPatternPendingId = null;
       var generatrDroneMidiPatternPreviewsLoaded = false;
       var generatrDroneMidiPreviewRequestSeq = 0;
+      var droneTempoInput = document.getElementById("generatr-drone-tempo");
       var droneLengthInput = document.getElementById("generatr-drone-length");
       var dronePaddedSilenceInput = document.getElementById("generatr-drone-padded-silence");
       var droneInstrumentSlot = document.getElementById("generatr-drone-instrument-slot");
@@ -8605,6 +8669,7 @@
       function generatrDroneMidiPreviewPayload() {
         var payload = {
           pattern: generatrDroneMidiPatternId || "",
+          tempo: parseInt(droneTempoInput ? droneTempoInput.value : "120", 10),
           lengthBars: parseInt(droneLengthInput.value || "16", 10),
           paddedSilenceBars: parseInt(dronePaddedSilenceInput.value || "0", 10)
         };
@@ -8643,6 +8708,7 @@
               var bits = [];
               if (data.patternDisplayName) bits.push(data.patternDisplayName);
               if (data.chart) bits.push(data.chart);
+              if (data.tempoBpm) bits.push(data.tempoBpm + " bpm");
               droneMidiPreviewMeta.textContent = bits.length ? bits.join(" · ") : "";
             }
           })
@@ -8933,6 +8999,23 @@
         return keys;
       }
 
+      function generatrDroneInstrumentIsEditablePlugin(item) {
+        if (!item) return false;
+        if (item.kind === "faust") return false;
+        if (item.kind === "plugin") {
+          var pluginPath = item.pluginPath || item.plugin_path || "";
+          return !!pluginPath
+            && pluginPath.indexOf("faust:") !== 0
+            && pluginPath.indexOf("faustfx:") !== 0;
+        }
+        if (item.kind === "patch") {
+          var path = item.pluginPath || item.plugin_path || "";
+          if (path && path.indexOf("faust:") !== 0 && path.indexOf("faustfx:") !== 0) return true;
+          return !!(item.name && item.patchType !== "effect_chain");
+        }
+        return false;
+      }
+
       function generatrDroneInstrumentDisplayLines(sel) {
         if (!sel) return [];
         if (sel.kind !== "pool") {
@@ -8970,9 +9053,26 @@
           if (!sel) {
             // empty state handled by plus icon
           } else if (count <= 1) {
+            var item = generatrDroneGetInstrumentPoolItems(sel)[0] || sel;
             var single = document.createElement("div");
-            single.className = "generatr-drone-instrument-summary-line";
-            single.textContent = generatrDroneSelectionLabel(count ? generatrDroneGetInstrumentPoolItems(sel)[0] : sel);
+            single.className = "generatr-drone-instrument-summary-line generatr-drone-instrument-summary-line--single";
+            var nameSpan = document.createElement("span");
+            nameSpan.className = "generatr-drone-instrument-summary-name";
+            nameSpan.textContent = generatrDroneSelectionLabel(item);
+            single.appendChild(nameSpan);
+            if (generatrDroneInstrumentIsEditablePlugin(item)) {
+              var editBtn = document.createElement("button");
+              editBtn.type = "button";
+              editBtn.className = "generatr-drone-instrument-edit-btn";
+              editBtn.setAttribute("aria-label", "Edit instrument plug-in");
+              editBtn.title = "Edit instrument plug-in";
+              editBtn.innerHTML = "<i class=\"fa-solid fa-pen-to-square\" aria-hidden=\"true\"></i>";
+              editBtn.addEventListener("click", function (ev) {
+                ev.stopPropagation();
+                generatrDroneReopenSlotEditor(item, "instrument", 0);
+              });
+              single.appendChild(editBtn);
+            }
             droneInstrumentSummaryList.appendChild(single);
           } else {
             var lines = generatrDroneInstrumentDisplayLines(sel);
@@ -9314,15 +9414,15 @@
         generatrDronePickerUserEngaged = false;
         if (!generatrDronePickerInstrumentMultiEnabled()) return;
         var sel = generatrDroneInstrumentSelection;
-        if (sel && sel.kind === "pool") {
-          generatrDronePickerPendingItems = generatrDroneGetInstrumentPoolItems(sel).map(generatrDroneCloneInstrumentItem);
-          generatrDronePickerPendingGroups = generatrDroneComputeInstrumentGroups(
-            generatrDronePickerPendingItems,
-            generatrDronePluginPickerData
-          ).groups;
-          generatrDronePickerMultiActive = generatrDronePickerPendingItems.length > 0;
-          generatrDronePickerOpenedWithSelection = generatrDronePickerPendingItems.length > 0;
-        }
+        if (!sel) return;
+        generatrDronePickerPendingItems = generatrDroneGetInstrumentPoolItems(sel).map(generatrDroneCloneInstrumentItem);
+        if (!generatrDronePickerPendingItems.length) return;
+        generatrDronePickerPendingGroups = generatrDroneComputeInstrumentGroups(
+          generatrDronePickerPendingItems,
+          generatrDronePluginPickerData
+        ).groups;
+        generatrDronePickerMultiActive = true;
+        generatrDronePickerOpenedWithSelection = true;
       }
 
       function generatrDronePickerPendingHasKey(key) {
@@ -10031,6 +10131,9 @@
           if (ev.target.closest(".generatr-drone-instrument-clear")) {
             ev.stopPropagation();
             generatrDroneClearInstrumentSelection();
+            return;
+          }
+          if (ev.target.closest(".generatr-drone-instrument-edit-btn")) {
             return;
           }
           generatrDroneOpenPluginPickerForSlot("instrument", 0);
@@ -12453,6 +12556,7 @@
         } else if (type === "drone") {
           generatrDroneAppendChartSelectionToPayload(body);
           body.pattern = generatrDroneMidiPatternId || "";
+          body.tempo = parseInt(droneTempoInput ? droneTempoInput.value : "120", 10);
           body.lengthBars = parseInt(droneLengthInput.value || "16", 10);
           body.paddedSilenceBars = parseInt(dronePaddedSilenceInput.value || "0", 10);
           if (generatrDroneInstrumentSelection) {

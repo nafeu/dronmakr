@@ -167,6 +167,25 @@ def list_faust_instruments() -> list[dict[str, str]]:
     return [_instrument_summary(entry) for entry in _FAUST_INSTRUMENTS]
 
 
+def faust_instrument_preset_for_id(instrument_id: str) -> dict[str, str]:
+    """Preset-shaped dict for generate_drone_sample when using a built-in Faust instrument."""
+    entry = _catalog_entry(instrument_id)
+    return {
+        "plugin_path": faust_path_for_id(entry["id"]),
+        "preset_path": "",
+        "name": entry.get("label") or entry["id"],
+        "plugin_name": "Faust",
+    }
+
+
+def pick_random_faust_instrument_preset() -> dict[str, str]:
+    """Pick a random shipped Faust instrument in preset dict form."""
+    import random
+
+    entry = random.choice(_FAUST_INSTRUMENTS)
+    return faust_instrument_preset_for_id(entry["id"])
+
+
 def list_faust_library_categories() -> list[dict]:
     """Catalog grouped by patch type for the picker UI."""
     by_category: dict[str, list[dict[str, str]]] = {cat["id"]: [] for cat in _FAUST_CATEGORIES}

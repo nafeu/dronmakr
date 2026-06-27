@@ -45,6 +45,7 @@ from dronmakr.core.chord_scale_catalog import get_chord_scale_catalog, get_chord
 from dronmakr.generate.generate_midi import (
     coerce_drone_midi_length_bars,
     coerce_drone_midi_padding_bars,
+    coerce_drone_midi_tempo_bpm,
     generate_drone_midi,
     get_pattern_config,
     get_patterns,
@@ -123,7 +124,8 @@ def refresh_auditionr_paths() -> None:
 def _socket_broadcast(event: str, payload) -> None:
     """Emit to all connected clients (required from HTTP request handlers)."""
     if _socketio:
-        _socketio.emit(event, payload, broadcast=True)
+        # Flask-SocketIO: omit `to` to reach every client; do not pass `broadcast` (unsupported).
+        _socketio.emit(event, payload)
 
 
 def _ensure_undo_dir():
@@ -767,6 +769,7 @@ def _build_drone_midi_kwargs_from_payload(
 
     length_bars = coerce_drone_midi_length_bars(payload.get("lengthBars"))
     padded_silence_bars = coerce_drone_midi_padding_bars(payload.get("paddedSilenceBars"))
+    tempo_bpm = coerce_drone_midi_tempo_bpm(payload.get("tempo"))
 
     midi_kwargs = {
         "pattern": pattern,
@@ -774,6 +777,7 @@ def _build_drone_midi_kwargs_from_payload(
         "shift_root_note": None,
         "num_bars": length_bars,
         "padded_silence_bars": 0 if preview else padded_silence_bars,
+        "tempo_bpm": tempo_bpm,
     }
 
     next_chart_pool_last_key = chart_pool_last_key
@@ -975,6 +979,12 @@ def _resolve_drone_editor_instrument_spec(
         pick = random.choice(instruments)
         return pick["plugin_path"], pick.get("preset_path")
 
+    from dronmakr.audio.faust_library import list_faust_instruments, pick_random_faust_instrument_preset
+
+    if list_faust_instruments():
+        faust_pick = pick_random_faust_instrument_preset()
+        return faust_pick["plugin_path"], faust_pick.get("preset_path")
+
     raise ValueError(
         "No instrument available for live preview — pick or save an instrument first."
     )
@@ -1141,7 +1151,10 @@ def _run_generate_drone(payload: dict) -> list[str]:
             quiet=True,
         )
         chart_label = "custom" if custom_notes else selected_chart
-        base_sample_name = f"{generate_drone_name()}_-_{chart_label}_-_{generate_id()}"
+        tempo_bpm = int(midi_kwargs.get("tempo_bpm") or 120)
+        base_sample_name = (
+            f"{generate_drone_name()}_-_{chart_label}_-_{tempo_bpm}bpm_-_{generate_id()}"
+        )
         sample_name = format_name(f"drone___{base_sample_name}")
         output_path = f"{managed_paths.EXPORTS_DIR}/{sample_name}"
         midi_temp = write_drone_midi_temp(midi_obj)
@@ -1166,6 +1179,7 @@ def _run_generate_drone(payload: dict) -> list[str]:
                 instrument=instrument,
                 effect=effect,
                 render_duration_sec=render_duration_sec,
+                tempo_bpm=tempo_bpm,
                 instrument_selection=iteration_selection,
                 fx_slots=fx_slots,
             )
@@ -1228,6 +1242,7 @@ def _run_drone_audio_preview(payload: dict) -> tuple[str, float, str]:
             instrument=instrument,
             effect=effect,
             render_duration_sec=render_duration_sec,
+            tempo_bpm=midi_kwargs.get("tempo_bpm"),
             instrument_selection=instrument_selection,
             fx_slots=fx_slots,
         )
@@ -1820,6 +1835,7 @@ def _handle_drone_midi_preview():
                 "description": description,
                 "chart": chart_label,
                 "renderDurationSec": render_duration_sec,
+                "tempoBpm": midi_kwargs.get("tempo_bpm"),
             }
         )
     except ValueError as e:

@@ -19,9 +19,15 @@
   --os-handle-bg-active: var(--primary);
 }
 
-.os-scrollbar-track {
+.os-scrollbar-vertical .os-scrollbar-track {
   width: 5px;
-  margin-left: 0px;
+  margin-left: 0;
+}
+
+.os-scrollbar-horizontal .os-scrollbar-track {
+  width: auto;
+  height: 5px;
+  margin-left: 0;
 }
 
 .os-scrollbar-handle, .os-scrollbar-track {
@@ -92,9 +98,52 @@
 .generatr-pp-list-scroll.os-host,
 .dron-select-list-scroll.os-host,
 .generatr-drone-midi-pattern-grid-scroll.os-host,
-.generatr-drone-plugin-list-panel.os-host {
+.generatr-drone-plugin-list-panel.os-host,
+.sequencer-grid-scroll.os-host {
   min-height: 0;
   overflow: hidden !important;
+}
+
+.sequencer-grid-scroll.os-host {
+  --os-size: 10px;
+  --os-handle-interactive-area-offset: 4px;
+}
+
+.sequencer-grid-scroll.os-host [data-overlayscrollbars-contents] {
+  width: max-content;
+  min-width: 100%;
+}
+
+.sequencer-grid-scroll.os-host > .os-scrollbar-horizontal.os-theme-dronmakr,
+.sequencer-grid-scroll.os-host > .os-scrollbar-vertical.os-theme-dronmakr {
+  z-index: 3;
+  pointer-events: auto;
+}
+
+.sequencer-grid-scroll.os-host > .os-scrollbar-horizontal.os-theme-dronmakr {
+  --os-size: 10px;
+  left: 0;
+  right: var(--os-size, 10px);
+  bottom: 0;
+  height: var(--os-size, 10px);
+}
+
+.sequencer-grid-scroll.os-host > .os-scrollbar-horizontal .os-scrollbar-track {
+  width: auto !important;
+  height: 100% !important;
+}
+
+.sequencer-grid-scroll.os-host > .os-scrollbar-horizontal .os-scrollbar-handle {
+  height: 100% !important;
+  min-width: 36px;
+}
+
+.sequencer-grid-scroll.os-host > .os-scrollbar-vertical.os-theme-dronmakr {
+  --os-size: 8px;
+  top: 0;
+  bottom: var(--os-size, 10px);
+  right: 0;
+  width: var(--os-size, 8px);
 }
 
 #waveforms.os-host {

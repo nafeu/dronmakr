@@ -4,7 +4,7 @@
   "version": "0.57.13",
   "identifier": "io.github.nafeu.dronmakr",
   "build": {
-    "beforeDevCommand": "python backend/backend_server.py --port 3766 --dev-frontend",
+    "beforeDevCommand": "bash scripts/dev_backend.sh",
     "devUrl": "http://127.0.0.1:3766",
     "beforeBuildCommand": "python scripts/build_frontend.py",
     "frontendDist": "../frontend/dist"

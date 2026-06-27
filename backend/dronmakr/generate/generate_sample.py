@@ -92,6 +92,7 @@ def generate_drone_sample(
     instrument=None,
     effect=None,
     render_duration_sec: float | None = None,
+    tempo_bpm: float | None = None,
     instrument_selection: dict | None = None,
     fx_slots: list | None = None,
 ):
@@ -111,6 +112,7 @@ def generate_drone_sample(
         instrument,
         effect,
         render_duration_sec,
+        tempo_bpm,
         instrument_selection,
         fx_slots,
     )
@@ -133,10 +135,13 @@ def generate_drone_sample(
         p for p in presets if isinstance(p, dict) and p.get("type") in ("effect", "effect_chain")
     ]
 
+    from dronmakr.audio.faust_library import list_faust_instruments, pick_random_faust_instrument_preset
+
+    has_faust_instruments = bool(list_faust_instruments())
     if not instruments and not (
         isinstance(instrument_selection, dict)
         and instrument_selection.get("kind") in ("plugin", "faust")
-    ):
+    ) and not has_faust_instruments:
         raise ValueError(
             f"No instrument presets in {presets_path}. "
             "Save at least one synth/instrument preset using the save icon in Generate Samples, "
@@ -171,7 +176,9 @@ def generate_drone_sample(
             "plugin_name": instrument_selection.get("pluginName") or instrument_selection.get("plugin_name") or "",
         }
     elif not instrument:
-        instrument_preset = random.choice(instruments)
+        instrument_preset = (
+            random.choice(instruments) if instruments else pick_random_faust_instrument_preset()
+        )
     else:
         for preset in instruments:
             if preset.get("name") == instrument:
@@ -315,6 +322,7 @@ def generate_drone_sample(
         fx_specs,
         input_path,
         duration_sec=audio_length_s,
+        tempo_bpm=tempo_bpm,
         headroom_gain=HEADROOM_GAIN,
     )
 

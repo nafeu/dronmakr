@@ -112,6 +112,7 @@ def delegate_generate_drone_sample_if_needed(
     instrument: str | None,
     effect: str | None,
     render_duration_sec: float | None = None,
+    tempo_bpm: float | None = None,
     instrument_selection: dict | None = None,
     fx_slots: list | None = None,
 ) -> str | None:
@@ -126,6 +127,7 @@ def delegate_generate_drone_sample_if_needed(
             "instrument": instrument,
             "effect": effect,
             "render_duration_sec": render_duration_sec,
+            "tempo_bpm": tempo_bpm,
             "instrument_selection": instrument_selection,
             "fx_slots": fx_slots,
         },
@@ -246,6 +248,7 @@ def run_stdio_worker() -> None:
                 instrument=params.get("instrument"),
                 effect=params.get("effect"),
                 render_duration_sec=params.get("render_duration_sec"),
+                tempo_bpm=params.get("tempo_bpm"),
                 instrument_selection=params.get("instrument_selection"),
                 fx_slots=params.get("fx_slots"),
             )

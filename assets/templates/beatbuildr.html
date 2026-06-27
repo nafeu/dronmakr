@@ -649,11 +649,20 @@
     }
 
     .sequencer-grid-scroll {
-      overflow: auto;
       flex: 1;
       min-height: 0;
+    }
+
+    .sequencer-grid-scroll:not(.os-host) {
+      overflow: auto;
+    }
+
+    .sequencer-grid-scroll-inner {
       display: flex;
+      flex-direction: column;
       align-items: flex-start;
+      width: max-content;
+      min-width: 100%;
     }
 
     #sequencer-grid {
@@ -1791,9 +1800,11 @@
         </button>
       </div>
       <div class="sequencer-scroll-wrapper">
-        <div class="sequencer-grid-scroll">
-          <div id="sequencer-grid"></div>
-          <div id="sequencer-meta-grid" hidden></div>
+        <div class="sequencer-grid-scroll" data-dron-scrollbar="both">
+          <div class="sequencer-grid-scroll-inner">
+            <div id="sequencer-grid"></div>
+            <div id="sequencer-meta-grid" hidden></div>
+          </div>
         </div>
         <div class="grid-footer">
           <div class="grid-footer-kit">
@@ -2047,6 +2058,7 @@
     };
 
     const gridContainer = document.getElementById("sequencer-grid");
+    const sequencerGridScroll = document.querySelector(".sequencer-grid-scroll");
     const playToggleBtn = document.getElementById("play-toggle");
     const tempoInput = document.getElementById("tempo-input");
     const swingInput = document.getElementById("swing-input");
@@ -2223,6 +2235,20 @@
     function getCurrentKitDescriptorForRow(row) {
       const desc = state.kit && state.kit.kit && state.kit.kit[row];
       return desc && desc.path ? { row, path: desc.path, name: desc.name, url: desc.url } : null;
+    }
+
+    function refreshSequencerScrollbars() {
+      if (!window.dronmakrUi || !sequencerGridScroll) return;
+      if (typeof window.dronmakrUi.bindScrollbar === "function") {
+        window.dronmakrUi.bindScrollbar(sequencerGridScroll);
+      } else if (typeof window.dronmakrUi.refreshScrollbars === "function") {
+        window.dronmakrUi.refreshScrollbars(sequencerGridScroll);
+      }
+      requestAnimationFrame(function () {
+        if (typeof window.dronmakrUi.bindScrollbar === "function") {
+          window.dronmakrUi.bindScrollbar(sequencerGridScroll);
+        }
+      });
     }
 
     function renderGrid() {
@@ -2418,6 +2444,7 @@
       });
 
       applyHumanizationPanelVisibility();
+      requestAnimationFrame(refreshSequencerScrollbars);
     }
 
     function flipCell(rowKey, stepIndex) {
