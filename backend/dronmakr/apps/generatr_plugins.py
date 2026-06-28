@@ -20,7 +20,8 @@ from dronmakr.audio.audio_host import (
     save_plugin_state,
 )
 from dronmakr.core.paths import get_managed_dir
-from dronmakr.core.utils import TEMP_DIR, generate_id, resolve_presets_index_path
+from dronmakr.core import utils as core_utils
+from dronmakr.core.utils import generate_id, resolve_presets_index_path
 from dronmakr.audio.faust_fx_library import list_faust_effects, list_faust_fx_categories
 from dronmakr.audio.faust_library import list_faust_instruments, list_faust_library_categories
 from dronmakr.presets.preset_authoring import (
@@ -40,9 +41,44 @@ from dronmakr.presets.preset_authoring import (
 
 
 def generatr_session_dir() -> str:
-    path = os.path.join(TEMP_DIR, "generatr-plugin-sessions")
+    temp_dir = (core_utils.TEMP_DIR or "").strip()
+    if not temp_dir:
+        raise RuntimeError("FILES_ROOT temp directory is not configured.")
+    path = os.path.abspath(os.path.join(temp_dir, "generatr-plugin-sessions"))
     os.makedirs(path, exist_ok=True)
     return path
+
+
+def _resolve_preset_state_path(source_path: str) -> str:
+    """Resolve editor session .ddstate paths, including legacy relative worker paths."""
+    raw = (source_path or "").strip()
+    if not raw:
+        return ""
+    candidates: list[str] = []
+    seen: set[str] = set()
+
+    def _add(path: str) -> None:
+        if not path:
+            return
+        abs_path = os.path.abspath(path)
+        if abs_path in seen:
+            return
+        seen.add(abs_path)
+        candidates.append(abs_path)
+
+    _add(raw)
+    basename = os.path.basename(raw)
+    if core_utils.TEMP_DIR:
+        _add(os.path.join(generatr_session_dir(), basename))
+        _add(os.path.join(core_utils.TEMP_DIR, basename))
+    backend_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    for subdir in ("generatr-plugin-sessions", "generatr-plugin-session"):
+        _add(os.path.join(backend_root, subdir, basename))
+        _add(os.path.join(os.getcwd(), subdir, basename))
+    for candidate in candidates:
+        if os.path.isfile(candidate):
+            return candidate
+    return os.path.abspath(raw)
 
 
 def _load_presets_list() -> list[dict]:
@@ -307,6 +343,7 @@ def open_drone_plugin_editor_capture(
 
         saved_preset_path = os.path.join(generatr_session_dir(), f"{generate_id()}.ddstate")
         save_plugin_state(processor, saved_preset_path)
+        saved_preset_path = os.path.abspath(saved_preset_path)
 
         return {
             "kind": "plugin",
@@ -321,7 +358,7 @@ def open_drone_plugin_editor_capture(
 
 
 def _persist_preset_state(source_path: str, name_hint: str) -> str:
-    source = os.path.abspath((source_path or "").strip())
+    source = _resolve_preset_state_path(source_path)
     if not source or not os.path.isfile(source):
         raise ValueError(f"Preset state file not found: {source_path or '(empty)'}")
     dest_dir = get_managed_dir("vst-preset-files")

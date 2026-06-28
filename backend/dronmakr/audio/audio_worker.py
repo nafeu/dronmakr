@@ -229,10 +229,20 @@ def delegate_apply_plugin_patch_if_needed(
     return True
 
 
+def _ensure_worker_runtime_paths() -> None:
+    """Load FILES_ROOT before plug-in editor capture writes session .ddstate files."""
+    from dronmakr.core.settings import ensure_settings
+    from dronmakr.core.utils import refresh_managed_path_constants
+
+    ensure_settings()
+    refresh_managed_path_constants()
+
+
 def run_stdio_worker() -> None:
     import dronmakr.audio.audio_host as audio_host  # noqa: F401, PLC0415 — DawDreamer before numba
 
     _patch_print_to_stderr()
+    _ensure_worker_runtime_paths()
     try:
         raw = sys.stdin.read()
         job = json.loads(raw)
