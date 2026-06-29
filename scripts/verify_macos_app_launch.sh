@@ -10,7 +10,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
 APP="${1:-src-tauri/target/release/bundle/macos/dronmakr.app}"
-SIDECAR="${APP}/Contents/MacOS/dronmakr-backend"
+SIDECAR="${APP}/Contents/Resources/resources/dronmakr-backend/dronmakr-backend"
 PORT="${PORT:-3996}"
 TIMEOUT_SEC="${TIMEOUT_SEC:-120}"
 

@@ -60,8 +60,8 @@ def main() -> int:
         if not target.is_dir():
             _err(f"not a bundle: {target}")
             return 1
-        exe = target / "Contents" / "MacOS" / "dronmakr-backend"
-        work_dir = target / "Contents" / "MacOS"
+        exe = target / "Contents" / "Resources" / "resources" / "dronmakr-backend" / "dronmakr-backend"
+        work_dir = exe.parent
     else:
         exe = target
         work_dir = exe.parent

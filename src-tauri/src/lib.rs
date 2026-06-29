@@ -70,17 +70,31 @@ fn navigate_main(app: &AppHandle, port: u16) {
 }
 
 #[cfg(not(debug_assertions))]
+fn bundled_backend_exe(app: &AppHandle) -> Option<std::path::PathBuf> {
+    let resource_dir = app.path().resource_dir().ok()?;
+    #[cfg(windows)]
+    let exe = resource_dir.join("resources/dronmakr-backend/dronmakr-backend.exe");
+    #[cfg(not(windows))]
+    let exe = resource_dir.join("resources/dronmakr-backend/dronmakr-backend");
+    exe.is_file().then_some(exe)
+}
+
+#[cfg(not(debug_assertions))]
 fn spawn_backend_sidecar(
     app: &AppHandle,
     port: u16,
     startup: &StartupState,
 ) -> Result<tauri_plugin_shell::process::CommandChild, String> {
     startup.push_line(format!("spawning sidecar on port {port}"));
-    let sidecar = app
-        .shell()
-        .sidecar("dronmakr-backend")
-        .map_err(|e| format!("sidecar missing: {e}"))?;
-    let (mut rx, child) = sidecar
+    let command = if let Some(exe) = bundled_backend_exe(app) {
+        startup.push_line(format!("using bundled backend at {}", exe.display()));
+        app.shell().command(exe)
+    } else {
+        app.shell()
+            .sidecar("dronmakr-backend")
+            .map_err(|e| format!("sidecar missing: {e}"))?
+    };
+    let (mut rx, child) = command
         .args(["--port", &port.to_string()])
         .spawn()
         .map_err(|e| format!("failed to spawn backend: {e}"))?;

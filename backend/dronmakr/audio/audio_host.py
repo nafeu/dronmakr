@@ -2,6 +2,7 @@
 DawDreamer VST/AU hosting — offline render and preset state.
 
 Import this module before numba-backed ``dsp`` helpers (LLVM init order).
+DawDreamer itself loads lazily on first ``create_engine()`` call.
 """
 
 from __future__ import annotations
@@ -17,9 +18,20 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Sequence
 
-import dawdreamer as daw
 import numpy as np
 import soundfile as sf
+
+_dawdreamer = None
+
+
+def _get_dawdreamer():
+    """Load DawDreamer on first plug-in render (keeps Flask startup fast)."""
+    global _dawdreamer
+    if _dawdreamer is None:
+        import dawdreamer as daw_module
+
+        _dawdreamer = daw_module
+    return _dawdreamer
 
 SAMPLE_RATE = 44100
 BUFFER_SIZE = 512
@@ -89,7 +101,7 @@ def _filter_dawdreamer_stderr():
 
 
 def create_engine(sample_rate: int = SAMPLE_RATE, buffer_size: int = BUFFER_SIZE) -> Any:
-    return daw.RenderEngine(sample_rate, buffer_size)
+    return _get_dawdreamer().RenderEngine(sample_rate, buffer_size)
 
 
 def _unique_processor_name(prefix: str = "proc") -> str:

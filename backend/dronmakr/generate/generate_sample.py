@@ -1,5 +1,3 @@
-import dronmakr.audio.audio_host as audio_host  # noqa: F401 — DawDreamer before numba-backed dsp
-
 import sys
 import os
 import json
@@ -66,9 +64,6 @@ def midi_to_messages(midi_file_path):
                 )
 
     return midi_messages, mid.length
-
-
-SAMPLE_RATE = audio_host.SAMPLE_RATE
 
 
 def effect_slot_entries(effect_preset: dict) -> list[dict]:

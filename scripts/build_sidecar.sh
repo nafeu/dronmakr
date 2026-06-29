@@ -16,36 +16,10 @@ python scripts/build_frontend.py
 python scripts/vendor_ffmpeg.py
 pyinstaller --noconfirm --clean backend/backend.spec
 
+ONEDIR_EXE="dist/dronmakr-backend/dronmakr-backend"
 if [[ "$(uname -s)" == "Darwin" ]]; then
-  python scripts/verify_frozen_soundfile_macos.py "dist/dronmakr-backend"
+  python scripts/verify_frozen_soundfile_macos.py "$ONEDIR_EXE"
 fi
 
-TARGET="$(rustc --print host-tuple)"
-BIN_DIR="src-tauri/binaries"
-mkdir -p "$BIN_DIR"
-
-if [[ "$(uname -s)" == "Darwin" ]]; then
-  SRC="dist/dronmakr-backend"
-else
-  SRC="dist/dronmakr-backend"
-  if [[ "$(uname -s)" == "MINGW"* ]] || [[ "$(uname -s)" == "MSYS"* ]] || [[ -f "dist/dronmakr-backend.exe" ]]; then
-    SRC="dist/dronmakr-backend.exe"
-  fi
-fi
-
-if [[ ! -f "$SRC" ]]; then
-  echo "error: PyInstaller output missing at $SRC" >&2
-  exit 1
-fi
-
-if [[ "$(uname -s)" == "Darwin" ]]; then
-  codesign --force --options runtime \
-    --entitlements src-tauri/entitlements.plist \
-    --sign - "$SRC"
-fi
-
-DEST="$BIN_DIR/dronmakr-backend-${TARGET}"
-cp "$SRC" "$DEST"
-chmod +x "$DEST"
-echo "Sidecar ready: $DEST"
-echo "Note: ${DEST} is gitignored (PyInstaller one-file ~120MB). Do not git add it."
+python scripts/stage_sidecar_onedir_dist.py
+echo "Sidecar onedir staged under src-tauri/resources/dronmakr-backend/ (gitignored)."

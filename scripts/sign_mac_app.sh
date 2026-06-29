@@ -23,15 +23,30 @@ if [[ ! -d "$APP" ]]; then
 fi
 
 MACOS_DIR="${APP}/Contents/MacOS"
+BACKEND_DIR="${APP}/Contents/Resources/resources/dronmakr-backend"
 
-# Sign nested executables first, then the bundle (avoid codesign --deep when signing).
-for bin in dronmakr-backend dronmakr; do
-  if [[ -f "${MACOS_DIR}/${bin}" ]]; then
-    codesign --force --options runtime \
-      --entitlements "${ROOT_DIR}/src-tauri/entitlements.plist" \
-      --sign - "${MACOS_DIR}/${bin}"
-  fi
-done
+if [[ -f "${BACKEND_DIR}/dronmakr-backend" ]]; then
+  codesign --force --options runtime \
+    --entitlements "${ROOT_DIR}/src-tauri/entitlements.plist" \
+    --sign - "${BACKEND_DIR}/dronmakr-backend"
+fi
+
+INTERNAL="${BACKEND_DIR}/_internal"
+if [[ -d "$INTERNAL" ]]; then
+  while IFS= read -r -d '' f; do
+    if file "$f" | grep -q 'Mach-O'; then
+      codesign --force --options runtime \
+        --entitlements "${ROOT_DIR}/src-tauri/entitlements.plist" \
+        --sign - "$f" 2>/dev/null || true
+    fi
+  done < <(find "$INTERNAL" -type f \( -perm -111 -o -name '*.dylib' -o -name '*.so' \) -print0)
+fi
+
+if [[ -f "${MACOS_DIR}/dronmakr" ]]; then
+  codesign --force --options runtime \
+    --entitlements "${ROOT_DIR}/src-tauri/entitlements.plist" \
+    --sign - "${MACOS_DIR}/dronmakr"
+fi
 
 codesign --force --sign - "$APP"
 codesign --verify --deep --strict --verbose=2 "$APP"

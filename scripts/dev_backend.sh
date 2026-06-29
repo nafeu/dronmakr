@@ -11,6 +11,16 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PORT="${DRONMAKR_DEV_PORT:-3766}"
 HOST="${DRONMAKR_DEV_HOST:-127.0.0.1}"
 
+bash "${ROOT}/scripts/ensure_sidecar_placeholder.sh" >/dev/null 2>&1 || true
+
+if [[ -x "${ROOT}/venv/bin/python" ]]; then
+  PYTHON="${ROOT}/venv/bin/python"
+elif command -v python3 >/dev/null 2>&1; then
+  PYTHON="python3"
+else
+  PYTHON="python"
+fi
+
 probe_dev_backend() {
   curl -sf "http://${HOST}:${PORT}/dev/reload-check" 2>/dev/null \
     | grep -q '"version"'
@@ -45,4 +55,4 @@ if listener_pids | grep -q .; then
 fi
 
 cd "${ROOT}"
-exec python backend/backend_server.py --host "${HOST}" --port "${PORT}" --dev-frontend "$@"
+exec "${PYTHON}" backend/backend_server.py --host "${HOST}" --port "${PORT}" --dev-frontend "$@"

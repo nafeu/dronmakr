@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "bash scripts/dev_backend.sh",
     "devUrl": "http://127.0.0.1:3766",
-    "beforeBuildCommand": "python scripts/build_frontend.py",
+    "beforeBuildCommand": "bash scripts/ensure_sidecar_placeholder.sh && python scripts/build_frontend.py",
     "frontendDist": "../frontend/dist"
   },
   "app": {
@@ -30,8 +30,8 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "externalBin": [
-      "binaries/dronmakr-backend"
+    "resources": [
+      "resources/dronmakr-backend/"
     ],
     "icon": [
       "icons/icon.png",
