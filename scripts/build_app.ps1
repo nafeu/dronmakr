@@ -16,8 +16,17 @@ npm run tauri build
 $version = (& .\venv\Scripts\python -c "import sys; sys.path.insert(0, 'backend'); from dronmakr.version import __version__; print(__version__)").Trim()
 $artifactDir = Join-Path $Root "dist-artifacts"
 New-Item -ItemType Directory -Path $artifactDir -Force | Out-Null
+$readmeDest = Join-Path $artifactDir "README-windows.txt"
+Copy-Item -Path (Join-Path $Root "scripts\windows_release_readme.txt") -Destination $readmeDest -Force
 $zipPath = Join-Path $artifactDir "dronmakr-v$version-windows-x64.zip"
 if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
 $bundleRoot = Join-Path $Root "src-tauri\target\release\bundle"
-Compress-Archive -Path (Join-Path $bundleRoot "*") -DestinationPath $zipPath
+$stagingDir = Join-Path $artifactDir "windows-bundle-staging"
+if (Test-Path $stagingDir) { Remove-Item $stagingDir -Recurse -Force }
+New-Item -ItemType Directory -Path $stagingDir -Force | Out-Null
+Copy-Item -Path (Join-Path $bundleRoot "*") -Destination $stagingDir -Recurse -Force
+Copy-Item -Path $readmeDest -Destination (Join-Path $stagingDir "README-windows.txt") -Force
+Compress-Archive -Path (Join-Path $stagingDir "*") -DestinationPath $zipPath
+Remove-Item $stagingDir -Recurse -Force
 Write-Host "Built $zipPath"
+Write-Host "Built $readmeDest"

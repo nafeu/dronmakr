@@ -34,7 +34,7 @@ Prebuilt apps are published on **[GitHub Releases](https://github.com/nafeu/dron
 | --- | --- |
 | macOS (Apple Silicon) | `dronmakr-v*-macos-arm64.dmg` (or `.tar.gz`) |
 | Linux (x86_64) | `dronmakr-v*-linux-x64.tar.gz` |
-| Windows | `dronmakr-v*-windows-x64.zip` |
+| Windows | `dronmakr-v*-windows-x64.zip` (NSIS `*-setup.exe` — see `README-windows.txt`) |
 
 **macOS (Intel):** not published on [Releases](https://github.com/nafeu/dronmakr/releases/latest) yet — planned for a future build. Until then, use [Manual installation](#manual-installation) on Intel Macs.
 
@@ -43,6 +43,10 @@ Prebuilt apps are published on **[GitHub Releases](https://github.com/nafeu/dron
 1. Install or extract the archive for your platform.
 2. Launch **dronmakr** (`dronmakr.app` on macOS, or the Windows/Linux bundle from the release).
 3. On first launch, pick where to store **`dronmakr-files`** (generated audio, presets, config).
+
+**macOS (unsigned):** Release builds are **not Apple-notarized**. Install from the DMG, then if macOS blocks launch open **System Settings → Privacy & Security → Open Anyway**, or **Control-click `dronmakr.app` → Open** once.
+
+**Windows:** Unzip the release, open the `nsis` folder, and run `dronmakr_*_x64-setup.exe`. See `README-windows.txt` in the zip.
 
 **Requirements:** VST3 and/or AU plug-ins for drone generation. Configure paths in **Settings** after setup.
 

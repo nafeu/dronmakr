@@ -1,6 +1,6 @@
 {
   "name": "dronmakr",
-  "version": "0.58.2",
+  "version": "0.58.3",
   "private": true,
   "description": "dronmakr desktop app",
   "scripts": {

@@ -156,16 +156,69 @@ def _resolve_audio_path(file_ref: str) -> Path | None:
 _SPLIT_RECORDING_NAME_RE = re.compile(r"^(?P<base>.+)-split-(?P<idx>\d+)(?:-\d+)?$")
 
 
-def _recordings_queue_sort_key(path: Path) -> tuple[float, str, int, str]:
-    """Newest recordings first; split siblings in chronological (split-01, -02, ...) order."""
+def _path_mtime(path: Path) -> float:
     try:
-        mtime = path.stat().st_mtime
+        return path.stat().st_mtime
     except OSError:
-        mtime = 0.0
+        return 0.0
+
+
+def _split_recording_parts(path: Path) -> tuple[str, int] | None:
     match = _SPLIT_RECORDING_NAME_RE.match(path.stem)
-    if match:
-        return (-mtime, match.group("base"), int(match.group("idx")), path.name)
-    return (-mtime, path.stem, 0, path.name)
+    if not match:
+        return None
+    return match.group("base"), int(match.group("idx"))
+
+
+def _sort_recordings_queue(paths: list[Path]) -> list[Path]:
+    """
+    Newest recording sessions first; split siblings in split-01, -02, … order.
+
+    Per-file mtimes are not used to order siblings — Windows assigns a newer mtime
+    to each segment as it is written, which would reverse the list on that platform.
+    """
+    singles: list[tuple[float, Path]] = []
+    split_groups: dict[str, list[Path]] = {}
+    for path in paths:
+        parts = _split_recording_parts(path)
+        if parts is not None:
+            split_groups.setdefault(parts[0], []).append(path)
+        else:
+            singles.append((_path_mtime(path), path))
+
+    grouped: list[tuple[float, str, list[Path]]] = []
+    for base, files in split_groups.items():
+        files.sort(key=lambda p: (_split_recording_parts(p) or ("", 0))[1])
+        group_mtime = max(_path_mtime(p) for p in files)
+        grouped.append((group_mtime, base, files))
+
+    grouped.sort(key=lambda item: (-item[0], item[1]))
+    singles.sort(key=lambda item: -item[0])
+
+    ordered: list[Path] = []
+    gi, si = 0, 0
+    while gi < len(grouped) or si < len(singles):
+        group_time = grouped[gi][0] if gi < len(grouped) else float("-inf")
+        single_time = singles[si][0] if si < len(singles) else float("-inf")
+        if group_time >= single_time and gi < len(grouped):
+            ordered.extend(grouped[gi][2])
+            gi += 1
+        elif si < len(singles):
+            ordered.append(singles[si][1])
+            si += 1
+        else:
+            ordered.extend(grouped[gi][2])
+            gi += 1
+    return ordered
+
+
+def _recordings_queue_sort_key(path: Path) -> tuple[float, str, int, str]:
+    """Legacy single-path key — prefer :func:`_sort_recordings_queue`."""
+    parts = _split_recording_parts(path)
+    if parts is not None:
+        base, idx = parts
+        return (0.0, base, idx, path.name)
+    return (-_path_mtime(path), path.stem, 0, path.name)
 
 
 def _sanitize_folysplitr_collection_name(name: str) -> str:
@@ -364,7 +417,7 @@ def register_folysplitr(app):
         for file in RECORDINGS_DIR.glob("*.wav"):
             if file.is_file():
                 audio_files.append(file)
-        for file in sorted(audio_files, key=_recordings_queue_sort_key):
+        for file in _sort_recordings_queue(audio_files):
             files.append(_public_audio_payload(file))
         return jsonify({"ok": True, "files": files})
 
@@ -574,6 +627,7 @@ def register_folysplitr(app):
 
         if not created_files:
             return jsonify({"ok": False, "error": "No split files were created"}), 400
+        created_files = _sort_recordings_queue(created_files)
         original_path = source.relative_to(ROOT_DIR).as_posix()
         try:
             source.unlink()

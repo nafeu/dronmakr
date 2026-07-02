@@ -1369,17 +1369,31 @@ def _infer_splits_entry_type(stem: str) -> str:
     return "other"
 
 
+_COLLECTIONS_EXCLUDED_SPLIT_DIRS = frozenset({"trash", "archive"})
+
+
+def _is_excluded_collections_splits_rel(rel_posix: str) -> bool:
+    """True when a splits/ relative path is under trash/ or archive/."""
+    parts = [p.lower() for p in rel_posix.split("/") if p]
+    return any(part in _COLLECTIONS_EXCLUDED_SPLIT_DIRS for part in parts)
+
+
 def get_splits_wav_files():
     """Return list of .wav files under splits/ (recursive) for collections."""
     if not os.path.isdir(SPLITS_DIR):
         return []
     out: list[dict] = []
-    for root, _, files in os.walk(SPLITS_DIR):
+    for root, dirs, files in os.walk(SPLITS_DIR):
+        dirs[:] = [
+            d for d in dirs if d.lower() not in _COLLECTIONS_EXCLUDED_SPLIT_DIRS
+        ]
         for f in files:
             if not f.lower().endswith(".wav"):
                 continue
             abs_path = os.path.join(root, f)
             rel = os.path.relpath(abs_path, SPLITS_DIR).replace(os.sep, "/")
+            if _is_excluded_collections_splits_rel(rel):
+                continue
             path = f"/splits/{rel}"
             stem = f.replace(".wav", "")
             out.append(
