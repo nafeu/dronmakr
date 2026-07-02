@@ -7,6 +7,7 @@
     "build:frontend": "python scripts/build_frontend.py",
     "build:sidecar": "bash scripts/build_sidecar.sh",
     "icons": "bash scripts/build_mac_app_icns.sh",
+    "icons:windows": "python scripts/build_windows_app_ico.py",
     "tauri": "tauri",
     "dev": "tauri dev",
     "dev:backend": "bash scripts/dev_backend.sh",

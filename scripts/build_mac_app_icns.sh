@@ -58,21 +58,6 @@ sips -z 32 32 "$LAYER_1024" --out "${TAURI_ICONS}/32x32.png" >/dev/null
 sips -z 128 128 "$LAYER_1024" --out "${TAURI_ICONS}/128x128.png" >/dev/null
 sips -z 256 256 "$LAYER_1024" --out "${TAURI_ICONS}/128x128@2x.png" >/dev/null
 
-python3 - "$LAYER_1024" "$TAURI_ICONS" <<'PY'
-import sys
-from pathlib import Path
-from PIL import Image
-
-layer_path = Path(sys.argv[1])
-tauri_icons = Path(sys.argv[2])
-layer = Image.open(layer_path).convert("RGBA")
-
-ico_sizes = [(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
-ico_images = [layer.resize(size, Image.Resampling.LANCZOS) for size in ico_sizes]
-ico_images[0].save(tauri_icons / "icon.ico", format="ICO", sizes=[im.size for im in ico_images])
-print(f"Wrote {tauri_icons / 'icon.ico'}")
-PY
-
 echo "Wrote:"
 echo "  $OUT_ICNS"
 echo "  ${TAURI_ICONS}/icon.icns"
@@ -80,7 +65,8 @@ echo "  ${TAURI_ICONS}/icon.png"
 echo "  ${TAURI_ICONS}/32x32.png"
 echo "  ${TAURI_ICONS}/128x128.png"
 echo "  ${TAURI_ICONS}/128x128@2x.png"
-echo "  ${TAURI_ICONS}/icon.ico"
+echo ""
+echo "Windows icon.ico is built separately: npm run icons:windows"
 echo ""
 echo "Rebuild the Tauri binary so macOS picks up the new Dock icon:"
 echo "  cd src-tauri && cargo build"

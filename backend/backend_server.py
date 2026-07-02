@@ -17,6 +17,20 @@ if str(_BACKEND_ROOT) not in sys.path:
 os.environ.setdefault("DRONMAKR_ASYNC_MODE", "threading")
 
 
+def _configure_console_encoding() -> None:
+    """Use UTF-8 on stdout/stderr so Unicode banners print on Windows (cp1252 default)."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
+
+
+_configure_console_encoding()
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="dronmakr backend server")
     parser.add_argument("--port", type=int, default=3766, help="HTTP listen port")
