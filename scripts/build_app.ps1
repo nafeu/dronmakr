@@ -11,7 +11,10 @@ if (-not (Test-Path "venv")) {
 npm ci
 # Tauri beforeBuildCommand runs `python scripts/build_frontend.py` — use venv on PATH.
 & .\venv\Scripts\Activate.ps1
-npm run tauri build
+npm run tauri build -- --bundles nsis
+if ($LASTEXITCODE -ne 0) {
+  throw "tauri build failed with exit code $LASTEXITCODE"
+}
 
 $version = (& .\venv\Scripts\python -c "import sys; sys.path.insert(0, 'backend'); from dronmakr.version import __version__; print(__version__)").Trim()
 $artifactDir = Join-Path $Root "dist-artifacts"
@@ -21,6 +24,9 @@ Copy-Item -Path (Join-Path $Root "scripts\windows_release_readme.txt") -Destinat
 $zipPath = Join-Path $artifactDir "dronmakr-v$version-windows-x64.zip"
 if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
 $bundleRoot = Join-Path $Root "src-tauri\target\release\bundle"
+if (-not (Test-Path $bundleRoot)) {
+  throw "Tauri bundle output missing at $bundleRoot (build may have failed earlier)."
+}
 $stagingDir = Join-Path $artifactDir "windows-bundle-staging"
 if (Test-Path $stagingDir) { Remove-Item $stagingDir -Recurse -Force }
 New-Item -ItemType Directory -Path $stagingDir -Force | Out-Null
