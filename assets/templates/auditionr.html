@@ -3373,6 +3373,88 @@
       color: var(--primary);
     }
 
+    /* First VST/AU instrument launch tip */
+    #generatr-vst-first-launch-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 10085;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      box-sizing: border-box;
+      background: rgba(0, 0, 0, 0.45);
+      overflow: hidden;
+    }
+
+    #generatr-vst-first-launch-modal.hidden {
+      display: none !important;
+    }
+
+    #generatr-vst-first-launch-modal .generatr-vst-first-launch-dialog {
+      width: min(94vw, 440px);
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      padding: 0.9rem 1rem 1rem;
+      border-radius: 8px;
+      background: color-mix(in srgb, var(--secondary) 96%, transparent);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--primary);
+      box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    #generatr-vst-first-launch-modal h3.generatr-vst-first-launch-title {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--theme-a);
+    }
+
+    #generatr-vst-first-launch-modal p.generatr-vst-first-launch-message {
+      margin: 0;
+      font-size: 0.82rem;
+      line-height: 1.45;
+      color: color-mix(in srgb, var(--primary) 92%, transparent);
+    }
+
+    .generatr-vst-first-launch-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 0.45rem;
+      margin-top: 0.15rem;
+    }
+
+    a.generatr-vst-first-launch-discord {
+      font-family: inherit;
+      font-size: 0.82rem;
+      padding: 0.38rem 0.85rem;
+      border-radius: 4px;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      color: var(--primary);
+      text-decoration: none;
+      margin-right: auto;
+    }
+
+    a.generatr-vst-first-launch-discord:hover {
+      border-color: var(--theme-a);
+      color: var(--theme-a);
+    }
+
+    button.generatr-vst-first-launch-continue {
+      font-family: inherit;
+      cursor: pointer;
+      font-size: 0.82rem;
+      padding: 0.38rem 0.85rem;
+      border-radius: 4px;
+      background: var(--theme-a);
+      border: 1px solid var(--theme-a);
+      color: var(--primary);
+    }
+
     button.generatr-error-dismiss:hover {
       filter: brightness(1.12);
     }
@@ -5254,6 +5336,17 @@
       <div class="generatr-drone-save-preset-actions">
         <button type="button" id="generatr-drone-save-preset-cancel">Cancel</button>
         <button type="button" id="generatr-drone-save-preset-confirm">Save</button>
+      </div>
+    </div>
+  </div>
+  <div id="generatr-vst-first-launch-modal" class="generatr-modal hidden" role="alertdialog" aria-modal="true" aria-labelledby="generatr-vst-first-launch-title" aria-describedby="generatr-vst-first-launch-message" aria-hidden="true">
+    <div class="generatr-vst-first-launch-dialog">
+      <h3 class="generatr-vst-first-launch-title" id="generatr-vst-first-launch-title">First plug-in launch</h3>
+      <p class="generatr-vst-first-launch-message" id="generatr-vst-first-launch-message">The first time you open a VST3 or AU instrument, your OS may verify the plug-in — the app can look frozen for up to ~30&nbsp;seconds. Later launches are usually much faster.</p>
+      <p class="generatr-vst-first-launch-message">Still having trouble? Start a thread in our Discord community.</p>
+      <div class="generatr-vst-first-launch-actions">
+        <a class="generatr-vst-first-launch-discord" id="generatr-vst-first-launch-discord" href="https://discord.gg/d9M9CQhhmS" target="_blank" rel="noopener noreferrer">Discord community</a>
+        <button type="button" class="generatr-vst-first-launch-continue" id="generatr-vst-first-launch-continue">Continue</button>
       </div>
     </div>
   </div>
@@ -10056,6 +10149,76 @@
       }
 
       function generatrDroneOpenPluginEditor(pluginPath, role, options) {
+        options = options || {};
+        role = role || (generatrDronePluginPickerContext && generatrDronePluginPickerContext.role) || "instrument";
+        if (!pluginPath) return;
+        if (
+          role === "instrument" &&
+          generatrDroneIsNativePluginPath(pluginPath) &&
+          !generatrDroneHasSeenVstInstrumentFirstLaunchTip()
+        ) {
+          generatrDroneShowVstFirstLaunchTip(function () {
+            generatrDroneLaunchPluginEditor(pluginPath, role, options);
+          });
+          return;
+        }
+        generatrDroneLaunchPluginEditor(pluginPath, role, options);
+      }
+
+      var GENERATR_VST_INSTRUMENT_FIRST_LAUNCH_TIP_KEY = "generatr_vst_instrument_first_launch_tip_seen";
+      var generatrVstFirstLaunchModal = document.getElementById("generatr-vst-first-launch-modal");
+      var generatrVstFirstLaunchContinue = document.getElementById("generatr-vst-first-launch-continue");
+      var generatrVstFirstLaunchPendingLaunch = null;
+
+      function generatrDroneIsNativePluginPath(pluginPath) {
+        var path = String(pluginPath || "");
+        return path.indexOf("faust:") !== 0 && path.indexOf("faustfx:") !== 0;
+      }
+
+      function generatrDroneHasSeenVstInstrumentFirstLaunchTip() {
+        try {
+          return window.localStorage.getItem(GENERATR_VST_INSTRUMENT_FIRST_LAUNCH_TIP_KEY) === "1";
+        } catch (e) {
+          return true;
+        }
+      }
+
+      function generatrDroneMarkVstInstrumentFirstLaunchTipSeen() {
+        try {
+          window.localStorage.setItem(GENERATR_VST_INSTRUMENT_FIRST_LAUNCH_TIP_KEY, "1");
+        } catch (e) {}
+      }
+
+      function generatrDroneCloseVstFirstLaunchTip() {
+        if (!generatrVstFirstLaunchModal || generatrVstFirstLaunchModal.classList.contains("hidden")) return;
+        generatrVstFirstLaunchModal.classList.add("hidden");
+        generatrVstFirstLaunchModal.setAttribute("aria-hidden", "true");
+        generatrVstFirstLaunchPendingLaunch = null;
+      }
+
+      function generatrDroneShowVstFirstLaunchTip(onContinue) {
+        if (typeof onContinue !== "function") return;
+        if (!generatrVstFirstLaunchModal) {
+          generatrDroneMarkVstInstrumentFirstLaunchTipSeen();
+          onContinue();
+          return;
+        }
+        generatrVstFirstLaunchPendingLaunch = onContinue;
+        generatrVstFirstLaunchModal.classList.remove("hidden");
+        generatrVstFirstLaunchModal.setAttribute("aria-hidden", "false");
+        if (generatrVstFirstLaunchContinue) generatrVstFirstLaunchContinue.focus();
+      }
+
+      if (generatrVstFirstLaunchContinue) {
+        generatrVstFirstLaunchContinue.addEventListener("click", function () {
+          var launch = generatrVstFirstLaunchPendingLaunch;
+          generatrDroneMarkVstInstrumentFirstLaunchTipSeen();
+          generatrDroneCloseVstFirstLaunchTip();
+          if (typeof launch === "function") launch();
+        });
+      }
+
+      function generatrDroneLaunchPluginEditor(pluginPath, role, options) {
         options = options || {};
         role = role || (generatrDronePluginPickerContext && generatrDronePluginPickerContext.role) || "instrument";
         if (!pluginPath) return;

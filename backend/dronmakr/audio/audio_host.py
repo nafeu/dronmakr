@@ -397,6 +397,10 @@ def render_midi_graph(
 EDITOR_PREVIEW_LOOP_FADE_SEC = 0.045
 EDITOR_PREVIEW_REFRESH_SEC = 2.0
 EDITOR_PREVIEW_STREAM_BLOCKSIZE = 512
+# Hold preview threads until the plug-in editor has had time to open on the main thread.
+EDITOR_PREVIEW_ARM_DELAY_SEC = float(
+    os.environ.get("DRONMAKR_EDITOR_PREVIEW_ARM_DELAY", "1.5")
+)
 
 
 class _EditorPreviewLoopPlayer:
@@ -529,6 +533,18 @@ def _run_afplay_preview_fallback(
             break
 
 
+def _wait_for_editor_preview_arm(
+    preview_armed: threading.Event,
+    stop: threading.Event,
+) -> bool:
+    """Return False when preview should exit before arming (editor closed early)."""
+    while not preview_armed.is_set():
+        if stop.is_set():
+            return False
+        preview_armed.wait(timeout=0.1)
+    return not stop.is_set()
+
+
 def run_live_preview_during_editor(
     *,
     instrument: Any,
@@ -540,8 +556,14 @@ def run_live_preview_during_editor(
     open_editor_fn,
     sample_rate: int = SAMPLE_RATE,
 ) -> None:
-    """Looping MIDI preview while a plug-in editor is open."""
+    """Looping MIDI preview while a plug-in editor is open.
+
+    Preview rendering stays idle until ``EDITOR_PREVIEW_ARM_DELAY_SEC`` after the
+    editor opens on the main thread, so first plug-in boot is not competing with
+    background offline renders.
+    """
     stop = threading.Event()
+    preview_armed = threading.Event()
     stream_active = threading.Event()
     player = _EditorPreviewLoopPlayer(sample_rate)
 
@@ -556,6 +578,8 @@ def run_live_preview_during_editor(
             )
 
     def refresh_loop() -> None:
+        if not _wait_for_editor_preview_arm(preview_armed, stop):
+            return
         while not stop.wait(EDITOR_PREVIEW_REFRESH_SEC):
             if stop.is_set() or not stream_active.is_set():
                 continue
@@ -577,9 +601,24 @@ def run_live_preview_during_editor(
                 engine_lock.release()
 
     def playback_loop() -> None:
+        if not _wait_for_editor_preview_arm(preview_armed, stop):
+            return
         stream = None
         try:
-            player.set_buffer(render_locked())
+            for attempt in range(2):
+                try:
+                    player.set_buffer(render_locked())
+                    break
+                except Exception as exc:
+                    _LOG.debug(
+                        "Editor preview boot render attempt %s failed: %s",
+                        attempt + 1,
+                        exc,
+                    )
+                    if attempt == 0 and PLUGIN_RENDER_WARMUP_SEC > 0:
+                        time.sleep(PLUGIN_RENDER_WARMUP_SEC)
+                    else:
+                        return
             import sounddevice as sd  # noqa: PLC0415
 
             stream = sd.OutputStream(
@@ -613,6 +652,13 @@ def run_live_preview_during_editor(
                     stream.stop()
                     stream.close()
 
+    def arm_preview_after_delay() -> None:
+        delay = max(0.0, float(EDITOR_PREVIEW_ARM_DELAY_SEC))
+        if delay > 0 and stop.wait(delay):
+            return
+        if not stop.is_set():
+            preview_armed.set()
+
     refresh_thread = threading.Thread(
         target=refresh_loop, daemon=True, name="dron-editor-preview-refresh"
     )
@@ -621,10 +667,18 @@ def run_live_preview_during_editor(
     )
     refresh_thread.start()
     playback_thread.start()
+    arm_thread = threading.Thread(
+        target=arm_preview_after_delay,
+        daemon=True,
+        name="dron-editor-preview-arm",
+    )
     try:
+        arm_thread.start()
         open_editor_fn()
     finally:
         stop.set()
+        preview_armed.set()
+        arm_thread.join(timeout=0.2)
         refresh_thread.join(timeout=2.0)
         playback_thread.join(timeout=max(float(duration_sec) + 2.0, 4.0))
 
