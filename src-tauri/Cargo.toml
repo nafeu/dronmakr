@@ -1,6 +1,6 @@
 [package]
 name = "dronmakr"
-version = "0.58.5"
+version = "0.58.6"
 description = "dronmakr desktop app"
 authors = ["Nafeu"]
 edition = "2021"
