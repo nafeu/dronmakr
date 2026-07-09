@@ -12,6 +12,7 @@ on:
           - all
           - macos
           - windows
+          - linux
         default: windows
 
 permissions:
@@ -147,7 +148,83 @@ jobs:
           path: dist-artifacts/*
           if-no-files-found: error
 
-  # Linux desktop builds disabled until release path is stable on macOS + Windows.
-  # desktop-linux:
-  #   runs-on: ubuntu-latest
-  #   ...
+  desktop-linux:
+    if: >-
+      github.event_name == 'release'
+      || github.event.inputs.target == 'all'
+      || github.event.inputs.target == 'linux'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            curl \
+            file \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libsndfile1 \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            patchelf \
+            pkg-config \
+            wget
+
+      - name: Install Python dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Vendor FFmpeg binary
+        run: |
+          source venv/bin/activate
+          python scripts/vendor_ffmpeg.py
+
+      - name: Build frontend, sidecar, and Tauri app
+        run: |
+          source venv/bin/activate
+          bash scripts/build_sidecar.sh
+          npm run tauri build
+
+      - name: Create archive
+        run: |
+          source venv/bin/activate
+          VERSION=$(PYTHONPATH=backend python -c "from dronmakr.version import __version__; print(__version__)")
+          BUNDLE_DIR="src-tauri/target/release/bundle"
+          test -d "$BUNDLE_DIR"
+          mkdir -p dist-artifacts
+          tar -czf "dist-artifacts/dronmakr-v${VERSION}-linux-x64.tar.gz" -C "$BUNDLE_DIR" .
+
+      - uses: softprops/action-gh-release@v2
+        if: github.event_name == 'release'
+        with:
+          files: dist-artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          name: dronmakr-linux-x64
+          path: dist-artifacts/*
+          if-no-files-found: error
