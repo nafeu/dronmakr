@@ -637,10 +637,16 @@ def find_fx_sibling_plugin_path(plugin_path: str, candidates: list[str] | None =
 def resolve_fx_plugin_path(plugin_path: str) -> str:
     """Prefer an explicit FX sibling when an instrument plug-in was chosen for an FX slot."""
     from dronmakr.audio.faust_fx_library import is_faust_fx_path
+    from dronmakr.audio.faust_library import is_faust_instrument_path
 
     raw = (plugin_path or "").strip()
     if is_faust_fx_path(raw):
         return raw
+    if is_faust_instrument_path(raw):
+        raise ValueError(
+            f"“{raw}” is a built-in Faust instrument, not an FX. "
+            "Use a faustfx: effect from the FX library instead."
+        )
 
     abs_path = os.path.abspath(raw)
     if not abs_path:

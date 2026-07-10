@@ -1,5 +1,7 @@
 from unittest.mock import patch
 
+import pytest
+
 from dronmakr.presets import preset_authoring as pa
 
 
@@ -82,3 +84,8 @@ def test_resolve_fx_plugin_path_keeps_explicit_fx(
 def test_resolve_fx_plugin_path_passes_through_faust_fx():
     resolved = pa.resolve_fx_plugin_path("faustfx:ghost_echo")
     assert resolved == "faustfx:ghost_echo"
+
+
+def test_resolve_fx_plugin_path_rejects_faust_instrument():
+    with pytest.raises(ValueError, match="Faust instrument"):
+        pa.resolve_fx_plugin_path("faust:sine_osc")

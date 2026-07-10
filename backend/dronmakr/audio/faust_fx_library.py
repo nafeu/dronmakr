@@ -8,6 +8,8 @@ from typing import Any
 from dronmakr.core.bundle_paths import bundled_asset_path
 
 FAUST_FX_PREFIX = "faustfx:"
+FAUST_FX_INPUT_CHANNELS = 2
+FAUST_FX_OUTPUT_CHANNELS = 2
 
 _FAUST_FX_CATEGORIES: tuple[dict[str, str], ...] = (
     {"id": "tone", "label": "Tone & Filter"},
@@ -220,6 +222,21 @@ def faust_fx_path_exists(path: str) -> bool:
     return faust_fx_exists(faust_fx_id_from_path(path))
 
 
+def _assert_faust_fx_io(processor: Any, effect_id: str) -> None:
+    inputs = int(processor.get_num_input_channels())
+    outputs = int(processor.get_num_output_channels())
+    if inputs != FAUST_FX_INPUT_CHANNELS or outputs != FAUST_FX_OUTPUT_CHANNELS:
+        raise ValueError(
+            f"Faust effect '{effect_id}' exposes {inputs} input(s) and {outputs} output(s); "
+            f"expected {FAUST_FX_INPUT_CHANNELS} in / {FAUST_FX_OUTPUT_CHANNELS} out "
+            f"(stereo FX with `process(l, r) = ...`)."
+        )
+    if int(processor.num_voices) != 0:
+        raise ValueError(
+            f"Faust effect '{effect_id}' must not enable polyphony (num_voices={processor.num_voices})."
+        )
+
+
 def load_faust_effect(engine: Any, effect_id: str, *, name: str | None = None) -> Any:
     """Compile and return a stereo (2 in / 2 out) Faust audio effect processor."""
     from dronmakr.audio.audio_host import _unique_processor_name
@@ -229,4 +246,5 @@ def load_faust_effect(engine: Any, effect_id: str, *, name: str | None = None) -
     processor = engine.make_faust_processor(proc_name)
     processor.set_dsp(os.path.abspath(dsp_path))
     processor.compile()
+    _assert_faust_fx_io(processor, effect_id)
     return processor

@@ -9,6 +9,8 @@ from dronmakr.core.bundle_paths import bundled_asset_path
 
 FAUST_INSTRUMENT_PREFIX = "faust:"
 FAUST_POLYPHONY_VOICES = 16
+FAUST_INSTRUMENT_INPUT_CHANNELS = 0
+FAUST_INSTRUMENT_OUTPUT_CHANNELS = 2
 
 _FAUST_CATEGORIES: tuple[dict[str, str], ...] = (
     {"id": "oscillators", "label": "Oscillators"},
@@ -237,6 +239,21 @@ def faust_instrument_path_exists(path: str) -> bool:
     return faust_instrument_exists(faust_id_from_path(path))
 
 
+def _assert_faust_instrument_io(processor: Any, instrument_id: str) -> None:
+    inputs = int(processor.get_num_input_channels())
+    outputs = int(processor.get_num_output_channels())
+    if inputs != FAUST_INSTRUMENT_INPUT_CHANNELS or outputs != FAUST_INSTRUMENT_OUTPUT_CHANNELS:
+        raise ValueError(
+            f"Faust instrument '{instrument_id}' exposes {inputs} input(s) and {outputs} output(s); "
+            f"expected {FAUST_INSTRUMENT_INPUT_CHANNELS} in / {FAUST_INSTRUMENT_OUTPUT_CHANNELS} out "
+            f"(stereo synth with freq/gain/gate and `process = ... <: _, _;`)."
+        )
+    if int(processor.num_voices) <= 0:
+        raise ValueError(
+            f"Faust instrument '{instrument_id}' has polyphony disabled (num_voices={processor.num_voices})."
+        )
+
+
 def load_faust_instrument(engine: Any, instrument_id: str, *, name: str | None = None) -> Any:
     """Compile and return a polyphonic Faust processor for ``instrument_id``."""
     from dronmakr.audio.audio_host import _unique_processor_name
@@ -244,7 +261,8 @@ def load_faust_instrument(engine: Any, instrument_id: str, *, name: str | None =
     dsp_path = resolve_faust_dsp_path(instrument_id)
     proc_name = name or _unique_processor_name("faust")
     processor = engine.make_faust_processor(proc_name)
-    processor.num_voices = FAUST_POLYPHONY_VOICES
     processor.set_dsp(os.path.abspath(dsp_path))
+    processor.num_voices = FAUST_POLYPHONY_VOICES
     processor.compile()
+    _assert_faust_instrument_io(processor, instrument_id)
     return processor

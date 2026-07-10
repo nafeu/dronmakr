@@ -743,7 +743,9 @@ def render_midi_chain_from_paths(
     if not _render_output_is_usable(last_out):
         raise RuntimeError(
             "DawDreamer render produced empty or invalid audio. "
-            "If an instrument plug-in (e.g. Reaktor 6) is in an FX slot, use its FX variant instead."
+            "If an instrument plug-in (e.g. Reaktor 6) is in an FX slot, use its FX variant instead. "
+            "Built-in Faust instruments must be 0-input / 2-output synths (faust:…); "
+            "Faust FX must be 2-input / 2-output (faustfx:…)."
         )
     return last_out
 
