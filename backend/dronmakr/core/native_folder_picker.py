@@ -50,6 +50,7 @@ def _pick_folder_linux() -> FolderPickResult:
     for cmd in (
         ["zenity", "--file-selection", "--directory", "--modal"],
         ["kdialog", "--getexistingdirectory", os.path.expanduser("~")],
+        ["yad", "--file", "--directory", "--title=Select folder"],
     ):
         try:
             proc = subprocess.run(

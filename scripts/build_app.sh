@@ -42,6 +42,7 @@ elif [[ "$UNAME_S" == "linux" ]]; then
     exit 1
   fi
   ARCHIVE_NAME="dronmakr-v${VERSION}-linux-${ARCH_LABEL}.tar.gz"
+  cp scripts/linux_release_readme.txt "${BUNDLE_DIR}/README-linux.txt"
   tar -czf "${ARTIFACT_DIR}/${ARCHIVE_NAME}" -C "$BUNDLE_DIR" .
 else
   echo "Use build_app.ps1 on Windows" >&2

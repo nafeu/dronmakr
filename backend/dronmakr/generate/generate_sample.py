@@ -339,7 +339,8 @@ def _write_validated_export_wav(output_path: str, audio: np.ndarray, sample_rate
         raise RuntimeError(f"Render produced unexpected audio shape {arr.shape!r}.")
 
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-    fd, tmp_path = tempfile.mkstemp(suffix=".wav", prefix="dronmakr_export_")
+    output_dir = os.path.dirname(os.path.abspath(output_path)) or "."
+    fd, tmp_path = tempfile.mkstemp(suffix=".wav", prefix="dronmakr_export_", dir=output_dir)
     os.close(fd)
     try:
         sf.write(tmp_path, arr, sample_rate, subtype="PCM_16")

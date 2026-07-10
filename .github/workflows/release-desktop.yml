@@ -213,6 +213,7 @@ jobs:
           BUNDLE_DIR="src-tauri/target/release/bundle"
           test -d "$BUNDLE_DIR"
           mkdir -p dist-artifacts
+          cp scripts/linux_release_readme.txt "$BUNDLE_DIR/README-linux.txt"
           tar -czf "dist-artifacts/dronmakr-v${VERSION}-linux-x64.tar.gz" -C "$BUNDLE_DIR" .
 
       - uses: softprops/action-gh-release@v2

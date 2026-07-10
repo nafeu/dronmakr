@@ -68,7 +68,7 @@
 
   function shouldSkipScrollbar(el) {
     if (!el || el.nodeType !== 1) return true;
-    if (el.tagName === "HTML") return true;
+    if (el.tagName === "HTML" || el.tagName === "BODY") return true;
     if (el.dataset.nativeUi === "true") return true;
     if (el.closest("[data-native-ui]")) return true;
     if (el.hasAttribute("data-overlayscrollbars") && !isListScrollEl(el)) return true;

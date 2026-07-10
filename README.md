@@ -30,13 +30,24 @@
 
 Prebuilt apps are published on **[GitHub Releases](https://github.com/nafeu/dronmakr/releases/latest)**.
 
+### Platform support
+
+| Platform | Status | Notes |
+| --- | --- | --- |
+| macOS (Apple Silicon) | **Supported** | Primary target; DMG or `.tar.gz` |
+| Windows (x86_64) | **Supported** | NSIS installer in release zip |
+| Linux (x86_64) | **Experimental** | Published each release for testing; not fully supported yet — see [Linux (experimental)](scripts/linux_release_readme.txt) |
+| macOS (Intel) | **Not published** | Build from source until CI ships Intel builds |
+
 | Platform | Download |
 | --- | --- |
 | macOS (Apple Silicon) | `dronmakr-v*-macos-arm64.dmg` (or `.tar.gz`) |
-| Linux (x86_64) | `dronmakr-v*-linux-x64.tar.gz` |
+| Linux (x86_64, experimental) | `dronmakr-v*-linux-x64.tar.gz` (also `.deb` / `.rpm` in archive — read `README-linux.txt` inside) |
 | Windows | `dronmakr-v*-windows-x64.zip` (NSIS `*-setup.exe` — see `README-windows.txt`) |
 
 **macOS (Intel):** not published on [Releases](https://github.com/nafeu/dronmakr/releases/latest) yet — planned for a future build. Until then, use [Manual installation](#manual-installation) on Intel Macs.
+
+**Linux (experimental):** We ship Linux builds so testers and contributors can help harden the port, but treat them as **unstable**. Known gaps include distro-specific UI/WebKit behavior, optional native folder dialogs (`zenity` / `kdialog` / `yad`), and less mature VST3 hosting than on macOS/Windows. Read **[scripts/linux_release_readme.txt](scripts/linux_release_readme.txt)** (also bundled as `README-linux.txt` in the Linux release archive). Please [open issues](https://github.com/nafeu/dronmakr/issues) with `errors.log` from `~/.local/share/dronmakr/logs/` when something breaks.
 
 **Install & run**
 
@@ -48,7 +59,9 @@ Prebuilt apps are published on **[GitHub Releases](https://github.com/nafeu/dron
 
 **Windows:** Unzip the release, open the `nsis` folder, and run `dronmakr_*_x64-setup.exe`. See `README-windows.txt` in the zip.
 
-**Requirements:** VST3 and/or AU plug-ins for drone generation. Configure paths in **Settings** after setup.
+**Linux (experimental):** Prefer the `.tar.gz` if your distro is not Debian- or RPM-based. Inside the archive, read **`README-linux.txt`** before installing. `.deb` and `.rpm` packages are also included for convenience but share the same experimental status.
+
+**Requirements:** VST3 and/or AU plug-ins for drone generation. Configure paths in **Settings** after setup. On Linux, AU is macOS-only; use VST3.
 
 **Updates:** When a newer release is available, a notice appears in the top toolbar linking to GitHub Releases. Download and replace the existing app to update.
 
@@ -163,7 +176,7 @@ CI builds are ad-hoc signed but **not Apple-notarized**. After download:
 
 **Plug-in compatibility**
 
-Audio runs through [DawDreamer](https://github.com/DBraun/DawDreamer) (JUCE-based offline VST/AU hosting). On **macOS**, use **VST3** (`.vst3`) and **AU** (`.component`). Edit `config/presets.json` in your dronmakr files folder to manage instrument and effect presets.
+Audio runs through [DawDreamer](https://github.com/DBraun/DawDreamer) (JUCE-based offline VST/AU hosting). On **macOS**, use **VST3** (`.vst3`) and **AU** (`.component`). On **Linux**, use **VST3** only; hosting is experimental and plug-in compatibility varies by distro. Edit `config/presets.json` in your dronmakr files folder to manage instrument and effect presets.
 
 **License note:** DawDreamer is **GPLv3**. Bundling it in desktop releases may affect how you distribute combined builds; see [DawDreamer licensing](https://github.com/DBraun/DawDreamer).
 
