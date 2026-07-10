@@ -1,4 +1,5 @@
 import json
+import math
 import os
 import random
 import re
@@ -568,12 +569,85 @@ def extract_drone_piano_notes_from_midi_bytes(data: bytes) -> list[str]:
     return notes
 
 
+class _DroneVelocitySampler:
+    """Per-note MIDI velocity within bounds; uniform random or Perlin-smoothed."""
+
+    _PERM: list[int] | None = None
+
+    @classmethod
+    def _ensure_perm(cls) -> list[int]:
+        if cls._PERM is None:
+            perm = list(range(256))
+            random.shuffle(perm)
+            cls._PERM = perm + perm
+        return cls._PERM
+
+    def __init__(
+        self,
+        velocity_range: tuple[int, int],
+        *,
+        mode: str = "random",
+    ):
+        lo, hi = int(velocity_range[0]), int(velocity_range[1])
+        if lo > hi:
+            lo, hi = hi, lo
+        self._lo = max(0, min(127, lo))
+        self._hi = max(0, min(127, hi))
+        self._mode = (mode or "random").strip().lower()
+        if self._mode not in ("random", "perlin"):
+            self._mode = "random"
+        self._index = 0
+        self._perlin_offset = random.uniform(0.0, 256.0)
+
+    @property
+    def lo(self) -> int:
+        return self._lo
+
+    @property
+    def hi(self) -> int:
+        return self._hi
+
+    @staticmethod
+    def _fade(t: float) -> float:
+        return t * t * t * (t * (t * 6.0 - 15.0) + 10.0)
+
+    def _perlin_unit(self) -> float:
+        perm = self._ensure_perm()
+        x = self._perlin_offset + self._index * 0.42
+        xi = int(math.floor(x)) & 255
+        xf = x - math.floor(x)
+        u = self._fade(xf)
+        g0 = (perm[xi] & 1) * 2.0 - 1.0
+        g1 = (perm[xi + 1] & 1) * 2.0 - 1.0
+        n0 = g0 * xf
+        n1 = g1 * (xf - 1.0)
+        val = n0 + u * (n1 - n0)
+        return max(0.0, min(1.0, (val + 1.0) * 0.5))
+
+    def next(self, lo: int | None = None, hi: int | None = None) -> int:
+        eff_lo = self._lo if lo is None else max(self._lo, int(lo))
+        eff_hi = self._hi if hi is None else min(self._hi, int(hi))
+        if eff_lo > eff_hi:
+            eff_lo, eff_hi = eff_hi, eff_lo
+        if eff_lo == eff_hi:
+            self._index += 1
+            return eff_lo
+        if self._mode == "perlin":
+            unit = self._perlin_unit()
+            velocity = int(round(eff_lo + unit * (eff_hi - eff_lo)))
+        else:
+            velocity = random.randint(eff_lo, eff_hi)
+        self._index += 1
+        return max(eff_lo, min(eff_hi, velocity))
+
+
 def generate_drone_midi(
     pattern,  # Pattern of playback
     output_name="",
     note_density=2,  # Notes per beat (higher = more active)
     duration_variance=0.5,  # Variance in note lengths (0 = fixed, 1 = max randomness)
-    velocity_range=(80, 120),  # MIDI note velocity range
+    velocity_range=(100, 100),  # MIDI note velocity range
+    velocity_randomization: str = "random",
     num_bars: int = DEFAULT_DRONE_MIDI_LENGTH_BARS,
     padded_silence_bars: int = DEFAULT_DRONE_MIDI_PADDING_BARS,
     tempo_bpm: float = DRONE_MIDI_TEMPO_BPM,
@@ -672,6 +746,16 @@ def generate_drone_midi(
         detail = f" — {description}" if description else ""
         print(with_prompt(f"drone midi: {label} · {pattern}{detail}"))
 
+    velocity_min = max(0, min(127, int(velocity_range[0])))
+    velocity_max = max(0, min(127, int(velocity_range[1])))
+    if velocity_min > velocity_max:
+        velocity_min, velocity_max = velocity_max, velocity_min
+    velocity_range = (velocity_min, velocity_max)
+    velocity_sampler = _DroneVelocitySampler(
+        velocity_range,
+        mode=velocity_randomization,
+    )
+
     # Define tempo and timing
     beats_per_bar = 4
     seconds_per_beat = 60.0 / bpm
@@ -704,7 +788,7 @@ def generate_drone_midi(
 
     if pattern == "chord":
         # **Chord:** Hold every selected scale/chord tone for the full phrase.
-        velocity = (velocity_range[0] + velocity_range[1]) // 2
+        velocity = velocity_sampler.next()
         for note in midi_notes:
             instrument.notes.append(
                 pretty_midi.Note(
@@ -723,7 +807,7 @@ def generate_drone_midi(
             max_duration = min_duration * (1 + duration_variance)
             duration = random.uniform(min_duration, max_duration)
             end_time = min(time + duration, total_duration)
-            velocity = random.randint(*velocity_range)
+            velocity = velocity_sampler.next()
 
             midi_note = pretty_midi.Note(
                 velocity=velocity, pitch=note, start=time, end=end_time
@@ -743,7 +827,7 @@ def generate_drone_midi(
             max_duration = min_duration * (1 + duration_variance)
             duration = random.uniform(min_duration, max_duration)
             end_time = min(time + duration, total_duration)
-            velocity = random.randint(*velocity_range)
+            velocity = velocity_sampler.next()
 
             midi_note = pretty_midi.Note(
                 velocity=velocity, pitch=note, start=time, end=end_time
@@ -753,7 +837,7 @@ def generate_drone_midi(
 
     elif pattern == "split_chord":
         # **Split Chord:** Play full chord at start and again at the middle
-        velocity = random.randint(*velocity_range)
+        velocity = velocity_sampler.next()
         for start_time in [0.0, total_duration / 2]:
             start_time += random.uniform(-humanization, humanization)
             for note in midi_notes:
@@ -773,7 +857,7 @@ def generate_drone_midi(
             for note in midi_notes:
                 if time >= total_duration:
                     break
-                velocity = random.randint(*velocity_range)
+                velocity = velocity_sampler.next()
                 start_time = max(0.0, time)
                 instrument.notes.append(
                     pretty_midi.Note(
@@ -792,7 +876,7 @@ def generate_drone_midi(
             for note in midi_notes:
                 if time >= total_duration:
                     break
-                velocity = random.randint(*velocity_range)
+                velocity = velocity_sampler.next()
                 start_time = max(0.0, time)
                 instrument.notes.append(
                     pretty_midi.Note(
@@ -814,7 +898,7 @@ def generate_drone_midi(
             for note in up_down_pattern:
                 if time >= total_duration:
                     break
-                velocity = random.randint(*velocity_range)
+                velocity = velocity_sampler.next()
                 start_time = max(0.0, time)
                 instrument.notes.append(
                     pretty_midi.Note(
@@ -836,7 +920,7 @@ def generate_drone_midi(
             for note in up_down_pattern:
                 if time >= total_duration:
                     break
-                velocity = random.randint(*velocity_range)
+                velocity = velocity_sampler.next()
                 start_time = max(0.0, time)
                 instrument.notes.append(
                     pretty_midi.Note(
@@ -857,7 +941,7 @@ def generate_drone_midi(
         current_note = random.choice(midi_notes)
 
         while time < total_duration:
-            velocity = random.randint(*velocity_range)
+            velocity = velocity_sampler.next()
             start_time = max(0.0, time)
             duration = random.choice(note_durations)
             end_time = min(start_time + duration, total_duration)
@@ -888,7 +972,7 @@ def generate_drone_midi(
         current_note = random.choice(midi_notes)
 
         while time < total_duration:
-            velocity = random.randint(*velocity_range)
+            velocity = velocity_sampler.next()
             start_time = max(0.0, time)
             end_time = min(start_time + note_duration, total_duration)
 
@@ -919,7 +1003,7 @@ def generate_drone_midi(
             for note in midi_notes:
                 if time >= total_duration:
                     break
-                velocity = random.randint(*velocity_range)
+                velocity = velocity_sampler.next()
                 start_time = max(0.0, time)
                 instrument.notes.append(
                     pretty_midi.Note(
@@ -938,7 +1022,7 @@ def generate_drone_midi(
             for note in midi_notes:
                 if time >= total_duration:
                     break
-                velocity = random.randint(*velocity_range)
+                velocity = velocity_sampler.next()
                 start_time = max(0.0, time)
                 instrument.notes.append(
                     pretty_midi.Note(
@@ -957,7 +1041,7 @@ def generate_drone_midi(
             for note in notes_desc:
                 if time >= total_duration:
                     break
-                velocity = random.randint(*velocity_range)
+                velocity = velocity_sampler.next()
                 start_time = max(0.0, time)
                 instrument.notes.append(
                     pretty_midi.Note(
@@ -978,7 +1062,7 @@ def generate_drone_midi(
             for note in ordered:
                 if time >= total_duration:
                     break
-                velocity = random.randint(*velocity_range)
+                velocity = velocity_sampler.next()
                 start_time = max(0.0, time)
                 instrument.notes.append(
                     pretty_midi.Note(
@@ -996,7 +1080,7 @@ def generate_drone_midi(
         if len(ordered) == 1:
             pitch_note = ordered[0]
             while time < total_duration:
-                velocity = random.randint(*velocity_range)
+                velocity = velocity_sampler.next()
                 start_time = max(0.0, time)
                 instrument.notes.append(
                     pretty_midi.Note(
@@ -1023,7 +1107,7 @@ def generate_drone_midi(
             )
             ai = 0
             while time < total_duration:
-                velocity = random.randint(*velocity_range)
+                velocity = velocity_sampler.next()
                 pitch_note = pool[ai % len(pool)]
                 ai += 1
                 start_time = max(0.0, time)
@@ -1043,7 +1127,7 @@ def generate_drone_midi(
         note_duration = seconds_per_beat * 0.5
         use_low = True
         while time < total_duration:
-            velocity = random.randint(*velocity_range)
+            velocity = velocity_sampler.next()
             pitch = low_pitch if use_low else high_pitch
             use_low = not use_low
             start_time = max(0.0, time)
@@ -1065,7 +1149,7 @@ def generate_drone_midi(
             ordered = midi_notes[:]
         i = 0
         while time < total_duration:
-            velocity = random.randint(*velocity_range)
+            velocity = velocity_sampler.next()
             pitch = ordered[i % len(ordered)]
             i += 1
             start_time = max(0.0, time)
@@ -1092,7 +1176,7 @@ def generate_drone_midi(
                 t = bar_t + eighth_start
                 if t >= total_duration:
                     break
-                velocity = random.randint(*velocity_range)
+                velocity = velocity_sampler.next()
                 pitch = ordered[ni % len(ordered)]
                 ni += 1
                 dur = slot * 0.85
@@ -1118,7 +1202,7 @@ def generate_drone_midi(
         while time < total_duration:
             pool = upper_voice if flip else lower_voice
             flip = not flip
-            velocity = random.randint(*velocity_range)
+            velocity = velocity_sampler.next()
             pitch = random.choice(pool)
             start_time = max(0.0, time)
             instrument.notes.append(
@@ -1145,7 +1229,7 @@ def generate_drone_midi(
             for part_dur in motif:
                 if time >= total_duration:
                     break
-                velocity = random.randint(*velocity_range)
+                velocity = velocity_sampler.next()
                 if random.random() < 0.65:
                     step = random.choice([-1, 1])
                     idx = (idx + step) % len(ordered)
@@ -1167,7 +1251,7 @@ def generate_drone_midi(
         stab = min(seconds_per_beat * 0.15, 0.08)
         for bar_index in range(num_bars):
             start_time = bar_index * bar_length
-            velocity = random.randint(*velocity_range)
+            velocity = velocity_sampler.next()
             for pitch in midi_notes:
                 instrument.notes.append(
                     pretty_midi.Note(
@@ -1186,12 +1270,11 @@ def generate_drone_midi(
         i = 0
 
         def _clamp_velocity(v):
-            lo, hi = velocity_range
-            return max(lo, min(hi, int(v)))
+            return max(velocity_sampler.lo, min(velocity_sampler.hi, int(v)))
 
         while time < total_duration:
-            v_lo = _clamp_velocity(random.randint(*velocity_range) + random.randint(-4, 4))
-            v_hi = _clamp_velocity(random.randint(*velocity_range) - random.randint(4, 12))
+            v_lo = _clamp_velocity(velocity_sampler.next() + random.randint(-4, 4))
+            v_hi = _clamp_velocity(velocity_sampler.next() - random.randint(4, 12))
             base_pitch = ordered[i % len(ordered)]
             i += 1
             ob_pitch = min(127, base_pitch + 12)
@@ -1221,7 +1304,7 @@ def generate_drone_midi(
         if len(ordered) == 1:
             pn = ordered[0]
             while time < total_duration:
-                velocity = random.randint(*velocity_range)
+                velocity = velocity_sampler.next()
                 st = max(0.0, time)
                 instrument.notes.append(
                     pretty_midi.Note(
@@ -1248,7 +1331,7 @@ def generate_drone_midi(
             )
             ai = 0
             while time < total_duration:
-                velocity = random.randint(*velocity_range)
+                velocity = velocity_sampler.next()
                 pitch_note = pool[ai % len(pool)]
                 ai += 1
                 start_time = max(0.0, time)
@@ -1270,7 +1353,7 @@ def generate_drone_midi(
         if len(ordered) < 2:
             pitch = ordered[0]
             while time < total_duration:
-                velocity = random.randint(*velocity_range)
+                velocity = velocity_sampler.next()
                 start_time = max(0.0, time)
                 instrument.notes.append(
                     pretty_midi.Note(
@@ -1290,7 +1373,7 @@ def generate_drone_midi(
                 for pitch in (a_pitch, b_pitch):
                     if time >= total_duration:
                         break
-                    velocity = random.randint(*velocity_range)
+                    velocity = velocity_sampler.next()
                     start_time = max(0.0, time)
                     gate = slot * 0.88
                     instrument.notes.append(
@@ -1312,7 +1395,7 @@ def generate_drone_midi(
             for note in ordered:
                 if time >= total_duration:
                     break
-                velocity = random.randint(*velocity_range)
+                velocity = velocity_sampler.next()
                 start_time = max(0.0, time)
                 instrument.notes.append(
                     pretty_midi.Note(
@@ -1333,7 +1416,7 @@ def generate_drone_midi(
         n = len(ordered)
         step = 2 if n > 2 else 1
         while time < total_duration:
-            velocity = random.randint(*velocity_range)
+            velocity = velocity_sampler.next()
             pitch = ordered[idx % n]
             idx = (idx + step) % n
             start_time = max(0.0, time)
@@ -1358,7 +1441,7 @@ def generate_drone_midi(
             else:
                 pair = [notes_list[0]]
             lo, hi = velocity_range
-            base_vel = random.randint(lo, hi)
+            base_vel = velocity_sampler.next()
             start_time = max(0.0, time)
             for ix, pitch in enumerate(pair):
                 v = base_vel - (ix * 8)
@@ -1389,7 +1472,7 @@ def generate_drone_midi(
                     break
                 pitch = ordered[i % len(ordered)]
                 i += 1
-                velocity = random.randint(*velocity_range)
+                velocity = velocity_sampler.next()
                 start_time = max(0.0, time)
                 instrument.notes.append(
                     pretty_midi.Note(
@@ -1416,10 +1499,16 @@ def generate_drone_midi(
                     break
                 strong = beat_ix in (0, 2)
                 if strong:
-                    vel = random.randint(max(velocity_range[0], velocity_range[1] - 20), velocity_range[1])
+                    vel = velocity_sampler.next(
+                        max(velocity_range[0], velocity_range[1] - 20),
+                        velocity_range[1],
+                    )
                     pitch = root_pitch
                 else:
-                    vel = random.randint(velocity_range[0], max(velocity_range[0], velocity_range[1] - 12))
+                    vel = velocity_sampler.next(
+                        velocity_range[0],
+                        max(velocity_range[0], velocity_range[1] - 12),
+                    )
                     pitch = inner[ni % len(inner)]
                     ni += 1
                 instrument.notes.append(
@@ -1445,7 +1534,7 @@ def generate_drone_midi(
             local_t = 0.0
             rp = 0
             while local_t + start_bar < total_duration:
-                velocity = random.randint(*velocity_range)
+                velocity = velocity_sampler.next()
                 pitch = rotated[rp % n]
                 rp += 1
                 abs_t = max(0.0, start_bar + local_t)
@@ -1472,7 +1561,10 @@ def generate_drone_midi(
                 start_time = bar_start + min(j * spread, bar_length - spread - 1e-6)
                 if start_time >= total_duration:
                     break
-                velocity = random.randint(max(velocity_range[0], velocity_range[1] - 38), velocity_range[1])
+                velocity = velocity_sampler.next(
+                    max(velocity_range[0], velocity_range[1] - 38),
+                    velocity_range[1],
+                )
                 dur = bar_length - (start_time - bar_start) - tail_trim
                 if dur <= spread:
                     dur = spread * 1.25
@@ -1500,7 +1592,7 @@ def generate_drone_midi(
             local_t = 0.0
             si = 0
             while local_t + start_bar < total_duration:
-                velocity = random.randint(*velocity_range)
+                velocity = velocity_sampler.next()
                 pitch = seq[si % len(seq)]
                 si += 1
                 abs_t = max(0.0, start_bar + local_t)
@@ -1516,7 +1608,7 @@ def generate_drone_midi(
 
     else:
         # **Straight Chord:** (default) Play all notes together from start to finish
-        velocity = random.randint(*velocity_range)
+        velocity = velocity_sampler.next()
         start_time = max(0.0, random.uniform(-humanization, humanization))
         for note in midi_notes:
             instrument.notes.append(

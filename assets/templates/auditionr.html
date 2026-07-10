@@ -1330,6 +1330,67 @@
       gap: 0.45rem;
     }
 
+    .generatr-drone-midi-velocity-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 0.1rem 0.35rem;
+    }
+
+    .generatr-drone-midi-velocity-knobs {
+      gap: 0.1rem 0.35rem;
+    }
+
+    .generatr-drone-midi-velocity-radios {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: flex-end;
+      gap: var(--dron-knob-gap, 0.18rem);
+      min-height: calc(
+        (var(--dron-knob-label-size, 0.58rem) * var(--dron-knob-label-line, 1.15)) + var(--dron-knob-gap, 0.18rem) +
+          var(--dron-knob-dial, 2.05rem) + var(--dron-knob-gap, 0.18rem) + var(--dron-knob-readout-h, 0.82rem)
+      );
+    }
+
+    .generatr-drone-midi-velocity-radio-stack {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.45rem 0.75rem;
+      min-height: var(--dron-knob-dial, 2.05rem);
+    }
+
+    .generatr-drone-midi-velocity-radio-stack label {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.28rem;
+      font-size: 0.68rem;
+      line-height: 1.2;
+      color: color-mix(in srgb, var(--theme-a) 82%, transparent);
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    .generatr-drone-midi-velocity-radio-stack input[type="radio"] {
+      margin: 0;
+      accent-color: var(--primary);
+    }
+
+    .generatr-drone-midi-velocity-radio-label-spacer {
+      display: block;
+      min-height: calc(var(--dron-knob-label-size, 0.58rem) * var(--dron-knob-label-line, 1.15));
+      width: 1px;
+    }
+
+    .generatr-drone-midi-velocity-radio-spacer {
+      display: block;
+      min-height: var(--dron-knob-readout-h, 0.82rem);
+      width: 1px;
+    }
+
     .generatr-drone-midi-preview-host {
       position: relative;
       width: 100%;
@@ -1405,6 +1466,7 @@
 
     svg.generatr-drone-midi-preview-svg .generatr-drone-midi-preview-note {
       fill: var(--primary);
+      stroke: none;
     }
 
     svg.generatr-drone-midi-preview-svg .generatr-drone-midi-preview-grid {
@@ -4983,6 +5045,34 @@
                       </div>
                     </div>
                     <p class="generatr-drone-midi-preview-meta" id="generatr-drone-midi-preview-meta"></p>
+                    <div class="generatr-drone-midi-velocity-row">
+                      <div class="generatr-sweep-effect-knobs generatr-drone-midi-velocity-knobs">
+                        <div class="daw-knob" data-knob-pair="drone-velocity" data-knob-role="min" data-knob-pair-gap="0" data-knob-unit="" data-knob-decimals="0">
+                          <span class="daw-knob-label">Vel Min</span>
+                          <button type="button" class="daw-knob-dial" aria-label="Minimum MIDI velocity">
+                            <span class="daw-knob-ring" aria-hidden="true"></span>
+                          </button>
+                          <span class="daw-knob-readout" aria-hidden="true">100</span>
+                          <input type="number" class="daw-knob-input" id="generatr-drone-velocity-min" step="1" min="0" max="127" value="100" tabindex="-1" aria-hidden="true">
+                        </div>
+                        <div class="daw-knob" data-knob-pair="drone-velocity" data-knob-role="max" data-knob-pair-gap="0" data-knob-unit="" data-knob-decimals="0">
+                          <span class="daw-knob-label">Vel Max</span>
+                          <button type="button" class="daw-knob-dial" aria-label="Maximum MIDI velocity">
+                            <span class="daw-knob-ring" aria-hidden="true"></span>
+                          </button>
+                          <span class="daw-knob-readout" aria-hidden="true">100</span>
+                          <input type="number" class="daw-knob-input" id="generatr-drone-velocity-max" step="1" min="0" max="127" value="100" tabindex="-1" aria-hidden="true">
+                        </div>
+                      </div>
+                      <div class="generatr-drone-midi-velocity-radios" role="radiogroup" aria-label="Velocity randomization mode">
+                        <span class="generatr-drone-midi-velocity-radio-label-spacer" aria-hidden="true"></span>
+                        <div class="generatr-drone-midi-velocity-radio-stack">
+                          <label><input type="radio" name="generatr-drone-velocity-randomization" value="random" checked> random</label>
+                          <label><input type="radio" name="generatr-drone-velocity-randomization" value="perlin"> perlin noise</label>
+                        </div>
+                        <span class="generatr-drone-midi-velocity-radio-spacer" aria-hidden="true"></span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -8407,6 +8497,8 @@
       var droneMidiPatternDetailDesc = document.getElementById("generatr-drone-midi-pattern-detail-desc");
       var droneMidiPatternCancel = document.getElementById("generatr-drone-midi-pattern-cancel");
       var droneMidiPatternConfirm = document.getElementById("generatr-drone-midi-pattern-confirm");
+      var droneVelocityMinInput = document.getElementById("generatr-drone-velocity-min");
+      var droneVelocityMaxInput = document.getElementById("generatr-drone-velocity-max");
       var droneStyleRandomHint = document.getElementById("generatr-drone-style-random-hint");
       var droneInstrumentHint = document.getElementById("generatr-drone-instrument-hint");
       var droneFxHint = document.getElementById("generatr-drone-fx-hint");
@@ -8415,6 +8507,8 @@
       var generatrDroneMidiPatternPendingId = null;
       var generatrDroneMidiPatternPreviewsLoaded = false;
       var generatrDroneMidiPreviewRequestSeq = 0;
+      var generatrDroneMidiPreviewCache = null;
+      var generatrDroneVelocityKnobDragging = false;
       var droneTempoInput = document.getElementById("generatr-drone-tempo");
       var droneLengthInput = document.getElementById("generatr-drone-length");
       var dronePaddedSilenceInput = document.getElementById("generatr-drone-padded-silence");
@@ -8684,6 +8778,7 @@
       }
 
       function generatrDroneShowRandomMidiPatternState() {
+        generatrDroneMidiPreviewCache = null;
         if (droneMidiPreviewHost) {
           droneMidiPreviewHost.classList.add("is-random");
           droneMidiPreviewHost.classList.remove("is-loading");
@@ -8703,6 +8798,7 @@
           lengthBars: 2
         };
         generatrDroneAppendChartSelectionToPayload(body);
+        generatrDroneAppendVelocityToPayload(body);
         if (generatrDroneInstrumentSelection) {
           body.instrumentSelection = generatrDroneInstrumentSelection;
         }
@@ -8748,6 +8844,100 @@
           });
       }
 
+      function generatrDroneMulberry32(seed) {
+        return function () {
+          seed |= 0;
+          seed = (seed + 0x6d2b79f5) | 0;
+          var t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+
+      function generatrDroneBuildPerm(seed) {
+        var rng = generatrDroneMulberry32(seed);
+        var perm = [];
+        var i;
+        for (i = 0; i < 256; i++) perm[i] = i;
+        for (i = 255; i > 0; i--) {
+          var j = Math.floor(rng() * (i + 1));
+          var tmp = perm[i];
+          perm[i] = perm[j];
+          perm[j] = tmp;
+        }
+        return perm.concat(perm);
+      }
+
+      function generatrDronePerlinFade(t) {
+        return t * t * t * (t * (t * 6 - 15) + 10);
+      }
+
+      function generatrDronePerlinUnit(perm, x) {
+        var xi = Math.floor(x) & 255;
+        var xf = x - Math.floor(x);
+        var u = generatrDronePerlinFade(xf);
+        var g0 = (perm[xi] & 1) * 2 - 1;
+        var g1 = (perm[xi + 1] & 1) * 2 - 1;
+        var n0 = g0 * xf;
+        var n1 = g1 * (xf - 1);
+        var val = n0 + u * (n1 - n0);
+        return Math.max(0, Math.min(1, (val + 1) * 0.5));
+      }
+
+      function generatrDroneClampVelocityBounds(rawLo, rawHi) {
+        var lo = Math.max(0, Math.min(127, parseInt(rawLo, 10) || 0));
+        var hi = Math.max(0, Math.min(127, parseInt(rawHi, 10) || 0));
+        if (lo > hi) {
+          var swap = lo;
+          lo = hi;
+          hi = swap;
+        }
+        return { lo: lo, hi: hi };
+      }
+
+      function generatrDroneSampleVelocities(count, lo, hi, mode, seed) {
+        var bounds = generatrDroneClampVelocityBounds(lo, hi);
+        lo = bounds.lo;
+        hi = bounds.hi;
+        var rng = generatrDroneMulberry32(seed);
+        var perm = mode === "perlin" ? generatrDroneBuildPerm(seed) : null;
+        var perlinOffset = rng() * 256;
+        var out = [];
+        var i;
+        for (i = 0; i < count; i++) {
+          if (lo === hi) {
+            out.push(lo);
+            continue;
+          }
+          var velocity;
+          if (mode === "perlin") {
+            var unit = generatrDronePerlinUnit(perm, perlinOffset + i * 0.42);
+            velocity = Math.round(lo + unit * (hi - lo));
+          } else {
+            velocity = lo + Math.floor(rng() * (hi - lo + 1));
+          }
+          out.push(Math.max(lo, Math.min(hi, velocity)));
+        }
+        return out;
+      }
+
+      function generatrDroneGetVelocitySettings() {
+        var bounds = generatrDroneClampVelocityBounds(
+          droneVelocityMinInput ? droneVelocityMinInput.value : 100,
+          droneVelocityMaxInput ? droneVelocityMaxInput.value : 100
+        );
+        return {
+          lo: bounds.lo,
+          hi: bounds.hi,
+          mode: generatrDroneGetVelocityRandomizationMode()
+        };
+      }
+
+      function generatrDroneMidiPreviewVelocityOpacity(velocityNorm) {
+        var norm = Math.max(0, Math.min(1, Number(velocityNorm) || 0));
+        return (0.04 + norm * 0.96).toFixed(3);
+      }
+
       function generatrDroneRenderMidiPreviewSvg(preview, opts) {
         opts = opts || {};
         var events = preview && preview.events ? preview.events : (Array.isArray(preview) ? preview : []);
@@ -8769,9 +8959,10 @@
         var rects = events.map(function (ev) {
           var x = pad + ev.start * innerW;
           var rw = Math.max(2, (ev.end - ev.start) * innerW);
-          var barH = Math.max(2.5, 2 + ev.velocityNorm * 4);
+          var barH = Math.max(2.5, 3 + (Number(ev.pitchNorm) || 0) * 2);
           var y = pad + (1 - ev.pitchNorm) * (innerH - barH);
-          return '<rect class="generatr-drone-midi-preview-note" x="' + x.toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + rw.toFixed(2) + '" height="' + barH.toFixed(2) + '" rx="1.2"/>';
+          var fillOpacity = generatrDroneMidiPreviewVelocityOpacity(ev.velocityNorm);
+          return '<rect class="generatr-drone-midi-preview-note" x="' + x.toFixed(2) + '" y="' + y.toFixed(2) + '" width="' + rw.toFixed(2) + '" height="' + barH.toFixed(2) + '" rx="1.2" fill-opacity="' + fillOpacity + '"/>';
         }).join("");
         var cls = opts.className || "generatr-drone-midi-preview-svg";
         return '<svg class="' + cls + '" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" aria-hidden="true">' + gridLines + rects + "</svg>";
@@ -8786,6 +8977,17 @@
         }
       }
 
+      function generatrDroneGetVelocityRandomizationMode() {
+        var checked = document.querySelector('input[name="generatr-drone-velocity-randomization"]:checked');
+        return (checked && checked.value) || "random";
+      }
+
+      function generatrDroneAppendVelocityToPayload(payload) {
+        payload.velocityMin = parseInt(droneVelocityMinInput ? droneVelocityMinInput.value : "100", 10);
+        payload.velocityMax = parseInt(droneVelocityMaxInput ? droneVelocityMaxInput.value : "100", 10);
+        payload.velocityRandomization = generatrDroneGetVelocityRandomizationMode();
+      }
+
       function generatrDroneMidiPreviewPayload() {
         var payload = {
           pattern: generatrDroneMidiPatternId || "",
@@ -8794,12 +8996,75 @@
           paddedSilenceBars: parseInt(dronePaddedSilenceInput.value || "0", 10)
         };
         generatrDroneAppendChartSelectionToPayload(payload);
+        generatrDroneAppendVelocityToPayload(payload);
         return payload;
+      }
+
+      function generatrDroneCacheMidiPreviewSkeleton(preview, seed, meta) {
+        var events = preview && preview.events ? preview.events : [];
+        generatrDroneMidiPreviewCache = {
+          skeleton: events.map(function (ev) {
+            return {
+              start: ev.start,
+              end: ev.end,
+              pitchNorm: ev.pitchNorm
+            };
+          }),
+          seed: seed,
+          meta: meta || {}
+        };
+      }
+
+      function generatrDroneBuildPreviewEventsFromCache() {
+        if (!generatrDroneMidiPreviewCache || !generatrDroneMidiPreviewCache.skeleton.length) {
+          return null;
+        }
+        var settings = generatrDroneGetVelocitySettings();
+        var velocities = generatrDroneSampleVelocities(
+          generatrDroneMidiPreviewCache.skeleton.length,
+          settings.lo,
+          settings.hi,
+          settings.mode,
+          generatrDroneMidiPreviewCache.seed
+        );
+        return generatrDroneMidiPreviewCache.skeleton.map(function (ev, index) {
+          return {
+            start: ev.start,
+            end: ev.end,
+            pitchNorm: ev.pitchNorm,
+            velocityNorm: velocities[index] / 127
+          };
+        });
+      }
+
+      function generatrDronePaintCachedMidiPreview() {
+        if (!droneMidiPreviewEl) return false;
+        var events = generatrDroneBuildPreviewEventsFromCache();
+        if (!events || !events.length) return false;
+        droneMidiPreviewEl.innerHTML = generatrDroneRenderMidiPreviewSvg({ events: events });
+        if (droneMidiPreviewMeta && generatrDroneMidiPreviewCache && generatrDroneMidiPreviewCache.meta) {
+          var bits = [];
+          var meta = generatrDroneMidiPreviewCache.meta;
+          if (meta.patternDisplayName) bits.push(meta.patternDisplayName);
+          if (meta.chart) bits.push(meta.chart);
+          if (meta.tempoBpm) bits.push(meta.tempoBpm + " bpm");
+          droneMidiPreviewMeta.textContent = bits.length ? bits.join(" · ") : "";
+        }
+        return true;
+      }
+
+      function generatrDroneApplyVelocityToCachedPreview() {
+        if (!droneMidiPreviewEl || !kindSelect || kindSelect.value !== "drone") return;
+        if (generatrDroneMidiPatternIsRandom(generatrDroneMidiPatternId)) return;
+        if (!generatrDronePaintCachedMidiPreview()) {
+          generatrDroneRefreshMidiPreview();
+        }
       }
 
       function generatrDroneRefreshMidiPreview() {
         if (!droneMidiPreviewEl || !kindSelect || kindSelect.value !== "drone") return;
         if (generatrDroneMidiPatternIsRandom(generatrDroneMidiPatternId)) {
+          generatrDroneMidiPreviewCache = null;
           generatrDroneShowRandomMidiPatternState();
           return;
         }
@@ -8818,22 +9083,24 @@
           .then(function (data) {
             if (requestId !== generatrDroneMidiPreviewRequestSeq) return;
             if (data.error) {
+              generatrDroneMidiPreviewCache = null;
               if (droneMidiPreviewMeta) droneMidiPreviewMeta.textContent = data.error;
               return;
             }
-            if (droneMidiPreviewEl) {
-              droneMidiPreviewEl.innerHTML = generatrDroneRenderMidiPreviewSvg(data.preview || { events: [] });
-            }
-            if (droneMidiPreviewMeta) {
-              var bits = [];
-              if (data.patternDisplayName) bits.push(data.patternDisplayName);
-              if (data.chart) bits.push(data.chart);
-              if (data.tempoBpm) bits.push(data.tempoBpm + " bpm");
-              droneMidiPreviewMeta.textContent = bits.length ? bits.join(" · ") : "";
-            }
+            generatrDroneCacheMidiPreviewSkeleton(
+              data.preview || { events: [] },
+              data.previewSeed || Math.floor(Math.random() * 2147483647),
+              {
+                patternDisplayName: data.patternDisplayName || "",
+                chart: data.chart || "",
+                tempoBpm: data.tempoBpm || null
+              }
+            );
+            generatrDronePaintCachedMidiPreview();
           })
           .catch(function (err) {
             if (requestId !== generatrDroneMidiPreviewRequestSeq) return;
+            generatrDroneMidiPreviewCache = null;
             if (droneMidiPreviewMeta) {
               droneMidiPreviewMeta.textContent = err.message || "Failed to load MIDI preview";
             }
@@ -10630,6 +10897,11 @@
           generatrDroneRefreshMidiPreview();
         });
       }
+      document.querySelectorAll('input[name="generatr-drone-velocity-randomization"]').forEach(function (input) {
+        input.addEventListener("change", function () {
+          generatrDroneApplyVelocityToCachedPreview();
+        });
+      });
       if (droneMidiPatternSearch) {
         droneMidiPatternSearch.addEventListener("input", function () {
           generatrDroneRenderMidiPatternGrid(droneMidiPatternSearch.value);
@@ -11644,6 +11916,30 @@
         initDawKnobs(document.getElementById("generatr-drone-export-row"));
       }
       generatrInitDroneExportControls();
+
+      function generatrInitDronePatternControls() {
+        initDawKnobs(document.getElementById("generatr-drone-pattern-row"));
+        document.querySelectorAll('#generatr-drone-pattern-row .daw-knob[data-knob-pair="drone-velocity"] .daw-knob-dial').forEach(function (dial) {
+          dial.addEventListener("pointerdown", function () {
+            generatrDroneVelocityKnobDragging = true;
+          });
+          function commitVelocityPreview() {
+            if (!generatrDroneVelocityKnobDragging) return;
+            generatrDroneVelocityKnobDragging = false;
+            generatrDroneApplyVelocityToCachedPreview();
+          }
+          dial.addEventListener("pointerup", commitVelocityPreview);
+          dial.addEventListener("pointercancel", commitVelocityPreview);
+        });
+        [droneVelocityMinInput, droneVelocityMaxInput].forEach(function (input) {
+          if (!input) return;
+          input.addEventListener("change", function () {
+            if (generatrDroneVelocityKnobDragging) return;
+            generatrDroneApplyVelocityToCachedPreview();
+          });
+        });
+      }
+      generatrInitDronePatternControls();
 
       function generatrCollectWashPayload(body) {
         body.library = washLibrarySelect ? (washLibrarySelect.value || "") : "";
@@ -12749,6 +13045,7 @@
           body.tempo = parseInt(droneTempoInput ? droneTempoInput.value : "120", 10);
           body.lengthBars = parseInt(droneLengthInput.value || "16", 10);
           body.paddedSilenceBars = parseInt(dronePaddedSilenceInput.value || "0", 10);
+          generatrDroneAppendVelocityToPayload(body);
           if (generatrDroneInstrumentSelection) {
             body.instrumentSelection = generatrDroneInstrumentSelection;
           }

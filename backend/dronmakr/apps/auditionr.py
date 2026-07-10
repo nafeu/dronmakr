@@ -756,6 +756,33 @@ def _parse_drone_custom_notes(raw) -> list[str] | None:
     return validated or None
 
 
+def _parse_drone_velocity_settings(payload: dict) -> tuple[tuple[int, int], str]:
+    """Parse Auditionr drone MIDI velocity bounds and randomization mode."""
+    lo = 100
+    hi = 100
+    mode = "random"
+    try:
+        if payload.get("velocityMin") is not None:
+            lo = int(payload["velocityMin"])
+    except (TypeError, ValueError):
+        pass
+    try:
+        if payload.get("velocityMax") is not None:
+            hi = int(payload["velocityMax"])
+    except (TypeError, ValueError):
+        pass
+    raw_mode = (payload.get("velocityRandomization") or "").strip().lower()
+    if raw_mode in ("perlin", "perlin_noise", "perlinnoise"):
+        mode = "perlin"
+    elif raw_mode == "random":
+        mode = "random"
+    lo = max(0, min(127, lo))
+    hi = max(0, min(127, hi))
+    if lo > hi:
+        lo, hi = hi, lo
+    return (lo, hi), mode
+
+
 def _build_drone_midi_kwargs_from_payload(
     payload: dict,
     *,
@@ -776,6 +803,7 @@ def _build_drone_midi_kwargs_from_payload(
     length_bars = coerce_drone_midi_length_bars(payload.get("lengthBars"))
     padded_silence_bars = coerce_drone_midi_padding_bars(payload.get("paddedSilenceBars"))
     tempo_bpm = coerce_drone_midi_tempo_bpm(payload.get("tempo"))
+    velocity_range, velocity_randomization = _parse_drone_velocity_settings(payload)
 
     midi_kwargs = {
         "pattern": pattern,
@@ -784,6 +812,8 @@ def _build_drone_midi_kwargs_from_payload(
         "num_bars": length_bars,
         "padded_silence_bars": 0 if preview else padded_silence_bars,
         "tempo_bpm": tempo_bpm,
+        "velocity_range": velocity_range,
+        "velocity_randomization": velocity_randomization,
     }
 
     next_chart_pool_last_key = chart_pool_last_key
@@ -1836,6 +1866,7 @@ def _handle_drone_midi_preview():
         return jsonify(
             {
                 "preview": build_midi_preview_payload(midi_obj),
+                "previewSeed": random.randint(1, 2_147_483_647),
                 "pattern": pattern_id,
                 "patternDisplayName": format_pattern_display_name(pattern_id),
                 "description": description,
