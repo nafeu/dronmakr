@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Bump semver in backend/dronmakr/version.py, package.json, and Tauri metadata
-# (including src-tauri/Cargo.lock via cargo metadata), commit + tag + push, then create GitHub Release.
+# (including src-tauri/Cargo.lock via cargo metadata), commit + tag + push, then create GitHub Release
+# using scripts/release_notes_template.md (filled by scripts/generate_release_notes.py).
 #
 # Prerequisites:
 #   - gh authenticated (`gh auth login`)
@@ -14,12 +15,39 @@
 #   ./scripts/bump_and_release.sh patch --skip-checks
 #   ./scripts/bump_and_release.sh patch -- --draft --title "Smoke test"
 #
-# Extra args after -- are forwarded to `gh release create`.
+# Extra args after -- are forwarded to `gh release create` (except --generate-notes,
+# which is replaced by scripts/generate_release_notes.py + --notes-file).
 #
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
+
+write_release_notes() {
+  local tag=$1
+  local previous_tag=${2:-}
+  local outfile
+  local -a gen_args=(--tag "$tag")
+  outfile=$(mktemp "${TMPDIR:-/tmp}/dronmakr-release-notes.XXXXXX")
+  if [[ -n "$previous_tag" ]]; then
+    gen_args+=(--previous-tag "$previous_tag" --allow-missing-tag)
+  fi
+  if ! python3 "$ROOT_DIR/scripts/generate_release_notes.py" "${gen_args[@]}" -o "$outfile" 2>/dev/null; then
+    rm -f "$outfile"
+    return 1
+  fi
+  echo "$outfile"
+}
+
+filter_gh_release_args() {
+  local filtered=()
+  local arg
+  for arg in "${PASS_THROUGH[@]}"; do
+    [[ "$arg" == "--generate-notes" ]] && continue
+    filtered+=("$arg")
+  done
+  PASS_THROUGH=("${filtered[@]}")
+}
 
 VERSION_FILE="backend/dronmakr/version.py"
 BUMP_TYPE=""
@@ -29,7 +57,7 @@ PASS_THROUGH=()
 
 usage() {
   echo "Usage: $(basename "$0") [major|minor|patch] [--dry-run] [--skip-checks] [-- <gh-release-args>]"
-  echo "Combines scripts/bump_version.sh and gh release create (--generate-notes)."
+  echo "Combines scripts/bump_version.sh and gh release create (templated release notes)."
   echo "On macOS, runs scripts/pre_release_checks.sh (verify existing build) before bumping."
   echo "Build and verify first: scripts/pre_release_checks.sh --build"
 }
@@ -108,7 +136,12 @@ echo "Next version:   ${new_version}  (release tag ${NEW_TAG})"
 if [[ "$DRY_RUN" == true ]]; then
   echo "[Dry run] Would run: scripts/pre_release_checks.sh (unless --skip-checks)"
   echo "[Dry run] Would run: scripts/bump_version.sh ${BUMP_TYPE}"
-  CMD=(gh release create "$NEW_TAG" --verify-tag --generate-notes --latest)
+  NOTES_FILE=$(write_release_notes "$NEW_TAG" "v${current_version}")
+  echo "[Dry run] Release notes (${NOTES_FILE}):"
+  cat "$NOTES_FILE"
+  rm -f "$NOTES_FILE"
+  filter_gh_release_args
+  CMD=(gh release create "$NEW_TAG" --verify-tag --notes-file /tmp/dronmakr-release-notes.XXXXXX --latest)
   if ((${#PASS_THROUGH[@]} > 0)); then
     for _arg in "${PASS_THROUGH[@]}"; do
       CMD+=("$_arg")
@@ -150,7 +183,11 @@ if gh release view "$NEW_TAG" >/dev/null 2>&1; then
   exit 1
 fi
 
-CMD=(gh release create "$NEW_TAG" --verify-tag --generate-notes --latest)
+filter_gh_release_args
+NOTES_FILE=$(write_release_notes "$NEW_TAG")
+trap 'rm -f "$NOTES_FILE"' EXIT
+
+CMD=(gh release create "$NEW_TAG" --verify-tag --notes-file "$NOTES_FILE" --latest)
 if ((${#PASS_THROUGH[@]} > 0)); then
   for _arg in "${PASS_THROUGH[@]}"; do
     CMD+=("$_arg")

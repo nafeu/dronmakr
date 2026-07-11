@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Create a GitHub Release for the latest git tag using gh CLI (--generate-notes).
+# Create a GitHub Release for the latest git tag using gh CLI (templated release notes).
 # Publishing triggers .github/workflows/release-desktop.yml when the workflow is enabled on the repo.
 # To bump version, push the new tag, and create that release in one step, use scripts/bump_and_release.sh.
 #
@@ -10,7 +10,7 @@
 #   scripts/gh_release_latest_tag.sh
 #   scripts/gh_release_latest_tag.sh --no-fetch
 #   scripts/gh_release_latest_tag.sh --dry-run
-#   scripts/gh_release_latest_tag.sh -- --draft --notes "Smoke test build"
+#   scripts/gh_release_latest_tag.sh -- --draft --title "Smoke test build"
 #
 # Env:
 #   FETCH_TAGS=0 — skip "git fetch origin --tags"
@@ -22,6 +22,27 @@ REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
   exit 1
 }
 cd "$REPO_ROOT"
+
+write_release_notes() {
+  local tag=$1
+  local outfile
+  outfile=$(mktemp "${TMPDIR:-/tmp}/dronmakr-release-notes.XXXXXX")
+  if ! python3 "$ROOT_DIR/scripts/generate_release_notes.py" --tag "$tag" -o "$outfile" 2>/dev/null; then
+    rm -f "$outfile"
+    return 1
+  fi
+  echo "$outfile"
+}
+
+filter_gh_release_args() {
+  local filtered=()
+  local arg
+  for arg in "${PASS_THROUGH[@]}"; do
+    [[ "$arg" == "--generate-notes" ]] && continue
+    filtered+=("$arg")
+  done
+  PASS_THROUGH=("${filtered[@]}")
+}
 
 FETCH_TAGS="${FETCH_TAGS:-1}"
 NO_FETCH=false
@@ -68,7 +89,12 @@ fi
 echo "Latest tag: $TAG"
 
 if [[ "$DRY_RUN" == true ]]; then
-  CMD=(gh release create "$TAG" --verify-tag --generate-notes --latest)
+  NOTES_FILE=$(write_release_notes "$TAG")
+  echo "[Dry run] Release notes (${NOTES_FILE}):"
+  cat "$NOTES_FILE"
+  rm -f "$NOTES_FILE"
+  filter_gh_release_args
+  CMD=(gh release create "$TAG" --verify-tag --notes-file /tmp/dronmakr-release-notes.XXXXXX --latest)
   if ((${#PASS_THROUGH[@]} > 0)); then
     for _arg in "${PASS_THROUGH[@]}"; do
       CMD+=("$_arg")
@@ -80,7 +106,11 @@ if [[ "$DRY_RUN" == true ]]; then
   exit 0
 fi
 
-CMD=(gh release create "$TAG" --verify-tag --generate-notes --latest)
+filter_gh_release_args
+NOTES_FILE=$(write_release_notes "$TAG")
+trap 'rm -f "$NOTES_FILE"' EXIT
+
+CMD=(gh release create "$TAG" --verify-tag --notes-file "$NOTES_FILE" --latest)
 if ((${#PASS_THROUGH[@]} > 0)); then
   for _arg in "${PASS_THROUGH[@]}"; do
     CMD+=("$_arg")
