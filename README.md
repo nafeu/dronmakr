@@ -1,10 +1,8 @@
 <p align="center">
   <img src="assets/static/branding/logo.png" alt="dronmakr" width="100" />
 </p>
-
-<p align="center"><em>pronounced “drone maker”</em></p>
-
-<p align="center">Sample generation, editing, and packaging — in a local desktop app for auditioning, beat building, collections, and more.</p>
+<p align="center"><em>“drone maker”</em></p>
+<p align="center">AI-free sample generation, drum sequencing, audio recording, processing and packaging tools, connects with your own VST/AU + sample libraries. <a href="https://www.youtube.com/watch?v=BYjLCXZWaMY">Watch the demo.</a></p>
 
 <p align="center">
   <a href="https://discord.gg/BysAyRje57"><img src="https://img.shields.io/discord/1358944581873307871?label=discord&logo=discord&style=for-the-badge" alt="Discord" /></a>
@@ -18,6 +16,31 @@
 ![Folysplitr Preview](docs/preview-folysplitr.png)
 
 ![Collections Preview](docs/preview-collections.png)
+
+## Features
+
+> **auditionr**
+
+The main workshop. Generate new audio, then audition and tweak it in one place.
+
+- **Drones** from your VST/AU presets, or from the built-in Faust instrument library. Pick a MIDI pattern, chord chart, and style, then render offline.
+- **Sweeps and washes** for risers, drops, and transition FX.
+- **Drum patterns** stitched from your patterns written in beatbuildr and your own one-shot library (kick, snare, hats, percussion, and more).
+- **Edit Samples** tab: trim, reverse, pitch shift, EQ, filters, fades, reverb, delay, and other processing. Save keepers to your library or toss the rest.
+
+> **beatbuildr**
+
+A drum sequencer. Load a random kit from your folders, paint patterns on a grid, preview in real time, and export beats when something clicks.
+
+> **folysplitr**
+
+Record foley in the browser, auto-detect slice points, trim and process takes, then sort splits into categorized folders (kicks, snares, textures, whatever you set up).
+
+> **collections**
+
+A library browser. Filter by type, preview waveforms, select samples, and zip them into a release-ready package. Handy when you want to ship a sample pack or pull stems for a project.
+
+On first launch you pick a **dronmakr-files** folder (exports, saved samples, presets, config). **Settings** is where you point at plug-in paths and drum library folders.
 
 ## Made with dronmakr
 
