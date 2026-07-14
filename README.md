@@ -59,16 +59,16 @@ Prebuilt apps are published on **[GitHub Releases](https://github.com/nafeu/dron
 | --- | --- | --- |
 | macOS (Apple Silicon) | **Supported** | Primary target; DMG or `.tar.gz` |
 | Windows (x86_64) | **Supported** | NSIS installer in release zip |
-| Linux (x86_64) | **Experimental** | Published each release for testing; not fully supported yet — see [Linux (experimental)](scripts/linux_release_readme.txt) |
+| Linux (x86_64) | **Experimental** | Published each release for testing; not fully supported yet. See [Linux (experimental)](scripts/linux_release_readme.txt). |
 | macOS (Intel) | **Not published** | Build from source until CI ships Intel builds |
 
 | Platform | Download |
 | --- | --- |
 | macOS (Apple Silicon) | `dronmakr-v*-macos-arm64.dmg` (or `.tar.gz`) |
-| Linux (x86_64, experimental) | `dronmakr-v*-linux-x64.tar.gz` (also `.deb` / `.rpm` in archive — read `README-linux.txt` inside) |
-| Windows | `dronmakr-v*-windows-x64.zip` (NSIS `*-setup.exe` — see `README-windows.txt`) |
+| Linux (x86_64, experimental) | `dronmakr-v*-linux-x64.tar.gz` (also `.deb` / `.rpm` in archive; read `README-linux.txt` inside) |
+| Windows | `dronmakr-v*-windows-x64.zip` (NSIS `*-setup.exe`; see `README-windows.txt`) |
 
-**macOS (Intel):** not published on [Releases](https://github.com/nafeu/dronmakr/releases/latest) yet — planned for a future build. Until then, use [Manual installation](#manual-installation) on Intel Macs.
+**macOS (Intel):** not published on [Releases](https://github.com/nafeu/dronmakr/releases/latest) yet. Planned for a future build. Until then, use [Manual installation](#manual-installation) on Intel Macs.
 
 **Linux (experimental):** We ship Linux builds so testers and contributors can help harden the port, but treat them as **unstable**. Known gaps include distro-specific UI/WebKit behavior, optional native folder dialogs (`zenity` / `kdialog` / `yad`), and less mature VST3 hosting than on macOS/Windows. Read **[scripts/linux_release_readme.txt](scripts/linux_release_readme.txt)** (also bundled as `README-linux.txt` in the Linux release archive). Please [open issues](https://github.com/nafeu/dronmakr/issues) with `errors.log` from `~/.local/share/dronmakr/logs/` when something breaks.
 
@@ -170,7 +170,7 @@ Use the app menu **Report issue** to open the about page, or locate the log file
 
 1. Quit the app.
 2. Delete the application bundle (e.g. `/Applications/dronmakr.app` or wherever you installed it).
-3. Remove user data (settings, logs, and bundled config — not your audio library):
+3. Remove user data (settings, logs, and bundled config, not your audio library):
 
    - **macOS:** `~/Library/Application Support/dronmakr`
    - **Windows:** `%AppData%\dronmakr`
@@ -187,13 +187,13 @@ Open a [GitHub Issue](https://github.com/nafeu/dronmakr/issues) and attach relev
 
 **Does the desktop build include FFmpeg?**
 
-Yes. Desktop releases ship a **vendored FFmpeg** for Folysplitr browser recording uploads — no separate system install needed. Attribution: [resources/ffmpeg/LICENSE.third_party.ffmpeg](resources/ffmpeg/LICENSE.third_party.ffmpeg).
+Yes. Desktop releases ship a **vendored FFmpeg** for Folysplitr browser recording uploads. No separate system install needed. Attribution: [resources/ffmpeg/LICENSE.third_party.ffmpeg](resources/ffmpeg/LICENSE.third_party.ffmpeg).
 
 **macOS says the app is blocked or won’t open**
 
 CI builds are ad-hoc signed but **not Apple-notarized**. After download:
 
-1. If macOS says the app is **“damaged”**, the bundle signature is invalid — use a current release build (v0.57.1+) or rebuild locally with `bash scripts/sign_mac_app.sh` after `npm run tauri build`.
+1. If macOS says the app is **“damaged”**, the bundle signature is invalid. Use a current release build (v0.57.1+) or rebuild locally with `bash scripts/sign_mac_app.sh` after `npm run tauri build`.
 2. For the usual first-run Gatekeeper prompt, use **System Settings → Privacy & Security → Open Anyway**, or **Control-click the app → Open** once.
 3. If the app was quarantined by the browser, run: `xattr -dr com.apple.quarantine /Applications/dronmakr.app`
 
@@ -201,7 +201,7 @@ CI builds are ad-hoc signed but **not Apple-notarized**. After download:
 
 Audio runs through [DawDreamer](https://github.com/DBraun/DawDreamer) (JUCE-based offline VST/AU hosting). On **macOS**, use **VST3** (`.vst3`) and **AU** (`.component`). On **Linux**, use **VST3** only; hosting is experimental and plug-in compatibility varies by distro. Edit `config/presets.json` in your dronmakr files folder to manage instrument and effect presets.
 
-DawDreamer is **GPL-3.0** and is bundled in desktop builds. That copyleft obligation applies to dronmakr as a whole — see [License](#license).
+DawDreamer is **GPL-3.0** and is bundled in desktop builds. That copyleft obligation applies to dronmakr as a whole. See [License](#license).
 
 **A synth shows up as an effect (e.g. Reaktor 6)**
 
@@ -230,43 +230,28 @@ PRs and issues welcome on GitHub.
 
 ## License
 
-**dronmakr is licensed under [GNU General Public License v3.0 (GPL-3.0)](LICENSE).**
+Copyright (c) 2025 Nafeu Nasir. Licensed under [GPL-3.0](LICENSE).
 
-Desktop releases bundle [DawDreamer](https://github.com/DBraun/DawDreamer) (GPL-3.0) for offline VST3/AU hosting and built-in Faust instrument/FX compilation. Because DawDreamer is linked into the Python backend and shipped inside release binaries, dronmakr is a combined work under GPLv3 — not MIT or another permissive license. If you redistribute dronmakr (source or prebuilt app), you must comply with GPL-3.0: include this license, provide corresponding source (this repository satisfies that for official builds), and license any derivative work under GPLv3.
+dronmakr bundles [DawDreamer](https://github.com/DBraun/DawDreamer) (GPL-3.0) for VST3/AU hosting and Faust compilation. Because DawDreamer ships inside release binaries, the whole project is GPL-3.0, not MIT.
 
-### What this means if you use dronmakr
+**If you use dronmakr**
 
-| Use case | Summary |
-| --- | --- |
-| **Personal use** | Run the app, generate samples, use them in your music or games. No special attribution required for audio you create. |
-| **Credit in releases / docs** | If you mention the toolchain, cite **dronmakr** and **DawDreamer** (see [Suggested attribution](#suggested-attribution)). |
-| **Fork, patch, or redistribute dronmakr** | GPL-3.0 applies to your distribution. Ship the GPL license, preserve copyright notices, and make source available under the same license. |
-| **Embed dronmakr in a proprietary app** | Not permitted as-is: you cannot ship DawDreamer (or a dronmakr build that includes it) inside a closed-source product without GPL compliance. Contact the DawDreamer author if you need a different licensing path for VST hosting. |
-| **Ship only audio you rendered** | WAV/MP3 exports you produce are your creative output; they are not automatically GPL-licensed. The GPL applies to the **software** you distribute, not necessarily to every sound file it helps you render. |
+- **Personal use:** fine. Audio you export is yours.
+- **Fork or redistribute dronmakr:** follow GPL-3.0. Include [LICENSE](LICENSE), keep copyright notices, and share source under the same license.
+- **Ship dronmakr inside a closed-source app:** not allowed without full GPL compliance.
+- **Credit the toolchain (optional but appreciated):**
 
-This is practical guidance, not legal advice. When in doubt, read [LICENSE](LICENSE) and the upstream licenses below.
+  ```
+  Audio tools: dronmakr (https://github.com/nafeu/dronmakr, GPL-3.0)
+  VST/AU hosting: DawDreamer (https://github.com/DBraun/DawDreamer, GPL-3.0)
+  ```
 
-### Third-party components
+**Other bundled components**
 
-| Component | Role in dronmakr | License | Notes |
-| --- | --- | --- | --- |
-| **[DawDreamer](https://github.com/DBraun/DawDreamer)** | VST3/AU offline rendering, Faust processor host | **GPL-3.0** | Primary copyleft dependency. Full text: [DawDreamer LICENSE](https://github.com/DBraun/DawDreamer/blob/master/LICENSE). |
-| **JUCE** (via DawDreamer) | Plug-in hosting framework inside DawDreamer | **GPL-3.0** (or commercial license from Raw Material Software Limited) | dronmakr does not ship JUCE separately; it is part of DawDreamer. |
-| **FFmpeg** (vendored) | Folysplitr browser recording conversion in desktop builds | **LGPL-2.1+** (typical static build) | Per-build notices: [`resources/ffmpeg/THIRD_PARTY_FFMPEG.txt`](resources/ffmpeg/THIRD_PARTY_FFMPEG.txt). Overview: [`resources/ffmpeg/LICENSE.third_party.ffmpeg`](resources/ffmpeg/LICENSE.third_party.ffmpeg). |
-| **Faust DSP** (built-in library) | Shipped `.dsp` sources compiled at runtime through DawDreamer | **GPL-3.0** (via DawDreamer’s Faust integration) | Instrument/FX definitions live under [`resources/faust/`](resources/faust/). |
-| **Other Python / Rust dependencies** | Flask, librosa, Tauri, etc. | Mostly permissive (MIT, BSD, Apache-2.0, …) | Bundled inside GPL-covered desktop binaries; upstream licenses remain in those packages. |
+- [DawDreamer](https://github.com/DBraun/DawDreamer) and JUCE (inside DawDreamer): GPL-3.0
+- FFmpeg (desktop Folysplitr): LGPL-2.1+. See [resources/ffmpeg/THIRD_PARTY_FFMPEG.txt](resources/ffmpeg/THIRD_PARTY_FFMPEG.txt)
+- Built-in Faust `.dsp` library: compiled through DawDreamer at runtime ([resources/faust/](resources/faust/))
 
-### Suggested attribution
+Source for official releases: [github.com/nafeu/dronmakr](https://github.com/nafeu/dronmakr) (matching release tag). Desktop bundles include a copy of [LICENSE](LICENSE).
 
-When you credit the toolchain (README, video description, sample-pack liner notes, game credits, etc.):
-
-```
-Audio tools: dronmakr (https://github.com/nafeu/dronmakr, GPL-3.0)
-VST/AU hosting: DawDreamer (https://github.com/DBraun/DawDreamer, GPL-3.0)
-```
-
-If Folysplitr’s bundled FFmpeg was used in your distributed build, also retain the FFmpeg notices shipped in that release (`THIRD_PARTY_FFMPEG.txt` inside the app bundle).
-
-### Source code
-
-Corresponding source for official releases is this repository: **https://github.com/nafeu/dronmakr** (tag matching the release version, e.g. `v0.58.8`). Desktop app bundles also ship a copy of [LICENSE](LICENSE) in the packaged resources.
+Practical guidance only, not legal advice.
