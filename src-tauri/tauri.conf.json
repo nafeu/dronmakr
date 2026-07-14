@@ -31,7 +31,8 @@
     "active": true,
     "targets": "all",
     "resources": [
-      "resources/dronmakr-backend/"
+      "resources/dronmakr-backend/",
+      "../LICENSE"
     ],
     "icon": [
       "icons/icon.png",

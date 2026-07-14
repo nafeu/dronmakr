@@ -3,6 +3,7 @@
   "version": "0.58.8",
   "private": true,
   "description": "dronmakr desktop app",
+  "license": "GPL-3.0-only",
   "scripts": {
     "build:frontend": "python scripts/build_frontend.py",
     "build:sidecar": "bash scripts/build_sidecar.sh",

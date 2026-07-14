@@ -37,6 +37,11 @@ def stage_sidecar_onedir(root: Path | None = None) -> Path:
     if dest.exists():
         shutil.rmtree(dest)
     shutil.copytree(onedir, dest)
+
+    license_src = root / "LICENSE"
+    if license_src.is_file():
+        shutil.copy2(license_src, dest / "LICENSE")
+
     return dest
 
 

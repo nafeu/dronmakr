@@ -201,7 +201,7 @@ CI builds are ad-hoc signed but **not Apple-notarized**. After download:
 
 Audio runs through [DawDreamer](https://github.com/DBraun/DawDreamer) (JUCE-based offline VST/AU hosting). On **macOS**, use **VST3** (`.vst3`) and **AU** (`.component`). On **Linux**, use **VST3** only; hosting is experimental and plug-in compatibility varies by distro. Edit `config/presets.json` in your dronmakr files folder to manage instrument and effect presets.
 
-**License note:** DawDreamer is **GPLv3**. Bundling it in desktop releases may affect how you distribute combined builds; see [DawDreamer licensing](https://github.com/DBraun/DawDreamer).
+DawDreamer is **GPL-3.0** and is bundled in desktop builds. That copyleft obligation applies to dronmakr as a whole — see [License](#license).
 
 **A synth shows up as an effect (e.g. Reaktor 6)**
 
@@ -216,6 +216,7 @@ The app checks GitHub Releases in the background. When a newer version exists, a
 ```sh
 ./scripts/bump_version.sh patch              # bump, commit, tag, push
 ./scripts/bump_and_release.sh patch          # above + gh release (templated notes)
+./scripts/backfill_release_notes.sh          # retroactively update existing v0.58.x release bodies
 python3 scripts/generate_release_notes.py --tag v0.58.8   # preview release notes only
 ```
 
@@ -229,4 +230,43 @@ PRs and issues welcome on GitHub.
 
 ## License
 
-[MIT](https://choosealicense.com/licenses/mit/)
+**dronmakr is licensed under [GNU General Public License v3.0 (GPL-3.0)](LICENSE).**
+
+Desktop releases bundle [DawDreamer](https://github.com/DBraun/DawDreamer) (GPL-3.0) for offline VST3/AU hosting and built-in Faust instrument/FX compilation. Because DawDreamer is linked into the Python backend and shipped inside release binaries, dronmakr is a combined work under GPLv3 — not MIT or another permissive license. If you redistribute dronmakr (source or prebuilt app), you must comply with GPL-3.0: include this license, provide corresponding source (this repository satisfies that for official builds), and license any derivative work under GPLv3.
+
+### What this means if you use dronmakr
+
+| Use case | Summary |
+| --- | --- |
+| **Personal use** | Run the app, generate samples, use them in your music or games. No special attribution required for audio you create. |
+| **Credit in releases / docs** | If you mention the toolchain, cite **dronmakr** and **DawDreamer** (see [Suggested attribution](#suggested-attribution)). |
+| **Fork, patch, or redistribute dronmakr** | GPL-3.0 applies to your distribution. Ship the GPL license, preserve copyright notices, and make source available under the same license. |
+| **Embed dronmakr in a proprietary app** | Not permitted as-is: you cannot ship DawDreamer (or a dronmakr build that includes it) inside a closed-source product without GPL compliance. Contact the DawDreamer author if you need a different licensing path for VST hosting. |
+| **Ship only audio you rendered** | WAV/MP3 exports you produce are your creative output; they are not automatically GPL-licensed. The GPL applies to the **software** you distribute, not necessarily to every sound file it helps you render. |
+
+This is practical guidance, not legal advice. When in doubt, read [LICENSE](LICENSE) and the upstream licenses below.
+
+### Third-party components
+
+| Component | Role in dronmakr | License | Notes |
+| --- | --- | --- | --- |
+| **[DawDreamer](https://github.com/DBraun/DawDreamer)** | VST3/AU offline rendering, Faust processor host | **GPL-3.0** | Primary copyleft dependency. Full text: [DawDreamer LICENSE](https://github.com/DBraun/DawDreamer/blob/master/LICENSE). |
+| **JUCE** (via DawDreamer) | Plug-in hosting framework inside DawDreamer | **GPL-3.0** (or commercial license from Raw Material Software Limited) | dronmakr does not ship JUCE separately; it is part of DawDreamer. |
+| **FFmpeg** (vendored) | Folysplitr browser recording conversion in desktop builds | **LGPL-2.1+** (typical static build) | Per-build notices: [`resources/ffmpeg/THIRD_PARTY_FFMPEG.txt`](resources/ffmpeg/THIRD_PARTY_FFMPEG.txt). Overview: [`resources/ffmpeg/LICENSE.third_party.ffmpeg`](resources/ffmpeg/LICENSE.third_party.ffmpeg). |
+| **Faust DSP** (built-in library) | Shipped `.dsp` sources compiled at runtime through DawDreamer | **GPL-3.0** (via DawDreamer’s Faust integration) | Instrument/FX definitions live under [`resources/faust/`](resources/faust/). |
+| **Other Python / Rust dependencies** | Flask, librosa, Tauri, etc. | Mostly permissive (MIT, BSD, Apache-2.0, …) | Bundled inside GPL-covered desktop binaries; upstream licenses remain in those packages. |
+
+### Suggested attribution
+
+When you credit the toolchain (README, video description, sample-pack liner notes, game credits, etc.):
+
+```
+Audio tools: dronmakr (https://github.com/nafeu/dronmakr, GPL-3.0)
+VST/AU hosting: DawDreamer (https://github.com/DBraun/DawDreamer, GPL-3.0)
+```
+
+If Folysplitr’s bundled FFmpeg was used in your distributed build, also retain the FFmpeg notices shipped in that release (`THIRD_PARTY_FFMPEG.txt` inside the app bundle).
+
+### Source code
+
+Corresponding source for official releases is this repository: **https://github.com/nafeu/dronmakr** (tag matching the release version, e.g. `v0.58.8`). Desktop app bundles also ship a copy of [LICENSE](LICENSE) in the packaged resources.

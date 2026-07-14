@@ -3,6 +3,7 @@ name = "dronmakr"
 version = "0.58.8"
 description = "dronmakr desktop app"
 authors = ["Nafeu"]
+license = "GPL-3.0-only"
 edition = "2021"
 
 [lib]
