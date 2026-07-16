@@ -462,7 +462,9 @@ def api_settings_pick_folder():
 @app.route("/api/health", methods=["GET"])
 def api_health():
     """Lightweight readiness probe for desktop bootstrap."""
-    return jsonify({"ok": True})
+    from dronmakr.core.test_mode import get_test_mode_info
+
+    return jsonify({"ok": True, **get_test_mode_info()})
 
 
 @app.route("/api/update/check", methods=["GET"])
@@ -584,7 +586,11 @@ def start_server(
             flush=True,
         )
     print(with_prompt("[desktop] startup: ensure settings"))
+    from dronmakr.core.test_mode import activate_test_mode, bootstrap_test_settings_if_needed
+
+    activate_test_mode()
     ensure_settings()
+    bootstrap_test_settings_if_needed()
     refresh_managed_path_constants()
     if has_configured_files_root():
         print(with_prompt("[desktop] startup: ensure managed files root"))

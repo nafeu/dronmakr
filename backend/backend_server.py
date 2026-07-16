@@ -16,6 +16,11 @@ if str(_BACKEND_ROOT) not in sys.path:
 
 os.environ.setdefault("DRONMAKR_ASYNC_MODE", "threading")
 
+from dronmakr.core.test_mode import activate_test_mode, bootstrap_test_settings_if_needed
+
+activate_test_mode()
+bootstrap_test_settings_if_needed()
+
 
 def _configure_console_encoding() -> None:
     """Use UTF-8 on stdout/stderr so Unicode banners print on Windows (cp1252 default)."""

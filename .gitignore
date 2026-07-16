@@ -59,6 +59,9 @@ src-tauri/binaries/dronmakr-backend-_internal/
 .coverage
 htmlcov/
 .pytest_cache/
+test-results/
+playwright-report/
+playwright/.cache/
 
 # Coverage and testing
 coverage.xml

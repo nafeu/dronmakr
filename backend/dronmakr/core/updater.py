@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import time
 from dataclasses import dataclass
 
@@ -65,6 +66,8 @@ def fetch_update_info_throttled(
     min_interval_s: float = _UPDATE_CHECK_MIN_INTERVAL_S,
     timeout: int = 5,
 ) -> UpdateInfo | None:
+    if os.environ.get("DRONMAKR_TEST") == "1":
+        return None
     global _cached_update_info, _cached_update_check_monotonic
     now = time.monotonic()
     if not force and (now - _cached_update_check_monotonic) < min_interval_s:

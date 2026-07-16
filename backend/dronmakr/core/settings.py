@@ -15,6 +15,10 @@ from dronmakr._repo import LOGS_ROOT, REPO_ROOT
 
 def _user_data_root() -> Path:
     """Writable location for bundled (PyInstaller) app — cwd is unreliable."""
+    if os.environ.get("DRONMAKR_TEST") == "1":
+        from dronmakr.core.test_mode import activate_test_mode
+
+        return activate_test_mode()
     if sys.platform == "darwin":
         return Path.home() / "Library" / "Application Support" / "dronmakr"
     if sys.platform.startswith("win"):
@@ -43,7 +47,11 @@ def _compute_settings_path() -> str:
     CLI and web must read the same file; Flask/desktop are often launched with a
     cwd that is not the repository root (empty PLUGIN_PATHS in the UI otherwise).
     """
-    if getattr(sys, "frozen", False):
+    if os.environ.get("DRONMAKR_TEST") == "1":
+        from dronmakr.core.test_mode import activate_test_mode
+
+        cfg = activate_test_mode() / "config"
+    elif getattr(sys, "frozen", False):
         cfg = _user_data_root() / "config"
     else:
         cfg = REPO_ROOT / "config"

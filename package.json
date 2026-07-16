@@ -12,9 +12,13 @@
     "tauri": "tauri",
     "dev": "tauri dev",
     "dev:backend": "bash scripts/dev_backend.sh",
-    "build": "npm run build:frontend && npm run build:sidecar && tauri build"
+    "build": "npm run build:frontend && npm run build:sidecar && tauri build",
+    "e2e": "playwright test",
+    "e2e:install": "playwright install chromium"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2.11.2"
+    "@playwright/test": "^1.51.0",
+    "@tauri-apps/cli": "^2.11.2",
+    "typescript": "^5.8.2"
   }
 }
