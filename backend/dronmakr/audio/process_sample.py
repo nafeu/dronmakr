@@ -10,6 +10,9 @@ import dronmakr.audio.dsp as dsp
 from dronmakr.audio.paulstretch import paulstretch
 from dronmakr.core.utils import resolve_presets_index_path, with_process_drone_sample_prompt
 
+# Match audio_host.EXPORT_PEAK_LIMIT — local name avoids import-order / NameError at module load.
+_EXPORT_PEAK_LIMIT = 0.5
+
 
 def log_sample_processing_line(message: str) -> None:
     """Indented blue detail line aligned with CLI ■ processing sample blocks."""
@@ -53,7 +56,7 @@ def _finalize_fx_processed_audio(
     processed: np.ndarray,
     *,
     target_samples: int | None = None,
-    peak_limit: float = 0.99,
+    peak_limit: float = _EXPORT_PEAK_LIMIT,
 ) -> np.ndarray:
     """Prepare plug-in FX output for sample replacement without export mastering."""
     out = np.asarray(processed, dtype=np.float32)

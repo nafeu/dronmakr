@@ -3517,6 +3517,69 @@
       color: var(--primary);
     }
 
+    #generatr-plugin-editor-busy-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 10090;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.55);
+    }
+
+    #generatr-plugin-editor-busy-modal.hidden {
+      display: none !important;
+    }
+
+    #generatr-plugin-editor-busy-modal .generatr-plugin-editor-busy-dialog {
+      width: min(92vw, 440px);
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      padding: 1rem 1.1rem;
+      border-radius: 8px;
+      background: var(--secondary);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    #generatr-plugin-editor-busy-modal h3 {
+      margin: 0;
+      font-size: 1rem;
+      color: var(--theme-a);
+    }
+
+    #generatr-plugin-editor-busy-modal p {
+      margin: 0;
+      font-size: 0.8rem;
+      line-height: 1.4;
+      color: color-mix(in srgb, var(--primary) 90%, transparent);
+    }
+
+    .generatr-plugin-editor-busy-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.45rem;
+      margin-top: 0.2rem;
+    }
+
+    .generatr-plugin-editor-busy-actions button {
+      font-family: inherit;
+      font-size: 0.8rem;
+      padding: 0.38rem 0.85rem;
+      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--primary);
+      cursor: pointer;
+    }
+
+    .generatr-plugin-editor-busy-actions button.is-danger {
+      border-color: #e05a5a;
+      background: rgba(224, 90, 90, 0.22);
+      color: #ffd0d0;
+    }
+
     button.generatr-error-dismiss:hover {
       filter: brightness(1.12);
     }
@@ -5432,11 +5495,20 @@
   <div id="generatr-vst-first-launch-modal" class="generatr-modal hidden" role="alertdialog" aria-modal="true" aria-labelledby="generatr-vst-first-launch-title" aria-describedby="generatr-vst-first-launch-message" aria-hidden="true">
     <div class="generatr-vst-first-launch-dialog">
       <h3 class="generatr-vst-first-launch-title" id="generatr-vst-first-launch-title">First plug-in launch</h3>
-      <p class="generatr-vst-first-launch-message" id="generatr-vst-first-launch-message">The first time you open a VST3 or AU instrument, your OS may verify the plug-in — the app can look frozen for up to ~30&nbsp;seconds. Later launches are usually much faster.</p>
+      <p class="generatr-vst-first-launch-message" id="generatr-vst-first-launch-message">The first time you open a VST3 or AU instrument, your OS may verify the plug-in, the app can look frozen for up to ~30&nbsp;seconds. Later launches are usually much faster.</p>
       <p class="generatr-vst-first-launch-message">Still having trouble? Start a thread in our Discord community.</p>
       <div class="generatr-vst-first-launch-actions">
         <a class="generatr-vst-first-launch-discord" id="generatr-vst-first-launch-discord" href="https://discord.gg/d9M9CQhhmS" target="_blank" rel="noopener noreferrer">Discord community</a>
         <button type="button" class="generatr-vst-first-launch-continue" id="generatr-vst-first-launch-continue">Continue</button>
+      </div>
+    </div>
+  </div>
+  <div id="generatr-plugin-editor-busy-modal" class="generatr-modal hidden" role="alertdialog" aria-modal="true" aria-labelledby="generatr-plugin-editor-busy-title" aria-describedby="generatr-plugin-editor-busy-message" aria-hidden="true">
+    <div class="generatr-plugin-editor-busy-dialog">
+      <h3 id="generatr-plugin-editor-busy-title">Opening plug-in editor...</h3>
+      <p id="generatr-plugin-editor-busy-message">A separate window may appear while the plug-in loads. If it freezes, close the window from here.</p>
+      <div class="generatr-plugin-editor-busy-actions">
+        <button type="button" class="is-danger" id="generatr-plugin-editor-busy-cancel">Close plug-in window</button>
       </div>
     </div>
   </div>
@@ -9714,7 +9786,7 @@
         }
       }
 
-      function generatrDroneSubmitSavePreset() {
+      function generatrDroneSubmitSavePreset(overwrite) {
         var role = generatrDroneSavePresetState.role;
         if (!role) return;
         var name = droneSavePresetNameInput ? String(droneSavePresetNameInput.value || "").trim() : "";
@@ -9727,6 +9799,7 @@
           return;
         }
         var body = { role: role, name: name };
+        if (overwrite) body.overwrite = true;
         if (role === "instrument") {
           body.instrumentSelection = generatrDroneInstrumentSelection;
         } else {
@@ -9734,7 +9807,7 @@
         }
         if (droneSavePresetConfirm) droneSavePresetConfirm.disabled = true;
         if (droneSavePresetStatus) {
-          droneSavePresetStatus.textContent = "Saving…";
+          droneSavePresetStatus.textContent = overwrite ? "Overwriting…" : "Saving…";
           droneSavePresetStatus.className = "generatr-drone-save-preset-status";
         }
         fetch("/api/generatr/drone-save-preset", {
@@ -9745,6 +9818,12 @@
           .then(function (res) { return res.json(); })
           .then(function (data) {
             if (data.error) {
+              if (!overwrite && String(data.error).indexOf("already exists") >= 0) {
+                if (window.confirm('A preset named "' + name + '" already exists. Overwrite it?')) {
+                  generatrDroneSubmitSavePreset(true);
+                  return;
+                }
+              }
               if (droneSavePresetStatus) {
                 droneSavePresetStatus.textContent = data.error;
                 droneSavePresetStatus.className = "generatr-drone-save-preset-status is-error";
@@ -10436,6 +10515,32 @@
       var generatrVstFirstLaunchModal = document.getElementById("generatr-vst-first-launch-modal");
       var generatrVstFirstLaunchContinue = document.getElementById("generatr-vst-first-launch-continue");
       var generatrVstFirstLaunchPendingLaunch = null;
+      var generatrPluginEditorBusyModal = document.getElementById("generatr-plugin-editor-busy-modal");
+      var generatrPluginEditorBusyCancel = document.getElementById("generatr-plugin-editor-busy-cancel");
+
+      function generatrDroneShowPluginEditorBusy() {
+        if (!generatrPluginEditorBusyModal) return;
+        generatrPluginEditorBusyModal.classList.remove("hidden");
+        generatrPluginEditorBusyModal.setAttribute("aria-hidden", "false");
+      }
+
+      function generatrDroneHidePluginEditorBusy() {
+        if (!generatrPluginEditorBusyModal) return;
+        generatrPluginEditorBusyModal.classList.add("hidden");
+        generatrPluginEditorBusyModal.setAttribute("aria-hidden", "true");
+      }
+
+      function generatrDroneCancelPluginEditorWorker() {
+        fetch("/api/generatr/drone-plugin-editor/cancel", { method: "POST" })
+          .catch(function () {});
+        generatrDroneHidePluginEditorBusy();
+      }
+
+      if (generatrPluginEditorBusyCancel) {
+        generatrPluginEditorBusyCancel.addEventListener("click", function () {
+          generatrDroneCancelPluginEditorWorker();
+        });
+      }
 
       function generatrDroneIsNativePluginPath(pluginPath) {
         var path = String(pluginPath || "");
@@ -10508,6 +10613,7 @@
           editorBody.previewContext = generatrDroneBuildEditorPreviewContext();
           if (fxSlotIndex != null) editorBody.fxSlotIndex = fxSlotIndex;
         }
+        generatrDroneShowPluginEditorBusy();
         fetch("/api/generatr/drone-plugin-editor", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -10537,6 +10643,9 @@
                 btn.disabled = false;
               });
             }
+          })
+          .finally(function () {
+            generatrDroneHidePluginEditorBusy();
           });
       }
 

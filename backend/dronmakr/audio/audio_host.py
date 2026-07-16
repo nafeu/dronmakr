@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import contextlib
 import logging
+import math
 import os
 import sys
 import tempfile
@@ -35,12 +36,64 @@ def _get_dawdreamer():
 
 SAMPLE_RATE = 44100
 BUFFER_SIZE = 512
-HEADROOM_GAIN = 0.5  # -6 dB
+# Built-in Faust instruments are already gain-staged in their DSP.
+FAUST_HEADROOM_GAIN = 0.32
+# Samplers/synth plug-ins (Kontakt, etc.) sum voices much hotter offline.
+VST_HEADROOM_GAIN = 0.1
+HEADROOM_GAIN = VST_HEADROOM_GAIN
+# Peak ceiling before PCM export (~-6 dBFS) — static scale only, no dynamics.
+EXPORT_PEAK_LIMIT = 0.5
+MIDI_VELOCITY_GAIN = 0.82
+VST_MIDI_VELOCITY_GAIN = 0.58
+# When offline renders exceed this linear peak, trim before headroom.
+RENDER_GAIN_CEILING = 0.95
+# Leading silence to discard from VST offline renders when MIDI has pre-roll.
+VST_RENDER_PRIME_SEC = 0.35
+PLUGIN_LOAD_MAX_ATTEMPTS = 3
 # DawDreamer returns (channels, samples); first dim is rarely above this for plug-in output.
 MAX_PLUGIN_OUTPUT_CHANNELS = 64
 EXPORT_CHANNEL_COUNT = 2
+PLUGIN_RENDER_WARMUP_SEC = 0.2
+RENDER_TAIL_SEC = 0.25
 
 _LOG = logging.getLogger("dronmakr.audio_host")
+
+def limit_audio_peak(
+    audio: np.ndarray,
+    peak_limit: float = EXPORT_PEAK_LIMIT,
+) -> np.ndarray:
+    """Scale audio down when peaks exceed ``peak_limit`` to avoid export clipping."""
+    out = np.asarray(audio, dtype=np.float32)
+    if out.size == 0:
+        return out
+    peak = float(np.max(np.abs(out)))
+    limit = float(peak_limit)
+    if peak > limit and peak > 1e-12:
+        out = out * (limit / peak)
+    return np.ascontiguousarray(out, dtype=np.float32)
+
+
+def finalize_rendered_audio(
+    audio: np.ndarray,
+    sample_rate: int,
+    *,
+    headroom_gain: float = HEADROOM_GAIN,
+) -> np.ndarray:
+    """Static gain staging and peak cap — no dynamics (avoids loud-first-hit pumping)."""
+    del sample_rate  # kept for call-site compatibility
+    out = np.asarray(audio, dtype=np.float32)
+    if out.size == 0:
+        return out
+    if out.ndim == 1:
+        out = np.column_stack([out, out])
+    peak = float(np.max(np.abs(out)))
+    ceiling = float(RENDER_GAIN_CEILING)
+    if peak > ceiling and peak > 1e-12:
+        out = out * (ceiling / peak)
+    if headroom_gain != 1.0:
+        out = out * float(headroom_gain)
+    return limit_audio_peak(out)
+
 
 # Harmless JUCE stderr noise when DawDreamer loads macOS VST3 bundles (see DBraun/DawDreamer#218).
 _KNOWN_DAWDREAMER_STDERR_NOISE = (
@@ -115,8 +168,28 @@ def load_plugin(engine: Any, plugin_path: str, *, name: str | None = None) -> An
     if is_faust_fx_path(plugin_path):
         return load_faust_effect(engine, faust_fx_id_from_path(plugin_path), name=name)
     proc_name = name or _unique_processor_name("plugin")
-    with _filter_dawdreamer_stderr():
-        return engine.make_plugin_processor(proc_name, os.path.abspath(plugin_path))
+    abs_path = os.path.abspath(plugin_path)
+    label = os.path.basename(abs_path)
+    last_exc: BaseException | None = None
+    for attempt in range(PLUGIN_LOAD_MAX_ATTEMPTS):
+        try:
+            with _filter_dawdreamer_stderr():
+                return engine.make_plugin_processor(proc_name, abs_path)
+        except Exception as exc:
+            last_exc = exc
+            if attempt + 1 >= PLUGIN_LOAD_MAX_ATTEMPTS:
+                break
+            _LOG.warning(
+                "Plug-in load failed for %s (attempt %s/%s): %s",
+                label,
+                attempt + 1,
+                PLUGIN_LOAD_MAX_ATTEMPTS,
+                exc,
+            )
+            time.sleep(PLUGIN_RENDER_WARMUP_SEC * max(1, attempt + 1))
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError(f"Failed to load plug-in: {plugin_path}")
 
 
 def load_instrument(engine: Any, instrument_path: str, *, name: str | None = None) -> Any:
@@ -262,13 +335,76 @@ def _midi_duration_seconds(midi_path: str) -> float:
 
 DRONE_MIDI_TEMPO_BPM = 120
 # Small post-roll so the final note-off and FX tails are not clipped at the block boundary.
-RENDER_TAIL_SEC = 0.25
-# Some VST/AU hosts drop the first offline block unless primed after ``load_state``.
-PLUGIN_RENDER_WARMUP_SEC = 0.2
 MIN_RENDER_PEAK = 1e-5
 
 
-def _inject_midi_notes_from_file(instrument: Any, midi_path: str) -> int:
+def _is_faust_instrument_path(instrument_path: str | None) -> bool:
+    from dronmakr.audio.faust_library import is_faust_instrument_path
+
+    return bool(instrument_path) and is_faust_instrument_path(instrument_path)
+
+
+def _render_staging_for_instrument(
+    instrument_path: str | None,
+    midi_path: str | None = None,
+) -> dict[str, float]:
+    """Per-instrument offline render gain staging (Faust vs VST/AU)."""
+    if _is_faust_instrument_path(instrument_path):
+        return {
+            "headroom_gain": FAUST_HEADROOM_GAIN,
+            "prime_sec": 0.0,
+            "velocity_gain": MIDI_VELOCITY_GAIN,
+        }
+    prime_sec = 0.0
+    if midi_path and os.path.isfile(midi_path):
+        import pretty_midi  # noqa: PLC0415
+
+        pm = pretty_midi.PrettyMIDI(os.path.abspath(midi_path))
+        starts = [
+            float(note.start)
+            for inst in pm.instruments
+            for note in inst.notes
+            if int(note.velocity) > 0
+        ]
+        if starts:
+            first_note = min(starts)
+            # Only discard leading audio when the MIDI itself has pre-roll.
+            if first_note >= 0.12:
+                prime_sec = min(VST_RENDER_PRIME_SEC, first_note * 0.85)
+    return {
+        "headroom_gain": VST_HEADROOM_GAIN,
+        "prime_sec": prime_sec,
+        "velocity_gain": VST_MIDI_VELOCITY_GAIN,
+    }
+
+
+def _count_polyphony_at_time(pm: Any, time_sec: float) -> int:
+    """Notes sounding at ``time_sec`` (for chord-aware MIDI velocity)."""
+    count = 0
+    for inst in pm.instruments:
+        for note in inst.notes:
+            if int(note.velocity) <= 0:
+                continue
+            if float(note.start) <= time_sec < float(note.end):
+                count += 1
+    return max(1, count)
+
+
+def _scaled_midi_velocity(raw_velocity: int, *, polyphony: int, velocity_gain: float) -> int:
+    velocity = int(raw_velocity)
+    if velocity <= 0:
+        return 0
+    poly_scale = 1.0 / math.sqrt(float(max(1, polyphony)))
+    scaled = velocity * float(velocity_gain) * poly_scale
+    return max(1, min(127, int(round(scaled))))
+
+
+def _inject_midi_notes_from_file(
+    instrument: Any,
+    midi_path: str,
+    *,
+    velocity_gain: float = MIDI_VELOCITY_GAIN,
+) -> int:
     """Program note events with ``add_midi_note`` instead of ``load_midi``.
 
     ``load_midi(all_events=True)`` can pull in meta/CC traffic that some hosts mishandle,
@@ -285,9 +421,17 @@ def _inject_midi_notes_from_file(instrument: Any, midi_path: str) -> int:
                 continue
             start = float(note.start)
             duration = max(1e-4, float(note.end - note.start))
+            polyphony = _count_polyphony_at_time(pm, start)
+            velocity = _scaled_midi_velocity(
+                int(note.velocity),
+                polyphony=polyphony,
+                velocity_gain=velocity_gain,
+            )
+            if velocity <= 0:
+                continue
             instrument.add_midi_note(
                 int(note.pitch),
-                int(note.velocity),
+                velocity,
                 start,
                 duration,
                 beats=False,
@@ -302,10 +446,15 @@ def _prepare_instrument_for_render(
     midi_path: str,
     *,
     tempo_bpm: float = DRONE_MIDI_TEMPO_BPM,
+    velocity_gain: float = MIDI_VELOCITY_GAIN,
 ) -> int:
     """Load note events after the graph is wired; returns injected note count."""
     engine.set_bpm(float(tempo_bpm))
-    return _inject_midi_notes_from_file(instrument, midi_path)
+    return _inject_midi_notes_from_file(
+        instrument,
+        midi_path,
+        velocity_gain=velocity_gain,
+    )
 
 
 def _render_output_is_usable(audio: np.ndarray) -> bool:
@@ -322,14 +471,16 @@ def _trim_rendered_audio(
     duration_sec: float,
     sample_rate: int,
     headroom_gain: float,
+    skip_leading_sec: float = 0.0,
 ) -> np.ndarray:
     out = downmix_audio_for_export(daw_audio_to_samples_channels(audio))
+    skip_samples = int(round(max(0.0, float(skip_leading_sec)) * sample_rate))
+    if skip_samples > 0 and out.shape[0] > skip_samples:
+        out = out[skip_samples:]
     target_samples = int(round(float(duration_sec) * sample_rate))
     if out.shape[0] > target_samples:
         out = out[:target_samples]
-    if headroom_gain != 1.0:
-        out = out * float(headroom_gain)
-    return out
+    return finalize_rendered_audio(out, sample_rate, headroom_gain=headroom_gain)
 
 
 def _render_loaded_midi_graph(
@@ -342,21 +493,32 @@ def _render_loaded_midi_graph(
     sample_rate: int,
     headroom_gain: float,
     tempo_bpm: float = DRONE_MIDI_TEMPO_BPM,
+    instrument_path: str | None = None,
 ) -> np.ndarray:
+    staging = _render_staging_for_instrument(instrument_path, midi_path)
+    effective_headroom = staging["headroom_gain"]
+    prime_sec = staging["prime_sec"]
+    velocity_gain = staging["velocity_gain"]
+
     engine.load_graph(graph)
     note_count = _prepare_instrument_for_render(
-        engine, instrument, midi_path, tempo_bpm=tempo_bpm
+        engine,
+        instrument,
+        midi_path,
+        tempo_bpm=tempo_bpm,
+        velocity_gain=velocity_gain,
     )
     if note_count <= 0:
         raise ValueError(f"No playable notes found in MIDI file: {midi_path}")
     if PLUGIN_RENDER_WARMUP_SEC > 0:
         time.sleep(PLUGIN_RENDER_WARMUP_SEC)
-    engine.render(float(duration_sec) + RENDER_TAIL_SEC)
+    engine.render(float(duration_sec) + RENDER_TAIL_SEC + float(prime_sec))
     return _trim_rendered_audio(
         engine.get_audio(),
         duration_sec=duration_sec,
         sample_rate=sample_rate,
-        headroom_gain=headroom_gain,
+        headroom_gain=effective_headroom,
+        skip_leading_sec=prime_sec,
     )
 
 
@@ -700,45 +862,60 @@ def render_midi_chain_from_paths(
     host_bpm = float(tempo_bpm if tempo_bpm is not None else DRONE_MIDI_TEMPO_BPM)
 
     last_out: np.ndarray | None = None
-    for attempt in range(2):
-        engine = create_engine(sample_rate, buffer_size)
-        inst = load_instrument(engine, instrument_path, name="instrument")
-        if instrument_state_path:
-            apply_plugin_state(inst, instrument_state_path)
+    last_exc: BaseException | None = None
+    for attempt in range(PLUGIN_LOAD_MAX_ATTEMPTS):
+        try:
+            engine = create_engine(sample_rate, buffer_size)
+            inst = load_instrument(engine, instrument_path, name="instrument")
+            if instrument_state_path:
+                apply_plugin_state(inst, instrument_state_path)
 
-        fx_procs = []
-        for idx, (fx_path, fx_state) in enumerate(fx_specs):
-            from dronmakr.presets.preset_authoring import resolve_fx_plugin_path
+            fx_procs = []
+            for idx, (fx_path, fx_state) in enumerate(fx_specs):
+                from dronmakr.presets.preset_authoring import resolve_fx_plugin_path
 
-            resolved_path = resolve_fx_plugin_path(fx_path)
-            fx = load_plugin(engine, resolved_path, name=f"fx_{idx}")
-            if fx_state and os.path.abspath(resolved_path) == os.path.abspath(fx_path):
-                apply_plugin_state(fx, fx_state)
-            elif fx_state:
-                with contextlib.suppress(Exception):
+                resolved_path = resolve_fx_plugin_path(fx_path)
+                fx = load_plugin(engine, resolved_path, name=f"fx_{idx}")
+                if fx_state and os.path.abspath(resolved_path) == os.path.abspath(fx_path):
                     apply_plugin_state(fx, fx_state)
-            fx_procs.append(fx)
+                elif fx_state:
+                    with contextlib.suppress(Exception):
+                        apply_plugin_state(fx, fx_state)
+                fx_procs.append(fx)
 
-        graph = _build_plugin_graph(inst, fx_procs)
-        last_out = _render_loaded_midi_graph(
-            engine,
-            graph,
-            inst,
-            midi_path,
-            float(dur),
-            sample_rate=sample_rate,
-            headroom_gain=headroom_gain,
-            tempo_bpm=host_bpm,
-        )
-        if _render_output_is_usable(last_out):
-            return last_out
-        if attempt == 0:
-            _LOG.warning(
-                "DawDreamer render looked empty or invalid; retrying once after plugin warmup"
+            graph = _build_plugin_graph(inst, fx_procs)
+            last_out = _render_loaded_midi_graph(
+                engine,
+                graph,
+                inst,
+                midi_path,
+                float(dur),
+                sample_rate=sample_rate,
+                headroom_gain=headroom_gain,
+                tempo_bpm=host_bpm,
+                instrument_path=instrument_path,
             )
-            time.sleep(PLUGIN_RENDER_WARMUP_SEC)
+            if _render_output_is_usable(last_out):
+                return last_out
+            _LOG.warning(
+                "DawDreamer render looked empty or invalid (attempt %s/%s)",
+                attempt + 1,
+                PLUGIN_LOAD_MAX_ATTEMPTS,
+            )
+        except Exception as exc:
+            last_exc = exc
+            _LOG.warning(
+                "Plug-in render chain failed (attempt %s/%s): %s",
+                attempt + 1,
+                PLUGIN_LOAD_MAX_ATTEMPTS,
+                exc,
+            )
+        if attempt + 1 < PLUGIN_LOAD_MAX_ATTEMPTS:
+            time.sleep(PLUGIN_RENDER_WARMUP_SEC * max(1, attempt + 1))
 
     if last_out is None:
+        if last_exc is not None:
+            raise RuntimeError(f"DawDreamer render failed: {last_exc}") from last_exc
         raise RuntimeError("DawDreamer render produced no audio")
     if not _render_output_is_usable(last_out):
         raise RuntimeError(
@@ -804,7 +981,8 @@ def render_wav_through_fx_paths(
     if warmup_sec > 0:
         time.sleep(float(warmup_sec))
     engine.render(duration_sec + max(0.0, float(tail_sec)))
-    return daw_audio_to_samples_channels(engine.get_audio()), sample_rate
+    out = daw_audio_to_samples_channels(engine.get_audio())
+    return finalize_rendered_audio(out, sample_rate), sample_rate
 
 
 def reload_plugin_preserving_state(

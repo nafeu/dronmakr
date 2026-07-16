@@ -723,6 +723,7 @@ def _apply_drone_post_processing_to_wavs(
             actions,
             on_before_chain_step=_pp_step_banner,
             on_before_finalize_normalize=_pp_normalize_banner,
+            normalize_peak_db=-6.0,
         )
         print(f"{BLUE}│{RESET}")
 
@@ -1818,6 +1819,25 @@ def _handle_drone_plugin_editor():
                 pass
 
 
+def _handle_drone_plugin_editor_cancel():
+    try:
+        from dronmakr.audio.audio_worker import cancel_editor_worker
+
+        cancelled = cancel_editor_worker()
+        return jsonify({"ok": True, "cancelled": cancelled})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+def _handle_drone_plugin_editor_status():
+    try:
+        from dronmakr.audio.audio_worker import editor_worker_status
+
+        return jsonify(editor_worker_status())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 def _handle_drone_midi_patterns():
     include_previews = (request.args.get("previews") or "").strip().lower() in (
         "1",
@@ -1925,6 +1945,7 @@ def _handle_drone_save_preset():
             name=name,
             instrument_selection=data.get("instrumentSelection"),
             fx_slots=data.get("fxSlots"),
+            overwrite=bool(data.get("overwrite")),
         )
         return jsonify(result)
     except ValueError as e:
@@ -2171,6 +2192,18 @@ def register_auditionr(app, socketio):
         "auditionr_api_drone_plugin_editor",
         _handle_drone_plugin_editor,
         methods=["POST"],
+    )
+    app.add_url_rule(
+        "/api/generatr/drone-plugin-editor/cancel",
+        "auditionr_api_drone_plugin_editor_cancel",
+        _handle_drone_plugin_editor_cancel,
+        methods=["POST"],
+    )
+    app.add_url_rule(
+        "/api/generatr/drone-plugin-editor/status",
+        "auditionr_api_drone_plugin_editor_status",
+        _handle_drone_plugin_editor_status,
+        methods=["GET"],
     )
     app.add_url_rule(
         "/api/generatr/drone-chord-scale-catalog",

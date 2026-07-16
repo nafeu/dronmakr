@@ -467,6 +467,7 @@ def save_drone_preset(
     name: str,
     instrument_selection: dict | None = None,
     fx_slots: list | None = None,
+    overwrite: bool = False,
 ) -> dict:
     """Persist instrument or FX selection(s) into ``presets.json``."""
     role = (role or "instrument").strip().lower()
@@ -474,7 +475,14 @@ def save_drone_preset(
     if not preset_name:
         raise ValueError("Preset name is required.")
     if name_exists(preset_name):
-        raise ValueError(f"A preset named '{preset_name}' already exists.")
+        if not overwrite:
+            raise ValueError(
+                f"A preset named '{preset_name}' already exists. "
+                "Choose overwrite to replace it."
+            )
+        from dronmakr.presets.preset_authoring import delete_preset_by_name
+
+        delete_preset_by_name(preset_name)
 
     if role == "instrument":
         if not isinstance(instrument_selection, dict):

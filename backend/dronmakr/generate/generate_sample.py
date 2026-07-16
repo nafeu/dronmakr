@@ -17,6 +17,7 @@ from dronmakr.audio.audio_host import (
     HEADROOM_GAIN,
     SAMPLE_RATE,
     daw_audio_to_samples_channels,
+    limit_audio_peak,
     render_midi_chain_from_paths,
     render_wav_through_fx_paths,
     samples_channels_to_daw_audio,
@@ -337,6 +338,7 @@ def _write_validated_export_wav(output_path: str, audio: np.ndarray, sample_rate
         raise RuntimeError("Render produced invalid audio and cannot be exported.")
     if arr.ndim != 2 or arr.shape[0] <= 0:
         raise RuntimeError(f"Render produced unexpected audio shape {arr.shape!r}.")
+    arr = limit_audio_peak(arr)
 
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
     output_dir = os.path.dirname(os.path.abspath(output_path)) or "."

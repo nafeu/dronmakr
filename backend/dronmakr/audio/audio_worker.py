@@ -9,6 +9,7 @@ re-invokes the same app binary with ``--audio-worker`` so work runs on a real ma
 from __future__ import annotations
 
 import builtins
+import contextlib
 import json
 import os
 import subprocess
@@ -20,6 +21,42 @@ _WORKER_FLAG = "--audio-worker"
 _WORKER_CHILD_ENV = "DRONMAKR_AUDIO_WORKER"
 _ASYNC_THREADING_ENV = "DRONMAKR_ASYNC_MODE"
 _WORKER_TIMEOUT_S = int(os.environ.get("DRONMAKR_AUDIO_WORKER_TIMEOUT", "3600"))
+_editor_worker_lock = threading.Lock()
+_editor_worker_proc: subprocess.Popen[bytes] | None = None
+
+
+def editor_worker_status() -> dict:
+    """Return whether a plug-in editor audio-worker child is still running."""
+    with _editor_worker_lock:
+        proc = _editor_worker_proc
+        if proc is None:
+            return {"active": False, "pid": None}
+        if proc.poll() is not None:
+            return {"active": False, "pid": proc.pid}
+        return {"active": True, "pid": proc.pid}
+
+
+def cancel_editor_worker() -> bool:
+    """Terminate the active plug-in editor worker subprocess, if any."""
+    global _editor_worker_proc
+    with _editor_worker_lock:
+        proc = _editor_worker_proc
+        if proc is None or proc.poll() is not None:
+            _editor_worker_proc = None
+            return False
+        try:
+            proc.terminate()
+            proc.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            with contextlib.suppress(subprocess.TimeoutExpired):
+                proc.wait(timeout=2)
+        except OSError:
+            with contextlib.suppress(OSError, subprocess.TimeoutExpired):
+                proc.kill()
+                proc.wait(timeout=2)
+        _editor_worker_proc = None
+        return True
 
 
 def _should_delegate_to_worker() -> bool:
@@ -62,6 +99,12 @@ def _patch_print_to_stderr() -> None:
 
 
 def invoke_audio_worker(task: str, params: dict) -> dict:
+    if task == "open_drone_plugin_editor":
+        return _invoke_editor_worker(params)
+    return _invoke_blocking_worker(task, params)
+
+
+def _invoke_blocking_worker(task: str, params: dict) -> dict:
     cmd = _worker_argv()
     env = os.environ.copy()
     env.pop(_ASYNC_THREADING_ENV, None)
@@ -77,26 +120,69 @@ def invoke_audio_worker(task: str, params: dict) -> dict:
         timeout=_WORKER_TIMEOUT_S,
         check=False,
     )
-    err_txt = proc.stderr.decode("utf-8", errors="replace").strip()
-    out_txt = proc.stdout.decode("utf-8", errors="replace").strip()
+    return _parse_worker_process_output(proc.returncode, proc.stdout, proc.stderr)
+
+
+def _invoke_editor_worker(params: dict) -> dict:
+    global _editor_worker_proc
+    cmd = _worker_argv()
+    env = os.environ.copy()
+    env.pop(_ASYNC_THREADING_ENV, None)
+    env[_WORKER_CHILD_ENV] = "1"
+    payload = json.dumps(
+        {"task": "open_drone_plugin_editor", "params": params},
+        ensure_ascii=False,
+    ).encode("utf-8")
+    popen_kwargs: dict = {
+        "stdin": subprocess.PIPE,
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+        "env": env,
+        "cwd": str(_backend_root()),
+    }
+    if sys.platform == "win32":
+        popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
+    else:
+        popen_kwargs["start_new_session"] = True
+
+    with _editor_worker_lock:
+        proc = subprocess.Popen(cmd, **popen_kwargs)
+        _editor_worker_proc = proc
+    try:
+        stdout, stderr = proc.communicate(input=payload, timeout=_WORKER_TIMEOUT_S)
+        return _parse_worker_process_output(proc.returncode, stdout, stderr)
+    except subprocess.TimeoutExpired:
+        cancel_editor_worker()
+        raise RuntimeError(
+            "Plug-in editor worker timed out and was closed. Try opening the editor again."
+        ) from None
+    finally:
+        with _editor_worker_lock:
+            if _editor_worker_proc is proc:
+                _editor_worker_proc = None
+
+
+def _parse_worker_process_output(returncode: int, stdout: bytes, stderr: bytes) -> dict:
+    err_txt = stderr.decode("utf-8", errors="replace").strip()
+    out_txt = stdout.decode("utf-8", errors="replace").strip()
     last_json = None
     if out_txt:
         try:
             last_json = json.loads(out_txt.splitlines()[-1])
         except json.JSONDecodeError:
             last_json = None
-    if proc.returncode != 0:
+    if returncode != 0:
         if isinstance(last_json, dict) and last_json.get("ok"):
             _ORIGINAL_BUILTIN_PRINT(
-                f"[audio_worker] child exited {proc.returncode} after success; "
+                f"[audio_worker] child exited {returncode} after success; "
                 "treating JSON result as OK (DawDreamer teardown abort)",
                 file=sys.stderr,
             )
             return last_json
         if isinstance(last_json, dict) and last_json.get("error"):
             raise RuntimeError(last_json["error"])
-        msg = err_txt or out_txt or f"exit {proc.returncode}"
-        raise RuntimeError(f"Audio worker failed ({proc.returncode}): {msg}")
+        msg = err_txt or out_txt or f"exit {returncode}"
+        raise RuntimeError(f"Audio worker failed ({returncode}): {msg}")
     if not out_txt or last_json is None:
         raise RuntimeError("Audio worker produced no valid JSON stdout")
     data = last_json
