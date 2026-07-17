@@ -2089,8 +2089,47 @@
 
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     let isPlaying = false;
+    let playbackStarting = false;
     let currentStep = 0;
     let playIntervalId = null;
+    let playbackGeneration = 0;
+    const activePlaybackSources = new Set();
+
+    function trackPlaybackSource(source) {
+      activePlaybackSources.add(source);
+      source.onended = () => {
+        activePlaybackSources.delete(source);
+      };
+    }
+
+    function stopAllPlaybackSources() {
+      activePlaybackSources.forEach((src) => {
+        try {
+          src.stop();
+        } catch (_) { }
+      });
+      activePlaybackSources.clear();
+    }
+
+    function clearPlaybackInterval() {
+      if (playIntervalId !== null) {
+        clearInterval(playIntervalId);
+        playIntervalId = null;
+      }
+    }
+
+    function invalidatePlaybackTimers() {
+      playbackGeneration += 1;
+      clearPlaybackInterval();
+    }
+
+    function startPlaybackInterval(generation) {
+      clearPlaybackInterval();
+      playIntervalId = setInterval(() => {
+        if (!isPlaying || generation !== playbackGeneration) return;
+        advanceStep();
+      }, getStepDurationSec() * 1000);
+    }
 
     function initEmptyPattern() {
       const steps = getSteps();
@@ -2918,6 +2957,7 @@
         source.connect(gainNode);
         gainNode.connect(audioCtx.destination);
         const playAt = Math.max(when + getTimingRandomizationJitterSecForRow(rowKey), audioCtx.currentTime + 0.001);
+        trackPlaybackSource(source);
         source.start(playAt);
       });
     }
@@ -2929,26 +2969,37 @@
     }
 
     async function startPlayback() {
-      if (isPlaying) return;
-      if (audioCtx.state === "suspended") {
-        await audioCtx.resume();
-      }
-      isPlaying = true;
-      currentStep = 0;
-      playToggleBtn.innerHTML = "<i class=\"fa-solid fa-pause\"></i>";
-      playToggleBtn.title = "Pause";
+      if (isPlaying || playbackStarting) return;
+      playbackStarting = true;
+      try {
+        if (audioCtx.state === "suspended") {
+          await audioCtx.resume();
+        }
+        if (isPlaying) return;
 
-      advanceStep();
-      playIntervalId = setInterval(advanceStep, getStepDurationSec() * 1000);
+        invalidatePlaybackTimers();
+        const generation = playbackGeneration;
+        isPlaying = true;
+        currentStep = 0;
+        playToggleBtn.innerHTML = "<i class=\"fa-solid fa-pause\"></i>";
+        playToggleBtn.title = "Pause";
+
+        advanceStep();
+        startPlaybackInterval(generation);
+      } finally {
+        playbackStarting = false;
+      }
     }
 
     function restartPlaybackInterval() {
-      if (!isPlaying || playIntervalId === null) return;
-      clearInterval(playIntervalId);
-      playIntervalId = setInterval(advanceStep, getStepDurationSec() * 1000);
+      if (!isPlaying) return;
+      startPlaybackInterval(playbackGeneration);
     }
 
     function stopPlayback() {
+      invalidatePlaybackTimers();
+      stopAllPlaybackSources();
+      playbackStarting = false;
       if (!isPlaying) {
         clearPlayhead();
         currentStep = 0;
@@ -2957,10 +3008,6 @@
       isPlaying = false;
       playToggleBtn.innerHTML = "<i class=\"fa-solid fa-play\"></i>";
       playToggleBtn.title = "Play";
-      if (playIntervalId !== null) {
-        clearInterval(playIntervalId);
-        playIntervalId = null;
-      }
       clearPlayhead();
       currentStep = 0;
     }
@@ -4078,8 +4125,15 @@
 
     bootstrapBeatbuildrLocalState();
 
+    function stopPlaybackOnPageHide() {
+      stopPlayback();
+    }
+
+    window.addEventListener("pagehide", stopPlaybackOnPageHide);
+
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "hidden") {
+        stopPlaybackOnPageHide();
         if (beatbuildrPersistTimer) {
           clearTimeout(beatbuildrPersistTimer);
           beatbuildrPersistTimer = null;
