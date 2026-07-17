@@ -17,7 +17,7 @@
     "e2e:install": "playwright install chromium"
   },
   "devDependencies": {
-    "@playwright/test": "^1.51.0",
+    "@playwright/test": "^1.61.1",
     "@tauri-apps/cli": "^2.11.2",
     "typescript": "^5.8.2"
   }

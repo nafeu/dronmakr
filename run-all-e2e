@@ -1,46 +1,43 @@
 #!/usr/bin/env bash
-# Orchestrate local E2E across macOS native and optional UTM guests.
+# Run E2E on the current machine only.
+# Linux/Windows VMs: clone repo inside guest and use the per-OS script there.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
 
-TARGETS=()
 BUILD=0
-UTM_LINUX=0
-UTM_WINDOWS=0
 
 usage() {
   cat <<'EOF'
 Usage: ./run-all-e2e [options] [-- playwright-args...]
 
-Options:
-  --build           Build packaged app before tests
-  --macos           Run macOS native E2E (default when on Darwin)
-  --linux           Run Linux E2E on this machine (or UTM guest via SSH)
-  --windows         Run Windows E2E via UTM guest (SSH/WinRM stub)
-  --utm-linux       Boot UTM Ubuntu VM, copy build, run guest script
-  --utm-windows     Boot UTM Windows VM (stub)
-  --backend-only    Skip packaged app; run Python backend only (fast dev)
-  -h, --help        Show help
+Runs E2E on THIS machine (no SSH, no UTM orchestration).
 
-Env:
-  UTM_LINUX_VM      UTM VM name (default: dronmakr-ubuntu-e2e)
-  UTM_LINUX_SSH     guest SSH target (default: dronmakr@127.0.0.1 -p 2222)
-  E2E_BACKEND_ONLY  1 = backend-only mode for guest runners
+  macOS host  -> scripts/e2e/run-macos-e2e.sh
+  Linux host  -> scripts/e2e/run-linux-e2e.sh (ubuntu/arch auto-detect)
+  Windows     -> run scripts/e2e/run-windows-e2e.ps1 inside the VM
+
+Inside VMs (after git pull):
+  ./scripts/e2e/run-ubuntu-e2e.sh
+  ./scripts/e2e/run-arch-e2e.sh
+  .\scripts\e2e\run-windows-e2e.ps1
+
+Options:
+  --build         npm run build before E2E (packaged app mode)
+  --backend-only  Skip packaged app; run Python sidecar only (fast dev)
+  -h, --help      Show help
+
+One-time VM setup: docs/e2e-vm-setup.md
 EOF
 }
 
+PLAYWRIGHT_ARGS=()
 while (($#)); do
   case "$1" in
     --build) BUILD=1; shift ;;
-    --macos) TARGETS+=("macos"); shift ;;
-    --linux) TARGETS+=("linux"); shift ;;
-    --windows) TARGETS+=("windows"); shift ;;
-    --utm-linux) UTM_LINUX=1; shift ;;
-    --utm-windows) UTM_WINDOWS=1; shift ;;
     --backend-only) export E2E_BACKEND_ONLY=1; shift ;;
-    -h|--help) usage; exit 0 ;;
+    -h | --help) usage; exit 0 ;;
     --)
       shift
       PLAYWRIGHT_ARGS=("$@")
@@ -53,95 +50,32 @@ while (($#)); do
   esac
 done
 
-if ((${#TARGETS[@]} == 0)); then
-  case "$(uname -s)" in
-    Darwin) TARGETS=("macos") ;;
-    Linux) TARGETS=("linux") ;;
-    *) TARGETS=("macos") ;;
-  esac
-fi
-
-if [[ "$BUILD" == "1" ]]; then
-  echo "run-all-e2e: building packaged app..."
+if [[ "$BUILD" == "1" && "${E2E_BACKEND_ONLY:-0}" != "1" ]]; then
   if [[ ! -d venv ]]; then
     echo "run-all-e2e: venv/ missing" >&2
     exit 1
   fi
   source venv/bin/activate
+  echo "run-all-e2e: building packaged app..."
   npm run build
 fi
 
-utm_start_vm() {
-  local vm_name="$1"
-  if command -v utmctl >/dev/null 2>&1; then
-    echo "run-all-e2e: starting UTM VM ${vm_name} via utmctl"
-    utmctl start "$vm_name" || true
-    return 0
-  fi
-  echo "run-all-e2e: utmctl not found — start VM '${vm_name}' manually in UTM" >&2
-}
-
-utm_wait_ssh() {
-  local ssh_target="$1"
-  local timeout_s="${2:-300}"
-  echo "run-all-e2e: waiting for guest SSH (${ssh_target})"
-  deadline=$((SECONDS + timeout_s))
-  while ((SECONDS < deadline)); do
-    if ssh -o BatchMode=yes -o ConnectTimeout=5 -o StrictHostKeyChecking=no \
-      $ssh_target "echo guest-ready" >/dev/null 2>&1; then
-      echo "run-all-e2e: guest SSH ready"
-      return 0
-    fi
-    sleep 3
-  done
-  echo "run-all-e2e: guest SSH not ready after ${timeout_s}s" >&2
-  return 1
-}
-
-run_utm_linux() {
-  local vm="${UTM_LINUX_VM:-dronmakr-ubuntu-e2e}"
-  local ssh="${UTM_LINUX_SSH:-dronmakr@127.0.0.1 -p 2222}"
-  utm_start_vm "$vm"
-  utm_wait_ssh "$ssh" 300
-
-  local version
-  version="$(PYTHONPATH=backend python -c 'from dronmakr.version import __version__; print(__version__)')"
-  local archive="dist-artifacts/dronmakr-v${version}-linux-x64.tar.gz"
-  if [[ ! -f "$archive" ]]; then
-    echo "run-all-e2e: Linux archive missing at ${archive} — run with --build" >&2
+case "$(uname -s)" in
+  Darwin)
+    bash scripts/e2e/run-macos-e2e.sh "${PLAYWRIGHT_ARGS[@]:-}"
+    ;;
+  Linux)
+    bash scripts/e2e/run-linux-e2e.sh "${PLAYWRIGHT_ARGS[@]:-}"
+    ;;
+  MINGW* | MSYS* | CYGWIN* | Windows*)
+    echo "run-all-e2e: use PowerShell inside Windows VM:" >&2
+    echo "  .\\scripts\\e2e\\run-windows-e2e.ps1" >&2
     exit 1
-  fi
+    ;;
+  *)
+    echo "run-all-e2e: unsupported OS $(uname -s)" >&2
+    exit 1
+    ;;
+esac
 
-  echo "run-all-e2e: copying build to guest..."
-  scp -o StrictHostKeyChecking=no -P 2222 "$archive" dronmakr@127.0.0.1:/tmp/dronmakr-e2e.tar.gz
-
-  ssh -o StrictHostKeyChecking=no -p 2222 dronmakr@127.0.0.1 \
-    "mkdir -p ~/dronmakr-e2e && tar -xzf /tmp/dronmakr-e2e.tar.gz -C ~/dronmakr-e2e && \
-     cd ~/dronmakr/repo 2>/dev/null || cd ~/dronmakr-e2e && \
-     DRONMAKR_TEST=1 E2E_BACKEND_ONLY=${E2E_BACKEND_ONLY:-0} bash scripts/e2e/run-linux-e2e.sh ${PLAYWRIGHT_ARGS[*]:-}"
-}
-
-for target in "${TARGETS[@]}"; do
-  case "$target" in
-    macos)
-      bash scripts/e2e/run-macos-e2e.sh "${PLAYWRIGHT_ARGS[@]:-}"
-      ;;
-    linux)
-      if [[ "$UTM_LINUX" == "1" ]]; then
-        run_utm_linux
-      else
-        bash scripts/e2e/run-linux-e2e.sh "${PLAYWRIGHT_ARGS[@]:-}"
-      fi
-      ;;
-    windows)
-      echo "run-all-e2e: Windows guest runner not wired yet — use scripts/e2e/run-windows-e2e.ps1 in VM" >&2
-      exit 1
-      ;;
-  esac
-done
-
-if [[ "$UTM_WINDOWS" == "1" ]]; then
-  echo "run-all-e2e: UTM Windows automation stub — start VM manually" >&2
-fi
-
-echo "run-all-e2e: all targets passed"
+echo "run-all-e2e: PASS"
