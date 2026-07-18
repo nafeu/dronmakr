@@ -1,6 +1,6 @@
 [package]
 name = "dronmakr"
-version = "0.58.8"
+version = "0.58.9"
 description = "dronmakr desktop app"
 authors = ["Nafeu"]
 license = "GPL-3.0-only"
