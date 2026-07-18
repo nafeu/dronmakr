@@ -74,6 +74,7 @@ FILES_ROOT_KEY = "FILES_ROOT"
 MANAGED_SUBDIRS = [
     "presets",
     "exports",
+    "midi",
     "archive",
     "saved",
     "recordings",

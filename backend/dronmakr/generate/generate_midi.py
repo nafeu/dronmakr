@@ -328,6 +328,22 @@ def write_drone_midi_temp(midi: pretty_midi.PrettyMIDI) -> str:
     return path
 
 
+def save_drone_midi_export(midi: pretty_midi.PrettyMIDI, unique_id: str) -> str:
+    """Persist drone MIDI under FILES_ROOT/midi/{unique_id}.mid for DAW export."""
+    from dronmakr.core.utils import MIDI_DIR, refresh_managed_path_constants
+
+    refresh_managed_path_constants()
+    if not MIDI_DIR:
+        raise RuntimeError("MIDI_DIR is not configured")
+    safe_id = re.sub(r"[^a-zA-Z0-9_-]", "", str(unique_id or "").strip())
+    if not safe_id:
+        raise ValueError("unique_id is required")
+    os.makedirs(MIDI_DIR, exist_ok=True)
+    path = os.path.join(MIDI_DIR, f"{safe_id}.mid")
+    midi.write(path)
+    return path
+
+
 DRUM_ROW_ORDER = [
     "kick", "snar", "ghos", "clap", "hhat", "halt",
     "shkr", "prca", "prcb", "prcc", "tomm", "cymb",

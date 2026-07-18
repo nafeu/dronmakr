@@ -52,6 +52,7 @@ from dronmakr.generate.generate_midi import (
     get_patterns_catalog,
     build_midi_preview_payload,
     format_pattern_display_name,
+    save_drone_midi_export,
     write_drone_midi_temp,
     extract_drone_piano_notes_from_midi_bytes,
 )
@@ -265,15 +266,73 @@ def _resolve_managed_audio_path(path_value: str) -> str | None:
     elif raw.startswith("/trash/"):
         slug = raw[len("/trash/") :].strip()
         candidate = os.path.join(managed_paths.TRASH_DIR, normalize_path_basename(slug))
+    elif raw.startswith("/midi/"):
+        slug = raw[len("/midi/") :].strip()
+        candidate = os.path.join(managed_paths.MIDI_DIR, normalize_path_basename(slug))
     else:
         candidate = raw
 
     abs_candidate = os.path.abspath(candidate)
-    for root in _MANAGED_AUDIO_ROOTS:
+    for root in _managed_file_roots():
         abs_root = os.path.abspath(root)
         if abs_candidate == abs_root or abs_candidate.startswith(abs_root + os.sep):
             return abs_candidate
     return None
+
+
+def _managed_file_roots() -> list[str]:
+    return [
+        p
+        for p in (
+            managed_paths.EXPORTS_DIR,
+            managed_paths.ARCHIVE_DIR,
+            managed_paths.SAVED_DIR,
+            managed_paths.TRASH_DIR,
+            managed_paths.MIDI_DIR,
+        )
+        if p
+    ]
+
+
+def list_export_midi_ids() -> list[str]:
+    """Basenames (without .mid) of persisted drone MIDI exports."""
+    if not managed_paths.MIDI_DIR or not os.path.isdir(managed_paths.MIDI_DIR):
+        return []
+    ids: list[str] = []
+    try:
+        for name in os.listdir(managed_paths.MIDI_DIR):
+            if not name.lower().endswith(".mid"):
+                continue
+            path = os.path.join(managed_paths.MIDI_DIR, name)
+            if os.path.isfile(path):
+                ids.append(os.path.splitext(name)[0])
+    except OSError:
+        return []
+    return sorted(ids)
+
+
+def resolve_export_midi_abs_path(midi_id: str) -> str | None:
+    safe = normalize_path_basename(str(midi_id or "").strip())
+    if not safe:
+        return None
+    if not safe.lower().endswith(".mid"):
+        safe = f"{safe}.mid"
+    return _resolve_managed_audio_path(f"/midi/{safe}")
+
+
+def api_auditionr_midi_index():
+    return jsonify({"ids": list_export_midi_ids()})
+
+
+def api_auditionr_midi_abs_path():
+    params = request.get_json() or {}
+    midi_id = (params.get("midiId") or params.get("id") or "").strip()
+    if not midi_id:
+        return jsonify({"error": "midiId is required."}), 400
+    abs_path = resolve_export_midi_abs_path(midi_id)
+    if not abs_path or not os.path.isfile(abs_path):
+        return jsonify({"error": "MIDI file not found."}), 404
+    return jsonify({"absPath": abs_path, "midiId": os.path.splitext(os.path.basename(abs_path))[0]}), 200
 
 
 def _open_files_with_default_player(file_paths):
@@ -1189,12 +1248,13 @@ def _run_generate_drone(payload: dict) -> list[str]:
         )
         chart_label = "custom" if custom_notes else selected_chart
         tempo_bpm = int(midi_kwargs.get("tempo_bpm") or 120)
+        unique_id = generate_id()
         base_sample_name = (
-            f"{generate_drone_name()}_-_{chart_label}_-_{tempo_bpm}bpm_-_{generate_id()}"
+            f"{generate_drone_name()}_-_{chart_label}_-_{tempo_bpm}bpm_-_{unique_id}"
         )
         sample_name = format_name(f"drone___{base_sample_name}")
         output_path = f"{managed_paths.EXPORTS_DIR}/{sample_name}"
-        midi_temp = write_drone_midi_temp(midi_obj)
+        midi_path = save_drone_midi_export(midi_obj, unique_id)
         iteration_selection = instrument_selection
         if isinstance(instrument_selection, dict) and instrument_selection.get("kind") == "pool":
             from dronmakr.apps.drone_instrument_pool import (
@@ -1210,7 +1270,7 @@ def _run_generate_drone(payload: dict) -> list[str]:
             iteration_selection = pool_item_to_instrument_selection(picked)
         try:
             generated_sample = generate_drone_sample(
-                input_path=midi_temp,
+                input_path=midi_path,
                 output_path=f"{output_path}.wav",
                 presets_path=presets_path,
                 instrument=instrument,
@@ -1220,11 +1280,13 @@ def _run_generate_drone(payload: dict) -> list[str]:
                 instrument_selection=iteration_selection,
                 fx_slots=fx_slots,
             )
-        finally:
+        except Exception:
             try:
-                os.remove(midi_temp)
+                if os.path.isfile(midi_path):
+                    os.remove(midi_path)
             except OSError:
                 pass
+            raise
         results.append(generated_sample)
 
     wav_files = [f for f in results if f.endswith(".wav")]
@@ -2153,6 +2215,18 @@ def register_auditionr(app, socketio):
     )
     app.add_url_rule(
         "/reveal", "auditionr_reveal", reveal_in_explorer, methods=["POST"]
+    )
+    app.add_url_rule(
+        "/api/auditionr/midi-index",
+        "auditionr_api_midi_index",
+        api_auditionr_midi_index,
+        methods=["GET"],
+    )
+    app.add_url_rule(
+        "/api/auditionr/midi-abs-path",
+        "auditionr_api_midi_abs_path",
+        api_auditionr_midi_abs_path,
+        methods=["POST"],
     )
     app.add_url_rule(
         "/undo-status", "auditionr_undo_status", undo_status, methods=["POST"]

@@ -4146,7 +4146,7 @@
       text-align: left;
       box-sizing: border-box;
       padding: 0;
-      padding-right: 5px;
+      padding-right: 2px;
     }
 
     .waveform-title-edit-icon {
@@ -4172,8 +4172,11 @@
     }
 
     .waveform-title-row:hover .waveform-title-copy-icon,
+    .waveform-title-row:hover .waveform-title-midi-icon:not(.hidden),
     .waveform-title-copy-icon.waveform-copy-ready,
-    .waveform-title-copy-icon.waveform-copy-busy {
+    .waveform-title-copy-icon.waveform-copy-busy,
+    .waveform-title-midi-icon.waveform-copy-ready,
+    .waveform-title-midi-icon.waveform-copy-busy {
       opacity: 1;
     }
 
@@ -4182,6 +4185,36 @@
     }
 
     .waveform-title-copy-icon.waveform-copy-busy {
+      opacity: 0.55;
+      pointer-events: none;
+    }
+
+    .waveform-title-midi-icon {
+      opacity: 0.72;
+      flex-shrink: 0;
+      font-size: 0.65rem;
+      min-width: 1em;
+      margin-left: -2px;
+      transition: opacity 0.12s ease, color 0.12s ease;
+      color: var(--theme-c);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      padding: 0;
+    }
+
+    .waveform-title-midi-icon.hidden {
+      display: none !important;
+    }
+
+    .waveform-title-midi-icon.waveform-copy-ready {
+      color: var(--theme-e);
+    }
+
+    .waveform-title-midi-icon.waveform-copy-busy {
       opacity: 0.55;
       pointer-events: none;
     }
@@ -5536,11 +5569,17 @@
         }
         auditionrExportsBootstrapped = true;
       }
+      if (Array.isArray(data.midiIds)) {
+        auditionrMidiIds = data.midiIds.slice();
+      }
       applyExportsUpdate(
         data.files || [],
         data.updated_path || null,
         data.undo_available || null
       );
+      auditionrRefreshMidiIndex().then(function () {
+        auditionrRefreshAllMidiButtons();
+      });
     }
 
     function auditionrBootstrapExports(data) {
@@ -5596,6 +5635,7 @@
     var sharedAudioContext = null;
     var currentDrumpatternStop = null;
     var waveformDurations = {};
+    var auditionrMidiIds = [];
     var selectedEditAbsPath = null;
     var selectedEditApiPath = null;
     var AUDITIONR_SIDEBAR_TAB_KEY = "auditionr_sidebar_tab";
@@ -7428,6 +7468,8 @@
 
     var auditionrClipboardCopyCheckTimer = null;
     var auditionrActiveClipboardCopyButton = null;
+    var auditionrMidiCopyCheckTimer = null;
+    var auditionrActiveMidiCopyButton = null;
 
     function auditionrResetClipboardCopyButton(buttonEl) {
       if (!buttonEl) return;
@@ -7480,6 +7522,119 @@
           window.alert(err && err.message ? err.message : "Could not copy sample to clipboard.");
           throw err;
         });
+    }
+
+    function auditionrRefreshMidiIndex() {
+      return fetch("/api/auditionr/midi-index", { cache: "no-store" })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          auditionrMidiIds = Array.isArray(data && data.ids) ? data.ids.slice() : [];
+        })
+        .catch(function () {
+          auditionrMidiIds = [];
+        });
+    }
+
+    function auditionrFindMidiIdForDisplayName(displayName) {
+      if (!displayName || !auditionrMidiIds.length) return null;
+      var i;
+      for (i = 0; i < auditionrMidiIds.length; i++) {
+        if (displayName.indexOf(auditionrMidiIds[i]) !== -1) {
+          return auditionrMidiIds[i];
+        }
+      }
+      return null;
+    }
+
+    function auditionrResetMidiCopyButton(buttonEl) {
+      if (!buttonEl) return;
+      buttonEl.classList.remove("waveform-copy-ready", "waveform-copy-busy");
+      buttonEl.innerHTML = "<i class=\"fa-solid fa-music\" aria-hidden=\"true\"></i>";
+      buttonEl.title = "Copy MIDI to clipboard for DAW paste";
+    }
+
+    function auditionrSetMidiCopySuccess(buttonEl) {
+      if (
+        auditionrActiveMidiCopyButton &&
+        auditionrActiveMidiCopyButton !== buttonEl
+      ) {
+        auditionrResetMidiCopyButton(auditionrActiveMidiCopyButton);
+      }
+      auditionrActiveMidiCopyButton = buttonEl;
+      if (buttonEl) {
+        buttonEl.classList.remove("waveform-copy-busy");
+        buttonEl.classList.add("waveform-copy-ready");
+        buttonEl.innerHTML = "<i class=\"fa-solid fa-check\" aria-hidden=\"true\"></i>";
+        buttonEl.title = "Copied — paste MIDI into your DAW";
+      }
+      if (auditionrMidiCopyCheckTimer) clearTimeout(auditionrMidiCopyCheckTimer);
+      auditionrMidiCopyCheckTimer = setTimeout(function () {
+        if (auditionrActiveMidiCopyButton) {
+          auditionrResetMidiCopyButton(auditionrActiveMidiCopyButton);
+          auditionrActiveMidiCopyButton = null;
+        }
+      }, 4000);
+    }
+
+    function auditionrRevealMidiFile(midiId) {
+      if (!midiId) return Promise.resolve();
+      return fetch("/reveal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: "/midi/" + midiId + ".mid" })
+      })
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+          if (data.error) window.alert(data.error);
+        });
+    }
+
+    function auditionrCopyMidiToClipboard(midiId, copyButtonEl) {
+      if (!midiId) return Promise.reject(new Error("No MIDI id"));
+      if (copyButtonEl) {
+        copyButtonEl.classList.add("waveform-copy-busy");
+        copyButtonEl.innerHTML = "<i class=\"fa-solid fa-spinner fa-spin\" aria-hidden=\"true\"></i>";
+      }
+      return fetch("/api/auditionr/midi-abs-path", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ midiId: midiId })
+      })
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+          if (data.error || !data.absPath) {
+            throw new Error(data.error || "MIDI file not found.");
+          }
+          if (!auditionrCanExternalFileDrag()) {
+            return auditionrRevealMidiFile(midiId);
+          }
+          return window.__TAURI__.core.invoke("copy_files_to_clipboard", { paths: [data.absPath] })
+            .then(function () {
+              auditionrSetMidiCopySuccess(copyButtonEl);
+            })
+            .catch(function () {
+              return auditionrRevealMidiFile(midiId);
+            });
+        })
+        .catch(function (err) {
+          auditionrResetMidiCopyButton(copyButtonEl);
+          window.alert(err && err.message ? err.message : "Could not copy MIDI.");
+          throw err;
+        });
+    }
+
+    function auditionrApplyMidiButtonForInstance(inst) {
+      if (!inst || !inst.midiButton) return;
+      var midiId = auditionrFindMidiIdForDisplayName(inst.displayName || "");
+      inst.midiId = midiId;
+      inst.midiButton.dataset.midiId = midiId || "";
+      inst.midiButton.classList.toggle("hidden", !midiId);
+    }
+
+    function auditionrRefreshAllMidiButtons() {
+      Object.keys(waveformInstances).forEach(function (file) {
+        auditionrApplyMidiButtonForInstance(waveformInstances[file]);
+      });
     }
 
     function auditionrCreateDragPrepIndicator(clientX, clientY) {
@@ -8037,6 +8192,21 @@
       }
 
       titleRowEl.addEventListener("click", triggerSampleClipboardCopy);
+
+      var titleMidiIcon = document.createElement("button");
+      titleMidiIcon.type = "button";
+      titleMidiIcon.className = "waveform-title-midi-icon hidden";
+      titleMidiIcon.innerHTML = "<i class=\"fa-solid fa-music\" aria-hidden=\"true\"></i>";
+      titleMidiIcon.title = "Copy MIDI to clipboard for DAW paste";
+      titleMidiIcon.setAttribute("aria-label", "Copy MIDI to clipboard for DAW paste");
+      titleMidiIcon.addEventListener("click", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var midiId = titleMidiIcon.dataset.midiId;
+        if (midiId) auditionrCopyMidiToClipboard(midiId, titleMidiIcon);
+      });
+
+      titleRowEl.appendChild(titleMidiIcon);
       titleContainer.appendChild(titleRowEl);
 
       var durationWrap = document.createElement("div");
@@ -8245,6 +8415,9 @@
         wavesurfer: wavesurfer,
         durationEl: duration,
         titleRowEl: titleRowEl,
+        midiButton: titleMidiIcon,
+        displayName: displayName,
+        midiId: null,
         undoButton: undoButton,
         absPath: file,
         apiPath: apiPath,
@@ -8253,6 +8426,7 @@
         stopPlayback: null,
         processingSafetyTimer: null
       };
+      auditionrApplyMidiButtonForInstance(waveformInst);
 
       function finishWaveformLoad() {
         if (typeof onReady === "function") onReady();
