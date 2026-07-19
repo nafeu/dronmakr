@@ -4,6 +4,10 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 
+if [[ "$(uname -s | tr '[:upper:]' '[:lower:]')" == "linux" ]]; then
+  exec bash scripts/build_linux.sh
+fi
+
 if [[ ! -d "venv" ]]; then
   echo "venv/ not found. Create it first (python -m venv venv)." >&2
   exit 1
@@ -36,14 +40,8 @@ if [[ "$UNAME_S" == "darwin" ]]; then
   tar -czf "${ARTIFACT_DIR}/${ARCHIVE_NAME}" -C "$(dirname "$APP")" "$(basename "$APP")"
   APP_PATH="$APP" bash scripts/package_mac_dmg.sh
 elif [[ "$UNAME_S" == "linux" ]]; then
-  BUNDLE_DIR="src-tauri/target/release/bundle"
-  if [[ ! -d "$BUNDLE_DIR" ]]; then
-    echo "error: Tauri Linux bundle missing at $BUNDLE_DIR" >&2
-    exit 1
-  fi
-  ARCHIVE_NAME="dronmakr-v${VERSION}-linux-${ARCH_LABEL}.tar.gz"
-  cp scripts/linux_release_readme.txt "${BUNDLE_DIR}/README-linux.txt"
-  tar -czf "${ARTIFACT_DIR}/${ARCHIVE_NAME}" -C "$BUNDLE_DIR" .
+  echo "error: build_app.sh on Linux should have exec'd build_linux.sh" >&2
+  exit 1
 else
   echo "Use build_app.ps1 on Windows" >&2
   exit 1

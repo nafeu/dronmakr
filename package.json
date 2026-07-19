@@ -13,6 +13,7 @@
     "dev": "tauri dev",
     "dev:backend": "bash scripts/dev_backend.sh",
     "build": "npm run build:frontend && npm run build:sidecar && tauri build",
+    "build:linux": "bash scripts/build_linux.sh",
     "e2e": "playwright test",
     "e2e:install": "playwright install chromium"
   },

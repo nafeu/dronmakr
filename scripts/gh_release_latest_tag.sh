@@ -27,7 +27,7 @@ write_release_notes() {
   local tag=$1
   local outfile
   outfile=$(mktemp "${TMPDIR:-/tmp}/dronmakr-release-notes.XXXXXX")
-  if ! python3 "$ROOT_DIR/scripts/generate_release_notes.py" --tag "$tag" -o "$outfile" 2>/dev/null; then
+  if ! python3 "$REPO_ROOT/scripts/generate_release_notes.py" --tag "$tag" -o "$outfile" 2>/dev/null; then
     rm -f "$outfile"
     return 1
   fi
@@ -37,11 +37,17 @@ write_release_notes() {
 filter_gh_release_args() {
   local filtered=()
   local arg
-  for arg in "${PASS_THROUGH[@]}"; do
-    [[ "$arg" == "--generate-notes" ]] && continue
-    filtered+=("$arg")
-  done
-  PASS_THROUGH=("${filtered[@]}")
+  if ((${#PASS_THROUGH[@]} > 0)); then
+    for arg in "${PASS_THROUGH[@]}"; do
+      [[ "$arg" == "--generate-notes" ]] && continue
+      filtered+=("$arg")
+    done
+  fi
+  if ((${#filtered[@]} > 0)); then
+    PASS_THROUGH=("${filtered[@]}")
+  else
+    PASS_THROUGH=()
+  fi
 }
 
 FETCH_TAGS="${FETCH_TAGS:-1}"

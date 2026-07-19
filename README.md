@@ -65,12 +65,12 @@ Prebuilt apps are published on **[GitHub Releases](https://github.com/nafeu/dron
 | Platform | Download |
 | --- | --- |
 | macOS (Apple Silicon) | `dronmakr-v*-macos-arm64.dmg` (or `.tar.gz`) |
-| Linux (x86_64, experimental) | `dronmakr-v*-linux-x64.tar.gz` (also `.deb` / `.rpm` in archive; read `README-linux.txt` inside) |
+| Linux (x86_64, experimental) | `dronmakr-v*-linux-x64-experimental.tar.gz` (also `.deb` / `.rpm` in archive; read `README-linux.txt` inside) |
 | Windows | `dronmakr-v*-windows-x64.zip` (NSIS `*-setup.exe`; see `README-windows.txt`) |
 
 **macOS (Intel):** not published on [Releases](https://github.com/nafeu/dronmakr/releases/latest) yet. Planned for a future build. Until then, use [Manual installation](#manual-installation) on Intel Macs.
 
-**Linux (experimental):** We ship Linux builds so testers and contributors can help harden the port, but treat them as **unstable**. Known gaps include distro-specific UI/WebKit behavior, optional native folder dialogs (`zenity` / `kdialog` / `yad`), and less mature VST3 hosting than on macOS/Windows. Read **[scripts/linux_release_readme.txt](scripts/linux_release_readme.txt)** (also bundled as `README-linux.txt` in the Linux release archive). Please [open issues](https://github.com/nafeu/dronmakr/issues) with `errors.log` from `~/.local/share/dronmakr/logs/` when something breaks.
+**Linux (experimental):** We ship Linux builds so testers and contributors can help harden the port, but treat them as **unstable**. Known gaps include distro-specific UI/WebKit behavior, optional native folder dialogs (`zenity` / `kdialog` / `yad`), and less mature VST3 hosting than on macOS/Windows. **x86_64 only** for now. Read **[scripts/linux_release_readme.txt](scripts/linux_release_readme.txt)** (also bundled as `README-linux.txt` in the Linux release archive). Please [open issues](https://github.com/nafeu/dronmakr/issues) with `errors.log` from `~/.local/share/dronmakr/logs/` when something breaks.
 
 **Install & run**
 
@@ -220,7 +220,7 @@ The app checks GitHub Releases in the background. When a newer version exists, a
 python3 scripts/generate_release_notes.py --tag v0.58.8   # preview release notes only
 ```
 
-Publishing a GitHub Release triggers [`.github/workflows/release-desktop.yml`](.github/workflows/release-desktop.yml) (macOS, Windows, Linux artifacts).
+Publishing a GitHub Release triggers [`.github/workflows/release-desktop.yml`](.github/workflows/release-desktop.yml) (macOS, Windows, and experimental Linux x64 artifacts).
 
 ---
 

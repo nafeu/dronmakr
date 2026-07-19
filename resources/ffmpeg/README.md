@@ -3,6 +3,7 @@
 Desktop PyInstaller builds run [`scripts/vendor_ffmpeg.py`](/scripts/vendor_ffmpeg.py) before packaging. It downloads pinned static binaries listed in [`scripts/ffmpeg_vendor_checksums.tsv`](/scripts/ffmpeg_vendor_checksums.tsv) from **[eugeneware/ffmpeg-static](https://github.com/eugeneware/ffmpeg-static)** tag **`b6.0`**, verifies SHA256, and writes:
 
 - `resources/ffmpeg/ffmpeg` (POSIX) or `resources/ffmpeg/ffmpeg.exe` (Windows)
+- Profiles: `macos-arm64`, `macos-x64`, `windows-x64`, `linux-x64` (Linux releases are x86_64 only)
 - `resources/ffmpeg/THIRD_PARTY_FFMPEG.txt` (concatenated upstream LICENSE + README for that profile)
 
 Bundled FFmpeg is invoked by **Folysplitr** recording upload conversion (PCM WAV). Without running the vendor script, only `ffmpeg` found on **`$PATH`** is used (`python webui` / developer workflows).

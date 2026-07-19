@@ -69,11 +69,7 @@ def detect_profile(explicit: str | None = None) -> str:
     if plat.startswith("linux"):
         mid = _machine()
         if mid in ("aarch64", "arm64"):
-            sys.stderr.write(
-                "vendor_ffmpeg.py: linux aarch64 vendor profile not in manifest — "
-                "add a row + asset or extend --profile support.\n"
-            )
-            raise SystemExit(2)
+            return "linux-arm64"
         return "linux-x64"
     if plat == "darwin":
         mid = _machine()
@@ -110,7 +106,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
         "--profile",
-        choices=("windows-x64", "linux-x64", "macos-arm64", "macos-x64"),
+        choices=("windows-x64", "linux-x64", "linux-arm64", "macos-arm64", "macos-x64"),
         default=None,
         help="Vendor target profile (default: auto-detect)",
     )

@@ -30,9 +30,9 @@ Pick the download for your OS below, install, launch **dronmakr**, then choose w
 
 ### Linux (x86_64, experimental)
 
-> **Unstable:** Linux builds are published for testing but are **not fully supported yet**. Expect distro-specific UI issues, optional folder-picker deps (`zenity` / `kdialog` / `yad`), and less mature VST3 hosting than on macOS/Windows. Read **`README-linux.txt`** inside the archive before installing, and please [report issues](https://github.com/nafeu/dronmakr/issues) with `errors.log` from `~/.local/share/dronmakr/logs/` when something breaks.
+> **Unstable:** Linux builds are published for testing but are **not fully supported yet**. Expect distro-specific UI issues, optional folder-picker deps (`zenity` / `kdialog` / `yad`), and less mature VST3 hosting than on macOS/Windows. **x86_64 only** for now. Read **`README-linux.txt`** inside the archive before installing, and please [report issues](https://github.com/nafeu/dronmakr/issues) with `errors.log` from `~/.local/share/dronmakr/logs/` when something breaks.
 
-1. Download **`dronmakr-v{{VERSION}}-linux-x64.tar.gz`** (`.deb` / `.rpm` are also in the archive).
+1. Download **`dronmakr-v{{VERSION}}-linux-x64-experimental.tar.gz`** (`.deb` / `.rpm` are also in the archive).
 2. Extract or install the package for your distro, then launch **dronmakr**.
 3. **VST3 only** on Linux (no AU). Configure plug-in paths in Settings.
 
