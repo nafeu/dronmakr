@@ -37,7 +37,8 @@ If none are installed, type paths into the text fields instead.
 
 Requirements
 ------------
-- x86_64 Linux with WebKitGTK-based desktop (standard on most distros)
+- x86_64 Linux with glibc 2.35+ (Ubuntu 22.04 / Debian 12 or newer)
+- WebKitGTK 4.1-based desktop (libwebkit2gtk-4.1-0; standard on recent distros)
 - VST3 plug-ins for preset-based drone generation (Linux VST hosting is less
   mature than on macOS/Windows)
 - libsndfile (usually pulled in by the package or distro deps)

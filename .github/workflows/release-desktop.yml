@@ -160,7 +160,8 @@ jobs:
         || github.event.inputs.target == 'all'
         || github.event.inputs.target == 'linux'
       )
-    runs-on: ubuntu-latest
+    # Build on oldest supported baseline so glibc/WebKitGTK match Ubuntu 22.04+ targets.
+    runs-on: ubuntu-22.04
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
