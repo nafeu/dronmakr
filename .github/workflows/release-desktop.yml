@@ -1,9 +1,6 @@
 name: Release desktop builds
 
 # Linux release job builds x64 experimental tarball (deb/rpm inside archive).
-env:
-  DRONMAKR_ENABLE_LINUX_RELEASE: "true"
-
 on:
   release:
     types: [published]
@@ -154,12 +151,9 @@ jobs:
 
   desktop-linux:
     if: >-
-      env.DRONMAKR_ENABLE_LINUX_RELEASE == 'true'
-      && (
-        github.event_name == 'release'
-        || github.event.inputs.target == 'all'
-        || github.event.inputs.target == 'linux'
-      )
+      github.event_name == 'release'
+      || github.event.inputs.target == 'all'
+      || github.event.inputs.target == 'linux'
     # Build on oldest supported baseline so glibc/WebKitGTK match Ubuntu 22.04+ targets.
     runs-on: ubuntu-22.04
     timeout-minutes: 120
