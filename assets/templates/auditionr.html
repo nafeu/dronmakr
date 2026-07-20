@@ -4442,7 +4442,7 @@
             </div>
             <div class="generatr-config-empty hidden" id="generatr-config-empty-drone" role="status">
               <div class="generatr-config-empty-icon"><i class="fa-solid fa-sliders"></i></div>
-              <p>Please configure virtual instrument paths first: <a href="/settings">Settings</a></p>
+              <p>Optionally configure VST3/AU plug-in folders in <a href="/settings">Settings</a> to use third-party instruments.</p>
             </div>
             <form class="generatr-form" id="generatr-form">
               <div class="form-row form-row-full generatr-kind-row">
@@ -12348,15 +12348,14 @@
       function updateGeneratrConfigEmptyState() {
         var kind = kindSelect ? kindSelect.value : "drone";
         var showDrumpatternEmpty = (kind === "drumpattern" || kind === "wash") && !generatrDrumPathsConfigured;
-        var showDroneEmpty = kind === "drone" && !generatrPluginPathsConfigured;
         if (generatrConfigEmptyBeat) {
           generatrConfigEmptyBeat.classList.toggle("hidden", !showDrumpatternEmpty);
         }
         if (generatrConfigEmptyDrone) {
-          generatrConfigEmptyDrone.classList.toggle("hidden", !showDroneEmpty);
+          generatrConfigEmptyDrone.classList.add("hidden");
         }
         if (form) {
-          form.classList.toggle("generatr-form-hidden", showDrumpatternEmpty || showDroneEmpty);
+          form.classList.toggle("generatr-form-hidden", showDrumpatternEmpty);
         }
       }
 
