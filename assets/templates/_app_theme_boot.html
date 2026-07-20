@@ -1,0 +1,10 @@
+<script>
+(function () {
+  var theme = "night";
+  try {
+    var stored = localStorage.getItem("dronmakr_ui_theme");
+    if (stored === "day" || stored === "night") theme = stored;
+  } catch (e) {}
+  document.documentElement.setAttribute("data-theme", theme);
+})();
+</script>

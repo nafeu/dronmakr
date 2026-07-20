@@ -35,6 +35,10 @@
       <a id="app-update-notice-link" href="https://github.com/nafeu/dronmakr/releases/latest" target="_blank" rel="noopener noreferrer">New version available, upgrade now</a>
       <button type="button" id="app-update-notice-dismiss" class="app-update-notice-dismiss" aria-label="Dismiss update notice" title="Dismiss">&times;</button>
     </div>
+    <button type="button" id="toolbarThemeToggle" class="toolbar-theme-toggle toolbar-settings"
+      title="Switch to day mode" aria-label="Switch to day mode">
+      <i class="fa-solid fa-sun" aria-hidden="true"></i>
+    </button>
     <a href="{{ url_for('settings_page') }}"
       class="toolbar-settings{% if active_path.startswith('/settings') %} active{% endif %}"
       title="Settings" aria-label="Settings">

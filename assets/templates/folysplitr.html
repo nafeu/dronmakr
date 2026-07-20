@@ -81,13 +81,13 @@
     }
 
     .folysplitr-recording-item:hover:not(.active) {
-      border-color: color-mix(in srgb, var(--theme-a) 55%, transparent);
+      border-color: color-mix(in srgb, var(--dron-border) 55%, transparent);
       background: color-mix(in srgb, var(--theme-a) 12%, transparent);
     }
 
     .folysplitr-recording-item.active {
       border-color: var(--primary);
-      background: rgba(255, 149, 5, 0.12);
+      background: var(--dron-hover-bg-mild);
       color: var(--primary);
     }
 
@@ -178,7 +178,7 @@
       align-items: center;
       justify-content: center;
       color: var(--theme-b);
-      border: 1px dashed var(--theme-a);
+      border: 1px dashed var(--dron-border);
       border-radius: 6px;
       font-size: 0.8rem;
       background: rgba(53, 53, 49, 0.15);
@@ -203,7 +203,7 @@
 
     .folysplitr-process-col-label {
       font-size: 0.65rem;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
       text-transform: uppercase;
       letter-spacing: 0.06em;
       margin: 0;
@@ -234,7 +234,7 @@
 
     .splitr-organize-section-label {
       font-size: 0.65rem;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
       text-transform: uppercase;
       letter-spacing: 0.06em;
       margin: 0.15rem 0 0 0;
@@ -272,8 +272,8 @@
       gap: 0.55rem;
       padding: 0.35rem 0.55rem;
       border-radius: 999px;
-      border: 1px solid var(--theme-a);
-      background: rgba(0, 0, 0, 0.82);
+      border: 1px solid var(--dron-border);
+      background: var(--dron-chip-bg);
       color: var(--primary);
       font-size: 0.72rem;
       backdrop-filter: blur(3px);
@@ -330,7 +330,7 @@
 
     /* Effect card style (matches auditionr sidebar effect cards) */
     .generatr-sweep-effect {
-      border: 1px solid color-mix(in srgb, var(--theme-a) 55%, transparent);
+      border: 1px solid color-mix(in srgb, var(--dron-border) 55%, transparent);
       border-radius: 5px;
       padding: 0.4rem 0.5rem 0.65rem;
       background: color-mix(in srgb, var(--theme-a) 18%, transparent);
@@ -403,7 +403,7 @@
 
     .panel-title {
       font-size: 0.88rem;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
       letter-spacing: 0.02em;
       margin: 0;
     }
@@ -413,7 +413,7 @@
       font-family: inherit;
       font-size: 0.85rem;
       border-radius: 4px;
-      border: 1px solid var(--theme-a);
+      border: 1px solid var(--dron-border);
       background: var(--theme-a);
       color: var(--primary);
       padding: 0.5rem 0.7rem;
@@ -442,7 +442,7 @@
 
     button:hover:not(:disabled) {
       border-color: var(--primary);
-      background: rgba(255, 149, 5, 0.15);
+      background: var(--dron-hover-bg);
     }
 
     button:disabled {
@@ -561,9 +561,9 @@
     #meter-canvas {
       width: 16px;
       height: 92px;
-      border: 1px solid var(--theme-a);
+      border: 1px solid var(--dron-border);
       border-radius: 3px;
-      background: #121211;
+      background: var(--dron-meter-bg);
       display: block;
     }
 
@@ -577,7 +577,7 @@
       align-items: center;
       justify-content: center;
       color: var(--theme-b);
-      border: 1px dashed var(--theme-a);
+      border: 1px dashed var(--dron-border);
       border-radius: 6px;
       font-size: 0.8rem;
       background: rgba(53, 53, 49, 0.15);
@@ -594,7 +594,7 @@
 
     .waveform-title {
       font-size: 0.78rem;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
       word-break: break-all;
     }
 
@@ -639,7 +639,7 @@
     }
 
     .empty-state {
-      border: 1px dashed var(--theme-a);
+      border: 1px dashed var(--dron-border);
       border-radius: 8px;
       padding: 1.5rem;
       text-align: center;
@@ -674,7 +674,7 @@
       gap: 0.55rem;
       margin-bottom: 0.5rem;
       padding: 0.65rem 0 0.35rem;
-      border-top: 1px solid var(--theme-a);
+      border-top: 1px solid var(--dron-border);
     }
 
     .splitr-collection-preview-row {
@@ -710,7 +710,7 @@
 
     .splitr-organize-preview-label {
       font-size: 0.65rem;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
       text-transform: uppercase;
       letter-spacing: 0.06em;
     }
@@ -741,7 +741,7 @@
       padding: 0.45rem 0.55rem;
       border-radius: 4px;
       background: rgba(1, 111, 185, 0.12);
-      border: 1px solid rgba(1, 111, 185, 0.35);
+      border: 1px solid var(--dron-border-info);
       margin-top: 1rem;
     }
 
@@ -815,7 +815,7 @@
 
     .splitr-subtitle {
       font-size: 0.72rem;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
       letter-spacing: 0.02em;
       margin-top: 0.2rem;
       margin-bottom: 0.35rem;
@@ -829,12 +829,12 @@
 
     #splitr-actions-right button.splitr-action-core:hover:not(:disabled) {
       border-color: var(--primary);
-      background: rgba(255, 149, 5, 0.15);
+      background: var(--dron-hover-bg);
     }
 
     #splitr-actions-right button.splitr-action-category {
-      background: #0a0a0a;
-      border-color: var(--theme-a);
+      background: var(--dron-control-bg);
+      border-color: var(--dron-border);
       color: var(--theme-b);
     }
 
@@ -853,7 +853,7 @@
     .splitr-actions-divider {
       width: 1px;
       height: 20px;
-      border-left: 1px solid var(--theme-a);
+      border-left: 1px solid var(--dron-border);
       opacity: 0.6;
       margin: 0 4px;
     }
@@ -875,7 +875,7 @@
       justify-content: space-between;
       align-items: baseline;
       gap: 0.5rem;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
     }
 
     .splitr-slider-wrap {
@@ -981,8 +981,8 @@
       gap: 0.55rem;
       padding: 0.35rem 0.55rem;
       border-radius: 999px;
-      border: 1px solid var(--theme-a);
-      background: rgba(0, 0, 0, 0.82);
+      border: 1px solid var(--dron-border);
+      background: var(--dron-chip-bg);
       color: var(--primary);
       font-size: 0.72rem;
       backdrop-filter: blur(3px);
@@ -1185,6 +1185,18 @@
   </aside>
   {% include '_app_version_chip.html' %}
   <script>
+    function folysplitrThemeColor(name, fallback) {
+      if (window.dronmakrTheme && window.dronmakrTheme.readColor) {
+        return window.dronmakrTheme.readColor(name, fallback);
+      }
+      return fallback;
+    }
+
+    function folysplitrMeterLevelColor(ratio, highThreshold, midThreshold) {
+      if (ratio > highThreshold) return folysplitrThemeColor("--theme-c", "#ec4e20");
+      if (ratio > midThreshold) return folysplitrThemeColor("--primary", "#ff9505");
+      return folysplitrThemeColor("--theme-b", "#016fb9");
+    }
     var MAX_RECORDING_MS = 5 * 60 * 1000;
     var FOLYSPLITR_INPUT_DEVICE_KEY = "folysplitr-input-device-id";
     var deviceSelect = document.getElementById("device-select");
@@ -2258,7 +2270,7 @@
     function drawMeter(level, idle) {
       var w = meterCanvas.width;
       var h = meterCanvas.height;
-      meterCtx.fillStyle = "#121211";
+      meterCtx.fillStyle = folysplitrThemeColor("--dron-meter-bg", "#121211");
       meterCtx.fillRect(0, 0, w, h);
 
       var segments = 20;
@@ -2270,11 +2282,11 @@
         var y = h - gap - ((i + 1) * segHeight) - (i * gap);
         var ratio = (i + 1) / segments;
         if (idle) {
-          meterCtx.fillStyle = "#2b2b28";
+          meterCtx.fillStyle = folysplitrThemeColor("--dron-meter-track", "#2b2b28");
         } else if (i < activeSegments) {
-          meterCtx.fillStyle = ratio > 0.85 ? "#ec4e20" : (ratio > 0.55 ? "#ff9505" : "#016fb9");
+          meterCtx.fillStyle = folysplitrMeterLevelColor(ratio, 0.85, 0.55);
         } else {
-          meterCtx.fillStyle = "#2b2b28";
+          meterCtx.fillStyle = folysplitrThemeColor("--dron-meter-track", "#2b2b28");
         }
         meterCtx.fillRect(2, y, w - 4, Math.max(2, segHeight));
       }
@@ -2425,7 +2437,7 @@
 
     function clearLiveWaveCanvas() {
       if (!liveWaveCtx || !liveWaveCanvas) return;
-      liveWaveCtx.fillStyle = "#121211";
+      liveWaveCtx.fillStyle = folysplitrThemeColor("--dron-meter-bg", "#121211");
       liveWaveCtx.fillRect(0, 0, liveWaveCanvas.width, liveWaveCanvas.height);
     }
 
@@ -2460,7 +2472,7 @@
       stopLiveWaveAnimation();
       var dpr = window.devicePixelRatio || 1;
       var shiftPx = Math.max(1, Math.floor(2 * dpr));
-      var bg = "#121211";
+      var bg = folysplitrThemeColor("--dron-meter-bg", "#121211");
 
       function frame() {
         if (!liveWaveCtx || !liveWaveCanvas || !analyser) return;
@@ -2489,7 +2501,7 @@
         var amp = Math.max(1, clamped * (liveWaveCanvas.height * 0.44));
         var x = liveWaveCanvas.width - Math.floor(shiftPx / 2);
 
-        liveWaveCtx.strokeStyle = clamped > 0.85 ? "#ec4e20" : (clamped > 0.5 ? "#ff9505" : "#016fb9");
+        liveWaveCtx.strokeStyle = folysplitrMeterLevelColor(clamped, 0.85, 0.5);
         liveWaveCtx.lineWidth = Math.max(1, dpr);
         liveWaveCtx.beginPath();
         liveWaveCtx.moveTo(x, half - amp);
@@ -2637,9 +2649,9 @@
       }
       splitrWaveSurfer = WaveSurfer.create({
         container: "#splitr-waveform",
-        waveColor: "#353531",
-        progressColor: "#ec4e20",
-        cursorColor: "#ff9505",
+        waveColor: folysplitrThemeColor("--dron-wave-color", "#353531"),
+        progressColor: folysplitrThemeColor("--theme-c", "#ec4e20"),
+        cursorColor: folysplitrThemeColor("--primary", "#ff9505"),
         height: 92,
         backend: "MediaElement"
       });

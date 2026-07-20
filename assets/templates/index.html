@@ -45,10 +45,10 @@
     }
 
     .card {
-      border: 1px solid var(--theme-a);
+      border: 1px solid var(--dron-border);
       padding: 1rem;
       border-radius: 4px;
-      background: #050505;
+      background: var(--dron-surface-raised);
       text-decoration: none;
       color: var(--primary);
       display: block;
@@ -57,7 +57,7 @@
 
     .card:hover {
       border-color: var(--primary);
-      background: rgba(255, 149, 5, 0.06);
+      background: var(--dron-hover-bg-soft);
     }
 
     .card h2 {
@@ -83,8 +83,8 @@
       gap: 0.55rem;
       padding: 0.35rem 0.55rem;
       border-radius: 999px;
-      border: 1px solid var(--theme-a);
-      background: rgba(0, 0, 0, 0.82);
+      border: 1px solid var(--dron-border);
+      background: var(--dron-chip-bg);
       color: var(--primary);
       font-size: 0.72rem;
       backdrop-filter: blur(3px);

@@ -4,13 +4,24 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>dronmakr</title>
+  <link rel="stylesheet" href="/static/vendor/dronmakr-ui/dronmakr-theme-palettes.css">
+  <script>
+  (function () {
+    var theme = "night";
+    try {
+      var stored = localStorage.getItem("dronmakr_ui_theme");
+      if (stored === "day" || stored === "night") theme = stored;
+    } catch (e) {}
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+  </script>
   <style>
     :root {
-      --bg: #353531;
-      --text: #f5f5f0;
-      --accent: #ff9505;
-      --muted: #b8b5a8;
-      --error: #ff6b6b;
+      --bg: var(--secondary);
+      --text: var(--primary);
+      --accent: var(--primary);
+      --muted: var(--dron-text-muted);
+      --error: var(--dron-danger-fg-soft);
     }
     * { box-sizing: border-box; }
     body {
@@ -54,7 +65,7 @@
     .spinner {
       width: 2rem;
       height: 2rem;
-      border: 2px solid color-mix(in srgb, var(--accent) 25%, transparent);
+      border: 2px solid var(--dron-border-warning);
       border-top-color: var(--accent);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
@@ -82,8 +93,8 @@
       font-size: 0.68rem;
       line-height: 1.45;
       color: var(--text);
-      background: #050505;
-      border: 1px solid color-mix(in srgb, var(--error) 40%, transparent);
+      background: var(--dron-surface-raised);
+      border: 1px solid var(--dron-border-danger);
       border-radius: 4px;
       resize: vertical;
     }

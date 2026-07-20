@@ -119,6 +119,7 @@ DEFAULT_KEYS = [
     "ACTIVE_DRUM_PATH_PRESET",
     "DRUM_PATH_PRESETS",
     FILES_ROOT_KEY,
+    "UI_THEME",
 ]
 
 _default_values = {
@@ -142,6 +143,7 @@ _default_values = {
         }
     ],
     FILES_ROOT_KEY: "",
+    "UI_THEME": "night",
 }
 
 

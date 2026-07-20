@@ -1,12 +1,7 @@
-    :root {
-      --secondary: #000000;
-      --primary: #ff9505;
-      --theme-a: #353531;
-      --theme-b: #016fb9;
-      --theme-c: #ec4e20;
-      --theme-d: #FFFFFF;
-      --theme-e: #2e8b57;
-      --theme-f: #0d9ea8;
+    /* Layout + sizing tokens. Color palettes: assets/static/vendor/dronmakr-ui/dronmakr-theme-palettes.css */
+    :root,
+    [data-theme="night"],
+    [data-theme="day"] {
       --toolbar-height: 48px;
       --grid-cell-size: 28px;
       /* Width of the row/sample label column (header + each row); change to resize. */
@@ -22,8 +17,7 @@
       --dron-control-pad-x: 0.5rem;
       --dron-control-font: 0.8rem;
       --dron-control-radius: 4px;
-      --dron-control-bg: #0a0a0a;
-      --dron-control-border: var(--theme-a);
+      --dron-control-border: var(--dron-border);
       /* Compact toolbar / in-knob-row selects */
       --dron-control-h-compact: 1.75rem;
       /* Rotary knobs (label + dial + readout column) */
@@ -109,7 +103,7 @@
       color: var(--primary);
       text-decoration: none;
       padding: 0.35rem 0.65rem;
-      border: 1px solid var(--theme-a);
+      border: 1px solid var(--dron-border);
       border-radius: 4px;
       background: var(--theme-a);
       transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
@@ -121,29 +115,30 @@
 
     .toolbar-nav a:hover {
       border-color: var(--primary);
-      background: rgba(255, 149, 5, 0.15);
+      background: var(--dron-hover-bg);
     }
 
     .toolbar-nav a:active {
-      background: rgba(255, 149, 5, 0.25);
+      background: var(--dron-hover-bg-strong);
     }
 
     .toolbar-nav a.active {
       border-color: var(--primary);
       background: var(--primary);
-      color: var(--secondary);
+      color: var(--dron-on-primary);
     }
 
     .toolbar-nav a.active:hover {
-      background: #ff8900;
-      border-color: #ff8900;
+      background: var(--dron-active-hover);
+      border-color: var(--dron-active-hover);
     }
 
     .toolbar-nav a.active:active {
-      background: #e67e00;
-      border-color: #e67e00;
+      background: var(--dron-active-active);
+      border-color: var(--dron-active-active);
     }
 
+    .toolbar-theme-toggle,
     .toolbar-settings {
       display: inline-flex;
       align-items: center;
@@ -151,22 +146,33 @@
       color: var(--primary);
       text-decoration: none;
       padding: 0.35rem 0.65rem;
-      border: 1px solid var(--theme-a);
+      border: 1px solid var(--dron-border);
       border-radius: 4px;
       background: var(--theme-a);
       transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
       flex-shrink: 0;
     }
 
+    .toolbar-theme-toggle {
+      cursor: pointer;
+      font: inherit;
+    }
+
+    .toolbar-theme-toggle:hover,
     .toolbar-settings:hover {
       border-color: var(--primary);
-      background: rgba(255, 149, 5, 0.15);
+      background: var(--dron-hover-bg);
+    }
+
+    .toolbar-theme-toggle:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
     }
 
     .toolbar-settings.active {
       border-color: var(--primary);
       background: var(--primary);
-      color: var(--secondary);
+      color: var(--dron-on-primary);
     }
 
     .toolbar-right {
@@ -184,7 +190,7 @@
       padding: 0.28rem 0.45rem;
       border: 1px solid var(--theme-b);
       border-radius: 4px;
-      background: rgba(1, 111, 185, 0.12);
+      background: var(--dron-update-notice-bg);
       max-width: min(46vw, 300px);
     }
 

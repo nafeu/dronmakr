@@ -85,7 +85,7 @@
 
     .collection-card {
       border-radius: 4px;
-      background: #050505;
+      background: var(--dron-surface-raised);
       padding: 0.75rem;
       display: flex;
       flex-direction: column;
@@ -101,7 +101,7 @@
     }
 
     .collection-card.type-folysplitr {
-      border-color: #2e8b57;
+      border-color: var(--theme-e);
     }
 
     .collection-card.type-drumpattern {
@@ -163,7 +163,7 @@
       width: 2rem;
       height: 2rem;
       border-radius: 4px;
-      border: 1px solid var(--theme-a);
+      border: 1px solid var(--dron-border);
       background: var(--theme-a);
       color: var(--primary);
       cursor: pointer;
@@ -176,7 +176,7 @@
 
     .collection-card .card-play:hover {
       border-color: var(--primary);
-      background: rgba(255, 149, 5, 0.15);
+      background: var(--dron-hover-bg);
     }
 
     .collection-card .card-package-cb {
@@ -189,7 +189,7 @@
       flex-shrink: 0;
       cursor: pointer;
       border-radius: 4px;
-      border: 1px solid var(--theme-a);
+      border: 1px solid var(--dron-border);
       background-color: var(--secondary);
       background-image: none;
       box-sizing: border-box;
@@ -247,11 +247,11 @@
 
     .collection-card.type-folysplitr .card-name,
     .collection-card.type-folysplitr .card-duration {
-      color: #2e8b57;
+      color: var(--theme-e);
     }
 
     .collection-card.type-folysplitr .card-play:hover {
-      border-color: #2e8b57;
+      border-color: var(--theme-e);
       background: rgba(46, 139, 87, 0.15);
     }
 
@@ -267,7 +267,7 @@
       padding: 0.35rem 0.6rem;
       font-family: inherit;
       font-size: 0.8rem;
-      border: 1px solid var(--theme-a);
+      border: 1px solid var(--dron-border);
       border-radius: 4px;
       background: var(--theme-a);
       color: var(--primary);
@@ -277,7 +277,7 @@
 
     .collections-filters .collections-pagination button:hover:not(:disabled) {
       border-color: var(--primary);
-      background: rgba(255, 149, 5, 0.15);
+      background: var(--dron-hover-bg);
     }
 
     .collections-filters .collections-pagination button:disabled {
@@ -291,9 +291,9 @@
     }
 
     .sidebar-card {
-      border: 1px solid var(--theme-a);
+      border: 1px solid var(--dron-border);
       border-radius: 4px;
-      background: #050505;
+      background: var(--dron-surface-raised);
       padding: 1rem;
       position: sticky;
       top: calc(var(--toolbar-height) + 1rem);
@@ -321,9 +321,9 @@
       width: 100%;
       max-height: min(50vh, 22rem);
       overflow: auto;
-      border: 1px solid var(--theme-a);
+      border: 1px solid var(--dron-border);
       border-radius: 4px;
-      background: #0a0a0a;
+      background: var(--dron-control-bg);
       box-sizing: border-box;
     }
 
@@ -338,7 +338,7 @@
       font-size: 0.72rem;
       color: var(--primary);
       padding: 0.35rem 0.65rem;
-      border-bottom: 1px solid rgba(53, 53, 49, 0.6);
+      border-bottom: 1px solid var(--dron-border-muted);
       white-space: nowrap;
     }
 
@@ -347,7 +347,7 @@
     }
 
     .sidebar-card .packaging-selected-list li.packaging-selected-empty {
-      color: var(--theme-a);
+      color: var(--dron-label-color);
       font-style: italic;
       border-bottom: none;
     }
@@ -357,9 +357,9 @@
       width: 100%;
       max-height: min(50vh, 22rem);
       overflow: auto;
-      border: 1px solid var(--theme-a);
+      border: 1px solid var(--dron-border);
       border-radius: 4px;
-      background: #0a0a0a;
+      background: var(--dron-control-bg);
       box-sizing: border-box;
     }
 
@@ -374,7 +374,7 @@
       font-size: 0.68rem;
       color: var(--primary);
       padding: 0.35rem 0.65rem;
-      border-bottom: 1px solid rgba(53, 53, 49, 0.6);
+      border-bottom: 1px solid var(--dron-border-muted);
       white-space: nowrap;
     }
 
@@ -383,7 +383,7 @@
     }
 
     .packaging-preview-list li.packaging-preview-empty {
-      color: var(--theme-a);
+      color: var(--dron-label-color);
       font-style: italic;
       border-bottom: none;
     }
@@ -411,7 +411,7 @@
 
     .packaging-preview-list li.packaging-file-row::before {
       content: "└ ";
-      color: var(--theme-a);
+      color: var(--dron-label-color);
     }
 
     .collections-filters .collections-filter-btn {
@@ -419,7 +419,7 @@
       padding: 0 0.65rem;
       font-family: inherit;
       font-size: 0.75rem;
-      border: 1px solid var(--theme-a);
+      border: 1px solid var(--dron-border);
       border-radius: 4px;
       background: var(--theme-a);
       color: var(--primary);
@@ -440,7 +440,7 @@
 
     .collections-filters .collections-filter-btn:hover {
       border-color: var(--primary);
-      background: rgba(255, 149, 5, 0.15);
+      background: var(--dron-hover-bg);
     }
 
     .collections-filters .collections-pagination button {
@@ -460,7 +460,7 @@
       gap: 0.65rem;
       margin-top: 0.75rem;
       padding-top: 0.75rem;
-      border-top: 1px solid var(--theme-a);
+      border-top: 1px solid var(--dron-border);
     }
 
     .packaging-form label {
@@ -492,7 +492,7 @@
       gap: 0.4rem;
       margin-top: 0.35rem;
       padding-top: 0.65rem;
-      border-top: 1px solid var(--theme-a);
+      border-top: 1px solid var(--dron-border);
     }
 
     .packaging-layout-label-row {
@@ -553,7 +553,7 @@
       font-family: inherit;
       font-size: 0.68rem;
       color: var(--primary);
-      background: #0a0a0a;
+      background: var(--dron-control-bg);
       padding: 0.1rem 0.25rem;
       border-radius: 2px;
     }
@@ -561,8 +561,8 @@
     .packaging-help-example {
       margin: 0.35rem 0 0.5rem 0;
       padding: 0.45rem 0.55rem;
-      background: #0a0a0a;
-      border: 1px solid var(--theme-a);
+      background: var(--dron-control-bg);
+      border: 1px solid var(--dron-border);
       border-radius: 4px;
       font-size: 0.66rem;
       color: var(--theme-b);
@@ -585,7 +585,7 @@
 
     .packaging-preview-label {
       font-size: 0.65rem;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
       text-transform: uppercase;
       letter-spacing: 0.06em;
       margin-top: 0.25rem;
@@ -611,8 +611,8 @@
     }
 
     .packaging-export-btn:hover:not(:disabled) {
-      background: #ff8900;
-      border-color: #ff8900;
+      background: var(--dron-active-hover);
+      border-color: var(--dron-active-hover);
     }
 
     .packaging-export-btn:disabled {
@@ -626,7 +626,7 @@
       padding: 0.55rem 0.75rem;
       font-family: inherit;
       font-size: 0.8rem;
-      border: 1px solid var(--theme-a);
+      border: 1px solid var(--dron-border);
       border-radius: 4px;
       background: var(--theme-a);
       color: var(--primary);
@@ -640,7 +640,7 @@
 
     .packaging-trash-btn:hover:not(:disabled) {
       border-color: var(--primary);
-      background: rgba(255, 149, 5, 0.15);
+      background: var(--dron-hover-bg);
     }
 
     .packaging-trash-btn:disabled {
@@ -651,7 +651,7 @@
     .confirm-modal-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.7);
+      background: var(--dron-overlay-heavy);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -663,8 +663,8 @@
     }
 
     .confirm-modal-content {
-      background: #050505;
-      border: 1px solid var(--theme-a);
+      background: var(--dron-surface-raised);
+      border: 1px solid var(--dron-border);
       border-radius: 4px;
       padding: 1rem;
       min-width: 280px;
@@ -698,7 +698,7 @@
       font-family: inherit;
       font-size: 0.75rem;
       cursor: pointer;
-      border: 1px solid var(--theme-a);
+      border: 1px solid var(--dron-border);
       border-radius: 3px;
       background: var(--theme-a);
       color: var(--primary);
@@ -709,7 +709,7 @@
 
     .confirm-modal-btn:hover {
       border-color: var(--primary);
-      background: rgba(255, 149, 5, 0.15);
+      background: var(--dron-hover-bg);
     }
 
     .confirm-modal-btn.primary {
@@ -719,8 +719,8 @@
     }
 
     .confirm-modal-btn.primary:hover {
-      background: #ff8900;
-      border-color: #ff8900;
+      background: var(--dron-active-hover);
+      border-color: var(--dron-active-hover);
     }
 
     .error-modal-content .confirm-modal-text i {
@@ -737,8 +737,8 @@
       gap: 0.55rem;
       padding: 0.35rem 0.55rem;
       border-radius: 999px;
-      border: 1px solid var(--theme-a);
-      background: rgba(0, 0, 0, 0.82);
+      border: 1px solid var(--dron-border);
+      background: var(--dron-chip-bg);
       color: var(--primary);
       font-size: 0.72rem;
       backdrop-filter: blur(3px);
@@ -948,12 +948,19 @@
       /** @type {Map<string, {name: string, type: string}>} path -> metadata for packaging */
       var selectedForPackage = new Map();
 
+      function collectionsThemeColor(name, fallback) {
+        if (window.dronmakrTheme && window.dronmakrTheme.readColor) {
+          return window.dronmakrTheme.readColor(name, fallback);
+        }
+        return fallback;
+      }
+
       function progressColorForType(type) {
-        if (type === "drumpattern") return "#016fb9";
-        if (type === "sweep" || type === "transition" || type === "closh") return "#ec4e20";
-        if (type === "wash") return "#0d9ea8";
-        if (type === "folysplitr") return "#2e8b57";
-        return "#ff9505";
+        if (type === "drumpattern") return collectionsThemeColor("--theme-b", "#016fb9");
+        if (type === "sweep" || type === "transition" || type === "closh") return collectionsThemeColor("--theme-c", "#ec4e20");
+        if (type === "wash") return collectionsThemeColor("--theme-f", "#0d9ea8");
+        if (type === "folysplitr") return collectionsThemeColor("--theme-e", "#2e8b57");
+        return collectionsThemeColor("--primary", "#ff9505");
       }
 
       function formatDuration(seconds) {
@@ -1661,7 +1668,7 @@
 
             var ws = WaveSurfer.create({
               container: waveDiv,
-              waveColor: "#353531",
+              waveColor: collectionsThemeColor("--dron-wave-color", "#353531"),
               progressColor: progressColorForType(item.type),
               height: 48,
             });

@@ -22,10 +22,10 @@
     main {
       max-width: 56rem;
       margin: 0 auto;
-      border: 1px solid var(--theme-a);
+      border: 1px solid var(--dron-card-border);
       border-radius: 6px;
       padding: 1.25rem;
-      background: #050505;
+      background: var(--dron-surface);
     }
 
     h1 {
@@ -33,7 +33,7 @@
       font-size: 1rem;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
     }
 
     .intro {
@@ -59,7 +59,7 @@
       font-size: 0.65rem;
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
       margin: 0.75rem 0 0 0;
     }
 
@@ -100,8 +100,8 @@
       font-family: inherit;
       font-size: 0.8rem;
       line-height: 1.4;
-      background: #0a0a0a;
-      border: 1px solid var(--theme-a);
+      background: var(--dron-control-bg);
+      border: 1px solid var(--dron-border);
       border-radius: 4px;
       color: var(--primary);
       resize: vertical;
@@ -121,8 +121,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #0a0a0a;
-      border: 1px solid var(--theme-a);
+      background: var(--dron-control-bg);
+      border: 1px solid var(--dron-border);
       border-radius: 4px;
       color: var(--primary);
       cursor: pointer;
@@ -132,7 +132,7 @@
 
     .btn-add:hover {
       border-color: var(--primary);
-      background: rgba(255, 149, 5, 0.15);
+      background: var(--dron-hover-bg);
     }
 
     .btn-save {

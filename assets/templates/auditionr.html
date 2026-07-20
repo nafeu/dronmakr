@@ -40,8 +40,8 @@
       gap: 0.55rem;
       padding: 0.35rem 0.55rem;
       border-radius: 999px;
-      border: 1px solid var(--theme-a);
-      background: rgba(0, 0, 0, 0.82);
+      border: 1px solid var(--dron-border);
+      background: var(--dron-chip-bg);
       color: var(--primary);
       font-size: 0.72rem;
       backdrop-filter: blur(3px);
@@ -56,7 +56,7 @@
       width: 1px;
       align-self: stretch;
       min-height: 1rem;
-      background: var(--theme-a);
+      background: var(--dron-generatr-card-border);
       opacity: 0.85;
       flex-shrink: 0;
     }
@@ -177,7 +177,7 @@
 
     .queue-empty-icon {
       font-size: 1.6rem;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
     }
 
     .auditionr-sidebar {
@@ -232,7 +232,7 @@
       padding: 0;
       border: none;
       border-radius: 0 4px 4px 0;
-      background: var(--theme-a);
+      background: var(--dron-control-bg);
       color: var(--primary);
       cursor: pointer;
       font-size: 0.75rem;
@@ -242,7 +242,7 @@
 
     .sidebar-toggle:hover {
       background: var(--primary);
-      color: var(--secondary);
+      color: var(--dron-on-primary);
     }
 
     .auditionr-sidebar-wrapper {
@@ -310,6 +310,7 @@
     .generatr-form .form-row > label:first-of-type {
       text-align: left;
       align-self: flex-start;
+      color: var(--dron-label-strong);
     }
 
     .generatr-form .form-row textarea {
@@ -378,10 +379,10 @@
     }
 
     .generatr-sweep-effect {
-      border: 1px solid color-mix(in srgb, var(--theme-a) 55%, transparent);
+      border: 1px solid var(--dron-generatr-card-border);
       border-radius: 5px;
       padding: 0.4rem 0.5rem 0.65rem;
-      background: color-mix(in srgb, var(--theme-a) 18%, transparent);
+      background: var(--dron-generatr-card-bg);
       min-width: 0;
       max-width: 100%;
       display: flex;
@@ -422,7 +423,7 @@
 
     .generatr-sweep-effect-title {
       font-size: 0.74rem;
-      color: var(--primary);
+      color: var(--dron-label-strong);
       font-weight: 600;
       margin: 0;
       letter-spacing: 0.01em;
@@ -470,7 +471,7 @@
       gap: 0.35rem;
       margin: 0 0 0 0.2rem;
       font-size: 0.72rem;
-      color: var(--text-muted, #9aa3b2);
+      color: var(--dron-text-muted);
       cursor: pointer;
       user-select: none;
       align-self: center;
@@ -598,7 +599,7 @@
     .generatr-sweep-curve-mode-label {
       font-size: 0.65rem;
       letter-spacing: 0.04em;
-      color: var(--theme-a, #666666);
+      color: var(--dron-text-muted);
       text-transform: uppercase;
       line-height: 1.1;
       padding-left: 0.1rem;
@@ -656,10 +657,10 @@
       min-width: 0;
       min-height: 0;
       max-height: 200px;
-      border: 1px solid rgba(255, 255, 255, 0.12);
+      border: 1px solid var(--dron-generatr-card-border);
       border-radius: 6px;
       padding: 8px;
-      background: rgba(0, 0, 0, 0.15);
+      background: var(--dron-generatr-card-bg);
     }
 
     .generatr-pp-filter {
@@ -667,8 +668,8 @@
       font-size: 0.8rem;
       padding: 0.35rem 0.65rem;
       border-radius: 4px;
-      border: 1px solid var(--theme-a);
-      background: var(--theme-a);
+      border: 1px solid var(--dron-generatr-card-border);
+      background: var(--dron-control-bg);
       color: var(--primary);
       width: 100%;
       box-sizing: border-box;
@@ -701,7 +702,7 @@
     }
 
     .generatr-pp-list-scroll::-webkit-scrollbar-thumb {
-      background: var(--theme-a);
+      background: var(--dron-control-bg);
       border-radius: 4px;
     }
 
@@ -738,9 +739,9 @@
       text-align: left;
       padding: 0.35rem 0.65rem;
       border-radius: 4px;
-      border: 1px solid var(--theme-a);
-      background: transparent;
-      color: var(--theme-a);
+      border: 1px solid var(--dron-generatr-card-border);
+      background: var(--dron-control-bg);
+      color: var(--dron-label-strong);
       cursor: pointer;
       width: 100%;
       display: flex;
@@ -757,7 +758,7 @@
     }
 
     .generatr-pp-shortcut-name {
-      color: var(--theme-a);
+      color: var(--dron-label-strong);
       min-width: 0;
     }
 
@@ -771,7 +772,7 @@
 
     .generatr-pp-queue-label {
       font-size: 0.72rem;
-      color: var(--theme-a);
+      color: var(--dron-label-strong);
       flex-shrink: 0;
     }
 
@@ -788,8 +789,8 @@
       color: var(--primary);
       padding: 4px 6px;
       border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--dron-generatr-card-border);
+      background: var(--dron-control-bg);
     }
 
     .generatr-pp-queue-reorder {
@@ -807,10 +808,10 @@
       height: 0.85rem;
       padding: 0;
       margin: 0;
-      border: 1px solid var(--theme-a);
+      border: 1px solid var(--dron-border);
       border-radius: 2px;
-      background: rgba(0, 0, 0, 0.25);
-      color: var(--theme-a);
+      background: var(--dron-tile-bg-deep);
+      color: var(--dron-label-color);
       cursor: pointer;
       font-size: 0.45rem;
       line-height: 1;
@@ -838,7 +839,7 @@
       flex: 0 0 auto;
       border: none;
       background: transparent;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
       cursor: pointer;
       padding: 0 4px;
       font-size: 1rem;
@@ -881,7 +882,7 @@
       font-size: 0.85rem;
       padding: 0.65rem 0.85rem;
       background: var(--primary);
-      color: var(--secondary);
+      color: var(--dron-on-primary);
       border: 1px solid var(--primary);
       border-radius: 4px;
       cursor: pointer;
@@ -920,7 +921,7 @@
     .generatr-result {
       margin-top: 0.75rem;
       padding-top: 0.75rem;
-      border-top: 1px solid var(--theme-a);
+      border-top: 1px solid var(--dron-border);
       padding-inline: 1.5rem;
     }
 
@@ -949,7 +950,7 @@
     .sidebar-tab-row {
       display: flex;
       gap: 0;
-      border-bottom: 1px solid var(--theme-a);
+      border-bottom: 1px solid var(--dron-border);
       flex-shrink: 0;
     }
 
@@ -959,7 +960,7 @@
       font-size: 0.78rem;
       border: none;
       background: none;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
       cursor: pointer;
       font-family: inherit;
     }
@@ -1047,7 +1048,7 @@
 
     .generatr-config-empty-icon {
       font-size: 1.75rem;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
     }
 
     .generatr-config-empty a {
@@ -1082,7 +1083,7 @@
       padding: 0 0.35rem 0 0;
       font-size: 0.68rem;
       line-height: 1.25;
-      color: color-mix(in srgb, var(--theme-a) 68%, transparent);
+      color: var(--dron-text-muted);
       white-space: nowrap;
     }
 
@@ -1097,20 +1098,20 @@
       font-size: 0.68rem;
       line-height: 1.2;
       border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.22);
-      background: rgba(255, 255, 255, 0.06);
-      color: color-mix(in srgb, var(--primary) 72%, transparent);
+      border: 1px solid var(--dron-generatr-card-border);
+      background: var(--dron-ghost-bg);
+      color: var(--dron-label-strong);
       cursor: pointer;
     }
 
     .generatr-drone-style-mode-btn:hover {
-      background: rgba(255, 255, 255, 0.12);
+      background: var(--dron-ghost-bg-hover);
       color: var(--primary);
     }
 
     .generatr-drone-style-mode-btn.is-active {
-      background: color-mix(in srgb, var(--theme-a) 55%, transparent);
-      border-color: rgba(255, 255, 255, 0.35);
+      background: var(--dron-select-bg);
+      border-color: var(--dron-select-border);
       color: var(--primary);
     }
 
@@ -1185,7 +1186,7 @@
       gap: 0.28rem;
       font-size: 0.68rem;
       line-height: 1.2;
-      color: color-mix(in srgb, var(--theme-a) 82%, transparent);
+      color: var(--dron-label-strong);
       cursor: pointer;
       user-select: none;
     }
@@ -1218,7 +1219,7 @@
     .generatr-drone-piano-control-label {
       font-size: 0.62rem;
       line-height: 1.2;
-      color: color-mix(in srgb, var(--theme-a) 68%, transparent);
+      color: var(--dron-text-muted);
       text-transform: lowercase;
     }
 
@@ -1236,18 +1237,18 @@
       line-height: 1.2;
       border: none;
       border-radius: var(--dron-control-radius);
-      background: rgba(255, 255, 255, 0.06);
+      background: var(--dron-ghost-bg);
       color: color-mix(in srgb, var(--primary) 70%, transparent);
       cursor: pointer;
     }
 
     .generatr-drone-preview-wave-btn:hover {
-      background: rgba(255, 255, 255, 0.12);
+      background: var(--dron-ghost-bg-hover);
       color: var(--primary);
     }
 
     .generatr-drone-preview-wave-btn.is-active {
-      background: color-mix(in srgb, var(--theme-a) 55%, transparent);
+      background: var(--dron-select-bg);
       color: var(--primary);
     }
 
@@ -1291,7 +1292,7 @@
       border: none;
       border-radius: 4px;
       background: transparent;
-      color: color-mix(in srgb, var(--theme-a) 78%, transparent);
+      color: var(--dron-label-strong);
       cursor: pointer;
       font-size: 0.82rem;
       line-height: 1;
@@ -1299,7 +1300,7 @@
 
     button.generatr-drone-plugin-list-btn:hover {
       color: var(--primary);
-      background: rgba(255, 255, 255, 0.08);
+      background: var(--dron-ghost-bg);
     }
 
     button.generatr-drone-plugin-save-btn {
@@ -1308,7 +1309,7 @@
       border: none;
       border-radius: 4px;
       background: transparent;
-      color: color-mix(in srgb, var(--theme-a) 78%, transparent);
+      color: var(--dron-label-strong);
       cursor: pointer;
       font-size: 0.82rem;
       line-height: 1;
@@ -1316,7 +1317,7 @@
 
     button.generatr-drone-plugin-save-btn:hover:not(:disabled) {
       color: var(--primary);
-      background: rgba(255, 255, 255, 0.08);
+      background: var(--dron-ghost-bg);
     }
 
     button.generatr-drone-plugin-save-btn:disabled {
@@ -1368,7 +1369,7 @@
       gap: 0.28rem;
       font-size: 0.68rem;
       line-height: 1.2;
-      color: color-mix(in srgb, var(--theme-a) 82%, transparent);
+      color: var(--dron-label-strong);
       cursor: pointer;
       user-select: none;
       white-space: nowrap;
@@ -1395,7 +1396,7 @@
       position: relative;
       width: 100%;
       border-radius: 6px;
-      background: rgba(0, 0, 0, 0.24);
+      background: var(--dron-tile-bg-deep);
       overflow: hidden;
       min-height: 3.25rem;
       cursor: pointer;
@@ -1403,8 +1404,8 @@
 
     .generatr-drone-midi-preview-host:hover,
     .generatr-drone-midi-preview-host:focus-visible {
-      border-color: rgba(255, 255, 255, 0.32);
-      background: rgba(255, 255, 255, 0.04);
+      border-color: var(--dron-border-emphasis);
+      background: var(--dron-ghost-bg);
     }
 
     .generatr-drone-midi-preview-host.is-loading {
@@ -1453,7 +1454,7 @@
       border: none;
       border-radius: 4px;
       background: var(--secondary);
-      color: var(--theme-a);
+      color: var(--dron-label-color);
       font-size: 0.72rem;
       cursor: pointer;
       line-height: 1;
@@ -1461,7 +1462,7 @@
 
     button.generatr-drone-midi-preview-refresh-btn:hover {
       background: var(--primary);
-      color: var(--secondary);
+      color: var(--dron-on-primary);
     }
 
     svg.generatr-drone-midi-preview-svg .generatr-drone-midi-preview-note {
@@ -1479,7 +1480,7 @@
       margin: 0;
       font-size: 0.68rem;
       line-height: 1.35;
-      color: color-mix(in srgb, var(--theme-a) 68%, transparent);
+      color: var(--dron-text-muted);
     }
 
     .generatr-drone-midi-preview-placeholder {
@@ -1489,7 +1490,7 @@
       width: 100%;
       height: 100%;
       min-height: 3.25rem;
-      color: color-mix(in srgb, var(--theme-a) 68%, transparent);
+      color: var(--dron-text-muted);
       font-size: 1.35rem;
     }
 
@@ -1516,7 +1517,7 @@
       justify-content: center;
       padding: 1rem;
       box-sizing: border-box;
-      background: rgba(0, 0, 0, 0.45);
+      background: var(--dron-overlay-scrim);
       overflow: hidden;
     }
 
@@ -1533,7 +1534,7 @@
       padding: 0.85rem 1rem;
       border-radius: 8px;
       background: color-mix(in srgb, var(--secondary) 96%, transparent);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      border: 1px solid var(--dron-border-line);
       color: var(--primary);
       box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
       min-height: 0;
@@ -1543,7 +1544,7 @@
       margin: 0;
       font-size: 1rem;
       font-weight: 600;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
     }
 
     #generatr-drone-midi-pattern-modal .generatr-drone-midi-pattern-search {
@@ -1553,8 +1554,8 @@
       font-size: 0.82rem;
       padding: 0.42rem 0.5rem;
       border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.22);
-      background: rgba(0, 0, 0, 0.22);
+      border: 1px solid var(--dron-border-strong);
+      background: var(--dron-tile-bg-deep);
       color: var(--primary);
     }
 
@@ -1588,8 +1589,8 @@
       margin: 0;
       padding: 0.45rem;
       border-radius: 6px;
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      background: rgba(0, 0, 0, 0.18);
+      border: 1px solid var(--dron-border-soft);
+      background: var(--dron-tile-bg);
       color: inherit;
       font-family: inherit;
       text-align: left;
@@ -1597,21 +1598,21 @@
     }
 
     button.generatr-drone-midi-pattern-tile:hover {
-      border-color: rgba(255, 255, 255, 0.32);
-      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--dron-border-emphasis);
+      background: var(--dron-ghost-bg);
     }
 
     button.generatr-drone-midi-pattern-tile.is-selected {
-      border-color: color-mix(in srgb, var(--theme-a) 55%, transparent);
-      background: color-mix(in srgb, var(--theme-a) 16%, transparent);
+      border-color: var(--dron-select-border);
+      background: var(--dron-select-bg);
     }
 
     .generatr-drone-midi-pattern-tile-thumb {
       width: 100%;
       height: 2.4rem;
       border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid var(--dron-border-subtle);
+      background: var(--dron-tile-bg-deep);
       overflow: hidden;
     }
 
@@ -1635,23 +1636,23 @@
       gap: 0.45rem;
       padding: 0.55rem;
       border-radius: 6px;
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      background: rgba(0, 0, 0, 0.16);
+      border: 1px solid var(--dron-border-soft);
+      background: var(--dron-tile-bg);
     }
 
     .generatr-drone-midi-pattern-detail-name {
       margin: 0;
       font-size: 0.88rem;
       font-weight: 600;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
     }
 
     .generatr-drone-midi-pattern-detail-preview {
       width: 100%;
       height: 4.5rem;
       border-radius: 5px;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      background: rgba(0, 0, 0, 0.28);
+      border: 1px solid var(--dron-border-subtle);
+      background: var(--dron-tile-bg-deep);
       overflow: hidden;
     }
 
@@ -1668,7 +1669,7 @@
       overflow: auto;
       font-size: 0.74rem;
       line-height: 1.4;
-      color: color-mix(in srgb, var(--theme-a) 75%, transparent);
+      color: var(--dron-text-muted);
     }
 
     .generatr-drone-midi-pattern-actions {
@@ -1683,14 +1684,14 @@
       font-size: 0.78rem;
       padding: 0.35rem 0.75rem;
       border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--dron-border-strong);
+      background: var(--dron-ghost-bg);
       color: var(--primary);
       cursor: pointer;
     }
 
     .generatr-drone-midi-pattern-actions button:hover {
-      background: rgba(255, 255, 255, 0.14);
+      background: var(--dron-ghost-bg-strong);
     }
 
     @media (max-width: 720px) {
@@ -1708,7 +1709,7 @@
       min-height: 0.85rem;
       font-size: 0.68rem;
       line-height: 1.25;
-      color: color-mix(in srgb, var(--theme-a) 68%, transparent);
+      color: var(--dron-text-muted);
     }
 
     .generatr-drone-plugin-card-hint[hidden] {
@@ -1732,9 +1733,9 @@
       padding: 0.35rem;
       box-sizing: border-box;
       border-radius: 6px;
-      border: 1px dashed rgba(255, 255, 255, 0.28);
-      background: rgba(0, 0, 0, 0.18);
-      color: color-mix(in srgb, var(--theme-a) 85%, transparent);
+      border: 1px dashed var(--dron-border-strong);
+      background: var(--dron-tile-bg);
+      color: var(--dron-label-strong);
       cursor: pointer;
       font-family: inherit;
       display: flex;
@@ -1747,14 +1748,14 @@
     }
 
     button.generatr-drone-plugin-slot:hover {
-      border-color: rgba(255, 255, 255, 0.45);
-      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--dron-border-heavy);
+      background: var(--dron-ghost-bg);
       color: var(--primary);
     }
 
     button.generatr-drone-plugin-slot.is-filled {
       border-style: solid;
-      border-color: rgba(255, 255, 255, 0.32);
+      border-color: var(--dron-border-emphasis);
     }
 
     .generatr-drone-plugin-slot-plus {
@@ -1793,8 +1794,8 @@
       padding: 0;
       border: none;
       border-radius: 3px;
-      background: rgba(0, 0, 0, 0.45);
-      color: var(--theme-a);
+      background: var(--dron-overlay-scrim);
+      color: var(--dron-label-color);
       font-size: 0.72rem;
       line-height: 1;
       cursor: pointer;
@@ -1811,8 +1812,8 @@
       padding: 0;
       border: none;
       border-radius: 3px;
-      background: rgba(0, 0, 0, 0.45);
-      color: var(--theme-a);
+      background: var(--dron-overlay-scrim);
+      color: var(--dron-label-color);
       font-size: 0.58rem;
       line-height: 1rem;
       text-align: center;
@@ -1839,7 +1840,7 @@
       justify-content: center;
       padding: 1rem;
       box-sizing: border-box;
-      background: rgba(0, 0, 0, 0.45);
+      background: var(--dron-overlay-scrim);
       overflow: hidden;
     }
 
@@ -1856,7 +1857,7 @@
       padding: 0.85rem 1rem;
       border-radius: 8px;
       background: color-mix(in srgb, var(--secondary) 96%, transparent);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      border: 1px solid var(--dron-border-line);
       color: var(--primary);
       box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
       min-height: 0;
@@ -1866,7 +1867,7 @@
       margin: 0;
       font-size: 1rem;
       font-weight: 600;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
     }
 
     .generatr-drone-plugin-picker-columns {
@@ -1897,7 +1898,7 @@
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      color: color-mix(in srgb, var(--theme-a) 80%, transparent);
+      color: var(--dron-label-strong);
     }
 
     #generatr-drone-plugin-picker-filter {
@@ -1907,8 +1908,8 @@
       font-size: 0.85rem;
       padding: 0.55rem 0.5rem;
       border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      background: var(--theme-a);
+      border: 1px solid var(--dron-generatr-card-border);
+      background: var(--dron-control-bg);
       color: var(--primary);
     }
 
@@ -1918,8 +1919,8 @@
       height: 100%;
       overflow: auto;
       border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--dron-generatr-card-border);
+      background: var(--dron-panel-bg);
       padding: 0;
     }
 
@@ -1971,8 +1972,8 @@
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.06em;
-      color: color-mix(in srgb, var(--theme-a) 72%, transparent);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--dron-text-muted);
+      border-bottom: 1px solid var(--dron-border-faint);
     }
 
     .generatr-drone-plugin-picker-category-items {
@@ -2001,7 +2002,7 @@
     }
 
     button.generatr-drone-plugin-picker-choice:hover {
-      background: rgba(255, 255, 255, 0.1);
+      background: var(--dron-ghost-bg-hover);
     }
 
     button.generatr-drone-plugin-picker-choice:disabled {
@@ -2040,8 +2041,8 @@
       gap: 0.25rem;
       padding: 0.18rem 0.45rem;
       border-radius: 999px;
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--dron-generatr-card-border);
+      background: var(--dron-chip-surface);
       font-size: 0.68rem;
       line-height: 1.2;
       color: var(--primary);
@@ -2063,8 +2064,9 @@
     }
 
     button.generatr-drone-plugin-picker-choice.is-selected {
-      border-color: var(--primary);
-      background: rgba(255, 149, 5, 0.16);
+      border: 1px solid var(--dron-select-border);
+      background: var(--dron-select-bg);
+      color: var(--primary);
     }
 
     .generatr-drone-plugin-picker-category-head {
@@ -2091,8 +2093,8 @@
       font-size: 0.62rem;
       padding: 0.15rem 0.4rem;
       border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--dron-border-line);
+      background: var(--dron-ghost-bg);
       color: color-mix(in srgb, var(--primary) 82%, transparent);
       cursor: pointer;
     }
@@ -2120,23 +2122,23 @@
       width: 1.85rem;
       padding: 0;
       border-radius: 3px;
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--dron-border-soft);
+      background: var(--dron-ghost-bg);
       color: color-mix(in srgb, var(--primary) 70%, transparent);
       cursor: pointer;
       font-size: 0.72rem;
     }
 
     button.generatr-drone-plugin-picker-patch-delete:hover {
-      border-color: #e05a5a;
-      color: #ffb4b4;
+      border-color: var(--dron-danger-border);
+      color: var(--dron-danger-fg-muted);
       background: rgba(224, 90, 90, 0.14);
     }
 
     .generatr-drone-plugin-picker-actions button.is-primary {
       border-color: var(--primary);
       background: var(--primary);
-      color: var(--secondary);
+      color: var(--dron-on-primary);
     }
 
     .generatr-drone-plugin-picker-actions button.hidden {
@@ -2152,8 +2154,8 @@
       min-width: 0;
       padding: 0.45rem 0.55rem;
       border-radius: 4px;
-      border: 1px dashed rgba(255, 255, 255, 0.18);
-      background: rgba(0, 0, 0, 0.18);
+      border: 1px dashed var(--dron-border-line);
+      background: var(--dron-tile-bg);
       color: var(--primary);
       font-family: inherit;
       text-align: left;
@@ -2162,7 +2164,7 @@
 
     .generatr-drone-instrument-picker.is-filled {
       border-style: solid;
-      border-color: rgba(255, 255, 255, 0.22);
+      border-color: var(--dron-border-strong);
     }
 
     .generatr-drone-instrument-picker:focus-visible {
@@ -2187,7 +2189,7 @@
     }
 
     .generatr-drone-instrument-summary-line.is-muted {
-      color: color-mix(in srgb, var(--theme-a) 78%, transparent);
+      color: var(--dron-label-strong);
       font-style: italic;
     }
 
@@ -2213,8 +2215,8 @@
       padding: 0;
       border: none;
       border-radius: 3px;
-      background: rgba(255, 255, 255, 0.08);
-      color: var(--theme-a);
+      background: var(--dron-ghost-bg);
+      color: var(--dron-label-color);
       font-size: 0.62rem;
       line-height: 1;
       cursor: pointer;
@@ -2226,7 +2228,7 @@
 
     .generatr-drone-instrument-picker.is-filled:hover button.generatr-drone-instrument-edit-btn {
       opacity: 1;
-      background: rgba(0, 0, 0, 0.45);
+      background: var(--dron-overlay-scrim);
     }
 
     .generatr-drone-instrument-empty-icon {
@@ -2249,7 +2251,7 @@
       padding: 0;
       border: none;
       border-radius: 3px;
-      background: rgba(255, 255, 255, 0.08);
+      background: var(--dron-ghost-bg);
       color: var(--primary);
       cursor: pointer;
       line-height: 1;
@@ -2274,7 +2276,7 @@
       font-size: var(--dron-label-size);
       text-transform: uppercase;
       letter-spacing: 0.06em;
-      color: color-mix(in srgb, var(--theme-a) 82%, transparent);
+      color: var(--dron-label-strong);
     }
 
     .generatr-drone-instrument-mode-row select {
@@ -2301,8 +2303,8 @@
       font-size: 0.78rem;
       padding: 0.35rem 0.75rem;
       border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--dron-border-strong);
+      background: var(--dron-ghost-bg);
       color: var(--primary);
       cursor: pointer;
     }
@@ -2316,7 +2318,7 @@
       justify-content: center;
       padding: 1rem;
       box-sizing: border-box;
-      background: rgba(0, 0, 0, 0.45);
+      background: var(--dron-overlay-scrim);
       overflow: hidden;
     }
 
@@ -2333,7 +2335,7 @@
       padding: 0.85rem 1rem;
       border-radius: 8px;
       background: color-mix(in srgb, var(--secondary) 96%, transparent);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      border: 1px solid var(--dron-border-line);
       color: var(--primary);
       box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
       min-height: 0;
@@ -2343,7 +2345,7 @@
       margin: 0;
       font-size: 1rem;
       font-weight: 600;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
     }
 
     .generatr-drone-plugin-list-hint {
@@ -2357,7 +2359,7 @@
       margin: 0;
       min-height: 1.1rem;
       font-size: 0.72rem;
-      color: color-mix(in srgb, var(--theme-a) 78%, transparent);
+      color: var(--dron-label-strong);
       line-height: 1.35;
       display: flex;
       align-items: center;
@@ -2397,7 +2399,7 @@
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      color: color-mix(in srgb, var(--theme-a) 80%, transparent);
+      color: var(--dron-label-strong);
     }
 
     .generatr-drone-plugin-list-panel {
@@ -2406,8 +2408,8 @@
       height: 100%;
       overflow: auto;
       border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--dron-generatr-card-border);
+      background: var(--dron-panel-bg);
       padding: 0;
     }
 
@@ -2452,11 +2454,11 @@
     }
 
     button.generatr-drone-plugin-list-choice:hover {
-      background: rgba(255, 255, 255, 0.1);
+      background: var(--dron-ghost-bg-hover);
     }
 
     button.generatr-drone-plugin-list-choice.is-allowed {
-      background: color-mix(in srgb, var(--theme-a) 22%, transparent);
+      background: var(--dron-select-bg);
     }
 
     .generatr-drone-plugin-list-actions {
@@ -2476,14 +2478,14 @@
       font-size: 0.78rem;
       padding: 0.35rem 0.75rem;
       border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--dron-border-strong);
+      background: var(--dron-ghost-bg);
       color: var(--primary);
       cursor: pointer;
     }
 
     button.generatr-drone-plugin-list-rescan:hover:not(:disabled) {
-      background: rgba(255, 255, 255, 0.14);
+      background: var(--dron-ghost-bg-strong);
     }
 
     button.generatr-drone-plugin-list-rescan:disabled {
@@ -2500,7 +2502,7 @@
       justify-content: center;
       padding: 1rem;
       box-sizing: border-box;
-      background: rgba(0, 0, 0, 0.45);
+      background: var(--dron-overlay-scrim);
       overflow: hidden;
     }
 
@@ -2516,7 +2518,7 @@
       padding: 0.85rem 1rem;
       border-radius: 8px;
       background: color-mix(in srgb, var(--secondary) 96%, transparent);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      border: 1px solid var(--dron-border-line);
       color: var(--primary);
       box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
     }
@@ -2525,7 +2527,7 @@
       margin: 0;
       font-size: 1rem;
       font-weight: 600;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
     }
 
     .generatr-drone-save-preset-hint {
@@ -2539,7 +2541,7 @@
       display: block;
       margin-bottom: 0.25rem;
       font-size: 0.72rem;
-      color: color-mix(in srgb, var(--theme-a) 78%, transparent);
+      color: var(--dron-label-strong);
     }
 
     .generatr-drone-save-preset-field input {
@@ -2549,8 +2551,8 @@
       font-size: 0.82rem;
       padding: 0.42rem 0.5rem;
       border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.22);
-      background: rgba(0, 0, 0, 0.22);
+      border: 1px solid var(--dron-border-strong);
+      background: var(--dron-tile-bg-deep);
       color: var(--primary);
     }
 
@@ -2558,12 +2560,12 @@
       margin: 0;
       min-height: 1rem;
       font-size: 0.72rem;
-      color: color-mix(in srgb, var(--theme-a) 78%, transparent);
+      color: var(--dron-label-strong);
       line-height: 1.35;
     }
 
     .generatr-drone-save-preset-status.is-error {
-      color: #ffb4b4;
+      color: var(--dron-danger-fg-muted);
     }
 
     .generatr-drone-save-preset-actions {
@@ -2578,14 +2580,14 @@
       font-size: 0.78rem;
       padding: 0.35rem 0.75rem;
       border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--dron-border-strong);
+      background: var(--dron-ghost-bg);
       color: var(--primary);
       cursor: pointer;
     }
 
     .generatr-drone-save-preset-actions button:hover:not(:disabled) {
-      background: rgba(255, 255, 255, 0.14);
+      background: var(--dron-ghost-bg-strong);
     }
 
     .generatr-drone-save-preset-actions button:disabled {
@@ -2602,7 +2604,7 @@
       justify-content: center;
       padding: 1rem;
       box-sizing: border-box;
-      background: rgba(0, 0, 0, 0.45);
+      background: var(--dron-overlay-scrim);
       overflow: hidden;
     }
 
@@ -2618,7 +2620,7 @@
       padding: 0.85rem 1rem;
       border-radius: 8px;
       background: color-mix(in srgb, var(--secondary) 96%, transparent);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      border: 1px solid var(--dron-border-line);
       color: var(--primary);
       box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
     }
@@ -2627,7 +2629,7 @@
       margin: 0;
       font-size: 1rem;
       font-weight: 600;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
     }
 
     .generatr-drone-delete-preset-message {
@@ -2648,20 +2650,20 @@
       font-size: 0.78rem;
       padding: 0.35rem 0.75rem;
       border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--dron-border-strong);
+      background: var(--dron-ghost-bg);
       color: var(--primary);
       cursor: pointer;
     }
 
     .generatr-drone-delete-preset-actions button.is-danger {
-      border-color: #e05a5a;
+      border-color: var(--dron-danger-border);
       background: rgba(224, 90, 90, 0.18);
-      color: #ffd0d0;
+      color: var(--dron-danger-fg-strong);
     }
 
     .generatr-drone-delete-preset-actions button:hover:not(:disabled) {
-      background: rgba(255, 255, 255, 0.14);
+      background: var(--dron-ghost-bg-strong);
     }
 
     .generatr-drone-delete-preset-actions button.is-danger:hover:not(:disabled) {
@@ -2678,8 +2680,8 @@
       font-size: 0.78rem;
       padding: 0.35rem 0.75rem;
       border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--dron-border-strong);
+      background: var(--dron-ghost-bg);
       color: var(--primary);
       cursor: pointer;
     }
@@ -2696,7 +2698,7 @@
       gap: 0.22rem;
       flex: 0 0 auto;
       align-self: stretch;
-      border-left: 1px solid color-mix(in srgb, var(--theme-a) 70%, transparent);
+      border-left: 1px solid color-mix(in srgb, var(--dron-border) 70%, transparent);
       background: var(--dron-control-bg);
     }
 
@@ -2719,7 +2721,7 @@
 
     .generatr-drone-octave-btn:hover:not(:disabled) {
       color: var(--primary);
-      background: rgba(255, 255, 255, 0.12);
+      background: var(--dron-ghost-bg-hover);
     }
 
     .generatr-drone-octave-btn:disabled {
@@ -2794,8 +2796,8 @@
       width: auto;
       height: 100%;
       border-radius: 0;
-      color: color-mix(in srgb, var(--theme-d) 62%, transparent);
-      background: var(--dron-control-bg);
+      color: var(--dron-piano-white-key-fg);
+      background: var(--dron-piano-white-key-bg);
     }
 
     .generatr-drone-piano-key--black {
@@ -2810,8 +2812,8 @@
       pointer-events: auto;
       z-index: 1;
       border-radius: 0 0 3px 3px;
-      color: color-mix(in srgb, var(--theme-d) 78%, transparent);
-      background: var(--theme-a);
+      color: var(--dron-piano-black-key-fg);
+      background: var(--dron-piano-black-key-bg);
       font-size: 0.48rem;
       padding: 0 0.04rem 0.22rem;
     }
@@ -2825,7 +2827,7 @@
     }
 
     .generatr-drone-piano-key.is-enabled {
-      color: var(--secondary);
+      color: var(--dron-on-primary);
     }
 
     .generatr-drone-piano-key--white.is-enabled {
@@ -2859,7 +2861,7 @@
     .generatr-drone-musical-style-field > label {
       font-size: var(--dron-label-size);
       line-height: var(--dron-label-line);
-      color: var(--theme-a);
+      color: var(--dron-label-color);
       text-align: left;
       align-self: flex-start;
       margin: 0;
@@ -2887,7 +2889,7 @@
       justify-content: center;
       padding: 1rem;
       box-sizing: border-box;
-      background: rgba(0, 0, 0, 0.45);
+      background: var(--dron-overlay-scrim);
       overflow: hidden;
     }
 
@@ -2907,7 +2909,7 @@
       padding: 0.85rem 1rem;
       border-radius: 8px;
       background: color-mix(in srgb, var(--secondary) 96%, transparent);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      border: 1px solid var(--dron-border-line);
       color: var(--primary);
       box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
       overflow: hidden;
@@ -2917,7 +2919,7 @@
       margin: 0;
       font-size: 1rem;
       font-weight: 600;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
     }
 
     #generatr-drone-chart-selector-filter {
@@ -2927,8 +2929,8 @@
       font-size: 0.82rem;
       padding: 0.42rem 0.55rem;
       border-radius: var(--dron-control-radius);
-      border: 1px solid rgba(255, 255, 255, 0.22);
-      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--dron-border-strong);
+      background: var(--dron-tile-bg-deep);
       color: var(--primary);
     }
 
@@ -2954,7 +2956,7 @@
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      color: color-mix(in srgb, var(--theme-a) 80%, transparent);
+      color: var(--dron-label-strong);
       line-height: 1.2;
     }
 
@@ -3005,8 +3007,8 @@
 
     .generatr-drone-chart-selector-format-panel {
       border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--dron-border-soft);
+      background: var(--dron-panel-bg);
       padding: 0.45rem;
       max-height: 148px;
       overflow-y: auto;
@@ -3041,14 +3043,14 @@
       line-height: 1.2;
       padding: 0.28rem 0.48rem;
       border-radius: var(--dron-control-radius);
-      border: 1px solid rgba(255, 255, 255, 0.22);
-      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--dron-border-strong);
+      background: var(--dron-ghost-bg);
       color: inherit;
       cursor: pointer;
     }
 
     button.generatr-drone-chart-selector-chip:hover {
-      background: rgba(255, 255, 255, 0.1);
+      background: var(--dron-ghost-bg-hover);
     }
 
     button.generatr-drone-chart-selector-chip.is-selected {
@@ -3080,7 +3082,7 @@
       font-size: 0.75rem;
       line-height: 1.45;
       text-align: center;
-      color: color-mix(in srgb, var(--theme-a) 78%, transparent);
+      color: var(--dron-label-strong);
     }
 
     .generatr-drone-chart-selector-list {
@@ -3088,8 +3090,8 @@
       min-height: 0;
       overflow: auto;
       border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--dron-border-soft);
+      background: var(--dron-panel-bg);
       padding: 0.35rem;
     }
 
@@ -3133,7 +3135,7 @@
     }
 
     button.generatr-drone-chart-selector-choice:hover {
-      background: rgba(255, 255, 255, 0.1);
+      background: var(--dron-ghost-bg-hover);
     }
 
     button.generatr-drone-chart-selector-choice.is-selected {
@@ -3145,7 +3147,7 @@
       margin: 0;
       padding: 0.35rem 0.42rem;
       font-size: 0.75rem;
-      color: color-mix(in srgb, var(--theme-a) 72%, transparent);
+      color: var(--dron-text-muted);
       line-height: 1.35;
     }
 
@@ -3174,8 +3176,8 @@
       font-size: 0.78rem;
       padding: 0.35rem 0.75rem;
       border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--dron-border-strong);
+      background: var(--dron-ghost-bg);
       color: var(--primary);
       cursor: pointer;
     }
@@ -3205,7 +3207,7 @@
       justify-content: center;
       padding: 1rem;
       box-sizing: border-box;
-      background: rgba(0, 0, 0, 0.45);
+      background: var(--dron-overlay-scrim);
       overflow: hidden;
     }
 
@@ -3222,7 +3224,7 @@
       padding: 0.85rem 1rem;
       border-radius: 8px;
       background: color-mix(in srgb, var(--secondary) 96%, transparent);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      border: 1px solid var(--dron-border-line);
       color: var(--primary);
       box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
       min-height: 0;
@@ -3232,7 +3234,7 @@
       margin: 0;
       font-size: 1rem;
       font-weight: 600;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
     }
 
     #generatr-chord-picker-filter {
@@ -3242,8 +3244,8 @@
       font-size: 0.85rem;
       padding: 0.65rem 0.55rem;
       border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      background: var(--theme-a);
+      border: 1px solid var(--dron-generatr-card-border);
+      background: var(--dron-control-bg);
       color: var(--primary);
     }
 
@@ -3264,8 +3266,8 @@
       max-height: 240px;
       overflow: auto;
       border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--dron-border-soft);
+      background: var(--dron-panel-bg);
       padding: 0.35rem;
     }
 
@@ -3285,7 +3287,7 @@
     }
 
     button.generatr-chord-picker-choice:hover {
-      background: rgba(255, 255, 255, 0.1);
+      background: var(--dron-ghost-bg-hover);
     }
 
     button.generatr-chord-picker-choice.generatr-picker-selected {
@@ -3307,8 +3309,8 @@
       font-size: 0.72rem;
       padding: 0.15rem 0.42rem;
       border-radius: 999px;
-      background: rgba(255, 255, 255, 0.12);
-      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: var(--dron-ghost-bg-hover);
+      border: 1px solid var(--dron-border-strong);
       max-width: 100%;
     }
 
@@ -3348,13 +3350,13 @@
     button.generatr-chord-picker-cancel,
     button.generatr-chord-picker-clear {
       background: transparent;
-      border: 1px solid rgba(255, 255, 255, 0.38);
+      border: 1px solid var(--dron-border-heavy);
       color: var(--primary);
     }
 
     button.generatr-chord-picker-use {
-      background: var(--theme-a);
-      border: 1px solid var(--theme-a);
+      background: var(--dron-control-bg);
+      border: 1px solid var(--dron-border);
       color: var(--primary);
     }
 
@@ -3372,7 +3374,7 @@
       justify-content: center;
       padding: 1rem;
       box-sizing: border-box;
-      background: rgba(0, 0, 0, 0.45);
+      background: var(--dron-overlay-scrim);
       overflow: hidden;
     }
 
@@ -3389,7 +3391,7 @@
       padding: 0.9rem 1rem 1rem;
       border-radius: 8px;
       background: color-mix(in srgb, var(--secondary) 96%, transparent);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      border: 1px solid var(--dron-border-line);
       color: var(--primary);
       box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
       min-height: 0;
@@ -3399,7 +3401,7 @@
       margin: 0;
       font-size: 1rem;
       font-weight: 600;
-      color: #ffb4b4;
+      color: var(--dron-danger-fg-muted);
     }
 
     #generatr-error-message {
@@ -3413,8 +3415,8 @@
       line-height: 1.45;
       padding: 0.55rem 0.65rem;
       border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.14);
-      background: rgba(0, 0, 0, 0.22);
+      border: 1px solid var(--dron-border-soft);
+      background: var(--dron-tile-bg-deep);
     }
 
     .generatr-error-actions {
@@ -3430,8 +3432,8 @@
       font-size: 0.82rem;
       padding: 0.38rem 0.85rem;
       border-radius: 4px;
-      background: var(--theme-a);
-      border: 1px solid var(--theme-a);
+      background: var(--dron-control-bg);
+      border: 1px solid var(--dron-border);
       color: var(--primary);
     }
 
@@ -3445,7 +3447,7 @@
       justify-content: center;
       padding: 1rem;
       box-sizing: border-box;
-      background: rgba(0, 0, 0, 0.45);
+      background: var(--dron-overlay-scrim);
       overflow: hidden;
     }
 
@@ -3461,7 +3463,7 @@
       padding: 0.9rem 1rem 1rem;
       border-radius: 8px;
       background: color-mix(in srgb, var(--secondary) 96%, transparent);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      border: 1px solid var(--dron-border-line);
       color: var(--primary);
       box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
     }
@@ -3470,7 +3472,7 @@
       margin: 0;
       font-size: 1rem;
       font-weight: 600;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
     }
 
     #generatr-vst-first-launch-modal p.generatr-vst-first-launch-message {
@@ -3495,15 +3497,15 @@
       padding: 0.38rem 0.85rem;
       border-radius: 4px;
       background: transparent;
-      border: 1px solid rgba(255, 255, 255, 0.22);
+      border: 1px solid var(--dron-border-strong);
       color: var(--primary);
       text-decoration: none;
       margin-right: auto;
     }
 
     a.generatr-vst-first-launch-discord:hover {
-      border-color: var(--theme-a);
-      color: var(--theme-a);
+      border-color: var(--dron-border);
+      color: var(--dron-label-color);
     }
 
     button.generatr-vst-first-launch-continue {
@@ -3512,8 +3514,8 @@
       font-size: 0.82rem;
       padding: 0.38rem 0.85rem;
       border-radius: 4px;
-      background: var(--theme-a);
-      border: 1px solid var(--theme-a);
+      background: var(--dron-control-bg);
+      border: 1px solid var(--dron-border);
       color: var(--primary);
     }
 
@@ -3539,14 +3541,14 @@
       padding: 1rem 1.1rem;
       border-radius: 8px;
       background: var(--secondary);
-      border: 1px solid rgba(255, 255, 255, 0.12);
+      border: 1px solid var(--dron-border-subtle);
       box-shadow: 0 10px 32px rgba(0, 0, 0, 0.5);
     }
 
     #generatr-plugin-editor-busy-modal h3 {
       margin: 0;
       font-size: 1rem;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
     }
 
     #generatr-plugin-editor-busy-modal p {
@@ -3568,16 +3570,16 @@
       font-size: 0.8rem;
       padding: 0.38rem 0.85rem;
       border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.22);
-      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--dron-border-strong);
+      background: var(--dron-ghost-bg);
       color: var(--primary);
       cursor: pointer;
     }
 
     .generatr-plugin-editor-busy-actions button.is-danger {
-      border-color: #e05a5a;
+      border-color: var(--dron-danger-border);
       background: rgba(224, 90, 90, 0.22);
-      color: #ffd0d0;
+      color: var(--dron-danger-fg-strong);
     }
 
     button.generatr-error-dismiss:hover {
@@ -3598,9 +3600,9 @@
       font-size: 0.78rem;
       padding: 0.4rem 0.5rem;
       border-radius: 4px;
-      border: 1px solid rgba(255, 255, 255, 0.14);
+      border: 1px solid var(--dron-border-soft);
       background: transparent;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
       cursor: pointer;
     }
 
@@ -3612,7 +3614,7 @@
     .edit-action-nav-btn.edit-action-nav-active {
       border-color: var(--primary);
       color: var(--primary);
-      background: rgba(255, 149, 5, 0.08);
+      background: var(--dron-hover-bg-soft);
     }
 
     .edit-action-detail .edit-sample-section {
@@ -3699,7 +3701,7 @@
 
     .edit-presets-divider {
       border: none;
-      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      border-top: 1px solid var(--dron-border-subtle);
       margin: 0.65rem 0 0.5rem 0;
       padding: 0;
       height: 0;
@@ -3728,7 +3730,7 @@
       margin: 0;
       padding: 0.35rem;
       font-size: 0.78rem;
-      color: var(--secondary);
+      color: var(--dron-on-primary);
     }
 
     .edit-shortcut-name-input {
@@ -3738,8 +3740,8 @@
       font-size: 0.78rem;
       padding: 0.35rem 0.65rem;
       border-radius: 4px;
-      border: 1px solid var(--theme-a);
-      background: var(--theme-a);
+      border: 1px solid var(--dron-border);
+      background: var(--dron-control-bg);
       color: var(--primary);
       box-sizing: border-box;
     }
@@ -3751,9 +3753,9 @@
       font-size: 0.75rem;
       padding: 0.35rem 0.5rem;
       border-radius: 4px;
-      border: 1px solid var(--theme-a);
+      border: 1px solid var(--dron-border);
       background: transparent;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
       cursor: pointer;
     }
 
@@ -3784,17 +3786,17 @@
       font-size: 0.65rem;
       padding: 0.25rem 0.35rem;
       border-radius: 0 4px 4px 0;
-      border: 1px solid var(--theme-a);
+      border: 1px solid var(--dron-border);
       border-left: none;
       background: transparent;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
       cursor: pointer;
       line-height: 1;
     }
 
     .edit-preset-delete:hover {
-      color: #f66;
-      border-color: #f66;
+      color: var(--dron-danger-fg);
+      border-color: var(--dron-danger-fg);
     }
 
     .edit-preset-delete.hidden {
@@ -3809,9 +3811,9 @@
       font-size: 0.65rem;
       padding: 0.25rem 0.65rem;
       border-radius: 4px;
-      border: 1px solid var(--theme-a);
+      border: 1px solid var(--dron-border);
       background: transparent;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
       cursor: pointer;
       font-family: inherit;
     }
@@ -3831,7 +3833,7 @@
 
     .edit-control-row {
       font-size: 0.72rem;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
     }
 
     /* Edit sidebar sliders (beatbuildr-style track + thumb; native track hidden) */
@@ -3850,7 +3852,7 @@
 
     .edit-slider-param-label {
       font-size: 0.72rem;
-      color: var(--theme-a);
+      color: var(--dron-label-color);
       line-height: 1.2;
       text-align: left;
       flex: 1 1 auto;
@@ -3881,7 +3883,7 @@
       top: 52%;
       transform: translateY(-50%);
       height: 3px;
-      background: var(--theme-a);
+      background: var(--dron-control-bg);
       pointer-events: none;
       z-index: 1;
       border-radius: 2px;
@@ -3965,7 +3967,7 @@
       font-size: 0.82rem;
       line-height: 1;
       border-radius: 4px;
-      border: 1px solid var(--theme-a);
+      border: 1px solid var(--dron-border);
       background: var(--secondary);
       color: var(--primary);
       cursor: pointer;
@@ -3991,7 +3993,7 @@
       border-radius: 4px;
       border: none;
       background: var(--primary);
-      color: var(--secondary);
+      color: var(--dron-on-primary);
       cursor: pointer;
       font-family: inherit;
       font-weight: bold;
@@ -4003,7 +4005,7 @@
 
     .button {
       cursor: pointer;
-      border-bottom: 2px solid var(--theme-a);
+      border-bottom: 2px solid var(--dron-border);
       padding-inline: 5px;
       padding-block: 5px;
       font-size: 0.75rem;
@@ -4020,7 +4022,7 @@
       padding: 6px;
       text-align: center;
       border: none;
-      border-bottom: 2px solid var(--theme-a);
+      border-bottom: 2px solid var(--dron-border);
     }
 
     .button.icon-btn:hover {
@@ -4034,38 +4036,38 @@
       border: none;
       border-bottom: 2px solid var(--primary);
       background-color: var(--primary);
-      color: var(--secondary);
+      color: var(--dron-on-primary);
     }
 
     .processing-type-active {
       border: none;
       border-bottom: 2px solid var(--primary);
       background-color: var(--primary);
-      color: #000;
+      color: var(--dron-on-primary);
     }
 
     .drumpattern-sample .waveform-actions .processing-type-active {
       background-color: var(--theme-b);
       border-bottom-color: var(--theme-b);
-      color: #000;
+      color: var(--dron-on-primary);
     }
 
     .sweep-sample .waveform-actions .button.processing-type-active {
       background-color: var(--theme-c);
       border-bottom-color: var(--theme-c);
-      color: #000;
+      color: var(--dron-on-primary);
     }
 
     .wash-sample .waveform-actions .button.processing-type-active {
       background-color: var(--theme-f);
       border-bottom-color: var(--theme-f);
-      color: #000;
+      color: var(--dron-on-primary);
     }
 
     .folysplitr-sample .waveform-actions .button.processing-type-active {
       background-color: var(--theme-e);
       border-bottom-color: var(--theme-e);
-      color: #000;
+      color: var(--dron-on-primary);
     }
 
     .waveform-actions .trim-cut-action .fa-scissors {
@@ -4102,8 +4104,8 @@
       margin-left: -18px;
       margin-top: -18px;
       border-radius: 8px;
-      background: var(--secondary, #1a1a18);
-      border: 1px solid var(--theme-a, #353531);
+      background: var(--secondary);
+      border: 1px solid var(--dron-border);
       box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
       display: flex;
       align-items: center;
@@ -4113,11 +4115,11 @@
 
     .auditionr-drag-prep-indicator i {
       font-size: 1rem;
-      color: var(--primary, #ff9505);
+      color: var(--primary);
     }
 
     .waveform-wrapper {
-      /* border: 2px solid var(--theme-a); */
+      /* border: 2px solid var(--dron-border); */
       padding: 10px;
       margin-bottom: 1rem;
       /* border-radius: 10px; */
@@ -4274,7 +4276,7 @@
     .processing-actions-divider {
       width: 1px;
       height: 20px;
-      border-left: 1px solid var(--theme-a);
+      border-left: 1px solid var(--dron-border);
       opacity: 0.6;
       align-self: center;
       margin: 0 4px;
@@ -4304,7 +4306,7 @@
     .drumpattern-sample .waveform-actions .fixed-button {
       background-color: var(--theme-b);
       border-bottom-color: var(--theme-b);
-      color: var(--secondary);
+      color: var(--dron-on-primary);
     }
 
     .drumpattern-sample .waveform-actions .button:hover {
@@ -4319,7 +4321,7 @@
     .sweep-sample .waveform-actions .fixed-button {
       background-color: var(--theme-c);
       border-bottom-color: var(--theme-c);
-      color: var(--secondary);
+      color: var(--dron-on-primary);
     }
 
     .sweep-sample .waveform-actions .button:hover {
@@ -4334,7 +4336,7 @@
     .wash-sample .waveform-actions .fixed-button {
       background-color: var(--theme-f);
       border-bottom-color: var(--theme-f);
-      color: var(--secondary);
+      color: var(--dron-on-primary);
     }
 
     .wash-sample .waveform-actions .button:hover {
@@ -4349,7 +4351,7 @@
     .folysplitr-sample .waveform-actions .fixed-button {
       background-color: var(--theme-e);
       border-bottom-color: var(--theme-e);
-      color: var(--secondary);
+      color: var(--dron-on-primary);
     }
 
     .folysplitr-sample .waveform-actions .button:hover {
@@ -4357,11 +4359,11 @@
     }
 
     .waveform-actions .button.processing-type-active {
-      color: #000;
+      color: var(--dron-on-primary);
     }
 
     #logs {
-      background-color: var(--theme-a);
+      background-color: var(--dron-surface-inset);
     }
 
     .disabled {
@@ -4382,8 +4384,8 @@
       gap: 0.55rem;
       padding: 0.35rem 0.55rem;
       border-radius: 999px;
-      border: 1px solid var(--theme-a);
-      background: rgba(0, 0, 0, 0.82);
+      border: 1px solid var(--dron-border);
+      background: var(--dron-chip-bg);
       color: var(--primary);
       font-size: 0.72rem;
       backdrop-filter: blur(3px);
@@ -8131,6 +8133,30 @@
       return fallback;
     }
 
+    function auditionrWaveformProgressColor(sampleKind) {
+      var k = sampleKind || {};
+      if (k.isDrumpattern) return auditionrReadCssVar("--theme-b", "#016fb9");
+      if (k.isWash) return auditionrReadCssVar("--theme-f", "#0d9ea8");
+      if (k.isSweep) return auditionrReadCssVar("--theme-c", "#ec4e20");
+      if (k.isFolysplitr) return auditionrReadCssVar("--theme-e", "#2e8b57");
+      return auditionrReadCssVar("--primary", "#ff9505");
+    }
+
+    function auditionrRefreshWaveformThemeColors() {
+      Object.keys(waveformInstances).forEach(function (absPath) {
+        var inst = waveformInstances[absPath];
+        if (!inst || !inst.wavesurfer) return;
+        var kind = auditionrSampleKind(inst.displayName || "");
+        var progressColor = auditionrWaveformProgressColor(kind);
+        var waveColor = auditionrReadCssVar("--dron-wave-color", "#353531");
+        try {
+          inst.wavesurfer.setOptions({ progressColor: progressColor, waveColor: waveColor });
+        } catch (e) { /* ignore */ }
+      });
+    }
+
+    document.documentElement.addEventListener("dronmakr-themechange", auditionrRefreshWaveformThemeColors);
+
     function auditionrSampleKind(displayName) {
       var n = String(displayName || "").replace(/\.wav$/i, "").toLowerCase();
       var isDrumpattern = n.startsWith("drumpattern___");
@@ -8389,16 +8415,12 @@
 
       var container = document.getElementById("waveform-container");
       container.appendChild(wrapper);
-      var themeEProgress = auditionrReadCssVar("--theme-e", "#2e8b57");
-      var themeFProgress = auditionrReadCssVar("--theme-f", "#0d9ea8");
-      var progressColor = "#ff9505";
-      if (isDrumpattern) progressColor = "#016fb9";
-      else if (isWash) progressColor = themeFProgress;
-      else if (isSweep) progressColor = "#ec4e20";
-      else if (isFolysplitr) progressColor = themeEProgress;
+      var themeEProgress = auditionrReadCssVar("--theme-e", "var(--theme-e)");
+      var themeFProgress = auditionrReadCssVar("--theme-f", "var(--theme-f)");
+      var progressColor = auditionrWaveformProgressColor(sampleKind);
       var wsOpts = {
         container: "#" + waveformIdSafe,
-        waveColor: "#353531",
+        waveColor: auditionrReadCssVar("--dron-wave-color", "var(--dron-wave-color)"),
         progressColor: progressColor,
         backend: "WebAudio",
         height: 80,
