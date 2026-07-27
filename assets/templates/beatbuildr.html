@@ -776,6 +776,34 @@
       text-overflow: ellipsis;
     }
 
+    .row-label-sample-warn {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 0.85rem;
+      height: 0.85rem;
+      border: none;
+      padding: 0;
+      border-radius: 2px;
+      cursor: pointer;
+      background: transparent;
+      color: #ff9800;
+      font-size: 0.62rem;
+    }
+
+    .row-label-sample-warn:hover {
+      background: var(--dron-warning-bg);
+    }
+
+    .row-label-sample.long-sample {
+      cursor: pointer;
+    }
+
+    .row-label-sample.long-sample:hover {
+      color: var(--primary);
+    }
+
     .row-label-sample-refresh {
       flex-shrink: 0;
       width: 1.1rem;
@@ -1712,6 +1740,10 @@
       color: var(--theme-c);
     }
 
+    .info-modal-content .confirm-modal-text i {
+      color: #ff9800;
+    }
+
     #app-version-chip {
       position: fixed;
       right: 12px;
@@ -2194,6 +2226,36 @@
       return String(rounded);
     }
 
+    const SAMPLE_LENGTH_WARN_SEC = 3;
+
+    function getSampleDurationSec(rowKey) {
+      const buffer = state.buffers[rowKey];
+      if (!buffer || !Number.isFinite(buffer.duration)) return null;
+      return buffer.duration;
+    }
+
+    function isSampleLong(rowKey) {
+      const duration = getSampleDurationSec(rowKey);
+      return duration !== null && duration > SAMPLE_LENGTH_WARN_SEC;
+    }
+
+    function formatSampleDurationSec(sec) {
+      if (!Number.isFinite(sec) || sec <= 0) return "unknown length";
+      if (sec < 60) {
+        const rounded = Math.round(sec * 10) / 10;
+        return `${rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(1)} sec`;
+      }
+      const minutes = Math.floor(sec / 60);
+      const seconds = Math.round(sec % 60);
+      return `${minutes}m ${seconds}s`;
+    }
+
+    function showLongSampleInfoModal(sampleName, durationSec) {
+      const lengthText = formatSampleDurationSec(durationSec);
+      const safeName = sampleName || "sample";
+      showInfoModal(`${safeName} length is ${lengthText}, beatbuildr works best with samples under 3s`);
+    }
+
     function deepCopyPattern() {
       const copy = {};
       ROWS.forEach(row => {
@@ -2343,14 +2405,41 @@
         const sampleWrap = document.createElement("div");
         sampleWrap.className = "row-label-sample-wrap";
 
-        const sampleLabel = document.createElement("span");
-        sampleLabel.className = "row-label-sample";
         const sampleDescriptor = state.kit && state.kit.kit && state.kit.kit[rowKey];
         const sampleName = sampleDescriptor && sampleDescriptor.name
           ? sampleDescriptor.name
           : "no sample";
+        const sampleDurationSec = getSampleDurationSec(rowKey);
+        const sampleIsLong = isSampleLong(rowKey);
+
+        if (sampleIsLong) {
+          const warnBtn = document.createElement("button");
+          warnBtn.type = "button";
+          warnBtn.className = "row-label-sample-warn";
+          warnBtn.title = "Long sample warning";
+          warnBtn.setAttribute("aria-label", "Long sample warning");
+          warnBtn.innerHTML = "<i class=\"fa-solid fa-triangle-exclamation\"></i>";
+          warnBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            showLongSampleInfoModal(sampleName, sampleDurationSec);
+          });
+          sampleWrap.appendChild(warnBtn);
+        }
+
+        const sampleLabel = document.createElement("span");
+        sampleLabel.className = "row-label-sample" + (sampleIsLong ? " long-sample" : "");
         sampleLabel.textContent = sampleName;
-        sampleLabel.title = sampleName;
+        sampleLabel.title = sampleIsLong
+          ? `${sampleName} (${formatSampleDurationSec(sampleDurationSec)})`
+          : sampleName;
+        if (sampleIsLong) {
+          sampleLabel.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            showLongSampleInfoModal(sampleName, sampleDurationSec);
+          });
+        }
         sampleWrap.appendChild(sampleLabel);
 
         const refreshBtn = document.createElement("span");
@@ -3268,7 +3357,21 @@
     const confirmModalNo = document.getElementById("confirm-modal-no");
 
     function showErrorModal(message) {
+      errorModalOverlay.querySelector(".confirm-modal-content").classList.remove("info-modal-content");
+      errorModalOverlay.querySelector(".confirm-modal-content").classList.add("error-modal-content");
       errorModalText.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i><span>${message}</span>`;
+      errorModalOverlay.hidden = false;
+      errorModalClose.onclick = () => {
+        errorModalOverlay.hidden = true;
+        errorModalClose.onclick = null;
+      };
+    }
+
+    function showInfoModal(message) {
+      const content = errorModalOverlay.querySelector(".confirm-modal-content");
+      content.classList.remove("error-modal-content");
+      content.classList.add("info-modal-content");
+      errorModalText.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i><span>${message}</span>`;
       errorModalOverlay.hidden = false;
       errorModalClose.onclick = () => {
         errorModalOverlay.hidden = true;
