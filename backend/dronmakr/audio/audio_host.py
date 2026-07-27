@@ -37,9 +37,9 @@ def _get_dawdreamer():
 SAMPLE_RATE = 44100
 BUFFER_SIZE = 512
 # Built-in Faust instruments are already gain-staged in their DSP.
-FAUST_HEADROOM_GAIN = 0.32
-# Samplers/synth plug-ins (Kontakt, etc.) sum voices much hotter offline.
-VST_HEADROOM_GAIN = 0.1
+FAUST_HEADROOM_GAIN = 0.45
+# VST/AU polyphonic renders can spike; RENDER_GAIN_CEILING trims peaks before this gain.
+VST_HEADROOM_GAIN = 0.45
 HEADROOM_GAIN = VST_HEADROOM_GAIN
 # Peak ceiling before PCM export (~-6 dBFS) — static scale only, no dynamics.
 EXPORT_PEAK_LIMIT = 0.5
@@ -465,6 +465,34 @@ def _render_output_is_usable(audio: np.ndarray) -> bool:
     return float(np.max(np.abs(audio))) >= MIN_RENDER_PEAK
 
 
+def _plugin_offline_prime_sec(
+    sample_rate: int = SAMPLE_RATE,
+    buffer_size: int = BUFFER_SIZE,
+) -> float:
+    """Minimum silent offline pass to flush JUCE/DawDreamer startup buffer garbage."""
+    return max(
+        float(PLUGIN_RENDER_WARMUP_SEC),
+        float(buffer_size * 2) / float(sample_rate),
+    )
+
+
+def _prime_offline_plugin(
+    engine: Any,
+    instrument: Any,
+    *,
+    sample_rate: int = SAMPLE_RATE,
+    buffer_size: int = BUFFER_SIZE,
+) -> None:
+    """Run a short silent render after graph load so the real pass does not inherit startup noise."""
+    prime_sec = _plugin_offline_prime_sec(sample_rate, buffer_size)
+    if prime_sec <= 0:
+        return
+    instrument.clear_midi()
+    engine.render(prime_sec)
+    with contextlib.suppress(Exception):
+        _ = engine.get_audio()
+
+
 def _trim_rendered_audio(
     audio: np.ndarray,
     *,
@@ -501,6 +529,7 @@ def _render_loaded_midi_graph(
     velocity_gain = staging["velocity_gain"]
 
     engine.load_graph(graph)
+    _prime_offline_plugin(engine, instrument, sample_rate=sample_rate)
     note_count = _prepare_instrument_for_render(
         engine,
         instrument,
@@ -510,8 +539,6 @@ def _render_loaded_midi_graph(
     )
     if note_count <= 0:
         raise ValueError(f"No playable notes found in MIDI file: {midi_path}")
-    if PLUGIN_RENDER_WARMUP_SEC > 0:
-        time.sleep(PLUGIN_RENDER_WARMUP_SEC)
     engine.render(float(duration_sec) + RENDER_TAIL_SEC + float(prime_sec))
     return _trim_rendered_audio(
         engine.get_audio(),

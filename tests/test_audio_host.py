@@ -4,8 +4,12 @@ import time
 import numpy as np
 
 from dronmakr.audio.audio_host import (
+    BUFFER_SIZE,
     EXPORT_PEAK_LIMIT,
     HEADROOM_GAIN,
+    PLUGIN_RENDER_WARMUP_SEC,
+    SAMPLE_RATE,
+    _plugin_offline_prime_sec,
     _wait_for_editor_preview_arm,
     daw_audio_to_samples_channels,
     downmix_audio_for_export,
@@ -99,3 +103,9 @@ def test_finalize_rendered_audio_tames_hot_polyphonic_render():
     audio = np.full((1000, 2), 4.0, dtype=np.float32)
     out = finalize_rendered_audio(audio, 44100, headroom_gain=HEADROOM_GAIN)
     assert float(np.max(np.abs(out))) <= EXPORT_PEAK_LIMIT + 1e-5
+
+
+def test_plugin_offline_prime_sec_covers_buffer_warmup():
+    prime_sec = _plugin_offline_prime_sec(SAMPLE_RATE, BUFFER_SIZE)
+    assert prime_sec >= PLUGIN_RENDER_WARMUP_SEC
+    assert prime_sec >= (BUFFER_SIZE * 2) / float(SAMPLE_RATE)
