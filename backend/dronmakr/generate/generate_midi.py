@@ -140,6 +140,38 @@ SUPPORTED_PATTERNS_INFO = [
         "shuffled_chord_voice_quarters",
         "fresh random permutation of chord tones replayed each bar on quarter pulses",
     ),
+    (
+        "stab_eighth",
+        "short full chord stab on every eighth note",
+    ),
+    (
+        "stab_sixteenth",
+        "short full chord stab on every sixteenth note",
+    ),
+    (
+        "polyrhythm_stab_sixteenth",
+        "full chord stabs every three sixteenth steps on a sixteenth grid",
+    ),
+    (
+        "polyrhythm_stab_triplet",
+        "full chord stabs every four triplet steps on an eighth triplet grid",
+    ),
+    (
+        "stab_quarter",
+        "short full chord stab on every quarter note",
+    ),
+    (
+        "stab_backbeat",
+        "short full chord stab on beats two and four",
+    ),
+    (
+        "stab_offbeat_eighth",
+        "short full chord stab on each offbeat eighth subdivision",
+    ),
+    (
+        "trance_gate_eighth",
+        "full chord hits on alternating eighth notes with rests between",
+    ),
 ]
 
 SUPPORTED_PATTERNS = [item[0] for item in SUPPORTED_PATTERNS_INFO]
@@ -1621,6 +1653,154 @@ def generate_drone_midi(
                     )
                 )
                 local_t += note_duration
+
+    elif pattern == "stab_eighth":
+        step = seconds_per_beat * 0.5
+        stab = min(step * 0.82, seconds_per_beat * 0.2)
+        t = 0.0
+        while t < total_duration - 1e-9:
+            velocity = velocity_sampler.next()
+            for pitch in midi_notes:
+                instrument.notes.append(
+                    pretty_midi.Note(
+                        velocity=velocity,
+                        pitch=pitch,
+                        start=t,
+                        end=min(t + stab, total_duration),
+                    )
+                )
+            t += step
+
+    elif pattern == "stab_sixteenth":
+        step = seconds_per_beat * 0.25
+        stab = min(step * 0.82, seconds_per_beat * 0.15)
+        t = 0.0
+        while t < total_duration - 1e-9:
+            velocity = velocity_sampler.next()
+            for pitch in midi_notes:
+                instrument.notes.append(
+                    pretty_midi.Note(
+                        velocity=velocity,
+                        pitch=pitch,
+                        start=t,
+                        end=min(t + stab, total_duration),
+                    )
+                )
+            t += step
+
+    elif pattern == "polyrhythm_stab_sixteenth":
+        sixteenth = seconds_per_beat * 0.25
+        stab = min(sixteenth * 0.85, seconds_per_beat * 0.18)
+        step = sixteenth * 3
+        t = 0.0
+        while t < total_duration - 1e-9:
+            velocity = velocity_sampler.next()
+            for pitch in midi_notes:
+                instrument.notes.append(
+                    pretty_midi.Note(
+                        velocity=velocity,
+                        pitch=pitch,
+                        start=t,
+                        end=min(t + stab, total_duration),
+                    )
+                )
+            t += step
+
+    elif pattern == "polyrhythm_stab_triplet":
+        triplet = seconds_per_beat / 3.0
+        stab = min(triplet * 0.85, seconds_per_beat * 0.18)
+        step = triplet * 4
+        t = 0.0
+        while t < total_duration - 1e-9:
+            velocity = velocity_sampler.next()
+            for pitch in midi_notes:
+                instrument.notes.append(
+                    pretty_midi.Note(
+                        velocity=velocity,
+                        pitch=pitch,
+                        start=t,
+                        end=min(t + stab, total_duration),
+                    )
+                )
+            t += step
+
+    elif pattern == "stab_quarter":
+        step = seconds_per_beat
+        stab = min(step * 0.35, seconds_per_beat * 0.25)
+        t = 0.0
+        while t < total_duration - 1e-9:
+            velocity = velocity_sampler.next()
+            for pitch in midi_notes:
+                instrument.notes.append(
+                    pretty_midi.Note(
+                        velocity=velocity,
+                        pitch=pitch,
+                        start=t,
+                        end=min(t + stab, total_duration),
+                    )
+                )
+            t += step
+
+    elif pattern == "stab_backbeat":
+        stab = min(seconds_per_beat * 0.2, 0.12)
+        bar_t = 0.0
+        while bar_t < total_duration - 1e-9:
+            for beat_ix in (1, 3):
+                t = bar_t + beat_ix * seconds_per_beat
+                if t >= total_duration:
+                    break
+                velocity = velocity_sampler.next()
+                for pitch in midi_notes:
+                    instrument.notes.append(
+                        pretty_midi.Note(
+                            velocity=velocity,
+                            pitch=pitch,
+                            start=t,
+                            end=min(t + stab, total_duration),
+                        )
+                    )
+            bar_t += bar_length
+
+    elif pattern == "stab_offbeat_eighth":
+        slot = seconds_per_beat * 0.5
+        stab = min(slot * 0.82, seconds_per_beat * 0.18)
+        bar_t = 0.0
+        while bar_t < total_duration - 1e-9:
+            for beat_ix in range(beats_per_bar):
+                t = bar_t + beat_ix * seconds_per_beat + slot
+                if t >= total_duration:
+                    break
+                velocity = velocity_sampler.next()
+                for pitch in midi_notes:
+                    instrument.notes.append(
+                        pretty_midi.Note(
+                            velocity=velocity,
+                            pitch=pitch,
+                            start=t,
+                            end=min(t + stab, total_duration),
+                        )
+                    )
+            bar_t += bar_length
+
+    elif pattern == "trance_gate_eighth":
+        step = seconds_per_beat * 0.5
+        stab = step * 0.45
+        t = 0.0
+        on = True
+        while t < total_duration - 1e-9:
+            if on:
+                velocity = velocity_sampler.next()
+                for pitch in midi_notes:
+                    instrument.notes.append(
+                        pretty_midi.Note(
+                            velocity=velocity,
+                            pitch=pitch,
+                            start=t,
+                            end=min(t + stab, total_duration),
+                        )
+                    )
+            t += step
+            on = not on
 
     else:
         # **Straight Chord:** (default) Play all notes together from start to finish
