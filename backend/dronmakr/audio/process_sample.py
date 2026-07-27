@@ -134,7 +134,7 @@ def apply_plugin_patch_to_sample(input_path, patch_name, presets_path=None):
         )
 
     out = _finalize_fx_processed_audio(processed, target_samples=target_samples)
-    sf.write(input_path, out, sample_rate, subtype="PCM_16")
+    _write_channels_first(input_path, out, sample_rate)
     log_sample_processing_line(f"Applied plugin patch '{patch_name}'")
 
 

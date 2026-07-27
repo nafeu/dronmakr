@@ -6304,7 +6304,10 @@
         window.alert("Select a sample first (click its name or use the waveform).");
         return;
       }
-      if (editSamplesBusy) return;
+      if (editSamplesBusy) {
+        window.alert("Still finishing the previous edit. Wait a moment and try again.");
+        return;
+      }
       if (!beginEditSamplesBusy(selectedEditApiPath)) return;
       processSample({
         path: selectedEditApiPath,
@@ -7810,8 +7813,8 @@
       var absPath = hintedAbsPath || resolveWaveformAbsForProcessPath(pathToken);
       if (absPath && waveformInstances[absPath] && waveformInstances[absPath].wavesurfer) {
         refreshWaveform(absPath);
-        return;
       }
+      // Server edit is done; do not block further Apply clicks on WaveSurfer reload.
       endEditSamplesBusy();
     }
 
@@ -7879,6 +7882,7 @@
             window.alert((pack.data && pack.data.error) || "Processing failed");
             return;
           }
+          if (fileAbs) endWaveformProcessing(fileAbs);
           refreshWaveformAfterProcess(params.path, fileAbs);
           console.log(pack.data);
         })

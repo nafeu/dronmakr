@@ -172,6 +172,46 @@ SUPPORTED_PATTERNS_INFO = [
         "trance_gate_eighth",
         "full chord hits on alternating eighth notes with rests between",
     ),
+    (
+        "ambient_half_hold",
+        "one chord tone held each half note, slowly cycling voices",
+    ),
+    (
+        "granular_sixteenth_scatter",
+        "sparse micro hits of random chord tones on a sixteenth grid",
+    ),
+    (
+        "call_response_split",
+        "lower voices on beats one and two, upper voices on beats three and four",
+    ),
+    (
+        "fibonacci_bar_pulses",
+        "single hits on fibonacci sixteenth offsets within each bar",
+    ),
+    (
+        "velocity_swell_quarter",
+        "full chord each quarter with velocity rising and falling across the bar",
+    ),
+    (
+        "triplet_burst_rest",
+        "three triplet eighth arpeggio hits then silence for the rest of each beat",
+    ),
+    (
+        "bloom_crescendo_bar",
+        "each bar chord voices enter one by one with growing velocity then hold",
+    ),
+    (
+        "extreme_swap_quarter",
+        "alternating lowest and highest chord tones on quarter pulses",
+    ),
+    (
+        "micro_trill_cluster",
+        "each beat a quick trill between two adjacent chord tones",
+    ),
+    (
+        "phased_eighth_echo",
+        "eighth arpeggio with each note echoed one sixteenth later at lower velocity",
+    ),
 ]
 
 SUPPORTED_PATTERNS = [item[0] for item in SUPPORTED_PATTERNS_INFO]
@@ -1801,6 +1841,276 @@ def generate_drone_midi(
                     )
             t += step
             on = not on
+
+    elif pattern == "ambient_half_hold":
+        ordered = sorted(midi_notes)
+        if not ordered:
+            ordered = midi_notes[:]
+        step = seconds_per_beat * 2.0
+        i = 0
+        while time < total_duration - 1e-9:
+            pitch = ordered[i % len(ordered)]
+            i += 1
+            velocity = velocity_sampler.next(
+                velocity_range[0],
+                max(velocity_range[0], velocity_range[1] - 18),
+            )
+            start_time = max(0.0, time)
+            instrument.notes.append(
+                pretty_midi.Note(
+                    velocity=velocity,
+                    pitch=pitch,
+                    start=start_time,
+                    end=min(start_time + step * 0.96, total_duration),
+                )
+            )
+            time += step
+
+    elif pattern == "granular_sixteenth_scatter":
+        sixteenth = seconds_per_beat * 0.25
+        for bar_index in range(num_bars):
+            bar_start = bar_index * bar_length
+            for step_ix in range(beats_per_bar * 4):
+                if random.random() > 0.58:
+                    continue
+                t = bar_start + step_ix * sixteenth
+                if t >= total_duration:
+                    break
+                pitch = random.choice(midi_notes)
+                gate = sixteenth * random.uniform(0.22, 0.55)
+                velocity = velocity_sampler.next()
+                instrument.notes.append(
+                    pretty_midi.Note(
+                        velocity=velocity,
+                        pitch=pitch,
+                        start=t,
+                        end=min(t + gate, total_duration),
+                    )
+                )
+
+    elif pattern == "call_response_split":
+        ordered = sorted(midi_notes)
+        if not ordered:
+            ordered = midi_notes[:]
+        mid = max(1, len(ordered) // 2)
+        lower_voice = ordered[:mid]
+        upper_voice = ordered[mid:] or ordered[-1:]
+        slot = seconds_per_beat * 0.5
+        bar_t = 0.0
+        while bar_t < total_duration - 1e-9:
+            for beat_ix in range(beats_per_bar):
+                pool = lower_voice if beat_ix < 2 else upper_voice
+                for sub in (0.0, slot):
+                    t = bar_t + beat_ix * seconds_per_beat + sub
+                    if t >= total_duration:
+                        break
+                    velocity = velocity_sampler.next()
+                    pitch = random.choice(pool)
+                    instrument.notes.append(
+                        pretty_midi.Note(
+                            velocity=velocity,
+                            pitch=pitch,
+                            start=t,
+                            end=min(t + slot * 0.88, total_duration),
+                        )
+                    )
+            bar_t += bar_length
+
+    elif pattern == "fibonacci_bar_pulses":
+        ordered = sorted(midi_notes)
+        if not ordered:
+            ordered = midi_notes[:]
+        sixteenth = seconds_per_beat * 0.25
+        fib_offsets = (0, 1, 2, 4, 7, 12)
+        gate = min(sixteenth * 0.9, seconds_per_beat * 0.2)
+        ni = 0
+        for bar_index in range(num_bars):
+            bar_start = bar_index * bar_length
+            for offset in fib_offsets:
+                t = bar_start + offset * sixteenth
+                if t >= total_duration:
+                    break
+                velocity = velocity_sampler.next()
+                pitch = ordered[ni % len(ordered)]
+                ni += 1
+                instrument.notes.append(
+                    pretty_midi.Note(
+                        velocity=velocity,
+                        pitch=pitch,
+                        start=t,
+                        end=min(t + gate, total_duration),
+                    )
+                )
+
+    elif pattern == "velocity_swell_quarter":
+        for bar_index in range(num_bars):
+            bar_start = bar_index * bar_length
+            for beat_ix in range(beats_per_bar):
+                t = bar_start + beat_ix * seconds_per_beat
+                if t >= total_duration:
+                    break
+                phase = (beat_ix + 0.5) / float(beats_per_bar)
+                swell = 0.5 + 0.5 * math.sin(phase * math.pi * 2.0)
+                lo = velocity_range[0]
+                hi = velocity_range[1]
+                velocity = int(round(lo + swell * (hi - lo)))
+                velocity = max(lo, min(hi, velocity))
+                end_t = min(t + seconds_per_beat * 0.9, total_duration)
+                for pitch in midi_notes:
+                    instrument.notes.append(
+                        pretty_midi.Note(
+                            velocity=velocity,
+                            pitch=pitch,
+                            start=t,
+                            end=end_t,
+                        )
+                    )
+
+    elif pattern == "triplet_burst_rest":
+        ordered = sorted(midi_notes)
+        if not ordered:
+            ordered = midi_notes[:]
+        triplet = seconds_per_beat / 3.0
+        gate = triplet * 0.92
+        bar_t = 0.0
+        ai = 0
+        while bar_t < total_duration - 1e-9:
+            for beat_ix in range(beats_per_bar):
+                beat_start = bar_t + beat_ix * seconds_per_beat
+                for hit_ix in range(3):
+                    t = beat_start + hit_ix * triplet
+                    if t >= total_duration:
+                        break
+                    velocity = velocity_sampler.next()
+                    pitch = ordered[(ai + hit_ix) % len(ordered)]
+                    instrument.notes.append(
+                        pretty_midi.Note(
+                            velocity=velocity,
+                            pitch=pitch,
+                            start=t,
+                            end=min(t + gate, total_duration),
+                        )
+                    )
+                ai += 3
+            bar_t += bar_length
+
+    elif pattern == "bloom_crescendo_bar":
+        voices = sorted(midi_notes)
+        if not voices:
+            voices = midi_notes[:]
+        for bar_index in range(num_bars):
+            bar_start = bar_index * bar_length
+            vn = len(voices)
+            spread = bar_length / max(vn + 1, 4)
+            lo = velocity_range[0]
+            hi = velocity_range[1]
+            span = max(1, hi - lo)
+            for j, pitch in enumerate(voices):
+                start_time = bar_start + j * spread
+                if start_time >= total_duration:
+                    break
+                frac = j / max(1, vn - 1) if vn > 1 else 1.0
+                velocity = int(round(lo + frac * span))
+                velocity = max(lo, min(hi, velocity))
+                end_t = min(bar_start + bar_length - seconds_per_beat * 0.04, total_duration)
+                if end_t > start_time:
+                    instrument.notes.append(
+                        pretty_midi.Note(
+                            velocity=velocity,
+                            pitch=pitch,
+                            start=max(0.0, start_time),
+                            end=end_t,
+                        )
+                    )
+
+    elif pattern == "extreme_swap_quarter":
+        low_pitch = min(midi_notes)
+        high_pitch = max(midi_notes)
+        step = seconds_per_beat
+        use_low = True
+        while time < total_duration - 1e-9:
+            pitch = low_pitch if use_low else high_pitch
+            use_low = not use_low
+            velocity = velocity_sampler.next()
+            start_time = max(0.0, time)
+            instrument.notes.append(
+                pretty_midi.Note(
+                    velocity=velocity,
+                    pitch=pitch,
+                    start=start_time,
+                    end=min(start_time + step * 0.92, total_duration),
+                )
+            )
+            time += step
+
+    elif pattern == "micro_trill_cluster":
+        ordered = sorted(midi_notes)
+        if len(ordered) < 2:
+            ordered = midi_notes[:] + midi_notes[:]
+        bar_t = 0.0
+        while bar_t < total_duration - 1e-9:
+            for beat_ix in range(beats_per_bar):
+                beat_start = bar_t + beat_ix * seconds_per_beat
+                if beat_start >= total_duration:
+                    break
+                pair_ix = random.randrange(max(1, len(ordered) - 1))
+                a_pitch = ordered[pair_ix]
+                b_pitch = ordered[pair_ix + 1]
+                flick = seconds_per_beat / 8.0
+                gate = flick * 0.82
+                for flick_ix in range(4):
+                    t = beat_start + flick_ix * flick
+                    if t >= total_duration:
+                        break
+                    pitch = a_pitch if flick_ix % 2 == 0 else b_pitch
+                    velocity = velocity_sampler.next()
+                    instrument.notes.append(
+                        pretty_midi.Note(
+                            velocity=velocity,
+                            pitch=pitch,
+                            start=t,
+                            end=min(t + gate, total_duration),
+                        )
+                    )
+            bar_t += bar_length
+
+    elif pattern == "phased_eighth_echo":
+        ordered = sorted(midi_notes)
+        if not ordered:
+            ordered = midi_notes[:]
+        step = seconds_per_beat * 0.5
+        echo_lag = seconds_per_beat * 0.25
+        echo_gate = echo_lag * 0.72
+        i = 0
+        while time < total_duration - 1e-9:
+            pitch = ordered[i % len(ordered)]
+            i += 1
+            main_vel = velocity_sampler.next()
+            echo_vel = max(
+                velocity_sampler.lo,
+                main_vel - random.randint(14, 28),
+            )
+            start_time = max(0.0, time)
+            main_end = min(start_time + step * 0.88, total_duration)
+            instrument.notes.append(
+                pretty_midi.Note(
+                    velocity=main_vel,
+                    pitch=pitch,
+                    start=start_time,
+                    end=main_end,
+                )
+            )
+            echo_start = start_time + echo_lag
+            if echo_start < total_duration:
+                instrument.notes.append(
+                    pretty_midi.Note(
+                        velocity=echo_vel,
+                        pitch=pitch,
+                        start=echo_start,
+                        end=min(echo_start + echo_gate, total_duration),
+                    )
+                )
+            time += step
 
     else:
         # **Straight Chord:** (default) Play all notes together from start to finish

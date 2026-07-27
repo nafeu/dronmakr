@@ -83,6 +83,7 @@ from dronmakr.generate.generate_bass import (
 from dronmakr.apps.beatbuildr import generate_random_drum_kit
 from dronmakr.audio.process_sample import (
     apply_pitch_shift_preserve_length,
+    apply_transpose_pitch_by_resampling_inplace,
     reverse_sample,
     double_loop_sample,
     apply_granular_synthesis,
@@ -172,29 +173,37 @@ def _clear_pitch_state_for_file(file_path: str) -> None:
         os.remove(snap)
 
 
-def _apply_pitch_with_fixed_base(file_path: str, semitones_delta: float) -> None:
+def _apply_pitch_with_fixed_base(
+    file_path: str,
+    semitones_target: float,
+    *,
+    mode: str = "preserve",
+) -> None:
     """
-    Apply pitch shift cumulatively from a fixed base snapshot (not from the
-    most recently processed output), preventing transient drift across repeated
-    pitch operations.
+    Apply pitch from a fixed base snapshot using an absolute semitone target
+    (matches the Edit panel slider), preventing transient drift across repeats.
     """
+    pitch_mode = "resample" if str(mode or "").strip().lower() == "resample" else "preserve"
     abs_path = os.path.abspath(file_path)
     state = _load_pitch_state()
-    entry = state.get(abs_path)
+    entry = state.get(abs_path) or {}
     base_snapshot = _pitch_snapshot_path(file_path)
+    stored_mode = str(entry.get("mode") or "preserve").lower()
 
-    if not entry or not os.path.exists(base_snapshot):
+    if not os.path.exists(base_snapshot) or stored_mode != pitch_mode:
         shutil.copy2(file_path, base_snapshot)
-        cumulative = float(semitones_delta)
-    else:
-        cumulative = float(entry.get("semitones", 0.0)) + float(semitones_delta)
+
+    target = float(semitones_target)
 
     # Rebuild from the fixed base every time.
     shutil.copy2(base_snapshot, file_path)
-    if abs(cumulative) > 1e-9:
-        apply_pitch_shift_preserve_length(file_path, cumulative)
+    if abs(target) > 1e-9:
+        if pitch_mode == "resample":
+            apply_transpose_pitch_by_resampling_inplace(file_path, target)
+        else:
+            apply_pitch_shift_preserve_length(file_path, target)
 
-    state[abs_path] = {"semitones": cumulative}
+    state[abs_path] = {"semitones": target, "mode": pitch_mode}
     _save_pitch_state(state)
 
 
@@ -587,7 +596,7 @@ def process_file():
 
     if inner_command != "undo_last_edit":
         _save_undo_snapshot(file_path)
-    if inner_command != "pitch_shift_sample":
+    if inner_command not in ("pitch_shift_sample", "pitch_shift_transpose_sample"):
         _clear_pitch_state_for_file(file_path)
 
     match inner_command:
@@ -599,7 +608,17 @@ def process_file():
             _clear_undo_snapshot(file_path)
             _clear_pitch_state_for_file(file_path)
         case "pitch_shift_sample":
-            _apply_pitch_with_fixed_base(file_path, inner_params.get("semitones", 0))
+            _apply_pitch_with_fixed_base(
+                file_path,
+                inner_params.get("semitones", 0),
+                mode="preserve",
+            )
+        case "pitch_shift_transpose_sample":
+            _apply_pitch_with_fixed_base(
+                file_path,
+                inner_params.get("semitones", 0),
+                mode="resample",
+            )
         case "reverse_sample":
             reverse_sample(file_path)
         case "double_loop_sample":
