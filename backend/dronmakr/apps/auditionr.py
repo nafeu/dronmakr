@@ -344,6 +344,29 @@ def api_auditionr_midi_abs_path():
     return jsonify({"absPath": abs_path, "midiId": os.path.splitext(os.path.basename(abs_path))[0]}), 200
 
 
+def api_auditionr_midi_preview():
+    params = request.get_json() or {}
+    midi_id = (params.get("midiId") or params.get("id") or "").strip()
+    if not midi_id:
+        return jsonify({"error": "midiId is required."}), 400
+    abs_path = resolve_export_midi_abs_path(midi_id)
+    if not abs_path or not os.path.isfile(abs_path):
+        return jsonify({"error": "MIDI file not found."}), 404
+    try:
+        import pretty_midi  # noqa: PLC0415
+
+        pm = pretty_midi.PrettyMIDI(abs_path)
+        preview = build_midi_preview_payload(pm)
+    except Exception as exc:
+        return jsonify({"error": f"Could not read MIDI file: {exc}"}), 400
+    return jsonify(
+        {
+            "preview": preview,
+            "midiId": os.path.splitext(os.path.basename(abs_path))[0],
+        }
+    ), 200
+
+
 def _open_files_with_default_player(file_paths):
     if not file_paths:
         return
@@ -889,7 +912,7 @@ def _build_drone_midi_kwargs_from_payload(
         "shift_octave_down": None,
         "shift_root_note": None,
         "num_bars": length_bars,
-        "padded_silence_bars": 0 if preview else padded_silence_bars,
+        "padded_silence_bars": padded_silence_bars,
         "tempo_bpm": tempo_bpm,
         "velocity_range": velocity_range,
         "velocity_randomization": velocity_randomization,
@@ -1966,7 +1989,10 @@ def _handle_drone_midi_preview():
         )
         return jsonify(
             {
-                "preview": build_midi_preview_payload(midi_obj),
+                "preview": build_midi_preview_payload(
+                    midi_obj,
+                    total_duration_sec=render_duration_sec,
+                ),
                 "previewSeed": random.randint(1, 2_147_483_647),
                 "pattern": pattern_id,
                 "patternDisplayName": format_pattern_display_name(pattern_id),
@@ -2245,6 +2271,12 @@ def register_auditionr(app, socketio):
         "/api/auditionr/midi-abs-path",
         "auditionr_api_midi_abs_path",
         api_auditionr_midi_abs_path,
+        methods=["POST"],
+    )
+    app.add_url_rule(
+        "/api/auditionr/midi-preview",
+        "auditionr_api_midi_preview",
+        api_auditionr_midi_preview,
         methods=["POST"],
     )
     app.add_url_rule(

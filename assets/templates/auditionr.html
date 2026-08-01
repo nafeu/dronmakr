@@ -4174,11 +4174,8 @@
     }
 
     .waveform-title-row:hover .waveform-title-copy-icon,
-    .waveform-title-row:hover .waveform-title-midi-icon:not(.hidden),
     .waveform-title-copy-icon.waveform-copy-ready,
-    .waveform-title-copy-icon.waveform-copy-busy,
-    .waveform-title-midi-icon.waveform-copy-ready,
-    .waveform-title-midi-icon.waveform-copy-busy {
+    .waveform-title-copy-icon.waveform-copy-busy {
       opacity: 1;
     }
 
@@ -4191,34 +4188,96 @@
       pointer-events: none;
     }
 
-    .waveform-title-midi-icon {
-      opacity: 0.72;
-      flex-shrink: 0;
-      font-size: 0.65rem;
-      min-width: 1em;
-      margin-left: -2px;
-      transition: opacity 0.12s ease, color 0.12s ease;
-      color: var(--theme-c);
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border: none;
-      background: transparent;
-      padding: 0;
+    .waveform-midi-display {
+      display: none;
+      margin-bottom: 1rem;
+      height: 80px;
+      overflow: hidden;
+      position: relative;
     }
 
-    .waveform-title-midi-icon.hidden {
-      display: none !important;
-    }
-
-    .waveform-title-midi-icon.waveform-copy-ready {
-      color: var(--theme-e);
-    }
-
-    .waveform-title-midi-icon.waveform-copy-busy {
+    .waveform-midi-display.is-loading {
       opacity: 0.55;
+    }
+
+    .waveform-midi-display-inner {
+      width: 100%;
+      height: 100%;
+    }
+
+    .waveform-midi-display-inner svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .waveform-midi-playhead {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      width: 2px;
+      margin-left: -1px;
       pointer-events: none;
+      z-index: 2;
+      background: var(--primary);
+    }
+
+    .drumpattern-sample .waveform-midi-playhead {
+      background: var(--theme-b);
+    }
+
+    .sweep-sample .waveform-midi-playhead {
+      background: var(--theme-c);
+    }
+
+    .wash-sample .waveform-midi-playhead {
+      background: var(--theme-f);
+    }
+
+    .folysplitr-sample .waveform-midi-playhead {
+      background: var(--theme-e);
+    }
+
+    .waveform-wrapper.is-midi-mode .waveform {
+      display: none;
+    }
+
+    .waveform-wrapper.is-midi-mode .waveform-midi-display {
+      display: block;
+    }
+
+    .waveform-midi-display.waveform-external-drag {
+      cursor: grab;
+    }
+
+    .waveform-midi-display.waveform-external-drag.waveform-external-dragging {
+      cursor: grabbing;
+    }
+
+    svg.auditionr-waveform-midi-preview-svg {
+      shape-rendering: crispEdges;
+    }
+
+    svg.auditionr-waveform-midi-preview-svg .generatr-drone-midi-preview-note {
+      fill: var(--primary);
+      shape-rendering: crispEdges;
+    }
+
+    .drumpattern-sample svg.auditionr-waveform-midi-preview-svg .generatr-drone-midi-preview-note {
+      fill: var(--theme-b);
+    }
+
+    .sweep-sample svg.auditionr-waveform-midi-preview-svg .generatr-drone-midi-preview-note {
+      fill: var(--theme-c);
+    }
+
+    .wash-sample svg.auditionr-waveform-midi-preview-svg .generatr-drone-midi-preview-note {
+      fill: var(--theme-f);
+    }
+
+    .folysplitr-sample svg.auditionr-waveform-midi-preview-svg .generatr-drone-midi-preview-note {
+      fill: var(--theme-e);
     }
 
     .waveform-title-row:hover ~ .waveform-duration-wrap .waveform-title-edit-icon,
@@ -5145,6 +5204,22 @@
                     <p class="generatr-drone-midi-preview-meta" id="generatr-drone-midi-preview-meta"></p>
                     <div class="generatr-drone-midi-velocity-row">
                       <div class="generatr-sweep-effect-knobs generatr-drone-midi-velocity-knobs">
+                        <div class="daw-knob" data-knob-choices="1,2,4,8,16,32,64" data-knob-unit="bars" data-knob-decimals="0">
+                          <span class="daw-knob-label">Length</span>
+                          <button type="button" class="daw-knob-dial" aria-label="MIDI length in bars">
+                            <span class="daw-knob-ring" aria-hidden="true"></span>
+                          </button>
+                          <span class="daw-knob-readout" aria-hidden="true">16 bars</span>
+                          <input type="number" class="daw-knob-input" id="generatr-drone-length" step="1" min="1" max="64" value="16" tabindex="-1" aria-hidden="true">
+                        </div>
+                        <div class="daw-knob" data-knob-choices="0,1,2,4,8,16,32,64" data-knob-unit="bars" data-knob-decimals="0">
+                          <span class="daw-knob-label">Silence</span>
+                          <button type="button" class="daw-knob-dial" aria-label="Trailing silence after MIDI pattern">
+                            <span class="daw-knob-ring" aria-hidden="true"></span>
+                          </button>
+                          <span class="daw-knob-readout" aria-hidden="true">0 bars</span>
+                          <input type="number" class="daw-knob-input" id="generatr-drone-padded-silence" step="1" min="0" max="64" value="0" tabindex="-1" aria-hidden="true">
+                        </div>
                         <div class="daw-knob" data-knob-pair="drone-velocity" data-knob-role="min" data-knob-pair-gap="0" data-knob-unit="" data-knob-decimals="0">
                           <span class="daw-knob-label">Vel Min</span>
                           <button type="button" class="daw-knob-dial" aria-label="Minimum MIDI velocity">
@@ -5247,22 +5322,6 @@
                         </button>
                         <span class="daw-knob-readout" aria-hidden="true">120 bpm</span>
                         <input type="number" class="daw-knob-input" id="generatr-drone-tempo" step="1" min="50" max="250" value="120" tabindex="-1" aria-hidden="true">
-                      </div>
-                      <div class="daw-knob" data-knob-choices="1,2,4,8,16,32,64" data-knob-unit="bars" data-knob-decimals="0">
-                        <span class="daw-knob-label">Length</span>
-                        <button type="button" class="daw-knob-dial" aria-label="MIDI length in bars">
-                          <span class="daw-knob-ring" aria-hidden="true"></span>
-                        </button>
-                        <span class="daw-knob-readout" aria-hidden="true">16 bars</span>
-                        <input type="number" class="daw-knob-input" id="generatr-drone-length" step="1" min="1" max="64" value="16" tabindex="-1" aria-hidden="true">
-                      </div>
-                      <div class="daw-knob" data-knob-choices="0,1,2,4,8,16,32,64" data-knob-unit="bars" data-knob-decimals="0">
-                        <span class="daw-knob-label">Silence</span>
-                        <button type="button" class="daw-knob-dial" aria-label="Trailing silence after MIDI pattern for export">
-                          <span class="daw-knob-ring" aria-hidden="true"></span>
-                        </button>
-                        <span class="daw-knob-readout" aria-hidden="true">0 bars</span>
-                        <input type="number" class="daw-knob-input" id="generatr-drone-padded-silence" step="1" min="0" max="64" value="0" tabindex="-1" aria-hidden="true">
                       </div>
                       <div class="daw-knob" data-knob-unit="" data-knob-decimals="0">
                         <span class="daw-knob-label">Iters</span>
@@ -5580,7 +5639,7 @@
         data.undo_available || null
       );
       auditionrRefreshMidiIndex().then(function () {
-        auditionrRefreshAllMidiButtons();
+        auditionrRefreshAllMidiState();
       });
     }
 
@@ -7473,40 +7532,77 @@
 
     var auditionrClipboardCopyCheckTimer = null;
     var auditionrActiveClipboardCopyButton = null;
-    var auditionrMidiCopyCheckTimer = null;
-    var auditionrActiveMidiCopyButton = null;
 
-    function auditionrResetClipboardCopyButton(buttonEl) {
+    function auditionrClipboardCopyUsesMidi(inst) {
+      return !!(inst && inst.midiModeActive && inst.midiId);
+    }
+
+    function auditionrClipboardCopyLabel(inst) {
+      return auditionrClipboardCopyUsesMidi(inst)
+        ? "Copy MIDI to clipboard for DAW paste"
+        : "Copy to clipboard for DAW paste";
+    }
+
+    function auditionrClipboardCopySuccessLabel(inst) {
+      return auditionrClipboardCopyUsesMidi(inst)
+        ? "Copied — paste MIDI into your DAW"
+        : "Copied — paste into your DAW";
+    }
+
+    function auditionrResetClipboardCopyButton(buttonEl, inst) {
       if (!buttonEl) return;
       buttonEl.classList.remove("waveform-copy-ready", "waveform-copy-busy");
       buttonEl.innerHTML = "<i class=\"fa-solid fa-copy\" aria-hidden=\"true\"></i>";
-      buttonEl.title = "Copy to clipboard for DAW paste";
+      var label = auditionrClipboardCopyLabel(inst);
+      buttonEl.title = label;
+      buttonEl.setAttribute("aria-label", label);
     }
 
-    function auditionrSetClipboardCopySuccess(buttonEl) {
+    function auditionrSetClipboardCopySuccess(buttonEl, inst) {
       if (
         auditionrActiveClipboardCopyButton &&
         auditionrActiveClipboardCopyButton !== buttonEl
       ) {
-        auditionrResetClipboardCopyButton(auditionrActiveClipboardCopyButton);
+        var prevInst = auditionrActiveClipboardCopyButton._auditionrCopyInst || null;
+        auditionrResetClipboardCopyButton(auditionrActiveClipboardCopyButton, prevInst);
       }
       auditionrActiveClipboardCopyButton = buttonEl;
       if (buttonEl) {
+        buttonEl._auditionrCopyInst = inst || null;
         buttonEl.classList.remove("waveform-copy-busy");
         buttonEl.classList.add("waveform-copy-ready");
         buttonEl.innerHTML = "<i class=\"fa-solid fa-check\" aria-hidden=\"true\"></i>";
-        buttonEl.title = "Copied — paste into your DAW";
+        var successLabel = auditionrClipboardCopySuccessLabel(inst);
+        buttonEl.title = successLabel;
+        buttonEl.setAttribute("aria-label", successLabel);
       }
       if (auditionrClipboardCopyCheckTimer) clearTimeout(auditionrClipboardCopyCheckTimer);
       auditionrClipboardCopyCheckTimer = setTimeout(function () {
         if (auditionrActiveClipboardCopyButton) {
-          auditionrResetClipboardCopyButton(auditionrActiveClipboardCopyButton);
+          var staleInst = auditionrActiveClipboardCopyButton._auditionrCopyInst || null;
+          auditionrResetClipboardCopyButton(auditionrActiveClipboardCopyButton, staleInst);
           auditionrActiveClipboardCopyButton = null;
         }
       }, 4000);
     }
 
-    function auditionrCopySampleToClipboard(apiPath, copyButtonEl) {
+    function auditionrFetchMidiAbsPath(midiId) {
+      if (!midiId) return Promise.reject(new Error("No MIDI id"));
+      return fetch("/api/auditionr/midi-abs-path", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ midiId: midiId })
+      })
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+          if (data.error || !data.absPath) {
+            throw new Error(data.error || "MIDI file not found.");
+          }
+          return data.absPath;
+        });
+    }
+
+    function auditionrCopySampleToClipboard(apiPath, copyButtonEl, inst) {
       if (!auditionrCanExternalFileDrag()) {
         window.alert("Copy to clipboard is only available in the desktop app.");
         return Promise.reject(new Error("Not in Tauri"));
@@ -7520,10 +7616,10 @@
           return window.__TAURI__.core.invoke("copy_files_to_clipboard", { paths: [copyPath] });
         })
         .then(function () {
-          auditionrSetClipboardCopySuccess(copyButtonEl);
+          auditionrSetClipboardCopySuccess(copyButtonEl, inst);
         })
         .catch(function (err) {
-          auditionrResetClipboardCopyButton(copyButtonEl);
+          auditionrResetClipboardCopyButton(copyButtonEl, inst);
           window.alert(err && err.message ? err.message : "Could not copy sample to clipboard.");
           throw err;
         });
@@ -7551,36 +7647,6 @@
       return null;
     }
 
-    function auditionrResetMidiCopyButton(buttonEl) {
-      if (!buttonEl) return;
-      buttonEl.classList.remove("waveform-copy-ready", "waveform-copy-busy");
-      buttonEl.innerHTML = "<i class=\"fa-solid fa-music\" aria-hidden=\"true\"></i>";
-      buttonEl.title = "Copy MIDI to clipboard for DAW paste";
-    }
-
-    function auditionrSetMidiCopySuccess(buttonEl) {
-      if (
-        auditionrActiveMidiCopyButton &&
-        auditionrActiveMidiCopyButton !== buttonEl
-      ) {
-        auditionrResetMidiCopyButton(auditionrActiveMidiCopyButton);
-      }
-      auditionrActiveMidiCopyButton = buttonEl;
-      if (buttonEl) {
-        buttonEl.classList.remove("waveform-copy-busy");
-        buttonEl.classList.add("waveform-copy-ready");
-        buttonEl.innerHTML = "<i class=\"fa-solid fa-check\" aria-hidden=\"true\"></i>";
-        buttonEl.title = "Copied — paste MIDI into your DAW";
-      }
-      if (auditionrMidiCopyCheckTimer) clearTimeout(auditionrMidiCopyCheckTimer);
-      auditionrMidiCopyCheckTimer = setTimeout(function () {
-        if (auditionrActiveMidiCopyButton) {
-          auditionrResetMidiCopyButton(auditionrActiveMidiCopyButton);
-          auditionrActiveMidiCopyButton = null;
-        }
-      }, 4000);
-    }
-
     function auditionrRevealMidiFile(midiId) {
       if (!midiId) return Promise.resolve();
       return fetch("/reveal", {
@@ -7594,51 +7660,197 @@
         });
     }
 
-    function auditionrCopyMidiToClipboard(midiId, copyButtonEl) {
+    function auditionrCopyMidiToClipboard(midiId, copyButtonEl, inst) {
       if (!midiId) return Promise.reject(new Error("No MIDI id"));
       if (copyButtonEl) {
         copyButtonEl.classList.add("waveform-copy-busy");
         copyButtonEl.innerHTML = "<i class=\"fa-solid fa-spinner fa-spin\" aria-hidden=\"true\"></i>";
       }
-      return fetch("/api/auditionr/midi-abs-path", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ midiId: midiId })
-      })
-        .then(function (response) { return response.json(); })
-        .then(function (data) {
-          if (data.error || !data.absPath) {
-            throw new Error(data.error || "MIDI file not found.");
-          }
+      return auditionrFetchMidiAbsPath(midiId)
+        .then(function (absPath) {
           if (!auditionrCanExternalFileDrag()) {
             return auditionrRevealMidiFile(midiId);
           }
-          return window.__TAURI__.core.invoke("copy_files_to_clipboard", { paths: [data.absPath] })
+          return window.__TAURI__.core.invoke("copy_files_to_clipboard", { paths: [absPath] })
             .then(function () {
-              auditionrSetMidiCopySuccess(copyButtonEl);
+              auditionrSetClipboardCopySuccess(copyButtonEl, inst);
             })
             .catch(function () {
               return auditionrRevealMidiFile(midiId);
             });
         })
         .catch(function (err) {
-          auditionrResetMidiCopyButton(copyButtonEl);
+          auditionrResetClipboardCopyButton(copyButtonEl, inst);
           window.alert(err && err.message ? err.message : "Could not copy MIDI.");
           throw err;
         });
     }
 
-    function auditionrApplyMidiButtonForInstance(inst) {
-      if (!inst || !inst.midiButton) return;
-      var midiId = auditionrFindMidiIdForDisplayName(inst.displayName || "");
-      inst.midiId = midiId;
-      inst.midiButton.dataset.midiId = midiId || "";
-      inst.midiButton.classList.toggle("hidden", !midiId);
+    function auditionrMidiPreviewVelocityOpacity(velocityNorm) {
+      var norm = Math.max(0, Math.min(1, Number(velocityNorm) || 0));
+      return (0.04 + norm * 0.96).toFixed(3);
     }
 
-    function auditionrRefreshAllMidiButtons() {
+    function auditionrSnapMidiPreviewCoord(value) {
+      return Math.round(Number(value) || 0);
+    }
+
+    function auditionrRenderMidiPreviewSvg(preview, opts) {
+      opts = opts || {};
+      var events = preview && preview.events ? preview.events : (Array.isArray(preview) ? preview : []);
+      var w = opts.width || 480;
+      var h = opts.height || 80;
+      var pad = 4;
+      var innerW = w - pad * 2;
+      var innerH = h - pad * 2;
+      var gridLines = "";
+      if (opts.showGrid) {
+        var g;
+        for (g = 1; g < 4; g++) {
+          var gy = pad + (innerH * g / 4);
+          gridLines += '<line class="generatr-drone-midi-preview-grid" x1="' + pad + '" y1="' + gy + '" x2="' + (w - pad) + '" y2="' + gy + '"/>';
+        }
+        for (g = 1; g < 8; g++) {
+          var vx = pad + (innerW * g / 8);
+          gridLines += '<line class="generatr-drone-midi-preview-grid" x1="' + vx + '" y1="' + pad + '" x2="' + vx + '" y2="' + (h - pad) + '"/>';
+        }
+      }
+      var rects = events.map(function (ev) {
+        var x = auditionrSnapMidiPreviewCoord(pad + ev.start * innerW);
+        var rw = Math.max(2, auditionrSnapMidiPreviewCoord((ev.end - ev.start) * innerW));
+        var barH = Math.max(3, auditionrSnapMidiPreviewCoord(3 + (Number(ev.pitchNorm) || 0) * 2));
+        var y = auditionrSnapMidiPreviewCoord(pad + (1 - ev.pitchNorm) * (innerH - barH));
+        var fillOpacity = auditionrMidiPreviewVelocityOpacity(ev.velocityNorm);
+        return '<rect class="generatr-drone-midi-preview-note" x="' + x + '" y="' + y + '" width="' + rw + '" height="' + barH + '" shape-rendering="crispEdges" fill-opacity="' + fillOpacity + '"/>';
+      }).join("");
+      var cls = opts.className || "auditionr-waveform-midi-preview-svg";
+      return '<svg class="' + cls + '" viewBox="0 0 ' + w + ' ' + h + '" preserveAspectRatio="none" shape-rendering="crispEdges" aria-hidden="true">' + gridLines + rects + "</svg>";
+    }
+
+    function auditionrMidiDisplayPlayheadProgress(inst) {
+      if (!inst || !inst.wavesurfer) return 0;
+      var dur = auditionrWaveSurferDuration(inst.wavesurfer);
+      if (!dur || dur <= 0) return 0;
+      var current = 0;
+      try {
+        current = inst.wavesurfer.getCurrentTime();
+      } catch (e) {
+        return 0;
+      }
+      return Math.min(1, Math.max(0, current / dur));
+    }
+
+    function auditionrSyncMidiDisplayPlayhead(inst) {
+      if (!inst || !inst.midiPlayheadEl || !inst.midiModeActive) return;
+      var progress = auditionrMidiDisplayPlayheadProgress(inst);
+      inst.midiPlayheadEl.style.left = (progress * 100).toFixed(4) + "%";
+    }
+
+    function auditionrPaintWaveformMidiDisplay(inst) {
+      if (!inst || !inst.midiPreviewInnerEl || !inst.midiPreviewCache) return;
+      var host = inst.midiDisplayEl || inst.midiPreviewInnerEl;
+      var w = Math.max(120, Math.round((host && host.clientWidth) || 480));
+      inst.midiPreviewInnerEl.innerHTML = auditionrRenderMidiPreviewSvg(inst.midiPreviewCache, {
+        width: w,
+        height: 80,
+        showGrid: false,
+        className: "auditionr-waveform-midi-preview-svg"
+      });
+      auditionrSyncMidiDisplayPlayhead(inst);
+    }
+
+    function auditionrLoadWaveformMidiPreview(inst) {
+      if (!inst || !inst.midiId || !inst.midiDisplayEl) return Promise.resolve();
+      var requestId = ++inst.midiPreviewRequestSeq;
+      inst.midiDisplayEl.classList.add("is-loading");
+      return fetch("/api/auditionr/midi-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ midiId: inst.midiId })
+      })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (requestId !== inst.midiPreviewRequestSeq) return;
+          if (data.error) throw new Error(data.error);
+          inst.midiPreviewCache = data.preview || { events: [] };
+          auditionrPaintWaveformMidiDisplay(inst);
+        })
+        .catch(function (err) {
+          if (requestId !== inst.midiPreviewRequestSeq) return;
+          inst.midiPreviewCache = null;
+          if (inst.midiPreviewInnerEl) inst.midiPreviewInnerEl.innerHTML = "";
+          window.alert(err && err.message ? err.message : "Could not load MIDI preview.");
+        })
+        .finally(function () {
+          if (requestId === inst.midiPreviewRequestSeq && inst.midiDisplayEl) {
+            inst.midiDisplayEl.classList.remove("is-loading");
+          }
+        });
+    }
+
+    function auditionrUpdateClipboardCopyUi(inst) {
+      if (!inst || !inst.titleRowEl || !inst.titleCopyIcon) return;
+      var label = auditionrClipboardCopyLabel(inst);
+      inst.titleRowEl.title = label;
+      inst.titleCopyIcon.title = label;
+      inst.titleCopyIcon.setAttribute("aria-label", label);
+      if (
+        auditionrActiveClipboardCopyButton === inst.titleCopyIcon &&
+        !inst.titleCopyIcon.classList.contains("waveform-copy-ready")
+      ) {
+        auditionrResetClipboardCopyButton(inst.titleCopyIcon, inst);
+      }
+    }
+
+    function auditionrSetWaveformMidiMode(inst, enabled) {
+      if (!inst) return;
+      var next = !!enabled;
+      if (next && !inst.midiId) return;
+      if (inst.midiModeActive === next) return;
+      inst.midiModeActive = next;
+      if (inst.wrapper) inst.wrapper.classList.toggle("is-midi-mode", next);
+      if (inst.midiModeButton) {
+        inst.midiModeButton.classList.toggle("processing-type-active", next);
+      }
+      if (inst.waveformEl) inst.waveformEl.setAttribute("aria-hidden", next ? "true" : "false");
+      if (inst.midiDisplayEl) {
+        inst.midiDisplayEl.setAttribute("aria-hidden", next ? "false" : "true");
+      }
+      if (next) {
+        auditionrLoadWaveformMidiPreview(inst).then(function () {
+          auditionrSyncMidiDisplayPlayhead(inst);
+        });
+      }
+      var dragTitle = next
+        ? "Click to seek; drag to drop MIDI into your DAW"
+        : "Click to seek; drag to drop a saved copy into your DAW";
+      if (inst.waveformEl) inst.waveformEl.title = dragTitle;
+      if (inst.midiDisplayEl) inst.midiDisplayEl.title = dragTitle;
+      auditionrUpdateClipboardCopyUi(inst);
+    }
+
+    function auditionrApplyMidiStateForInstance(inst) {
+      if (!inst) return;
+      var midiId = auditionrFindMidiIdForDisplayName(inst.displayName || "");
+      var midiChanged = inst.midiId !== midiId;
+      inst.midiId = midiId;
+      if (inst.midiModeButton) {
+        inst.midiModeButton.classList.toggle("disabled", !midiId);
+        inst.midiModeButton.title = midiId
+          ? "Toggle Midi Mode"
+          : "Toggle Midi Mode (no MIDI file for this sample)";
+      }
+      if (!midiId && inst.midiModeActive) {
+        auditionrSetWaveformMidiMode(inst, false);
+      } else if (midiChanged && inst.midiModeActive) {
+        inst.midiPreviewCache = null;
+        auditionrLoadWaveformMidiPreview(inst);
+      }
+    }
+
+    function auditionrRefreshAllMidiState() {
       Object.keys(waveformInstances).forEach(function (file) {
-        auditionrApplyMidiButtonForInstance(waveformInstances[file]);
+        auditionrApplyMidiStateForInstance(waveformInstances[file]);
       });
     }
 
@@ -7663,21 +7875,26 @@
       };
     }
 
-    function attachWaveformExternalDrag(waveformEl, absPath, apiPath) {
-      if (!auditionrCanExternalFileDrag() || !waveformEl) return;
-      waveformEl.classList.add("waveform-external-drag");
-      waveformEl.title = (waveformEl.title ? waveformEl.title + " — " : "") +
-        "Click to seek; drag to drop a saved copy into your DAW";
+    function attachWaveformExternalDrag(dragEl, inst) {
+      if (!auditionrCanExternalFileDrag() || !dragEl || !inst) return;
+      dragEl.classList.add("waveform-external-drag");
 
       var DRAG_THRESHOLD_PX = 10;
       var gesture = null;
 
       function clearGesture() {
         gesture = null;
-        waveformEl.classList.remove("waveform-external-dragging");
+        dragEl.classList.remove("waveform-external-dragging");
       }
 
-      waveformEl.addEventListener("pointerdown", function (e) {
+      function resolveDragCopyPath() {
+        if (inst.midiModeActive && inst.midiId) {
+          return auditionrFetchMidiAbsPath(inst.midiId);
+        }
+        return auditionrPrepareDragCopy(inst.apiPath);
+      }
+
+      dragEl.addEventListener("pointerdown", function (e) {
         if (e.button !== 0 || !e.isPrimary) return;
         gesture = {
           pointerId: e.pointerId,
@@ -7687,16 +7904,16 @@
         };
       });
 
-      waveformEl.addEventListener("pointermove", function (e) {
+      dragEl.addEventListener("pointermove", function (e) {
         if (!gesture || gesture.externalDragStarted || e.pointerId !== gesture.pointerId) return;
         var dx = e.clientX - gesture.startX;
         var dy = e.clientY - gesture.startY;
         if (Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
         gesture.externalDragStarted = true;
-        waveformEl.classList.add("waveform-external-dragging");
+        dragEl.classList.add("waveform-external-dragging");
         e.preventDefault();
         e.stopPropagation();
-        selectSampleForEdit(absPath, apiPath, {});
+        selectSampleForEdit(inst.absPath, inst.apiPath, {});
 
         var pointerId = gesture.pointerId;
         var cancelled = false;
@@ -7736,7 +7953,7 @@
         document.addEventListener("pointerup", onPrepPointerUp, true);
         document.addEventListener("pointercancel", onPrepPointerCancel, true);
 
-        auditionrPrepareDragCopy(apiPath)
+        resolveDragCopyPath()
           .then(function (copyPath) {
             if (cancelled) return;
             finishPrep();
@@ -7749,7 +7966,7 @@
           .finally(clearGesture);
       }, true);
 
-      waveformEl.addEventListener("pointerup", function (e) {
+      dragEl.addEventListener("pointerup", function (e) {
         if (!gesture || e.pointerId !== gesture.pointerId) return;
         if (gesture.externalDragStarted) {
           e.preventDefault();
@@ -7758,7 +7975,7 @@
         clearGesture();
       }, true);
 
-      waveformEl.addEventListener("pointercancel", clearGesture, true);
+      dragEl.addEventListener("pointercancel", clearGesture, true);
     }
 
     function revealSample(path) {
@@ -8071,6 +8288,10 @@
         inst.processingSafetyTimer = null;
       }
       if (inst.stopPlayback) inst.stopPlayback();
+      if (inst._midiPreviewResizeObserver && inst.midiDisplayEl) {
+        try { inst._midiPreviewResizeObserver.unobserve(inst.midiDisplayEl); } catch (e) { }
+        inst._midiPreviewResizeObserver = null;
+      }
       if (inst.wavesurfer) {
         try { inst.wavesurfer.destroy(); } catch (e) { }
       }
@@ -8203,40 +8424,29 @@
       var titleRowEl = document.createElement("button");
       titleRowEl.type = "button";
       titleRowEl.classList.add("waveform-title-row");
-      titleRowEl.title = "Copy to clipboard for DAW paste";
       var titleTextSpan = document.createElement("span");
       titleTextSpan.className = "waveform-title-text";
       titleTextSpan.textContent = displayName;
       var titleCopyIcon = document.createElement("span");
       titleCopyIcon.className = "waveform-title-copy-icon";
       titleCopyIcon.innerHTML = "<i class=\"fa-solid fa-copy\" aria-hidden=\"true\"></i>";
-      titleCopyIcon.title = "Copy to clipboard for DAW paste";
-      titleCopyIcon.setAttribute("aria-label", "Copy to clipboard for DAW paste");
       titleRowEl.appendChild(titleTextSpan);
       titleRowEl.appendChild(titleCopyIcon);
+
+      var waveformInstRef = null;
 
       function triggerSampleClipboardCopy(e) {
         e.preventDefault();
         e.stopPropagation();
-        auditionrCopySampleToClipboard(apiPath, titleCopyIcon);
+        if (!waveformInstRef) return;
+        if (waveformInstRef.midiModeActive && waveformInstRef.midiId) {
+          auditionrCopyMidiToClipboard(waveformInstRef.midiId, titleCopyIcon, waveformInstRef);
+        } else {
+          auditionrCopySampleToClipboard(apiPath, titleCopyIcon, waveformInstRef);
+        }
       }
 
       titleRowEl.addEventListener("click", triggerSampleClipboardCopy);
-
-      var titleMidiIcon = document.createElement("button");
-      titleMidiIcon.type = "button";
-      titleMidiIcon.className = "waveform-title-midi-icon hidden";
-      titleMidiIcon.innerHTML = "<i class=\"fa-solid fa-music\" aria-hidden=\"true\"></i>";
-      titleMidiIcon.title = "Copy MIDI to clipboard for DAW paste";
-      titleMidiIcon.setAttribute("aria-label", "Copy MIDI to clipboard for DAW paste");
-      titleMidiIcon.addEventListener("click", function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        var midiId = titleMidiIcon.dataset.midiId;
-        if (midiId) auditionrCopyMidiToClipboard(midiId, titleMidiIcon);
-      });
-
-      titleRowEl.appendChild(titleMidiIcon);
       titleContainer.appendChild(titleRowEl);
 
       var durationWrap = document.createElement("div");
@@ -8257,8 +8467,32 @@
       var waveformDiv = document.createElement("div");
       var waveformIdSafe = "waveform-" + file.replace(/[^a-zA-Z0-9_-]/g, "-");
       waveformDiv.id = waveformIdSafe;
-      waveformDiv.classList.add("waveform")
+      waveformDiv.classList.add("waveform");
+      waveformDiv.title = "Click to seek; drag to drop a saved copy into your DAW";
       wrapper.appendChild(waveformDiv);
+
+      var midiDisplayDiv = document.createElement("div");
+      midiDisplayDiv.className = "waveform-midi-display";
+      midiDisplayDiv.setAttribute("aria-hidden", "true");
+      midiDisplayDiv.title = "Click to seek; drag to drop MIDI into your DAW";
+      var midiPreviewInner = document.createElement("div");
+      midiPreviewInner.className = "waveform-midi-display-inner";
+      var midiPlayhead = document.createElement("div");
+      midiPlayhead.className = "waveform-midi-playhead";
+      midiPlayhead.setAttribute("aria-hidden", "true");
+      midiDisplayDiv.appendChild(midiPreviewInner);
+      midiDisplayDiv.appendChild(midiPlayhead);
+      midiDisplayDiv.addEventListener("click", function (e) {
+        if (waveformInstRef) selectSampleForEdit(file, apiPath, {});
+        if (!waveformInstRef || !waveformInstRef.midiModeActive || !waveformInstRef.wavesurfer) return;
+        var rect = midiDisplayDiv.getBoundingClientRect();
+        if (!rect.width) return;
+        var progress = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+        waveformInstRef.wavesurfer.seekTo(progress);
+        selectedWaveformTimestamps[file] = progress * auditionrWaveSurferDuration(waveformInstRef.wavesurfer);
+        auditionrSyncMidiDisplayPlayhead(waveformInstRef);
+      });
+      wrapper.appendChild(midiDisplayDiv);
 
       var actions = document.createElement("div");
       actions.classList.add("waveform-actions")
@@ -8296,6 +8530,18 @@
         revealSample(apiPath);
       });
       actions.appendChild(revealButton);
+
+      var midiModeButton = document.createElement("div");
+      midiModeButton.innerHTML = "<i class=\"fa-solid fa-keyboard\"></i>";
+      midiModeButton.classList.add("button", "icon-btn", "disabled");
+      midiModeButton.title = "Toggle Midi Mode (no MIDI file for this sample)";
+      midiModeButton.setAttribute("aria-label", "Toggle Midi Mode");
+      midiModeButton.addEventListener("click", function () {
+        if (midiModeButton.classList.contains("disabled") || !waveformInstRef) return;
+        selectSampleForEdit(file, apiPath, {});
+        auditionrSetWaveformMidiMode(waveformInstRef, !waveformInstRef.midiModeActive);
+      });
+      actions.appendChild(midiModeButton);
 
       var undoButton = document.createElement("div");
       undoButton.innerHTML = "<i class=\"fa-solid fa-rotate-left\"></i>";
@@ -8439,11 +8685,19 @@
       var waveformInst = {
         wrapper: wrapper,
         wavesurfer: wavesurfer,
+        waveformEl: waveformDiv,
+        midiDisplayEl: midiDisplayDiv,
+        midiPreviewInnerEl: midiPreviewInner,
+        midiPlayheadEl: midiPlayhead,
         durationEl: duration,
         titleRowEl: titleRowEl,
-        midiButton: titleMidiIcon,
+        titleCopyIcon: titleCopyIcon,
         displayName: displayName,
         midiId: null,
+        midiModeActive: false,
+        midiModeButton: midiModeButton,
+        midiPreviewCache: null,
+        midiPreviewRequestSeq: 0,
         undoButton: undoButton,
         absPath: file,
         apiPath: apiPath,
@@ -8452,7 +8706,17 @@
         stopPlayback: null,
         processingSafetyTimer: null
       };
-      auditionrApplyMidiButtonForInstance(waveformInst);
+      waveformInstRef = waveformInst;
+      auditionrApplyMidiStateForInstance(waveformInst);
+      auditionrUpdateClipboardCopyUi(waveformInst);
+
+      if (typeof ResizeObserver !== "undefined") {
+        var midiPreviewResizeObserver = new ResizeObserver(function () {
+          if (waveformInst.midiModeActive) auditionrPaintWaveformMidiDisplay(waveformInst);
+        });
+        midiPreviewResizeObserver.observe(midiDisplayDiv);
+        waveformInst._midiPreviewResizeObserver = midiPreviewResizeObserver;
+      }
 
       function finishWaveformLoad() {
         if (typeof onReady === "function") onReady();
@@ -8470,7 +8734,8 @@
         auditionrQuarantineCorruptExport(apiPath, displayName, finishWaveformLoad);
       }
 
-      attachWaveformExternalDrag(waveformDiv, file, apiPath);
+      attachWaveformExternalDrag(waveformDiv, waveformInst);
+      attachWaveformExternalDrag(midiDisplayDiv, waveformInst);
 
       wavesurfer.load(mediaUrl);
 
@@ -8484,6 +8749,11 @@
       wavesurfer.on("seeking", function (currentTime) {
         selectedWaveformTimestamps[file] = currentTime;
         updateTrimButtonLabels();
+        auditionrSyncMidiDisplayPlayhead(waveformInst);
+      });
+
+      wavesurfer.on("timeupdate", function () {
+        auditionrSyncMidiDisplayPlayhead(waveformInst);
       });
 
       wavesurfer.on("interaction", function () {
@@ -8565,17 +8835,20 @@
         var elapsed = ctx.currentTime - drumpatternStartTime;
         var t = d > 0 ? (elapsed % d) / d : 0;
         wavesurfer.seekTo(Math.min(1, Math.max(0, t)));
+        auditionrSyncMidiDisplayPlayhead(waveformInst);
         drumpatternRafId = requestAnimationFrame(updateDrumpatternPlayhead);
       }
 
       wavesurfer.on("play", function () {
         selectSampleForEdit(file, apiPath, {});
         updatePlayButton(true);
+        auditionrSyncMidiDisplayPlayhead(waveformInst);
       });
 
       wavesurfer.on("pause", function () {
         selectSampleForEdit(file, apiPath, {});
         if (!isDrumpattern && !wavesurfer.isPlaying()) updatePlayButton(false);
+        auditionrSyncMidiDisplayPlayhead(waveformInst);
       });
 
       playButton.addEventListener("click", function () {
@@ -9320,6 +9593,8 @@
           if (meta.patternDisplayName) bits.push(meta.patternDisplayName);
           if (meta.chart) bits.push(meta.chart);
           if (meta.tempoBpm) bits.push(meta.tempoBpm + " bpm");
+          if (meta.lengthBars) bits.push(meta.lengthBars + " bars");
+          if (meta.paddedSilenceBars) bits.push(meta.paddedSilenceBars + " bars silence");
           droneMidiPreviewMeta.textContent = bits.length ? bits.join(" · ") : "";
         }
         return true;
@@ -9365,7 +9640,9 @@
               {
                 patternDisplayName: data.patternDisplayName || "",
                 chart: data.chart || "",
-                tempoBpm: data.tempoBpm || null
+                tempoBpm: data.tempoBpm || null,
+                lengthBars: parseInt(droneLengthInput ? droneLengthInput.value : "16", 10),
+                paddedSilenceBars: parseInt(dronePaddedSilenceInput ? dronePaddedSilenceInput.value : "0", 10)
               }
             );
             generatrDronePaintCachedMidiPreview();
@@ -12223,6 +12500,11 @@
 
       function generatrInitDroneExportControls() {
         initDawKnobs(document.getElementById("generatr-drone-export-row"));
+        if (droneTempoInput) {
+          droneTempoInput.addEventListener("change", function () {
+            if (kindSelect && kindSelect.value === "drone") generatrDroneRefreshMidiPreview();
+          });
+        }
       }
       generatrInitDroneExportControls();
 
@@ -12245,6 +12527,12 @@
           input.addEventListener("change", function () {
             if (generatrDroneVelocityKnobDragging) return;
             generatrDroneApplyVelocityToCachedPreview();
+          });
+        });
+        [droneLengthInput, dronePaddedSilenceInput].forEach(function (input) {
+          if (!input) return;
+          input.addEventListener("change", function () {
+            if (kindSelect && kindSelect.value === "drone") generatrDroneRefreshMidiPreview();
           });
         });
       }

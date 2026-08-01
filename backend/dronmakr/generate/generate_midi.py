@@ -366,15 +366,22 @@ def get_pattern_selector_previews() -> dict[str, dict]:
     return _PATTERN_SELECTOR_PREVIEW_CACHE
 
 
-def build_midi_preview_payload(midi: pretty_midi.PrettyMIDI) -> dict:
+def build_midi_preview_payload(
+    midi: pretty_midi.PrettyMIDI,
+    *,
+    total_duration_sec: float | None = None,
+) -> dict:
     """Compact note timing data for minimal SVG previews in the web UI."""
     notes: list[pretty_midi.Note] = []
     for instrument in midi.instruments:
         notes.extend(instrument.notes)
     if not notes:
-        return {"durationSec": 1.0, "events": []}
+        duration = float(total_duration_sec) if total_duration_sec and total_duration_sec > 0 else 1.0
+        return {"durationSec": duration, "events": []}
 
-    duration = max(float(note.end) for note in notes)
+    duration = float(total_duration_sec) if total_duration_sec and total_duration_sec > 0 else 0.0
+    if duration <= 0:
+        duration = max(float(note.end) for note in notes)
     if duration <= 0:
         duration = 1.0
     min_pitch = min(note.pitch for note in notes)
