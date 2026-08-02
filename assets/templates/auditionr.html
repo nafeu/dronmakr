@@ -5174,7 +5174,7 @@
                             <span class="generatr-drone-piano-control-label">charting</span>
                             <div class="generatr-drone-piano-control-btns" role="group" aria-label="Chart selection">
                               <button type="button" class="generatr-drone-preview-wave-btn" id="generatr-drone-select-chart">select chart</button>
-                              <button type="button" class="generatr-drone-preview-wave-btn hidden" id="generatr-drone-clear-chart">clear</button>
+                              <button type="button" class="generatr-drone-preview-wave-btn" id="generatr-drone-clear-chart">clear</button>
                             </div>
                           </div>
                         </div>
@@ -13209,8 +13209,17 @@
           generatrDroneSyncPianoRollKeyStates();
         }
         generatrDroneUpdateStyleRandomHint();
-        generatrDroneUpdateChartSummaryUi();
         if (kindSelect && kindSelect.value === "drone") generatrDroneRefreshMidiPreview();
+      }
+
+      function generatrDroneResetPianoRollToEmpty() {
+        generatrDroneCustomNotes = Object.create(null);
+        if (generatrDronePianoOctave !== GENERATR_DRONE_OCTAVE_DEFAULT) {
+          generatrDronePianoOctave = GENERATR_DRONE_OCTAVE_DEFAULT;
+          generatrDroneBuildPianoRoll(true);
+        } else {
+          generatrDroneSyncPianoRollKeyStates();
+        }
       }
 
       function generatrDroneClearChartPool() {
@@ -13222,7 +13231,6 @@
           droneChartPoolOverlay.setAttribute("aria-hidden", "true");
         }
         if (droneChartPoolSummary) droneChartPoolSummary.textContent = "";
-        generatrDroneUpdateChartSummaryUi();
         generatrDroneUpdateStyleRandomHint();
       }
 
@@ -13239,7 +13247,6 @@
           droneChartPoolOverlay.setAttribute("aria-hidden", "false");
         }
         generatrDroneRenderChartPoolOverlay();
-        generatrDroneUpdateChartSummaryUi();
         generatrDroneUpdateStyleRandomHint();
         if (kindSelect && kindSelect.value === "drone") generatrDroneRefreshMidiPreview();
       }
@@ -13248,13 +13255,6 @@
         if (!generatrDroneChartPool.active || !droneChartPoolSummary) return;
         var count = (generatrDroneChartPool.charts || []).length;
         droneChartPoolSummary.textContent = count + " chart" + (count === 1 ? "" : "s") + " selected";
-      }
-
-      function generatrDroneUpdateChartSummaryUi() {
-        var count = generatrDroneChartPool.active ? generatrDroneChartPool.charts.length : 0;
-        if (droneClearChartBtn) {
-          droneClearChartBtn.classList.toggle("hidden", count <= 1);
-        }
       }
 
       function generatrDroneToggleChartSelectorFilter(kind, value) {
@@ -13562,8 +13562,7 @@
         droneClearChartBtn.addEventListener("click", function () {
           generatrDroneClearChartPool();
           generatrDroneClearChartSelectorFilters();
-          generatrDroneCustomNotes = Object.create(null);
-          generatrDroneSyncPianoRollKeyStates();
+          generatrDroneResetPianoRollToEmpty();
           generatrDroneUpdateStyleRandomHint();
           if (kindSelect && kindSelect.value === "drone") generatrDroneRefreshMidiPreview();
         });
@@ -13607,7 +13606,6 @@
       generatrDroneSetupMidiImportUi();
       generatrDroneBuildPianoRoll();
       generatrDroneUpdateStyleRandomHint();
-      generatrDroneUpdateChartSummaryUi();
       generatrDroneSyncPreviewWaveButtons();
 
       form.addEventListener("submit", function (e) {
