@@ -9,7 +9,16 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PORT="${DRONMAKR_DEV_PORT:-3766}"
-HOST="${DRONMAKR_DEV_HOST:-127.0.0.1}"
+# 0.0.0.0 so other machines on the LAN can hit the dev server; override with DRONMAKR_DEV_HOST.
+HOST="${DRONMAKR_DEV_HOST:-0.0.0.0}"
+
+probe_host() {
+  if [[ "${HOST}" == "0.0.0.0" || "${HOST}" == "::" ]]; then
+    echo "127.0.0.1"
+  else
+    echo "${HOST}"
+  fi
+}
 
 bash "${ROOT}/scripts/ensure_sidecar_placeholder.sh" >/dev/null 2>&1 || true
 
@@ -22,7 +31,7 @@ else
 fi
 
 probe_dev_backend() {
-  curl -sf "http://${HOST}:${PORT}/dev/reload-check" 2>/dev/null \
+  curl -sf "http://$(probe_host):${PORT}/dev/reload-check" 2>/dev/null \
     | grep -q '"version"'
 }
 
@@ -32,7 +41,7 @@ listener_pids() {
 
 if listener_pids | grep -q .; then
   if probe_dev_backend; then
-    echo "[dev-backend] live template server already on http://${HOST}:${PORT}"
+    echo "[dev-backend] live template server already on http://$(probe_host):${PORT}"
     # Keep beforeDevCommand alive while Tauri dev runs (reuse existing server).
     while true; do sleep 86400; done
   fi

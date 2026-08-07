@@ -99,6 +99,21 @@ def main() -> None:
         dev_frontend=args.dev_frontend,
     )
     print(f"[backend] ready on http://{args.host}:{args.port}", flush=True)
+    if args.host in ("0.0.0.0", "::") and args.dev_frontend:
+        import socket
+
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                s.connect(("8.8.8.8", 80))
+                lan_ip = s.getsockname()[0]
+        except OSError:
+            lan_ip = None
+        print(
+            f"[backend] LAN access: http://{lan_ip}:{args.port}"
+            if lan_ip
+            else f"[backend] LAN access: http://<this-machine-ip>:{args.port}",
+            flush=True,
+        )
 
     while not stop.wait(0.5):
         pass

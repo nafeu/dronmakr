@@ -44,6 +44,7 @@ impl StartupState {
         self.lines.lock().unwrap().push(trimmed.to_string());
     }
 
+    #[cfg(not(debug_assertions))]
     pub fn set_spawn_error(&self, err: impl Into<String>) {
         let err = err.into();
         self.push_line(format!("sidecar spawn failed: {err}"));
