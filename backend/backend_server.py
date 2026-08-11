@@ -51,6 +51,14 @@ def _parse_args() -> argparse.Namespace:
         help="Serve live Jinja templates from assets/ with auto-reload (development only)",
     )
     parser.add_argument(
+        "--tls-port",
+        type=int,
+        default=0,
+        help="Optional HTTPS dev port for LAN/Quest browsers (getUserMedia needs secure context)",
+    )
+    parser.add_argument("--tls-cert", default="", help="TLS certificate PEM path")
+    parser.add_argument("--tls-key", default="", help="TLS private key PEM path")
+    parser.add_argument(
         "--smoke-imports",
         action="store_true",
         help="Minimal import check for CI (soundfile + libsndfile)",
@@ -97,8 +105,12 @@ def main() -> None:
         host=str(args.host),
         build_sample_cache=not getattr(sys, "frozen", False),
         dev_frontend=args.dev_frontend,
+        tls_port=int(args.tls_port) if int(args.tls_port) > 0 else None,
+        tls_certfile=args.tls_cert or None,
+        tls_keyfile=args.tls_key or None,
     )
     print(f"[backend] ready on http://{args.host}:{args.port}", flush=True)
+    lan_ip = None
     if args.host in ("0.0.0.0", "::") and args.dev_frontend:
         import socket
 
@@ -112,6 +124,17 @@ def main() -> None:
             f"[backend] LAN access: http://{lan_ip}:{args.port}"
             if lan_ip
             else f"[backend] LAN access: http://<this-machine-ip>:{args.port}",
+            flush=True,
+        )
+    if int(args.tls_port) > 0:
+        print(f"[backend] HTTPS dev: https://127.0.0.1:{args.tls_port}/folysplitr", flush=True)
+        if lan_ip:
+            print(
+                f"[backend] Quest mic URL: https://{lan_ip}:{args.tls_port}/folysplitr",
+                flush=True,
+            )
+        print(
+            "[backend] Quest: accept cert warning (Advanced -> Continue), tap record for mic prompt.",
             flush=True,
         )
 

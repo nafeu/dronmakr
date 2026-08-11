@@ -7,11 +7,13 @@ import os
 os.environ.setdefault("DRONMAKR_ASYNC_MODE", "threading")
 
 import logging
+import ssl
 import sys
 import threading
 import time
 import urllib.error
 import urllib.request
+from pathlib import Path
 
 from flask import Flask, Response, jsonify, redirect, request, send_from_directory, url_for
 from flask_socketio import SocketIO
@@ -76,6 +78,12 @@ from dronmakr.server.dev_frontend import enable_dev_frontend, get_dev_frontend
 
 app = Flask(__name__, static_folder=str(get_static_dir()))
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
+
+
+@app.after_request
+def _allow_microphone(response):
+    response.headers.setdefault("Permissions-Policy", "microphone=(self)")
+    return response
 
 DEBUG_WEBSOCKETS = False
 _FRONTEND_DIST = get_frontend_dist_dir()
@@ -501,17 +509,31 @@ def _print_webui_startup_header() -> None:
     log_server_session_start(get_version())
 
 
-def _health_probe_url(host: str, port: int) -> str:
-    probe_host = "127.0.0.1" if host in ("0.0.0.0", "::") else host
-    return f"http://{probe_host}:{int(port)}/api/health"
+def _probe_host(host: str) -> str:
+    return "127.0.0.1" if host in ("0.0.0.0", "::") else host
 
 
-def _wait_for_server_health(host: str, port: int, timeout_s: float = 30.0) -> bool:
-    url = _health_probe_url(host, port)
+def _health_probe_url(host: str, port: int, *, scheme: str = "http") -> str:
+    return f"{scheme}://{_probe_host(host)}:{int(port)}/api/health"
+
+
+def _wait_for_server_health(
+    host: str,
+    port: int,
+    timeout_s: float = 30.0,
+    *,
+    scheme: str = "http",
+) -> bool:
+    url = _health_probe_url(host, port, scheme=scheme)
     deadline = time.monotonic() + timeout_s
+    ssl_context = None
+    if scheme == "https":
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
     while time.monotonic() < deadline:
         try:
-            with urllib.request.urlopen(url, timeout=1.0) as resp:
+            with urllib.request.urlopen(url, timeout=1.0, context=ssl_context) as resp:
                 if resp.getcode() == 200:
                     return True
         except (urllib.error.URLError, TimeoutError, OSError, ValueError):
@@ -568,6 +590,9 @@ def start_server(
     build_sample_cache: bool = True,
     stderr_logging: bool = True,
     dev_frontend: bool = False,
+    tls_port: int | None = None,
+    tls_certfile: str | Path | None = None,
+    tls_keyfile: str | Path | None = None,
 ) -> threading.Thread:
     """Start web server in a background thread for desktop runtime."""
     global DEBUG_WEBSOCKETS
@@ -637,6 +662,18 @@ def start_server(
 
     if not _wait_for_server_health(host, port):
         print(with_prompt("[desktop] server did not become ready in time."), flush=True)
+
+    if tls_port:
+        from dronmakr.server.dev_tls import start_tls_dev_server
+
+        cert = Path(tls_certfile) if tls_certfile else None
+        key = Path(tls_keyfile) if tls_keyfile else None
+        if cert is None or key is None or not cert.is_file() or not key.is_file():
+            print(with_prompt(f"[dev-tls] missing cert/key; skipping HTTPS on port {tls_port}"), flush=True)
+        else:
+            start_tls_dev_server(app, host=host, port=int(tls_port), certfile=cert, keyfile=key)
+            if not _wait_for_server_health(host, int(tls_port), scheme="https"):
+                print(with_prompt("[dev-tls] HTTPS server did not become ready in time."), flush=True)
 
     if not build_sample_cache:
         def _warm_cache_background():

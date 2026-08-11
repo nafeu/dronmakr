@@ -25,6 +25,7 @@ env/
 # Local development
 .env
 .local/.gitignore
+.dev-certs/
 venv/
 
 # Logs and databases

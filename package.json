@@ -11,6 +11,7 @@
     "icons:windows": "python scripts/build_windows_app_ico.py",
     "tauri": "tauri",
     "dev": "tauri dev",
+    "dev:quest": "DRONMAKR_DEV_TLS=1 bash scripts/dev_backend.sh",
     "dev:backend": "bash scripts/dev_backend.sh",
     "build": "npm run build:frontend && npm run build:sidecar && tauri build",
     "build:linux": "bash scripts/build_linux.sh",

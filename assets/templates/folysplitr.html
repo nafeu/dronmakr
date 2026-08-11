@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Permissions-Policy" content="microphone=(self)">
   <title>{{ pagename }} | dronmakr v{{ version }}</title>
   <script src="/static/vendor/wavesurfer.min.js"></script>
   {% include '_app_favicons.html' %}
@@ -2228,6 +2229,27 @@
         });
     }
 
+    function folysplitrMicBlockedReason() {
+      if (!window.isSecureContext) {
+        return "Microphone needs HTTPS. On Quest use the https:// URL from dev server log (DRONMAKR_DEV_TLS=1), accept the cert warning, then tap record.";
+      }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        return "This browser does not expose microphone APIs.";
+      }
+      return "";
+    }
+
+    async function ensureInputDeviceMonitor() {
+      if (monitorStream) return true;
+      var blocked = folysplitrMicBlockedReason();
+      if (blocked) {
+        setStatus(blocked, true);
+        return false;
+      }
+      await initInputDeviceMonitor();
+      return true;
+    }
+
     function formatTime(seconds) {
       var s = Math.max(0, Math.floor(seconds));
       var mm = String(Math.floor(s / 60)).padStart(2, "0");
@@ -2804,12 +2826,17 @@
       }
     }
 
-    recordBtn.addEventListener("click", function () {
+    recordBtn.addEventListener("click", async function () {
       if (isPlaybackActive) return;
       if (mediaRecorder && mediaRecorder.state === "recording") {
         stopRecording();
-      } else {
-        startRecording();
+        return;
+      }
+      try {
+        if (!(await ensureInputDeviceMonitor())) return;
+        await startRecording();
+      } catch (err) {
+        setStatus("Microphone access denied: " + err.message, true);
       }
     });
     playBtn.addEventListener("click", function () {
@@ -2903,11 +2930,16 @@
       if (window.dronmakrUi && typeof window.dronmakrUi.refreshSelects === "function") {
         window.dronmakrUi.refreshSelects(document.getElementById("splitr-knobs-row"));
       }
-      try {
-        await initInputDeviceMonitor();
-        setStatus("Microphone ready.");
-      } catch (err) {
-        setStatus("Microphone access denied or unavailable: " + err.message, true);
+      var micBlocked = folysplitrMicBlockedReason();
+      if (micBlocked) {
+        setStatus(micBlocked, true);
+      } else {
+        try {
+          await initInputDeviceMonitor();
+          setStatus("Microphone ready.");
+        } catch (err) {
+          setStatus("Tap record to enable microphone.");
+        }
       }
       await loadSplitrConfig();
       await loadLatestRecording();
