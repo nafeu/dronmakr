@@ -64,10 +64,10 @@ if listener_pids | grep -q .; then
 fi
 
 cd "${ROOT}"
-TLS_ARGS=()
 if [[ "${DRONMAKR_DEV_TLS:-}" == "1" ]]; then
   bash "${ROOT}/scripts/ensure_dev_tls_cert.sh"
   TLS_PORT="${DRONMAKR_DEV_TLS_PORT:-3767}"
-  TLS_ARGS=(--tls-port "${TLS_PORT}" --tls-cert "${ROOT}/.dev-certs/dev.crt" --tls-key "${ROOT}/.dev-certs/dev.key")
+  exec "${PYTHON}" backend/backend_server.py --host "${HOST}" --port "${PORT}" --dev-frontend \
+    --tls-port "${TLS_PORT}" --tls-cert "${ROOT}/.dev-certs/dev.crt" --tls-key "${ROOT}/.dev-certs/dev.key" "$@"
 fi
-exec "${PYTHON}" backend/backend_server.py --host "${HOST}" --port "${PORT}" --dev-frontend "${TLS_ARGS[@]}" "$@"
+exec "${PYTHON}" backend/backend_server.py --host "${HOST}" --port "${PORT}" --dev-frontend "$@"
