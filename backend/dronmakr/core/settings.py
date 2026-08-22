@@ -310,13 +310,22 @@ def _default_files_root() -> str:
     return os.path.abspath(os.path.join(os.path.expanduser("~"), DEFAULT_FILES_ROOT_DIRNAME))
 
 
+def files_root_has_multiple_paths(path: str | None) -> bool:
+    """True when value looks like a comma-separated path list."""
+    if not isinstance(path, str):
+        return False
+    return len(parse_escaped_csv(path.strip())) > 1
+
+
 def normalize_files_root(path: str | None) -> str:
     if not isinstance(path, str):
         return ""
     cleaned = path.strip()
     if not cleaned:
         return ""
-    return os.path.abspath(os.path.expanduser(cleaned))
+    parts = parse_escaped_csv(cleaned)
+    single = parts[0] if parts else cleaned
+    return os.path.abspath(os.path.expanduser(single))
 
 
 def get_files_root(settings: dict | None = None, allow_default: bool = False) -> str:
@@ -444,6 +453,10 @@ def ensure_folysplitr_drum_path_preset(files_root: str | None = None) -> dict[st
 
 
 def set_files_root(path: str) -> str:
+    if files_root_has_multiple_paths(path):
+        raise ValueError(
+            "FILES_ROOT must be a single path, not multiple comma-separated paths"
+        )
     resolved = normalize_files_root(path)
     if not resolved:
         raise ValueError("A valid files root path is required")

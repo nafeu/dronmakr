@@ -465,12 +465,12 @@
         </div>
       </div>
       <div class="section-title">Storage</div>
-      <div class="field-group" data-key="FILES_ROOT" data-is-path="true">
+      <div class="field-group" data-key="FILES_ROOT" data-is-path="true" data-single-path="true">
         <label for="FILES_ROOT">FILES_ROOT</label>
         <div class="field-row">
           <textarea id="FILES_ROOT" name="FILES_ROOT" rows="2"
-            placeholder="Path to dronmakr-files root directory"></textarea>
-          <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-plus"></i></button>
+            placeholder="Single path to dronmakr-files root directory"></textarea>
+          <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-folder-open"></i></button>
         </div>
       </div>
       <div class="section-title">Drum Sample Paths</div>
@@ -731,6 +731,25 @@
       return out;
     }
 
+    function filesRootHasMultiplePaths(value) {
+      const s = String(value || "").trim();
+      if (!s) return false;
+      let escaped = false;
+      for (let i = 0; i < s.length; i++) {
+        const ch = s[i];
+        if (escaped) {
+          escaped = false;
+          continue;
+        }
+        if (ch === "\\") {
+          escaped = true;
+          continue;
+        }
+        if (ch === ",") return true;
+      }
+      return false;
+    }
+
     function applyDrumPresetToFields(name) {
       const preset = drumPresets[name] || {};
       drumPathKeys.forEach((key) => {
@@ -793,9 +812,10 @@
           const res = await fetch("/api/settings/pick-folder", { method: "POST" });
           const data = await res.json();
           if (data.path) {
-            input.value = appendComma(input.value, escapePathCsvToken(data.path));
+            const picked = escapePathCsvToken(data.path);
+            input.value = group.dataset.singlePath === "true" ? picked : appendComma(input.value, picked);
             syncSettingsTextareaHeight(input);
-            showToast("Folder added.");
+            showToast(group.dataset.singlePath === "true" ? "Folder selected." : "Folder added.");
           } else if (data.cancelled) {
             showToast("Folder selection cancelled.");
           } else if (data.error) {
@@ -895,6 +915,13 @@
       e.preventDefault();
       const btn = saveSettingsBtn;
       btn.disabled = true;
+      const filesRootEl = document.getElementById("FILES_ROOT");
+      const filesRoot = filesRootEl ? (filesRootEl.value || "").trim() : "";
+      if (filesRoot && filesRootHasMultiplePaths(filesRoot)) {
+        showToast("FILES_ROOT must be a single path, not multiple comma-separated paths.", true);
+        btn.disabled = false;
+        return;
+      }
       const data = collectFormData();
       const changes = computeSettingChanges(settingsSnapshot, data);
       if (!changes.length) {

@@ -5,7 +5,12 @@ from pathlib import Path
 from unittest.mock import patch
 
 from dronmakr.core import utils
-from dronmakr.core.settings import get_files_root, has_configured_files_root, set_files_root
+from dronmakr.core.settings import (
+    files_root_has_multiple_paths,
+    get_files_root,
+    has_configured_files_root,
+    set_files_root,
+)
 
 
 class TestFilesRootOnboarding(unittest.TestCase):
@@ -31,6 +36,17 @@ class TestFilesRootOnboarding(unittest.TestCase):
             self.assertTrue((storage / "exports").is_dir())
             self.assertTrue((storage / "config").is_dir())
             save_mock.assert_called_once()
+
+    def test_files_root_rejects_comma_separated_paths(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            first = Path(tmp) / "first"
+            second = Path(tmp) / "second"
+            with patch("dronmakr.core.settings.SETTINGS_PATH", str(Path(tmp) / "settings.json")):
+                with patch("dronmakr.core.settings.load_settings", return_value={"FILES_ROOT": ""}):
+                    with self.assertRaises(ValueError) as ctx:
+                        set_files_root(f"{first},{second}")
+            self.assertIn("single path", str(ctx.exception).lower())
+            self.assertTrue(files_root_has_multiple_paths(f"{first},{second}"))
 
     def test_home_dronmakr_files_not_created_on_path_refresh(self):
         home_default = Path.home() / "dronmakr-files"

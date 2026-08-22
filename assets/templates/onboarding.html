@@ -172,11 +172,11 @@
     <p class="intro">For dronmakr to work properly, we need to decide where we want to store all of our generated files, where to pull VST/AU plugins from and where to load drum samples from.</p>
     <form id="onboardingForm" class="onboarding-form">
       <div class="section-block">
-        <div class="field-group" data-key="FILES_ROOT" data-is-path="true">
+        <div class="field-group" data-key="FILES_ROOT" data-is-path="true" data-single-path="true">
           <label for="FILES_ROOT">Storage</label>
           <div class="field-row">
             <textarea id="FILES_ROOT" name="FILES_ROOT" rows="2"
-              placeholder="/path/to/dronmakr-files"></textarea>
+              placeholder="Single path to dronmakr-files root directory"></textarea>
             <button type="button" class="btn-add" title="Select folder"><i class="fa-solid fa-folder-open"></i></button>
           </div>
         </div>
@@ -292,6 +292,25 @@
       return out;
     }
 
+    function filesRootHasMultiplePaths(value) {
+      const s = String(value || "").trim();
+      if (!s) return false;
+      let escaped = false;
+      for (let i = 0; i < s.length; i++) {
+        const ch = s[i];
+        if (escaped) {
+          escaped = false;
+          continue;
+        }
+        if (ch === "\\") {
+          escaped = true;
+          continue;
+        }
+        if (ch === ",") return true;
+      }
+      return false;
+    }
+
     const drumPathKeys = [
       "DRUM_KICK_PATHS",
       "DRUM_SNARE_PATHS",
@@ -348,7 +367,8 @@
           const res = await fetch("/api/settings/pick-folder", { method: "POST" });
           const data = await res.json();
           if (data.path) {
-            input.value = appendComma(input.value, escapePathCsvToken(data.path));
+            const picked = escapePathCsvToken(data.path);
+            input.value = group.dataset.singlePath === "true" ? picked : appendComma(input.value, picked);
           } else if (data.cancelled) {
             message.textContent = "Folder selection cancelled.";
           } else if (data.error) {
@@ -367,6 +387,11 @@
       const filesRoot = (document.getElementById("FILES_ROOT").value || "").trim();
       if (!filesRoot) {
         message.textContent = "A dronmakr files directory is required.";
+        saveBtn.disabled = false;
+        return;
+      }
+      if (filesRootHasMultiplePaths(filesRoot)) {
+        message.textContent = "Storage must be a single path, not multiple comma-separated paths.";
         saveBtn.disabled = false;
         return;
       }
