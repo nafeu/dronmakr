@@ -451,7 +451,10 @@ def api_drum_path_presets_set_active():
 @app.route("/api/settings/pick-folder", methods=["POST"])
 def api_settings_pick_folder():
     """Open native folder picker and return selected path. Safe from Flask worker threads (no Tk)."""
-    result = pick_folder_subprocess()
+    data = request.get_json(silent=True) or {}
+    initial_path = data.get("initialPath")
+    initial_dir = initial_path if isinstance(initial_path, str) else None
+    result = pick_folder_subprocess(initial_dir)
     if result.status == "ok":
         return jsonify({"path": result.path})
     if result.status == "cancelled":

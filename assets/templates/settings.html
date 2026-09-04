@@ -731,6 +731,46 @@
       return out;
     }
 
+    function splitEscapedCsv(value) {
+      const s = String(value || "");
+      if (!s.trim()) return [];
+      const out = [];
+      let buf = "";
+      let escaped = false;
+      for (let i = 0; i < s.length; i++) {
+        const ch = s[i];
+        if (escaped) {
+          if (ch === "," || ch === "\\") buf += ch;
+          else {
+            buf += "\\";
+            buf += ch;
+          }
+          escaped = false;
+          continue;
+        }
+        if (ch === "\\") {
+          escaped = true;
+          continue;
+        }
+        if (ch === ",") {
+          const item = buf.trim();
+          if (item) out.push(item);
+          buf = "";
+          continue;
+        }
+        buf += ch;
+      }
+      if (escaped) buf += "\\";
+      const item = buf.trim();
+      if (item) out.push(item);
+      return out;
+    }
+
+    function pickerInitialPath(input) {
+      const parts = splitEscapedCsv(input ? input.value : "");
+      return parts.length ? parts[parts.length - 1] : "";
+    }
+
     function filesRootHasMultiplePaths(value) {
       const s = String(value || "").trim();
       if (!s) return false;
@@ -809,7 +849,11 @@
         const input = document.getElementById(key);
         showToast("Opening folder picker — check for a dialog (may be behind this window)...");
         try {
-          const res = await fetch("/api/settings/pick-folder", { method: "POST" });
+          const res = await fetch("/api/settings/pick-folder", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ initialPath: pickerInitialPath(input) }),
+          });
           const data = await res.json();
           if (data.path) {
             const picked = escapePathCsvToken(data.path);

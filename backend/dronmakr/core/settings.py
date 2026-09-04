@@ -159,7 +159,8 @@ def _normalize_preset_name(name: str | None) -> str:
 def parse_escaped_csv(value: str | None) -> list[str]:
     """
     Split comma-separated values where commas can be escaped as '\,'.
-    Also supports escaping backslash as '\\'.
+    Backslashes are literal in Windows paths (e.g. F:\\Samples\\Kicks); only
+    '\\' and '\\,' sequences are treated as escapes.
     """
     if not isinstance(value, str) or not value:
         return []
@@ -168,7 +169,11 @@ def parse_escaped_csv(value: str | None) -> list[str]:
     escaped = False
     for ch in value:
         if escaped:
-            buf.append(ch)
+            if ch in (",", "\\"):
+                buf.append(ch)
+            else:
+                buf.append("\\")
+                buf.append(ch)
             escaped = False
             continue
         if ch == "\\":
