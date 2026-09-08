@@ -21,6 +21,7 @@ PAGE_SPECS: list[tuple[str, str, str]] = [
     ("settings.html", "settings.html", "/settings"),
     ("onboarding.html", "onboarding.html", "/onboarding"),
     ("about.html", "about.html", "/about"),
+    ("webxr_shell.html", "webxr_shell.html", "/dev/webxr"),
 ]
 
 DIST_FILENAME_TO_SPEC: dict[str, tuple[str, str]] = {

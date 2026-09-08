@@ -82,7 +82,10 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 @app.after_request
 def _allow_microphone(response):
-    response.headers.setdefault("Permissions-Policy", "microphone=(self)")
+    response.headers.setdefault(
+        "Permissions-Policy",
+        "microphone=(self), xr-spatial-tracking=(self)",
+    )
     return response
 
 DEBUG_WEBSOCKETS = False
@@ -198,6 +201,14 @@ def folysplitr_page():
     if not has_configured_files_root():
         return redirect(url_for("onboarding_page"))
     return _serve_page("folysplitr.html")
+
+
+@app.route("/dev/webxr")
+def dev_webxr_page():
+    """WebXR passthrough shell: floating iframe over AR (dev only)."""
+    if get_dev_frontend() is None:
+        return jsonify({"error": "WebXR dev shell requires dev frontend mode"}), 404
+    return _serve_page("webxr_shell.html")
 
 
 @app.route("/api/settings/config-status")

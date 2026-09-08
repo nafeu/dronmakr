@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>WebXR dev | dronmakr v{{ version }}</title>
+  <style>
+    :root {
+      --panel-bg: rgba(12, 14, 18, 0.88);
+      --panel-border: rgba(255, 255, 255, 0.18);
+      --accent: #7dd3fc;
+      --text: #e8edf5;
+      --muted: #9aa8bd;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      color: var(--text);
+      background: #050608;
+    }
+
+    body.xr-active {
+      background: transparent;
+    }
+
+    #pre-xr {
+      display: grid;
+      place-items: center;
+      min-height: 100%;
+      padding: 1.25rem;
+      background: radial-gradient(circle at top, #152033, #050608 55%);
+    }
+
+    .card {
+      width: min(34rem, 100%);
+      padding: 1.25rem 1.35rem;
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      background: rgba(10, 12, 16, 0.92);
+      box-shadow: 0 18px 48px rgba(0, 0, 0, 0.45);
+    }
+
+    h1 {
+      margin: 0 0 0.35rem;
+      font-size: 1.15rem;
+      font-weight: 650;
+    }
+
+    p {
+      margin: 0.45rem 0;
+      line-height: 1.55;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    code {
+      color: var(--accent);
+      font-size: 0.86rem;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+      margin-top: 1rem;
+    }
+
+    button,
+    select {
+      appearance: none;
+      border: 1px solid var(--panel-border);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      padding: 0.55rem 0.95rem;
+      font: inherit;
+      font-size: 0.88rem;
+      cursor: pointer;
+    }
+
+    button.primary {
+      background: linear-gradient(135deg, #0ea5e9, #0369a1);
+      border-color: transparent;
+      color: #fff;
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .status {
+      margin-top: 0.85rem;
+      min-height: 1.2rem;
+      font-size: 0.84rem;
+      color: #fca5a5;
+    }
+
+    #overlay-root {
+      position: fixed;
+      left: 50%;
+      top: 52%;
+      width: min(92vw, 980px);
+      height: min(78vh, 720px);
+      transform: translate(-50%, -50%);
+      display: none;
+      flex-direction: column;
+      border: 1px solid var(--panel-border);
+      border-radius: 16px;
+      background: var(--panel-bg);
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+      overflow: hidden;
+      touch-action: none;
+      z-index: 9999;
+    }
+
+    #overlay-root.visible {
+      display: flex;
+    }
+
+    #overlay-root.pinned {
+      outline: 2px solid rgba(125, 211, 252, 0.45);
+    }
+
+    .panel-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.45rem 0.55rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(0, 0, 0, 0.28);
+      user-select: none;
+    }
+
+    .drag-handle {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      cursor: grab;
+      font-size: 0.78rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--muted);
+      touch-action: none;
+    }
+
+    .drag-handle:active {
+      cursor: grabbing;
+    }
+
+    .toolbar-spacer {
+      flex: 1;
+    }
+
+    .opacity-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .opacity-wrap input {
+      width: 88px;
+    }
+
+    #app-frame {
+      flex: 1;
+      width: 100%;
+      border: 0;
+      background: #0b0d11;
+    }
+
+    .hint {
+      margin-top: 0.75rem;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="pre-xr">
+    <div class="card">
+      <h1>dronmakr WebXR dev shell</h1>
+      <p>
+        Opens <code id="target-label">/folysplitr</code> in a floating panel over passthrough AR.
+        Drag the handle, pin it, and lower opacity so you can record foley while seeing the room.
+      </p>
+      <p>
+        Quest 3: use Meta Quest Browser over LAN HTTPS, accept the self-signed cert, then enter AR.
+        Mac desktop: use 2D floating mode to test layout only (no passthrough).
+      </p>
+      <label>
+        App page
+        <select id="app-select">
+          <option value="/folysplitr">folysplitr</option>
+          <option value="/auditionr">auditionr</option>
+          <option value="/beatbuildr">beatbuildr</option>
+          <option value="/">home</option>
+        </select>
+      </label>
+      <div class="actions">
+        <button id="enter-ar" class="primary" type="button">Enter passthrough AR</button>
+        <button id="enter-2d" type="button">2D floating mode (Mac test)</button>
+      </div>
+      <div id="status" class="status" role="status"></div>
+      <p class="hint">Query override: <code>?app=/folysplitr</code></p>
+    </div>
+  </div>
+
+  <div id="overlay-root" aria-label="dronmakr floating panel">
+    <div class="panel-toolbar">
+      <span class="drag-handle" id="drag-handle" title="Drag panel">⠿ drag</span>
+      <button id="pin-btn" type="button" title="Pin panel position">pin</button>
+      <span class="opacity-wrap">
+        opacity
+        <input id="opacity" type="range" min="0.25" max="1" step="0.05" value="0.9">
+      </span>
+      <span class="toolbar-spacer"></span>
+      <button id="exit-mode" type="button">exit</button>
+    </div>
+    <iframe
+      id="app-frame"
+      title="dronmakr app"
+      allow="microphone *; xr-spatial-tracking *"
+      referrerpolicy="same-origin"
+    ></iframe>
+  </div>
+
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var appPath = params.get("app") || "/folysplitr";
+      var preXr = document.getElementById("pre-xr");
+      var overlayRoot = document.getElementById("overlay-root");
+      var appFrame = document.getElementById("app-frame");
+      var statusEl = document.getElementById("status");
+      var targetLabel = document.getElementById("target-label");
+      var appSelect = document.getElementById("app-select");
+      var enterArBtn = document.getElementById("enter-ar");
+      var enter2dBtn = document.getElementById("enter-2d");
+      var exitBtn = document.getElementById("exit-mode");
+      var dragHandle = document.getElementById("drag-handle");
+      var pinBtn = document.getElementById("pin-btn");
+      var opacityInput = document.getElementById("opacity");
+      var xrSession = null;
+      var pinned = false;
+      var dragState = null;
+      var storageKey = "dronmakr.webxr.panel.v1";
+
+      if (appSelect.querySelector('option[value="' + appPath + '"]')) {
+        appSelect.value = appPath;
+      }
+      targetLabel.textContent = appPath;
+
+      function setStatus(message, isError) {
+        statusEl.textContent = message || "";
+        statusEl.style.color = isError ? "#fca5a5" : "#86efac";
+      }
+
+      function panelState() {
+        var rect = overlayRoot.getBoundingClientRect();
+        return {
+          left: rect.left,
+          top: rect.top,
+          opacity: Number(opacityInput.value),
+          pinned: pinned,
+          app: appPath,
+        };
+      }
+
+      function applyPanelState(state) {
+        if (!state) return;
+        overlayRoot.style.left = state.left + "px";
+        overlayRoot.style.top = state.top + "px";
+        overlayRoot.style.transform = "none";
+        opacityInput.value = String(state.opacity || 0.9);
+        overlayRoot.style.opacity = String(state.opacity || 0.9);
+        pinned = !!state.pinned;
+        overlayRoot.classList.toggle("pinned", pinned);
+        pinBtn.textContent = pinned ? "pinned" : "pin";
+      }
+
+      function savePanelState() {
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(panelState()));
+        } catch (_err) {}
+      }
+
+      function loadPanelState() {
+        try {
+          var raw = localStorage.getItem(storageKey);
+          if (!raw) return;
+          var state = JSON.parse(raw);
+          if (state && state.app === appPath) {
+            applyPanelState(state);
+          }
+        } catch (_err) {}
+      }
+
+      function mountPanel() {
+        appFrame.src = appPath;
+        overlayRoot.classList.add("visible");
+        preXr.style.display = "none";
+        document.body.classList.add("xr-active");
+        loadPanelState();
+        overlayRoot.style.opacity = String(opacityInput.value);
+      }
+
+      function unmountPanel() {
+        overlayRoot.classList.remove("visible");
+        preXr.style.display = "grid";
+        document.body.classList.remove("xr-active");
+        appFrame.src = "about:blank";
+      }
+
+      function onOpacityInput() {
+        overlayRoot.style.opacity = String(opacityInput.value);
+        savePanelState();
+      }
+
+      function onPinToggle() {
+        pinned = !pinned;
+        overlayRoot.classList.toggle("pinned", pinned);
+        pinBtn.textContent = pinned ? "pinned" : "pin";
+        savePanelState();
+      }
+
+      function onPointerDown(event) {
+        if (pinned) return;
+        event.preventDefault();
+        var rect = overlayRoot.getBoundingClientRect();
+        dragState = {
+          pointerId: event.pointerId,
+          offsetX: event.clientX - rect.left,
+          offsetY: event.clientY - rect.top,
+        };
+        dragHandle.setPointerCapture(event.pointerId);
+      }
+
+      function onPointerMove(event) {
+        if (!dragState || dragState.pointerId !== event.pointerId || pinned) return;
+        var width = overlayRoot.offsetWidth;
+        var height = overlayRoot.offsetHeight;
+        var left = event.clientX - dragState.offsetX;
+        var top = event.clientY - dragState.offsetY;
+        left = Math.max(8, Math.min(window.innerWidth - width - 8, left));
+        top = Math.max(8, Math.min(window.innerHeight - height - 8, top));
+        overlayRoot.style.left = left + "px";
+        overlayRoot.style.top = top + "px";
+        overlayRoot.style.transform = "none";
+      }
+
+      function onPointerUp(event) {
+        if (!dragState || dragState.pointerId !== event.pointerId) return;
+        dragHandle.releasePointerCapture(event.pointerId);
+        dragState = null;
+        savePanelState();
+      }
+
+      async function enter2dMode() {
+        appPath = appSelect.value;
+        targetLabel.textContent = appPath;
+        mountPanel();
+        setStatus("2D floating mode active. Drag, pin, and opacity work; passthrough needs Quest AR.", false);
+      }
+
+      async function enterArMode() {
+        appPath = appSelect.value;
+        targetLabel.textContent = appPath;
+        if (!navigator.xr) {
+          setStatus("WebXR unavailable here. Use Quest Browser or 2D floating mode.", true);
+          return;
+        }
+        var supported = false;
+        try {
+          supported = await navigator.xr.isSessionSupported("immersive-ar");
+        } catch (_err) {
+          supported = false;
+        }
+        if (!supported) {
+          setStatus("immersive-ar unsupported in this browser. Try Meta Quest Browser.", true);
+          return;
+        }
+
+        mountPanel();
+        setStatus("Requesting AR session…", false);
+
+        try {
+          xrSession = await navigator.xr.requestSession("immersive-ar", {
+            requiredFeatures: ["local", "dom-overlay"],
+            optionalFeatures: ["local-floor", "hit-test", "hand-tracking"],
+            domOverlay: { root: overlayRoot },
+          });
+        } catch (err) {
+          try {
+            xrSession = await navigator.xr.requestSession("immersive-ar", {
+              requiredFeatures: ["local"],
+              optionalFeatures: ["dom-overlay", "local-floor", "hit-test"],
+              domOverlay: { root: overlayRoot },
+            });
+          } catch (fallbackErr) {
+            unmountPanel();
+            var message = fallbackErr && fallbackErr.message ? fallbackErr.message : String(fallbackErr);
+            setStatus("AR session failed: " + message, true);
+            return;
+          }
+        }
+
+        xrSession.addEventListener("end", function () {
+          xrSession = null;
+          unmountPanel();
+          setStatus("AR session ended.", false);
+        });
+
+        function frameLoop(_time, _frame) {
+          if (!xrSession) return;
+          xrSession.requestAnimationFrame(frameLoop);
+        }
+        xrSession.requestAnimationFrame(frameLoop);
+        setStatus("Passthrough AR active. Drag panel over your room.", false);
+      }
+
+      async function exitMode() {
+        if (xrSession) {
+          await xrSession.end();
+          xrSession = null;
+        }
+        savePanelState();
+        unmountPanel();
+        setStatus("", false);
+      }
+
+      appSelect.addEventListener("change", function () {
+        appPath = appSelect.value;
+        targetLabel.textContent = appPath;
+      });
+      opacityInput.addEventListener("input", onOpacityInput);
+      pinBtn.addEventListener("click", onPinToggle);
+      dragHandle.addEventListener("pointerdown", onPointerDown);
+      dragHandle.addEventListener("pointermove", onPointerMove);
+      dragHandle.addEventListener("pointerup", onPointerUp);
+      dragHandle.addEventListener("pointercancel", onPointerUp);
+      enter2dBtn.addEventListener("click", enter2dMode);
+      enterArBtn.addEventListener("click", enterArMode);
+      exitBtn.addEventListener("click", exitMode);
+
+      if (navigator.xr && navigator.xr.isSessionSupported) {
+        navigator.xr.isSessionSupported("immersive-ar").then(function (ok) {
+          enterArBtn.disabled = !ok;
+          if (!ok) {
+            setStatus("immersive-ar not supported here — 2D floating mode still works.", true);
+          }
+        }).catch(function () {
+          enterArBtn.disabled = true;
+        });
+      } else {
+        enterArBtn.disabled = true;
+        setStatus("WebXR not exposed — use Quest Browser for AR.", true);
+      }
+    })();
+  </script>
+</body>
+
+</html>

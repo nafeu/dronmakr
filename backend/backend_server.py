@@ -128,9 +128,17 @@ def main() -> None:
         )
     if int(args.tls_port) > 0:
         print(f"[backend] HTTPS dev: https://127.0.0.1:{args.tls_port}/folysplitr", flush=True)
+        print(
+            f"[backend] WebXR dev: https://127.0.0.1:{args.tls_port}/dev/webxr",
+            flush=True,
+        )
         if lan_ip:
             print(
                 f"[backend] LAN HTTPS (mic): https://{lan_ip}:{args.tls_port}/folysplitr",
+                flush=True,
+            )
+            print(
+                f"[backend] LAN WebXR (Quest): https://{lan_ip}:{args.tls_port}/dev/webxr",
                 flush=True,
             )
         print(
