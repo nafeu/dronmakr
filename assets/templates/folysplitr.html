@@ -2231,7 +2231,7 @@
 
     function folysplitrMicBlockedReason() {
       if (!window.isSecureContext) {
-        return "Microphone needs HTTPS. On Quest use the https:// URL from dev server log (DRONMAKR_DEV_TLS=1), accept the cert warning, then tap record.";
+        return "Microphone needs HTTPS. Run npm run dev:sandbox-tls, open the https:// URL from dev server log, accept the cert warning, then tap record.";
       }
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         return "This browser does not expose microphone APIs.";

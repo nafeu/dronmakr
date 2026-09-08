@@ -1,4 +1,4 @@
-"""Optional HTTPS dev mirror for LAN/Quest browsers (getUserMedia needs secure context)."""
+"""Optional HTTPS dev mirror for LAN/sandbox browsers (getUserMedia needs secure context)."""
 
 from __future__ import annotations
 

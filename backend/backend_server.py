@@ -54,7 +54,7 @@ def _parse_args() -> argparse.Namespace:
         "--tls-port",
         type=int,
         default=0,
-        help="Optional HTTPS dev port for LAN/Quest browsers (getUserMedia needs secure context)",
+        help="Optional HTTPS dev port for LAN/sandbox browsers (getUserMedia needs secure context)",
     )
     parser.add_argument("--tls-cert", default="", help="TLS certificate PEM path")
     parser.add_argument("--tls-key", default="", help="TLS private key PEM path")
@@ -130,11 +130,11 @@ def main() -> None:
         print(f"[backend] HTTPS dev: https://127.0.0.1:{args.tls_port}/folysplitr", flush=True)
         if lan_ip:
             print(
-                f"[backend] Quest mic URL: https://{lan_ip}:{args.tls_port}/folysplitr",
+                f"[backend] LAN HTTPS (mic): https://{lan_ip}:{args.tls_port}/folysplitr",
                 flush=True,
             )
         print(
-            "[backend] Quest: accept cert warning (Advanced -> Continue), tap record for mic prompt.",
+            "[backend] sandbox TLS: accept cert warning (Advanced -> Continue), tap record for mic prompt.",
             flush=True,
         )
 

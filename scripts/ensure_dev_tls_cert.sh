@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Self-signed cert for local HTTPS dev (Quest browser mic needs secure context).
+# Self-signed cert for local HTTPS dev sandbox (getUserMedia needs secure context).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -28,4 +28,4 @@ else
     -subj "/CN=dronmakr-dev"
 fi
 
-echo "[dev-tls] wrote ${CRT} (self-signed — accept cert warning in Quest browser)"
+echo "[dev-tls] wrote ${CRT} (self-signed — accept cert warning in sandbox browser)"
