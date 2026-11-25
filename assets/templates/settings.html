@@ -160,6 +160,13 @@
       cursor: not-allowed;
     }
 
+    .field-group[data-is-path="true"].path-drop-active {
+      outline: 1px dashed var(--primary);
+      outline-offset: 2px;
+      border-radius: 4px;
+      background: color-mix(in srgb, var(--primary) 8%, transparent);
+    }
+
     .append-row {
       margin-top: 0.35rem;
     }
@@ -771,6 +778,44 @@
       return parts.length ? parts[parts.length - 1] : "";
     }
 
+    function normalizePathFieldValue(raw) {
+      const parts = splitEscapedCsv(raw);
+      if (!parts.length) return String(raw || "").trim();
+      return parts.map(escapePathCsvToken).join(",");
+    }
+
+    function applyNormalizedPathValue(input, nextValue) {
+      if (!input) return false;
+      const normalized = normalizePathFieldValue(nextValue);
+      if (normalized === input.value) return false;
+      input.value = normalized;
+      syncSettingsTextareaHeight(input);
+      return true;
+    }
+
+    function pathFromDroppedItem(file) {
+      if (!file) return "";
+      if (typeof file.path === "string" && file.path.trim()) return file.path.trim();
+      return "";
+    }
+
+    async function pathsFromDataTransfer(dt) {
+      const out = [];
+      if (!dt) return out;
+      const text = (dt.getData("text/plain") || "").trim();
+      if (text && (text.includes("/") || text.includes("\\") || /^[A-Za-z]:/.test(text))) {
+        splitEscapedCsv(text).forEach((p) => {
+          if (p) out.push(p);
+        });
+      }
+      const files = dt.files ? Array.from(dt.files) : [];
+      files.forEach((file) => {
+        const p = pathFromDroppedItem(file);
+        if (p && !out.includes(p)) out.push(p);
+      });
+      return out;
+    }
+
     function filesRootHasMultiplePaths(value) {
       const s = String(value || "").trim();
       if (!s) return false;
@@ -871,6 +916,56 @@
       });
     });
 
+    // Normalize pasted Windows paths; accept drag-and-drop folders/paths on path fields
+    document.querySelectorAll("[data-is-path='true']").forEach((group) => {
+      const key = group.dataset.key;
+      const input = document.getElementById(key);
+      if (!input) return;
+
+      input.addEventListener("blur", () => {
+        applyNormalizedPathValue(input, input.value);
+      });
+      input.addEventListener("paste", () => {
+        setTimeout(() => applyNormalizedPathValue(input, input.value), 0);
+      });
+
+      ["dragenter", "dragover"].forEach((evtName) => {
+        group.addEventListener(evtName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          group.classList.add("path-drop-active");
+          if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+        });
+      });
+      ["dragleave", "dragend"].forEach((evtName) => {
+        group.addEventListener(evtName, (e) => {
+          if (evtName === "dragleave" && group.contains(e.relatedTarget)) return;
+          group.classList.remove("path-drop-active");
+        });
+      });
+      group.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        group.classList.remove("path-drop-active");
+        const paths = await pathsFromDataTransfer(e.dataTransfer);
+        if (!paths.length) {
+          showToast("Could not read dropped folder path. Use + or paste an absolute path.", true);
+          return;
+        }
+        if (group.dataset.singlePath === "true") {
+          applyNormalizedPathValue(input, escapePathCsvToken(paths[0]));
+          showToast("Folder selected.");
+          return;
+        }
+        let next = input.value;
+        paths.forEach((p) => {
+          next = appendComma(next, escapePathCsvToken(p));
+        });
+        applyNormalizedPathValue(input, next);
+        showToast(paths.length === 1 ? "Folder added." : paths.length + " folders added.");
+      });
+    });
+
     // Append + button for plug-in allow lists
     document.querySelectorAll("[data-append-type='plugin'] .append-row .btn-add").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -959,6 +1054,10 @@
       e.preventDefault();
       const btn = saveSettingsBtn;
       btn.disabled = true;
+      document.querySelectorAll("[data-is-path='true']").forEach((group) => {
+        const input = document.getElementById(group.dataset.key);
+        if (input) applyNormalizedPathValue(input, input.value);
+      });
       const filesRootEl = document.getElementById("FILES_ROOT");
       const filesRoot = filesRootEl ? (filesRootEl.value || "").trim() : "";
       if (filesRoot && filesRootHasMultiplePaths(filesRoot)) {

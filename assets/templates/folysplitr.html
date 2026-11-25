@@ -343,6 +343,56 @@
       overflow: visible;
     }
 
+    .folysplitr-process-card {
+      position: relative;
+    }
+
+    .folysplitr-sample-preview {
+      position: relative;
+    }
+
+    .folysplitr-busy-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 40;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.65rem;
+      padding: 1rem;
+      border-radius: 5px;
+      background: color-mix(in srgb, var(--secondary) 88%, transparent);
+      color: var(--primary);
+      text-align: center;
+      pointer-events: auto;
+    }
+
+    .folysplitr-busy-overlay.hidden {
+      display: none !important;
+    }
+
+    .folysplitr-busy-icon {
+      font-size: 1.75rem;
+      line-height: 1;
+      color: var(--primary);
+    }
+
+    .folysplitr-busy-text {
+      font-size: 0.9rem;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+
+    .folysplitr-busy-active .folysplitr-workflow-card {
+      pointer-events: none;
+    }
+
+    .folysplitr-busy-active .folysplitr-process-card {
+      pointer-events: auto;
+    }
+
     .generatr-sweep-effect:has(.nice-select.open) {
       position: relative;
       z-index: 30;
@@ -1051,6 +1101,10 @@
                   <div id="splitr-waveform"></div>
                   <div id="splitr-overlay" class="splitr-overlay"></div>
                 </div>
+                <div id="folysplitr-sample-busy-overlay" class="folysplitr-busy-overlay hidden" role="status" aria-live="polite" aria-hidden="true" aria-busy="false">
+                  <i class="fa-solid fa-spinner fa-spin folysplitr-busy-icon" aria-hidden="true"></i>
+                  <span class="folysplitr-busy-text">Processing</span>
+                </div>
               </div>
             </div>
             <div class="meter-wrap" id="meter-wrap">
@@ -1132,6 +1186,10 @@
           <span class="folysplitr-process-col-label">Actions</span>
           <div id="splitr-actions-right" class="folysplitr-process-col-right"></div>
         </div>
+      </div>
+      <div id="folysplitr-process-busy-overlay" class="folysplitr-busy-overlay hidden" role="status" aria-live="polite" aria-hidden="true" aria-busy="false">
+        <i class="fa-solid fa-spinner fa-spin folysplitr-busy-icon" aria-hidden="true"></i>
+        <span class="folysplitr-busy-text" id="folysplitr-busy-text">Processing</span>
       </div>
     </div>
 
@@ -1435,6 +1493,50 @@
       statusEl.classList.toggle("error", !!isError);
     }
 
+    var splitrBusy = false;
+    var splitrBusyDepth = 0;
+
+    function updateSplitrBusyOverlay(label) {
+      var overlays = [
+        document.getElementById("folysplitr-process-busy-overlay"),
+        document.getElementById("folysplitr-sample-busy-overlay")
+      ];
+      var busyText = document.getElementById("folysplitr-busy-text");
+      if (busyText && label) busyText.textContent = label;
+      overlays.forEach(function (overlay) {
+        if (!overlay) return;
+        var textEl = overlay.querySelector(".folysplitr-busy-text");
+        if (textEl && label) textEl.textContent = label;
+        overlay.classList.toggle("hidden", !splitrBusy);
+        overlay.setAttribute("aria-hidden", splitrBusy ? "false" : "true");
+        overlay.setAttribute("aria-busy", splitrBusy ? "true" : "false");
+      });
+      document.body.classList.toggle("folysplitr-busy-active", splitrBusy);
+    }
+
+    function beginSplitrBusy(label) {
+      splitrBusyDepth += 1;
+      splitrBusy = true;
+      updateSplitrBusyOverlay(label || "Processing");
+    }
+
+    function endSplitrBusy() {
+      splitrBusyDepth = Math.max(0, splitrBusyDepth - 1);
+      if (splitrBusyDepth > 0) return;
+      splitrBusy = false;
+      updateSplitrBusyOverlay("Processing");
+    }
+
+    async function withSplitrBusy(label, fn) {
+      if (splitrBusy) return;
+      beginSplitrBusy(label);
+      try {
+        return await fn();
+      } finally {
+        endSplitrBusy();
+      }
+    }
+
     function getActiveSplitrItem() {
       if (!recordingsList.length) return null;
       return recordingsList[splitrIndex] || null;
@@ -1460,26 +1562,28 @@
     }
 
     async function splitrProcess(command, extraParams) {
-      var item = getActiveSplitrItem();
-      if (!item) return;
-      var body = Object.assign({
-        path: item.path,
-        command: command
-      }, extraParams || {});
-      var res = await fetch("/api/folysplitr/process", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
+      return withSplitrBusy("Processing", async function () {
+        var item = getActiveSplitrItem();
+        if (!item) return;
+        var body = Object.assign({
+          path: item.path,
+          command: command
+        }, extraParams || {});
+        var res = await fetch("/api/folysplitr/process", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+        var payload = await res.json();
+        if (!res.ok || !payload.ok) throw new Error(payload.error || "Process failed");
+        await refreshRecordingsList();
+        var current = payload.file && payload.file.path;
+        if (current) {
+          splitrIndex = recordingsList.findIndex(function (r) { return r.path === current; });
+          if (splitrIndex < 0) splitrIndex = 0;
+        }
+        renderSplitrCurrent();
       });
-      var payload = await res.json();
-      if (!res.ok || !payload.ok) throw new Error(payload.error || "Process failed");
-      await refreshRecordingsList();
-      var current = payload.file && payload.file.path;
-      if (current) {
-        splitrIndex = recordingsList.findIndex(function (r) { return r.path === current; });
-        if (splitrIndex < 0) splitrIndex = 0;
-      }
-      renderSplitrCurrent();
     }
 
     function splitRound(v) {
@@ -1635,22 +1739,24 @@
     }
 
     async function splitrApplyProcessingSpec(processingSpec) {
-      var item = getActiveSplitrItem();
-      if (!item) return;
-      var res = await fetch("/api/folysplitr/process", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: item.path, processing_spec: processingSpec })
+      return withSplitrBusy("Processing", async function () {
+        var item = getActiveSplitrItem();
+        if (!item) return;
+        var res = await fetch("/api/folysplitr/process", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: item.path, processing_spec: processingSpec })
+        });
+        var payload = await res.json();
+        if (!res.ok || !payload.ok) throw new Error(payload.error || "Process failed");
+        await refreshRecordingsList();
+        var current = payload.file && payload.file.path;
+        if (current) {
+          splitrIndex = recordingsList.findIndex(function (r) { return r.path === current; });
+          if (splitrIndex < 0) splitrIndex = 0;
+        }
+        renderSplitrCurrent();
       });
-      var payload = await res.json();
-      if (!res.ok || !payload.ok) throw new Error(payload.error || "Process failed");
-      await refreshRecordingsList();
-      var current = payload.file && payload.file.path;
-      if (current) {
-        splitrIndex = recordingsList.findIndex(function (r) { return r.path === current; });
-        if (splitrIndex < 0) splitrIndex = 0;
-      }
-      renderSplitrCurrent();
     }
 
     function defaultMarkersFromDuration(duration) {
